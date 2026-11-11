@@ -801,6 +801,11 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { store.load(id)?.title == "Eye doctor" }
     }
 
+    private fun deletionWarning(): String =
+        compose.onAllNodesWithText("will be deleted now", substring = true).fetchSemanticsNodes()
+            .joinToString { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty() }
+            .ifEmpty { "(no warning text)" }
+
     private fun waitForText(text: String) = compose.waitUntil(10_000) {
         compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
     }
@@ -869,16 +874,13 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Rotating retention filler", substring = true).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Automatic deletion").performClick()
         compose.onNodeWithText("After a month").performClick()
-        compose.onNodeWithText("2 old conversations will be deleted now").assertExists()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("will be deleted now", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals("2 old conversations will be deleted now", deletionWarning())
         turnThePhone()
         var firstSeen = ""
         compose.waitUntil(10_000) {
             val buttons = compose.onAllNodesWithText("Delete and continue this way").fetchSemanticsNodes()
-            if (buttons.isNotEmpty() && firstSeen.isEmpty()) {
-                firstSeen = compose.onAllNodesWithText("will be deleted now", substring = true).fetchSemanticsNodes()
-                    .joinToString { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty() }
-                    .ifEmpty { "(no warning text)" }
-            }
+            if (buttons.isNotEmpty() && firstSeen.isEmpty()) firstSeen = deletionWarning()
             buttons.isNotEmpty()
         }
         assertEquals("2 old conversations will be deleted now", firstSeen)

@@ -244,8 +244,8 @@ such as "Hey Siri, start captions in Ozen" and "Hey Siri, stop captions in
 Ozen". Another one has the phone say a sentence aloud, and Siri asks what
 to say. Stopping saves the conversation in History. The commands also work
 from the lock screen and in automations in the Shortcuts app. Settings has a
-section with the same examples, called **Siri and shortcuts** (siri
-ve-kitzurei derech).
+section with the same examples, called **Siri and shortcuts** (Siri
+ve-kitzurim).
 
 **The Action button.** One of Ozen's shortcuts opens the big-letters pad
 straight away, so someone can write to you when the captions cannot keep
