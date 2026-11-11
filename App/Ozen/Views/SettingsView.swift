@@ -1227,11 +1227,11 @@ struct SettingsView: View {
             // said; the line below says what to install.
             .disabled(!viewModel.canSay(Self.voiceSample))
             if !viewModel.hasVoiceForAppLanguage {
-                Text(tr("אין בטלפון קול בשפה %1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף קול בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]))
+                Text(MissingVoiceHint.appLanguage(viewModel.uiLanguage.nativeName))
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             } else if viewModel.uiLanguage == .hebrew, !viewModel.hasHebrewVoice {
-                Text(tr("לא מותקן קול בעברית. אפשר להוסיף קול בהגדרות המכשיר ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice is installed. Add one in the device settings → Accessibility → Spoken Content → Voices → Hebrew."))
+                Text(MissingVoiceHint.hebrew())
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }
