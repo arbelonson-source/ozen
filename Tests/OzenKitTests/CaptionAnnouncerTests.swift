@@ -174,7 +174,7 @@ struct CaptionAnnouncerTests {
         provisional.text = "הרופא אמר כדור אחד"
         provisional.isProvisionalCommit = false
         lines[0] = provisional
-        #expect(announcer.announcement(for: lines, speakerName: { _ in nil }) == "הרופא אמר כדור אחד")
+        #expect(announcer.announcement(for: lines, speakerName: { _ in nil }) == "כדור אחד")
     }
 
     @Test("once enough unrelated lines have replaced it, a rolled-off line's entry is forgotten, so reusing its id later announces it fresh instead of assuming it was already read")
@@ -204,9 +204,38 @@ struct CaptionAnnouncerTests {
         #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }) == nil)
 
         segment.isCommitted = false
-        segment.text = "הרופא אמר כדור אחד"
+        segment.text = "הרופאה אמרה כדור אחד"
         #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }) == nil)
         segment.isCommitted = true
-        #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }) == "הרופא אמר כדור אחד")
+        #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }) == "הרופאה אמרה כדור אחד")
+    }
+
+    @Test("a line that only grew after it was read out reads just its new words, and leads with the name only for a speaker found meanwhile")
+    func grownLineReadsOnlyTheNewWords() {
+        var announcer = CaptionAnnouncer()
+        var segment = line("הרופא אמר")
+        #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }, isUncertain: { _ in true }) == "ייתכן שלא נשמעה נכון. הרופא אמר")
+        segment.text = "הרופא אמר כדור אחד"
+        #expect(announcer.announcement(for: [segment], speakerName: { _ in nil }, isUncertain: { _ in true }) == "כדור אחד")
+        segment.text = "הרופא אמר כדור אחד בערב"
+        let pieces = announcer.announcementPieces(for: [segment], speakerName: { _ in "דנה" })
+        #expect(pieces == [.init(text: "דנה: ", isCaption: false), .init(text: "בערב", isCaption: true)])
+    }
+
+    @Test("new words that are only a time keep the conversation's voice; a Latin brand name gets an English one, as a whole line of it does")
+    func grownLineTailLanguage() {
+        var announcer = CaptionAnnouncer()
+        var segment = line("הפגישה בשעה")
+        _ = announcer.announcement(for: [segment], speakerName: { _ in nil })
+        segment.text = "הפגישה בשעה 10:30"
+        let time = announcer.announcementPieces(for: [segment], speakerName: { _ in nil })
+        #expect(time == [.init(text: "10:30", isCaption: true)])
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "10:30", languageCode: "he") == "he")
+        segment.text = "הפגישה בשעה 10:30 ב-Zoom"
+        let brand = announcer.announcementPieces(for: [segment], speakerName: { _ in nil })
+        #expect(brand == [.init(text: "ב-Zoom", isCaption: true)])
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "ב-Zoom", languageCode: "he") == "he")
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he") == CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he-IL"))
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he") == "en")
     }
 }
