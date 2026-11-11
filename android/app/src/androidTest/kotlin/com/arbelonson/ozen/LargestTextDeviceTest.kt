@@ -151,8 +151,18 @@ class LargestTextDeviceTest {
                 it.engine = TranscriptionEngineKind.WhisperKit
                 it.cloudSoundAcknowledged = emptySet()
             }
+            // A small phone, 360 by 640 points. On a tall phone the consent
+            // only just overflows at the largest text (by 64 pixels on a
+            // Pixel 7, keyboard up or down), and on CI's Pixel 6, a little
+            // taller in points, it sometimes fit: the check below then
+            // failed with nothing wrong.
             shell("settings put system font_scale 2.0")
-            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            shell("wm size 720x1280")
+            shell("wm density 320")
+            compose.waitUntil(10_000) {
+                val configuration = compose.activity.resources.configuration
+                configuration.fontScale == 2f && configuration.screenWidthDp == 360
+            }
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
             compose.onNodeWithText("Deepgram").performScrollTo().performClick()
@@ -166,6 +176,8 @@ class LargestTextDeviceTest {
             compose.onNodeWithText("Allow and save").assertIsDisplayed()
             compose.onNodeWithText("Cancel").performClick()
         } finally {
+            shell("wm size reset")
+            shell("wm density reset")
             shell("settings put system font_scale $scale")
             app.cloudKeyCheckHTTP = keyCheck
             key?.let { app.cloudKeys.save(it, CloudProvider.Deepgram) } ?: app.cloudKeys.remove(CloudProvider.Deepgram)
