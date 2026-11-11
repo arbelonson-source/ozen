@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
@@ -359,6 +360,22 @@ class CaptionPipeline(
      */
     private val recentAudio = RecentAudio(seconds = 30.0, sampleRate = 16_000.0)
     val recentAudioSamples: FloatArray get() = recentAudio.samples()
+
+    /**
+     * What a home computer that vanished took with it: see [prepareReplay].
+     * [lastFinalHeard] is where in [recentAudio] the newest line it finished
+     * was first heard, from its first partial, so a final that comes late
+     * does not move the replay start past speech it never captioned.
+     */
+    private var sessionAudioStart = 0L
+    private var lastFinalHeard: HeardLine? = null
+    private val utteranceFirstHeard = HashMap<UUID, Long>()
+    private var pendingReplay = FloatArray(0)
+    private var pendingReplayDedupe: List<String> = emptyList()
+    private var replayDedupe: List<String> = emptyList()
+    private var replayUtterance: UUID? = null
+
+    private class HeardLine(val position: Long, val text: String)
     private var homeServerRecheck: Job? = null
     private var cloudRecheck: Job? = null
 
@@ -688,6 +705,14 @@ class CaptionPipeline(
         cancelSoundsOnlyRetry()
         val run = UUID.randomUUID()
         runID = run
+        sessionAudioStart = recentAudio.totalAppended
+        lastFinalHeard = null
+        utteranceFirstHeard.clear()
+        val replay = pendingReplay
+        replayDedupe = pendingReplayDedupe
+        replayUtterance = null
+        pendingReplay = FloatArray(0)
+        pendingReplayDedupe = emptyList()
         settingsInUse = settings.copy()
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -904,7 +929,8 @@ class CaptionPipeline(
         // run before it returns; the dead fan-out must not start listening.
         if (runID != run) return abandon(fan)
         fanOut = fan
-        val tokens = engine.stream(settings.languageCode, fan.outputs[0])
+        val engineAudio = if (replay.isEmpty()) fan.outputs[0] else replaying(replay, fan.outputs[0])
+        val tokens = engine.stream(settings.languageCode, engineAudio)
         val embedderAudio = fan.outputs[1]
         val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]))
 
@@ -979,6 +1005,8 @@ class CaptionPipeline(
     fun stop() {
         stopCount += 1
         recentAudio.clear()
+        pendingReplay = FloatArray(0)
+        pendingReplayDedupe = emptyList()
         homeServerRecheck?.cancel()
         homeServerRecheck = null
         cloudRecheck?.cancel()
@@ -2049,7 +2077,13 @@ class CaptionPipeline(
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
         val fixes = settingsInUse?.wordFixes.orEmpty()
-        var cleaned = HebrewText.removingDirectionMarks(incoming.text)
+        var cleaned = trimmingReplayedWords(incoming, HebrewText.removingDirectionMarks(incoming.text)) ?: return
+        if (replayDedupe.isEmpty()) {
+            if (utteranceFirstHeard.size > 64) utteranceFirstHeard.clear()
+            val heardAt = utteranceFirstHeard[incoming.utteranceID] ?: recentAudio.totalAppended
+            if (incoming.isFinal) utteranceFirstHeard.remove(incoming.utteranceID) else utteranceFirstHeard[incoming.utteranceID] = heardAt
+            if (incoming.isFinal && cleaned.isNotEmpty()) lastFinalHeard = HeardLine(heardAt, cleaned)
+        }
         if (incoming.isFinal) incomingText.remove(incoming.utteranceID) else incomingText[incoming.utteranceID] = cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
         // of its words so far. Dropping it whole lost everything said after
@@ -2552,6 +2586,7 @@ class CaptionPipeline(
                 return
             }
             logEvent(PipelineEvent.Kind.Note("cloud unavailable, the phone's own model took over"))
+            if (failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable) prepareReplay()
             nextStartCoversCloud = true
             coverReason = failure.engineUnavailability?.kind
             coveredSettings = settingsInUse?.copy()
@@ -3369,11 +3404,89 @@ class CaptionPipeline(
         fun toFloatArray(): FloatArray = data.copyOf(size)
     }
 
+    /**
+     * What was said while the home computer was already gone, but before
+     * the phone gave up on it, never got a caption: the phone's model hears
+     * it first, then the live audio, as on the iPhone. Only the speech after
+     * the last line the home computer finished, from a little before it so
+     * a half-heard word is whole, and never more than [REPLAY_MAX_SECONDS].
+     */
+    private fun prepareReplay() {
+        pendingReplay = FloatArray(0)
+        pendingReplayDedupe = emptyList()
+        var begin = sessionAudioStart
+        lastFinalHeard?.let { heard ->
+            begin = maxOf(begin, heard.position - (REPLAY_MARGIN_SECONDS * SAMPLE_RATE).toLong())
+            pendingReplayDedupe = comparableWords(heard.text)
+        }
+        val tail = recentAudio.tail(begin, (REPLAY_MAX_SECONDS * SAMPLE_RATE).toInt())
+        val detector = EnergyVoiceDetector()
+        val step = (SAMPLE_RATE / 10).toInt()
+        val heardSpeech = (tail.indices step step).map { detector.isSpeech(tail.copyOfRange(it, minOf(it + step, tail.size))) }.any { it }
+        if (!heardSpeech) {
+            pendingReplayDedupe = emptyList()
+            return
+        }
+        pendingReplay = tail
+    }
+
+    /**
+     * The replay, a fifth of a second at a time, then the live audio. Cold,
+     * so it holds nothing beyond the replay itself: the live audio waits in
+     * the fan-out's own bounded channel meanwhile.
+     */
+    private fun replaying(replay: FloatArray, live: Flow<FloatArray>): Flow<FloatArray> = flow {
+        val step = (SAMPLE_RATE / 5).toInt()
+        for (start in replay.indices step step) emit(replay.copyOfRange(start, minOf(start + step, replay.size)))
+        emitAll(live)
+    }
+
+    /**
+     * The replay starts before the home computer's last line, so the
+     * phone's first utterance usually begins with the tail of that line
+     * and then carries on with new speech. Returns [cleaned] without the
+     * words that were already shown, or null when nothing new is left.
+     * Every update of that utterance is trimmed again, so the words after
+     * the overlap are kept as they arrive. A line that is only the first
+     * words of the last one, or that merely starts with its last word, is
+     * new speech and stays.
+     */
+    private fun trimmingReplayedWords(token: TranscriptToken, cleaned: String): String? {
+        if (replayDedupe.isEmpty()) return cleaned
+        val raw = splitWords(cleaned)
+        val words = raw.map { trimmingPunctuation(it).lowercase() }
+        if (words.isEmpty()) return cleaned
+        val known = replayDedupe.map { it.lowercase() }
+        val ongoing = replayUtterance == token.utteranceID
+        if (replayUtterance != null && !ongoing) {
+            replayDedupe = emptyList()
+            replayUtterance = null
+            return cleaned
+        }
+        val overlap = (minOf(words.size, known.size) downTo 1).firstOrNull { known.takeLast(it) == words.take(it) } ?: 0
+        val wholeLine = overlap == words.size
+        val weak = overlap == 1 && known.size > 1
+        if (overlap == 0 || (weak && !(wholeLine && !token.isFinal) && !ongoing)) {
+            replayDedupe = emptyList()
+            replayUtterance = null
+            return cleaned
+        }
+        replayUtterance = token.utteranceID
+        if (token.isFinal) {
+            replayDedupe = emptyList()
+            replayUtterance = null
+        }
+        if (wholeLine) return null
+        return raw.drop(overlap).joinToString(" ")
+    }
+
     companion object {
         /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
         const val FALLBACK_AFTER_FAILURES = 2
         private const val EMBEDDING_WINDOW_SECONDS = 1.5
         private const val SAMPLE_RATE = 16_000.0
+        private const val REPLAY_MARGIN_SECONDS = 2.0
+        private const val REPLAY_MAX_SECONDS = 20.0
         private const val MAX_KEYWORD_HITS = 50
         private const val MAX_SOUND_ALERTS = 30
         private const val MINIMUM_SPEECH_FRACTION_FOR_EMBEDDING = 0.4
