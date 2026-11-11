@@ -203,7 +203,13 @@ class CaptionSession(
     // Readings count from asking for captions until they are stopped or
     // paused, failures and retries included (see `BatteryAdvisor.watches`).
     private val stopAnnouncer = CaptionsStopAnnouncer()
-    private val batteryWatch = BatteryWatch(show = CaptionState::battery, warned = ::batteryWarningRaised)
+    // Plugging in also takes "Battery at 10%" off the lock screen, where it
+    // stayed after the banner went, as on the iPhone (a61a37fb).
+    private val batteryWatch = BatteryWatch(
+        show = CaptionState::battery,
+        warned = ::batteryWarningRaised,
+        withdraw = { notifier.withdraw(BatteryWarning.NOTIFICATION_IDENTIFIER) },
+    )
     private val batteryReadings = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = readBattery(intent)
     }

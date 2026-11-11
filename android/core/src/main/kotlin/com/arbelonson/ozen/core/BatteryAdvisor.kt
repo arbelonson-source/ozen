@@ -9,10 +9,14 @@ sealed class BatteryWarning {
 
     data class Critical(override val percent: Int) : BatteryWarning()
 
+    companion object {
+        const val NOTIFICATION_IDENTIFIER = "battery"
+    }
+
     val notificationContent: AlertNotificationContent
         get() = when (this) {
             is Low -> AlertNotificationContent(
-                identifier = "battery",
+                identifier = NOTIFICATION_IDENTIFIER,
                 title = tr("הסוללה ב־%1%", "Battery at %1%", listOf("$percent")),
                 body = tr(
                     "הכתוביות וההתראות ממשיכות, אבל כדאי לחבר את הטלפון למטען.",
@@ -22,7 +26,7 @@ sealed class BatteryWarning {
                 isUrgent = false,
             )
             is Critical -> AlertNotificationContent(
-                identifier = "battery",
+                identifier = NOTIFICATION_IDENTIFIER,
                 title = tr("הסוללה ב־%1%", "Battery at %1%", listOf("$percent")),
                 body = tr(
                     "הטלפון עלול להיכבות, ואיתו הכתוביות וההתראות. חברו אותו למטען.",
