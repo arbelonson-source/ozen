@@ -133,7 +133,7 @@ class TranscribeRecordingDeviceTest {
             assertEquals(done.lines.size, record.segments.size)
             assertEquals(done.lines.map { it.text }, record.segments.map { it.text })
             saved += done.recordId!!
-            val cues = TranscriptFormats.srt(done.lines).trim().split("\n\n")
+            val cues = TranscriptFormats.srt(done.lines, done.language.languageCode).trim().split("\n\n")
             assertEquals(done.lines.size, cues.size)
             assertTrue(cues.all { it.lines().size >= 3 && "-->" in it.lines()[1] })
             assertTrue(app.captions.savedConversations.search(done.lines.first().text.split(" ").first { it.length > 2 }).any { it.id == done.recordId })

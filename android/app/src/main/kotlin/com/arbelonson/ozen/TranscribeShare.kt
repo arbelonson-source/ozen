@@ -11,15 +11,16 @@ enum class SubtitleFormat(val extension: String, val mime: String) {
     Srt("srt", "application/x-subrip"),
     Vtt("vtt", "text/vtt");
 
-    fun render(lines: List<TranscribedLine>): String = if (this == Srt) TranscriptFormats.srt(lines) else TranscriptFormats.vtt(lines)
+    fun render(lines: List<TranscribedLine>, languageCode: String): String =
+        if (this == Srt) TranscriptFormats.srt(lines, languageCode) else TranscriptFormats.vtt(lines, languageCode)
 }
 
-internal fun transcriptShareSheet(context: Context, name: String, lines: List<TranscribedLine>): Intent =
-    textShareSheet(context, name, TranscriptFormats.text(lines))
+internal fun transcriptShareSheet(context: Context, name: String, lines: List<TranscribedLine>, languageCode: String): Intent =
+    textShareSheet(context, name, TranscriptFormats.text(lines, languageCode))
 
-internal fun subtitleShareSheet(context: Context, name: String, lines: List<TranscribedLine>, format: SubtitleFormat): Intent {
+internal fun subtitleShareSheet(context: Context, name: String, lines: List<TranscribedLine>, languageCode: String, format: SubtitleFormat): Intent {
     val file = SharedFile.create(context.cacheDir, safeFileName(name) + "." + format.extension)
-    file.writeText(format.render(lines))
+    file.writeText(format.render(lines, languageCode))
     val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
     val send = Intent(Intent.ACTION_SEND).setType(format.mime).putExtra(Intent.EXTRA_SUBJECT, name)
         .putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
