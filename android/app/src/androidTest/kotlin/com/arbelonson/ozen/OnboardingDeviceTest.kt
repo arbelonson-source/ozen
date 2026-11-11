@@ -582,14 +582,18 @@ class OnboardingDeviceTest {
     // did before it checked on every way out of the walkthrough.
     @Test
     fun skippingTheWalkthroughChecksANeverCheckedPhoneBeforeFinishingAsOnTheIPhone() {
-        app.settings.change { it.phoneSpeed = null }
+        // Spoken as the phone's own language, Skip finishes from the first
+        // page. A turn to the language page builds the model page beside
+        // it, and that page asks for the check by itself.
+        app.settings.change {
+            it.phoneSpeed = null
+            it.languageCode = "en"
+        }
         val models = FakePhoneModels(app.settings)
         models.checkRuns = true
         val finished = AtomicInteger()
         showTheWalkthroughWith(models) { finished.incrementAndGet() }
         compose.onNodeWithText("Skip").performClick()
-        compose.waitForIdle()
-        if (models.checks.isEmpty()) compose.onNodeWithText("Skip").performClick()
         compose.waitUntil(5_000) { models.checks.isNotEmpty() }
         compose.waitForIdle()
         assertEquals(listOf(true), models.checks.toList())
