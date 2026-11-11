@@ -164,7 +164,7 @@ class TranscribeDoneDeviceTest {
     @Test
     fun aLongTranscriptSharedAsTextOnAFullPhoneLeavesItOnScreenInsteadOfClosingTheApp() {
         val lines = (0 until 1_000).map { TranscribedLine(it * 3.0, it * 3.0 + 2.0, "Line $it of a long lecture about the history of medicine and the pharmacy") }
-        assertTrue(TranscriptFormats.text(lines).length > 60_000)
+        assertTrue(TranscriptFormats.text(lines, "en").length > 60_000)
         shareOnAFullPhone(TRANSCRIBE_SHARE, lines)
     }
 }

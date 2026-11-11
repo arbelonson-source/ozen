@@ -286,13 +286,13 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
         Text(done.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
-                onClick = { scope.launch { shareOrSayFull(context) { transcriptShareSheet(context, done.name, done.lines) } } },
+                onClick = { scope.launch { shareOrSayFull(context) { transcriptShareSheet(context, done.name, done.lines, done.language.languageCode) } } },
                 label = { Text(tr("שיתוף כטקסט", "Share as text")) },
                 leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                 modifier = Modifier.testTag(TRANSCRIBE_SHARE),
             )
             AssistChip(
-                onClick = { scope.launch { shareOrSayFull(context) { subtitleShareSheet(context, done.name, done.lines, SubtitleFormat.Srt) } } },
+                onClick = { scope.launch { shareOrSayFull(context) { subtitleShareSheet(context, done.name, done.lines, done.language.languageCode, SubtitleFormat.Srt) } } },
                 label = { Text(tr("כתוביות (SRT)", "Subtitles (SRT)")) },
                 leadingIcon = { Icon(Icons.Rounded.Subtitles, contentDescription = null) },
                 modifier = Modifier.testTag(TRANSCRIBE_SUBTITLES),
