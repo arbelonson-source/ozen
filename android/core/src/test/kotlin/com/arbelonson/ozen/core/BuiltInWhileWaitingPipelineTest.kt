@@ -254,6 +254,24 @@ class BuiltInWhileWaitingPipelineTest {
     }
 
     @Test
+    fun `turning cellular downloads off while the model downloads behind the built-in reaches that download`() = runTest {
+        val network = FakeNetworkMonitor(NetworkConditions.cellular)
+        val model = waitingModel()
+        val gate = PrepareGate()
+        model.prepareGate = gate
+        val pipeline = pipeline(network, model, builtInEngine())
+        onBuiltIn(pipeline)
+
+        pipeline.setAllowCellularModelDownload(true)
+        assertTrue(eventually { model.heldPrepares == 1 })
+        assertEquals(listOf(true), model.cellularAllowedSeen)
+
+        pipeline.setAllowCellularModelDownload(false)
+        assertEquals(listOf(true, false), model.cellularAllowedSeen, "the download kept its permission for cellular")
+        gate.open()
+    }
+
+    @Test
     fun `a pause and resume keep the built-in while the model is not ready`() = runTest {
         val pipeline = pipeline(FakeNetworkMonitor(NetworkConditions.cellular), waitingModel(), builtInEngine())
         onBuiltIn(pipeline)

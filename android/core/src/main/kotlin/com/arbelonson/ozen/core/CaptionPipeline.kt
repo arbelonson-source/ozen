@@ -3001,6 +3001,10 @@ class CaptionPipeline(
     suspend fun setAllowCellularModelDownload(allowed: Boolean) {
         settingsInUse?.allowCellularModelDownload = allowed
         coveredSettings?.allowCellularModelDownload = allowed
+        // A model already downloading (behind the built-in recognition, or
+        // for a start) took the earlier answer with it, and kept using the
+        // phone plan after cellular downloads were turned off.
+        preparing?.engine?.setCellularDownloadAllowed(allowed || cellularDownloadApproved)
         getWaitingModelReadyIfAllowed()
         if (!allowed || !isWaitingForWiFi) return
         retry()
