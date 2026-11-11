@@ -15,7 +15,10 @@ class BatteryWatch(
     fun listeningChanged(now: Boolean): Boolean {
         if (now == listening) return false
         listening = now
-        if (!now) show(null)
+        if (!now) {
+            show(null)
+            withdraw()
+        }
         return now
     }
 

@@ -53,9 +53,21 @@ class BatteryWatchTest {
         assertEquals(1, withdrawn)
         watch.reading(0.10f, pluggedIn = true, listening = true)
         assertEquals(1, withdrawn)
+        watch.reading(0.10f, pluggedIn = false, listening = true)
         watch.reading(0.10f, pluggedIn = false, listening = false)
-        watch.reading(0.10f, pluggedIn = true, listening = false)
         assertEquals(2, withdrawn)
+        watch.reading(0.10f, pluggedIn = true, listening = false)
+        assertEquals(3, withdrawn)
+    }
+
+    @Test
+    fun `captions stopping takes the warning off the lock screen too, as on the iPhone`() {
+        watch.reading(0.09f, pluggedIn = false, listening = true)
+        assertEquals(0, withdrawn)
+        watch.listeningChanged(false)
+        assertEquals(1, withdrawn)
+        watch.listeningChanged(false)
+        assertEquals(1, withdrawn)
     }
 
     @Test
