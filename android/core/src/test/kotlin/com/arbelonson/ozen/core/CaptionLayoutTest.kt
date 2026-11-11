@@ -270,6 +270,25 @@ class CaptionLayoutOnScreenTest {
     }
 
     @Test
+    fun `while she reads back the drawn lines keep their start, up to twice the limit, as on the iPhone`() {
+        val limit = CaptionLayout.ON_SCREEN_LINE_LIMIT
+        // Scrolled up when 320 lines were there: the first drawn was line 20.
+        val held = CaptionLayout.firstOnScreenIndex(limit + 20)
+        assertEquals(20, CaptionLayout.firstOnScreenIndex(limit + 21, heldAt = held))
+        assertEquals(20, CaptionLayout.firstOnScreenIndex(limit + 200, heldAt = held))
+        assertEquals(20, CaptionLayout.firstOnScreenIndex(2 * limit + 20, heldAt = held))
+        assertEquals(21, CaptionLayout.firstOnScreenIndex(2 * limit + 21, heldAt = held))
+        // Back at the newest line, the window is the usual one again.
+        assertEquals(200, CaptionLayout.firstOnScreenIndex(limit + 200, heldAt = null))
+        // Lines cleared while she was scrolled up: nothing held past them.
+        assertEquals(0, CaptionLayout.firstOnScreenIndex(5, heldAt = held))
+        // A screen drawing fewer lines holds the same way.
+        assertEquals(10, CaptionLayout.firstOnScreenIndex(250, heldAt = 10, limit = 200))
+        assertEquals(50, CaptionLayout.firstOnScreenIndex(450, heldAt = 10, limit = 200))
+        assertEquals(50, CaptionLayout.firstOnScreenIndex(250, heldAt = null, limit = 200))
+    }
+
+    @Test
     fun `the README and the troubleshooting guide give the screen's line limit`() {
         val root = File(System.getProperty("ozen.fixtures")).parentFile.parentFile
         for (doc in listOf("README.md", "docs/troubleshooting.md")) {

@@ -395,6 +395,31 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("1 new line").assertExists()
     }
 
+    // Past the 200 lines drawn, each new line took the oldest drawn one away:
+    // the line she had gone back to re-read near the top went from under her.
+    @Test
+    fun aLineRereadAtTheTopOfTheDrawnLinesStaysWhileNewOnesArriveAsOnTheIPhone() {
+        val lines = (1..200).map { committed("Line $it here") }
+        try {
+            showLines(lines)
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            compose.waitForIdle()
+            assertTrue(displayed("Line 1 here"))
+            showLines(lines + (201..210).map { committed("Line $it here") })
+            assertTrue("the line being re-read went away as new lines came", displayed("Line 1 here"))
+            compose.onNodeWithText("10 new lines").performClick()
+            compose.waitForIdle()
+            assertTrue(displayed("Line 210 here"))
+            val all = lines + (201..211).map { committed("Line $it here") }
+            showLines(all)
+            val drawn = CaptionState.screen.value.lines
+            assertEquals("back at the newest line, the usual 200 lines did not return", 200, drawn.size)
+            assertEquals(all[11].id, drawn.first().id)
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
     @Test
     fun turningThePhoneWhileRereadingKeepsThePlaceTheButtonAndTheCountOfNewLines() {
         val lines = (1..50).map { committed("Line $it here") }

@@ -305,6 +305,53 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `while she reads back the drawn lines keep their start, and back at the newest line the usual two hundred return, as on the iPhone`() {
+        CaptionState.clear()
+        val segments = (1..260).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments.take(210))
+        assertEquals(segments[10].id, CaptionState.screen.value.lines.first().id)
+        CaptionState.readingBack(lineCountWhenLeft = 210)
+        show(PipelinePhase.Listening, segments.take(230))
+        assertEquals(segments[10].id, CaptionState.screen.value.lines.first().id)
+        assertEquals(220, CaptionState.screen.value.lines.size)
+        assertEquals(segments[9].id, CaptionState.screen.value.earlier?.line)
+        // Leaving again from a later point, as the jump to missed lines does, keeps the earlier start.
+        CaptionState.readingBack(lineCountWhenLeft = 230)
+        show(PipelinePhase.Listening, segments.take(240))
+        assertEquals(segments[10].id, CaptionState.screen.value.lines.first().id)
+        CaptionState.readingBack(lineCountWhenLeft = null)
+        show(PipelinePhase.Listening, segments.take(241))
+        assertEquals(segments[41].id, CaptionState.screen.value.lines.first().id)
+        assertEquals(200, CaptionState.screen.value.lines.size)
+        CaptionState.clear()
+    }
+
+    @Test
+    fun `captions cleared from Settings, an empty list, leave nothing held for the next ones`() {
+        CaptionState.clear()
+        val segments = (1..230).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments.take(210))
+        CaptionState.readingBack(lineCountWhenLeft = 210)
+        show(PipelinePhase.Listening, emptyList())
+        show(PipelinePhase.Listening, segments)
+        assertEquals(segments[30].id, CaptionState.screen.value.lines.first().id)
+        assertEquals(200, CaptionState.screen.value.lines.size)
+        CaptionState.clear()
+    }
+
+    @Test
+    fun `cleared lines leave nothing held for the next ones`() {
+        CaptionState.clear()
+        val segments = (1..230).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments.take(210))
+        CaptionState.readingBack(lineCountWhenLeft = 210)
+        CaptionState.clear()
+        show(PipelinePhase.Listening, segments)
+        assertEquals(segments[30].id, CaptionState.screen.value.lines.first().id)
+        CaptionState.clear()
+    }
+
+    @Test
     fun `a sound alert heard stays on screen while the captions keep changing`() {
         val smoke = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = 100.0)
         show(PipelinePhase.Listening, listOf(line("שלום", committed = false)))

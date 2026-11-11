@@ -187,6 +187,7 @@ object CaptionState {
     private var awayCatchUp = AwayCatchUp()
     private var segmentsShown: List<TranscriptSegment> = emptyList()
     private val shapes = CaptionLineShapes()
+    private var heldFirstLine: Int? = null
 
     fun show(
         phase: PipelinePhase,
@@ -214,8 +215,11 @@ object CaptionState {
         soundsOnly: Boolean = false,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
+        // Cleared captions come as an empty list, not through clear(): no
+        // hold from the lines before may keep the next ones past the limit.
+        if (segments.isEmpty()) heldFirstLine = null
         segmentsShown = segments
-        val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
+        val firstShown = firstDrawn(segments.size)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
         // Everyone in the captions, in order of first appearance, as on the
         // iPhone; a name follows its voice, so one look per voice will do.
@@ -290,6 +294,20 @@ object CaptionState {
         return LockScreenCaptions.lines(segmentsShown, count, textSize) { names[it.id]?.takeIf { namesShown } }
     }
 
+    /**
+     * She scrolled up to read back when [lineCountWhenLeft] lines had been
+     * said, or is back at the newest line (null). While she reads back the
+     * drawn lines keep their start, as on the iPhone: each new line used to
+     * take the oldest drawn one away, and a line she was re-reading near the
+     * top went from under her. Moving further back keeps the earlier start.
+     */
+    fun readingBack(lineCountWhenLeft: Int?) {
+        heldFirstLine = lineCountWhenLeft?.let { CaptionLayout.firstOnScreenIndex(it, heldAt = null, limit = MAXIMUM_LINES) }
+            ?.let { minOf(it, heldFirstLine ?: it) }
+    }
+
+    private fun firstDrawn(lineCount: Int): Int = CaptionLayout.firstOnScreenIndex(lineCount, heldFirstLine, MAXIMUM_LINES)
+
     /** The caption screen went away: the phone locked, or another app came to the front. */
     fun screenLeft(now: Double = System.currentTimeMillis() / 1_000.0) {
         awayCatchUp.screenLeft(now)
@@ -309,7 +327,7 @@ object CaptionState {
     }
 
     private fun awayMark(segments: List<TranscriptSegment>): AwayMark? {
-        val index = awayCatchUp.drawnMarkIndex(segments, firstDrawnIndex = segments.size - minOf(segments.size, MAXIMUM_LINES)) ?: return null
+        val index = awayCatchUp.drawnMarkIndex(segments, firstDrawnIndex = firstDrawn(segments.size)) ?: return null
         return AwayMark(segments[index].id, awayCatchUp.missedLineCount(segments), awayCatchUp.offersJump(segments))
     }
 
@@ -378,6 +396,7 @@ object CaptionState {
         speechResume = SpeechResume()
         awayCatchUp = AwayCatchUp()
         segmentsShown = emptyList()
+        heldFirstLine = null
         shapes.clear()
         state.value = CaptionScreenState(speechResumed = state.value.speechResumed)
     }
