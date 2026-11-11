@@ -26,7 +26,7 @@ public struct SpeakerColorSlots: Sendable, Equatable {
     }
 
     public static func speaker(clusterID: Int?, name: String?) -> Speaker? {
-        if let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !TranscriptSessionSummary.isGenericLabel(name) { return .named(name) }
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, !TranscriptSessionSummary.isGenericLabel(name) { return .named(name) }
         return clusterID.map { .stranger($0) }
     }
 

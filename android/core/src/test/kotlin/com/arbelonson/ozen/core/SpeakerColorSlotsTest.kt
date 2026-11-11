@@ -80,6 +80,13 @@ class SpeakerColorSlotsTest {
     }
 
     @Test
+    fun `a name is kept without the spaces around it, as the conversation summary counts it`() {
+        assertEquals(SpeakerColorSlots.Speaker.Named("Mom"), SpeakerColorSlots.speaker(0, " Mom "))
+        val slots = SpeakerColorSlots.of(listOf(1 to "Dad", 0 to " Mom "))
+        assertEquals(slots.slot(0, " Mom "), slots.slot(null, "Mom"))
+    }
+
+    @Test
     fun `outside any screen a stranger keeps its id-based slot and a name its hashed one, the same numbers as the iPhone`() {
         assertEquals(2, SpeakerColorSlots.aloneSlot(SpeakerColorSlots.Speaker.Stranger(7)))
         assertEquals(2, SpeakerColorSlots.aloneSlot(SpeakerColorSlots.Speaker.Named("Mom")))

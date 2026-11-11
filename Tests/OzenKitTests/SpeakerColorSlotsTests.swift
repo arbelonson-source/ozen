@@ -58,6 +58,13 @@ struct SpeakerColorSlotsTests {
         #expect(SpeakerColorSlots.speaker(clusterID: nil, name: nil) == nil)
     }
 
+    @Test("a name is kept without the spaces around it, as the conversation summary counts it")
+    func trimmedName() {
+        #expect(SpeakerColorSlots.speaker(clusterID: 0, name: " Mom ") == .named("Mom"))
+        let slots = SpeakerColorSlots([(clusterID: 1, name: "Dad"), (clusterID: 0, name: " Mom ")])
+        #expect(slots.slot(for: .named("Mom")) == slots.slot(for: SpeakerColorSlots.speaker(clusterID: 0, name: " Mom ")!))
+    }
+
     @Test("outside any screen a stranger keeps its id-based slot and a name its hashed one")
     func aloneSlots() {
         #expect(SpeakerColorSlots.aloneSlot(for: .stranger(7)) == 2)
