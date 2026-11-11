@@ -1194,6 +1194,27 @@ public final class LiveCaptionViewModel {
         return true
     }
 
+    /// The question before clearing, as it would be asked now: its words,
+    /// and whether they promise the lines a place in History. The screens
+    /// keep the one they showed from the moment it opened, as on Android:
+    /// Delete used to work the promise out again, so a save failing while
+    /// the question said "They stay saved" let the lines go unsaved.
+    public var clearQuestion: ClearQuestion {
+        ClearQuestion.asked(saving: settings.saveHistory, failing: historySaveFailure != nil)
+    }
+
+    /// Delete, answering `question`: kept to what it said. Returns whether
+    /// it cleared; false when the save it promised failed, so the question
+    /// can be asked again.
+    @discardableResult
+    public func clear(after question: ClearQuestion) -> Bool {
+        guard question.keepsHistory else {
+            clearTranscript()
+            return true
+        }
+        return clearTranscriptKeepingHistory()
+    }
+
     public func clearTranscript() {
         recentConversation = nil
         awayCatchUp.clear()
