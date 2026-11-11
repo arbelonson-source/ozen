@@ -680,6 +680,12 @@ APPLE_NAMES = {
         "russian": "Воспроизводить в бесшумном режиме", "spanish": "Vibrar en el modo Silencio",
         "ukrainian": "Відтворювати в режимі тиші",
     },
+    "Live Activities are turned off": {
+        "hebrew": "פעילויות בזמן אמת", "amharic": "Live Activities", "arabic": "الأنشطة المباشرة",
+        "chineseSimplified": "实时活动", "french": "activités en direct", "german": "Live‑Aktivitäten",
+        "hindi": "लाइव ऐक्टिविटी", "portuguese": "atividades em tempo real", "russian": "Эфир активности",
+        "spanish": "Actividades en directo", "ukrainian": "Дії наживо",
+    },
 }
 
 # What Android's own Settings app calls its screens in each language
@@ -698,14 +704,15 @@ def says_name(text, name):
     """Whether text carries name whole, not as part of a longer word
     ("Speicher" inside "Speicherplatz" or "Arbeitsspeicher" is a different
     screen). A letter in another script may touch it, as the Amharic "in"
-    does in "በShortcuts"."""
+    does in "በShortcuts", and so may Chinese, which has no spaces."""
     def script(char):
         if not char or not (char.isalnum() or unicodedata.category(char).startswith("M")):
             return None
         return unicodedata.name(char, "").split(" ")[0]
 
     def joined(neighbour, edge):
-        return script(neighbour) is not None and script(neighbour) == script(edge)
+        same = script(neighbour)
+        return same is not None and same == script(edge) and not same.startswith("CJK")
 
     for found in re.finditer(re.escape(name), text):
         before = text[found.start() - 1:found.start()]
