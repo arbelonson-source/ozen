@@ -150,7 +150,9 @@ class PhasePresentationTest {
     fun `the waiting question with the built-in on offer says what it is and that the model takes over by itself`() {
         Localization.withLanguage(UILanguage.English) {
             val body = CellularDownloadTexts.bodyWithBuiltIn(626)
-            assertTrue(body.startsWith(CellularDownloadTexts.body(626)), body)
+            assertFalse("Captions need" in body, body)
+            assertTrue("626\u00A0MB" in body && "hotspot" in body && "data limit" in body, body)
+            assertTrue("A few hundred MB" in CellularDownloadTexts.bodyWithBuiltIn(null))
             assertTrue("built-in recognition can write captions" in body && "stays on the phone" in body && "switch to it on their own" in body, body)
             assertTrue("Waiting for Wi" in CellularDownloadTexts.titleWithBuiltIn)
             assertTrue("built-in recognition" in CellularDownloadTexts.builtInButton)

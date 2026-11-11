@@ -791,10 +791,20 @@ internal object CellularDownloadTexts {
 
     val downloadButtonWithBuiltIn: String get() = tr("להוריד עכשיו בחבילת הגלישה", "Download now over mobile data")
 
-    fun bodyWithBuiltIn(megabytes: Int?): String = body(megabytes) + "\n\n" + tr("עד אז, זיהוי הדיבור המובנה בטלפון יכול לכתוב כתוביות. בדרך כלל הוא פחות מדויק, והכול נשאר בטלפון. כשהמודל יסיים לרדת, הכתוביות יעברו אליו מעצמן.", "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.")
+    /**
+     * Without "Captions need the language model" first: with the built-in
+     * recognition on offer, captions come before the model.
+     */
+    fun bodyWithBuiltIn(megabytes: Int?): String = tr(
+        "צריך להוריד את מודל הדיבור פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
+        "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",
+        listOf(size(megabytes)),
+    ) + "\n\n" + tr("עד אז, זיהוי הדיבור המובנה בטלפון יכול לכתוב כתוביות. בדרך כלל הוא פחות מדויק, והכול נשאר בטלפון. כשהמודל יסיים לרדת, הכתוביות יעברו אליו מעצמן.", "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.")
+
+    private fun size(megabytes: Int?): String = megabytes?.takeIf { it > 0 }?.let { ByteSize.megabytes(it) } ?: tr("כמה מאות MB", "A few hundred MB")
 
     fun body(megabytes: Int?): String {
-        val size = megabytes?.takeIf { it > 0 }?.let { ByteSize.megabytes(it) } ?: tr("כמה מאות MB", "A few hundred MB")
+        val size = size(megabytes)
         return tr(
             "בלי מודל הדיבור אין כתוביות. צריך להוריד אותו פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
             "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",
