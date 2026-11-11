@@ -2447,7 +2447,7 @@ class SettingsScreenDeviceTest {
         try {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
-            compose.onNodeWithText("Ozen’s Emergency alerts are turned off in the phone. Turn them on, then let them override Do Not Disturb.").performScrollTo().assertExists()
+            compose.onNodeWithText("Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on Override Do Not Disturb on the same page.").performScrollTo().assertExists()
             val warning = compose.onNodeWithText("Ozen’s notifications are turned off in the phone’s settings", substring = true).performScrollTo().fetchSemanticsNode().positionInRoot.y
             val firstStep = compose.onNodeWithText("Leave Ozen listening when you go to sleep, so it hears sounds like a smoke alarm.").fetchSemanticsNode().positionInRoot.y
             assertTrue("warning $warning, first step $firstStep", warning < firstStep)
@@ -2456,7 +2456,7 @@ class SettingsScreenDeviceTest {
             AlertNotifier.alarmsAllowed = { true }
             compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-            compose.waitUntil(5_000) { compose.onAllNodesWithText("In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it: on the page that opens, turn on Override Do Not Disturb.").fetchSemanticsNodes().isNotEmpty() }
         } finally {
             AlertNotifier.allowed = allowedBefore
             AlertNotifier.alarmsAllowed = alarmsBefore

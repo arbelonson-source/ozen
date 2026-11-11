@@ -42,7 +42,7 @@ object NightAlerts {
             tr("Android מאפשר לאוזן להמשיך לפעול בזמן שהטלפון במצב שינה.", "Android lets Ozen keep running while the phone sleeps.")
         } else {
             tr(
-                "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח בחרו למעלה ״כל האפליקציות״, מצאו את Ozen ובחרו ״ללא אופטימיזציה״.",
+                "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח בחרו למעלה ״כל האפליקציות״, מצאו את Ozen ובחרו ״אין לבצע אופטימיזציה״.",
                 "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.",
             )
         }
@@ -51,10 +51,13 @@ object NightAlerts {
         when {
             through -> tr("צלילים דחופים, כמו גלאי עשן, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
             !alarmsAllowed -> tr(
-                "התראות ״חירום״ של אוזן כבויות בטלפון. הפעילו אותן, ואז אפשרו להן לעקוף את ״נא לא להפריע״.",
-                "Ozen’s Emergency alerts are turned off in the phone. Turn them on, then let them override Do Not Disturb.",
+                "התראות ״חירום״ של אוזן כבויות בטלפון. הפעילו אותן, ובאותו דף הפעילו גם את ״התעלמות ממצב 'נא לא להפריע'״.",
+                "Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on Override Do Not Disturb on the same page.",
             )
-            else -> tr("ב״נא לא להפריע״ ייתכן שגלאי עשן לא יעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״.", "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.")
+            else -> tr(
+                "ב״נא לא להפריע״ ייתכן שגלאי עשן לא יעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״: בדף שייפתח הפעילו את ״התעלמות ממצב 'נא לא להפריע'״.",
+                "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it: on the page that opens, turn on Override Do Not Disturb.",
+            )
         }
 
     fun summary(open: Int): String =

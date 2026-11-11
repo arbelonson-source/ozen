@@ -123,6 +123,42 @@ class NightAlertsTest {
         }
     }
 
+    private class Labels(val language: UILanguage, val allApps: String, val dontOptimize: String, val overrideDnd: String)
+
+    // As Android's own Settings app names them in each language (res/values-*/strings.xml:
+    // filter_all_apps, ignore_optimizations_on, app_notification_override_dnd_title).
+    private val androidLabels = listOf(
+        Labels(UILanguage.Hebrew, "כל האפליקציות", "אין לבצע אופטימיזציה", "התעלמות ממצב 'נא לא להפריע'"),
+        Labels(UILanguage.English, "All apps", "Don’t optimize", "Override Do Not Disturb"),
+        Labels(UILanguage.Arabic, "جميع التطبيقات", "عدم تحسين", "تجاوز وضع \"عدم الإزعاج\""),
+        Labels(UILanguage.Russian, "Все приложения", "Не экономить", "Уведомления в режиме \"Не беспокоить\""),
+        Labels(UILanguage.Amharic, "ሁሉም መተግበሪያዎች", "አታትባ", "«አትረብሽ»ን ሻር"),
+        Labels(UILanguage.French, "Toutes les applis", "Ne pas optimiser", "Ignorer Ne pas déranger"),
+        Labels(UILanguage.Spanish, "Todas las aplicaciones", "No optimizar", "Ignorar modo No molestar"),
+        Labels(UILanguage.Ukrainian, "Усі додатки", "Не оптимізувати", "Дозволити в режимі \"Не турбувати\""),
+        Labels(UILanguage.German, "Alle Apps", "Nicht optimieren", "„Bitte nicht stören“ ignorieren"),
+        Labels(UILanguage.Portuguese, "Todas as apps", "Não otimizar", "Ignorar o modo Não incomodar"),
+        Labels(UILanguage.ChineseSimplified, "所有应用", "不优化", "覆盖“勿扰”设置"),
+        Labels(UILanguage.Hindi, "सभी ऐप्लिकेशन", "ऑप्‍टिमाइज़ ना करें", "'परेशान न करें' मोड को बायपास करें"),
+    )
+
+    private fun words(text: String) = text.filterNot { it in "\"'“”„«»״‘’" }
+
+    @Test
+    fun `the battery and Do Not Disturb steps name the switches as Android does in each language`() {
+        for (labels in androidLabels) {
+            Localization.withLanguage(labels.language) {
+                val battery = words(NightAlerts.batteryText(exempt = false))
+                assertTrue(battery.contains(words(labels.allApps)), "${labels.language}: $battery")
+                assertTrue(battery.contains(words(labels.dontOptimize)), "${labels.language}: $battery")
+                for (allowed in listOf(true, false)) {
+                    val dnd = words(NightAlerts.dndText(through = false, alarmsAllowed = allowed))
+                    assertTrue(dnd.contains(words(labels.overrideDnd)), "${labels.language}, alerts allowed $allowed: $dnd")
+                }
+            }
+        }
+    }
+
     @Test
     fun `the row says all set or how many to check`() {
         Localization.withLanguage(UILanguage.English) {
