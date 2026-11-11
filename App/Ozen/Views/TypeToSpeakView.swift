@@ -191,12 +191,12 @@ struct TypeToSpeakView: View {
             .accessibilityIdentifier("bigTextButton")
 
             if !viewModel.hasVoiceForAppLanguage {
-                Label(tr("אין בטלפון קול בשפה %1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף קול בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]), systemImage: "exclamationmark.triangle")
+                Label(MissingVoiceHint.appLanguage(viewModel.uiLanguage.nativeName), systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }
             if !viewModel.hasHebrewVoice {
-                Label(tr("לא מותקן קול בעברית. הגדרות ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice installed. Settings → Accessibility → Spoken Content → Voices → Hebrew."), systemImage: "exclamationmark.triangle")
+                Label(MissingVoiceHint.hebrewShort(), systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }

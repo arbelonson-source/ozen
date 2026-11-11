@@ -490,8 +490,13 @@ def arrow_labels(key, keys):
         words = steps[0].split()
         lead = next((" ".join(words[i:]) for i in range(len(words)) if " ".join(words[i:]) in keys), None)
         inner = [step for step in steps[1:] if step in keys]
-        # A path with none of the app's labels after its first step leads
-        # through the phone's own Settings, which iOS names in each language.
+        # A path with any step that isn't one of the app's labels leads
+        # through the phone's own Settings, which iOS names in each language:
+        # "Settings → Accessibility → Read & Speak → Voices → Hebrew" ends on
+        # the phone's list of voices, and Ukrainian iOS calls Settings
+        # "Параметри" whatever the app calls its own screen.
+        if len(inner) < len(steps) - 1:
+            continue
         labels += ([lead] if lead and inner else []) + inner
     return labels
 
