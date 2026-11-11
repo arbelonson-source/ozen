@@ -27,11 +27,13 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The phone's own speech recognizer, on the phone only: what captions
@@ -77,7 +79,9 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
         var sessionStartedAt = 0L
         var heardInSession = false
         var quickEnds = 0
+        var reconnects = 0
         lateinit var recognizer: SpeechRecognizer
+        lateinit var listener: RecognitionListener
 
         // Any other ending means this phone's recognizer doesn't take
         // Ozen's audio as it should: it isn't asked again until the app
@@ -85,6 +89,11 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
         fun refused(why: String) {
             refusal.reason = why
             close(BuiltInRecognitionStopped(why))
+        }
+
+        fun connect() {
+            recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            recognizer.setRecognitionListener(listener)
         }
 
         fun startSession() {
@@ -122,7 +131,33 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
             startSession()
         }
 
-        val listener = object : RecognitionListener {
+        // A session started right after another question to the
+        // recognizer can reach it while it still shuts down from that
+        // question: Android drops the session and answers "server
+        // disconnected". That is a race, not a refusal of Ozen's audio, so
+        // a fresh recognizer is asked after a moment, a few times at most.
+        fun reconnect(error: Int) {
+            if (sessionEnded == session) return
+            sessionEnded = session
+            if (audioEnded.get()) {
+                close()
+                return
+            }
+            reconnects += 1
+            if (reconnects > MAX_RECONNECTS) {
+                refused("the built-in recognition lost its connection (error $error), $reconnects times in a row")
+                return
+            }
+            launch(Dispatchers.Main) {
+                delay(RECONNECT_MILLIS)
+                if (isClosedForSend) return@launch
+                recognizer.destroy()
+                connect()
+                startSession()
+            }
+        }
+
+        listener = object : RecognitionListener {
             override fun onPartialResults(partialResults: Bundle) {
                 val text = said(partialResults) ?: return
                 heardInSession = true
@@ -139,9 +174,10 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
             override fun onEndOfSegmentedSession() = ended("ended its session")
 
             override fun onError(error: Int) {
-                when (error) {
-                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> ended("heard nothing (error $error)")
-                    else -> refused("the built-in recognition stopped with error $error")
+                when (BuiltInRecognition.sessionError(error)) {
+                    BuiltInRecognition.SessionError.HeardNothing -> ended("heard nothing (error $error)")
+                    BuiltInRecognition.SessionError.Race -> reconnect(error)
+                    BuiltInRecognition.SessionError.Refusal -> refused("the built-in recognition stopped with error $error")
                 }
             }
 
@@ -152,7 +188,9 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
                 line = UUID.randomUUID()
             }
 
-            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onReadyForSpeech(params: Bundle?) {
+                reconnects = 0
+            }
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
@@ -160,8 +198,7 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
             override fun onEvent(eventType: Int, params: Bundle?) {}
         }
         withContext(Dispatchers.Main) {
-            recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            recognizer.setRecognitionListener(listener)
+            connect()
             startSession()
         }
         val writer = launch(Dispatchers.IO) {
@@ -208,29 +245,57 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
         const val SAMPLE_RATE = 16_000
         private const val QUICK_END_MILLIS = 1_000L
         private const val MAX_QUICK_ENDS = 5
+        private const val SUPPORT_ASKS = 3
+        private const val MAX_RECONNECTS = 3
+        private const val RECONNECT_MILLIS = 300L
+        private const val SUPPORT_ANSWER_MILLIS = 2_000L
+        private const val SUPPORT_RETRY_MILLIS = 300L
 
         /**
          * The languages the phone's recognizer has installed for use offline,
          * as it names them; null when it has no recognition on the phone alone.
+         * Asked right after another question, the recognizer can still be
+         * shutting down from it: Android then drops the question without an
+         * answer ("Service is unbinding") or answers "server disconnected".
+         * Either way it is asked again after a moment, a few times at most,
+         * so "Captions now" isn't refused, or never offered, over a race.
          */
         suspend fun installedLanguages(context: Context): List<String>? = withContext(Dispatchers.Main) {
             if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return@withContext null
+            for (asked in 1..SUPPORT_ASKS) {
+                val answer = askInstalled(context)
+                if (!answer.lost) return@withContext answer.languages
+                if (asked < SUPPORT_ASKS) delay(SUPPORT_RETRY_MILLIS)
+            }
+            null
+        }
+
+        private class SupportAnswer(val languages: List<String>?, val lost: Boolean = false)
+
+        private suspend fun askInstalled(context: Context): SupportAnswer = withTimeoutOrNull(SUPPORT_ANSWER_MILLIS) {
             suspendCancellableCoroutine { waiting ->
                 val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                val destroyed = AtomicBoolean(false)
+                fun destroy() {
+                    if (!destroyed.getAndSet(true)) recognizer.destroy()
+                }
+                fun answered(answer: SupportAnswer) {
+                    destroy()
+                    if (waiting.isActive) waiting.resume(answer)
+                }
+                waiting.invokeOnCancellation { context.mainExecutor.execute(::destroy) }
                 val callback = object : RecognitionSupportCallback {
                     override fun onSupportResult(recognitionSupport: RecognitionSupport) {
-                        recognizer.destroy()
-                        if (waiting.isActive) waiting.resume(recognitionSupport.installedOnDeviceLanguages)
+                        answered(SupportAnswer(recognitionSupport.installedOnDeviceLanguages))
                     }
 
                     override fun onError(error: Int) {
-                        recognizer.destroy()
-                        if (waiting.isActive) waiting.resume(null)
+                        answered(SupportAnswer(null, lost = BuiltInRecognition.sessionError(error) == BuiltInRecognition.SessionError.Race))
                     }
                 }
                 recognizer.checkRecognitionSupport(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), context.mainExecutor, callback)
             }
-        }
+        } ?: SupportAnswer(null, lost = true)
 
         /** Ozen's audio, -1...1, as the 16-bit little-endian samples the recognizer reads. */
         fun pcm16(samples: FloatArray): ByteArray {

@@ -32,6 +32,21 @@ object BuiltInRecognition {
 
     fun matches(tag: String, code: String): Boolean = base(tag) == base(code)
 
+    enum class SessionError { HeardNothing, Race, Refusal }
+
+    /**
+     * What an error from the recognizer means. "No match" and "speech
+     * timeout": the session heard nothing. "Server disconnected" and
+     * "busy": the question reached the recognizer while it still shut down
+     * from the last one, or was busy for a moment, so it is asked again.
+     * Anything else: it doesn't take Ozen's audio.
+     */
+    fun sessionError(error: Int): SessionError = when (error) {
+        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> SessionError.HeardNothing
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED, SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> SessionError.Race
+        else -> SessionError.Refusal
+    }
+
     private fun state(code: String, languages: OnDeviceLanguages): String = when {
         languages.installed.any { matches(it, code) } -> "installed"
         languages.downloading.any { matches(it, code) } -> "downloading"

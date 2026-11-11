@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.speech.SpeechRecognizer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -34,5 +35,20 @@ class BuiltInRecognitionTest {
     fun `without on-device recognition, or before Android 13 lists languages, it says so`() {
         assertEquals("on device none", BuiltInRecognition.describe(listOf("he"), false, languages))
         assertEquals("on device yes, languages unknown before Android 13", BuiltInRecognition.describe(listOf("he"), true, null))
+    }
+
+    @Test
+    fun `a recognizer still shutting down from the last question is a race to ask again, not a refusal`() {
+        assertEquals(BuiltInRecognition.SessionError.Race, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_SERVER_DISCONNECTED))
+        assertEquals(BuiltInRecognition.SessionError.Race, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_RECOGNIZER_BUSY))
+    }
+
+    @Test
+    fun `a session that heard nothing ends, and any other error refuses Ozen's audio`() {
+        assertEquals(BuiltInRecognition.SessionError.HeardNothing, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_NO_MATCH))
+        assertEquals(BuiltInRecognition.SessionError.HeardNothing, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_SPEECH_TIMEOUT))
+        assertEquals(BuiltInRecognition.SessionError.Refusal, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_AUDIO))
+        assertEquals(BuiltInRecognition.SessionError.Refusal, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE))
+        assertEquals(BuiltInRecognition.SessionError.Refusal, BuiltInRecognition.sessionError(SpeechRecognizer.ERROR_CLIENT))
     }
 }

@@ -97,4 +97,22 @@ class BuiltInSpeechEngineDeviceTest {
         val answer = BuiltInSpeechEngine(instrumentation.targetContext).prepare("zz") {}
         assertEquals(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, answer.unavailability?.kind)
     }
+
+    // Asking again right after an answer can reach the recognizer while it
+    // still shuts down from the last question: it then answers "server
+    // disconnected", or never answers at all. Both happened on the
+    // emulator, and refused "Captions now" or hung. Each question must
+    // still get the phone's languages, not "none".
+    @Test
+    fun askedOverAndOverTheRecognizerNamesItsLanguagesEveryTime() = runBlocking {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        val first = BuiltInSpeechEngine.installedLanguages(instrumentation.targetContext)
+        assumeTrue("no recognition on the phone alone", first != null)
+        val answers = List(ASKED_TIMES) { BuiltInSpeechEngine.installedLanguages(instrumentation.targetContext) }
+        assertEquals(List(ASKED_TIMES) { first }, answers)
+    }
+
+    private companion object {
+        const val ASKED_TIMES = 80
+    }
 }
