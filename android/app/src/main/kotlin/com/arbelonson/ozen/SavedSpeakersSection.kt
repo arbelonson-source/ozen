@@ -45,6 +45,7 @@ import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.NumberText
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
+import com.arbelonson.ozen.core.SliderSpeech
 import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
@@ -262,7 +263,7 @@ internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) ->
                     steps = SliderStops.speakerSeparation.steps,
                     modifier = Modifier.semantics {
                         contentDescription = label
-                        stateDescription = value
+                        stateDescription = SliderSpeech.speakerSeparation(shown.toDouble())
                     },
                 )
                 Row {

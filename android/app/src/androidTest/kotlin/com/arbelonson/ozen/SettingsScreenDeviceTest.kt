@@ -374,7 +374,7 @@ class SettingsScreenDeviceTest {
     fun theSpeakerSeparationSliderKeepsItsSettingTellsTheCaptionsAndOffersTheUsualOneBack() {
         compose.onNodeWithText("Settings").performClick()
         val slider = compose.onNodeWithContentDescription("Speaker separation sensitivity")
-        slider.performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.45"))
+        slider.performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Normal, 0.45"))
         compose.onNodeWithText("More merging").assertExists()
         compose.onNodeWithText("More separating").assertExists()
         compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
@@ -382,7 +382,7 @@ class SettingsScreenDeviceTest {
         slider.performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
         compose.waitUntil(5_000) { abs(app.settings.current.value.speakerSimilarityThreshold - 0.6f) < 0.001f }
         assertEquals(0.6f, compose.runOnUiThread { app.captions.pipeline.speakerSimilarityThreshold }, 0.001f)
-        slider.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.60"))
+        slider.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "More separating, 0.60"))
 
         compose.onNodeWithText("Back to the usual setting").performScrollTo().performClick()
         compose.waitUntil(5_000) { app.settings.current.value.speakerSimilarityThreshold == 0.45f }
@@ -1017,6 +1017,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithContentDescription("Text size").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(40f) }
         compose.waitForIdle()
         assertEquals(40.0, app.settings.current.value.display.fontSize, 0.0)
+        compose.onNodeWithContentDescription("Text size").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Points: 40"))
         compose.onNodeWithText("Back to the usual size").assertExists()
         compose.onNodeWithText("Bold text").performScrollTo().performClick()
         assertTrue(app.settings.current.value.display.boldText)
@@ -1569,11 +1570,11 @@ class SettingsScreenDeviceTest {
 
         rate.performSemanticsAction(SemanticsActions.SetProgress) { it(0.7f) }
         compose.waitUntil(5_000) { abs(app.settings.current.value.speechRate - 0.7f) < 0.001f }
-        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.70"))
+        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Fast, 0.70"))
         val fast = sampleMillis()
         rate.performSemanticsAction(SemanticsActions.SetProgress) { it(0.2f) }
         compose.waitUntil(5_000) { abs(app.settings.current.value.speechRate - 0.2f) < 0.001f }
-        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.20"))
+        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Slow, 0.20"))
         val slow = sampleMillis()
         assertTrue("the sample took $slow ms slow and $fast ms fast", slow > fast * 1.8)
     }
