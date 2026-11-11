@@ -2408,6 +2408,7 @@ class CaptionScreenDeviceTest {
         val said = "Grandma, the doctor called about tomorrow"
         val pill = "Said: $said"
         val line = committed(said)
+        val scale = String(shell("settings get system font_scale")).trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
         try {
             shell("settings put system font_scale 2.0")
             compose.activityRule.scenario.recreate()
@@ -2427,7 +2428,74 @@ class CaptionScreenDeviceTest {
             assertTrue("still there past its 9.7 s", compose.onAllNodesWithText(pill).fetchSemanticsNodes().isEmpty())
         } finally {
             compose.mainClock.autoAdvance = true
-            shell("settings put system font_scale 1.0")
+            shell("settings put system font_scale $scale")
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun atTheLargestTextASaidPillThatGainsItsSpeakerStaysForTheLongerLabelAsOnTheIPhone() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        val app = instrumentation.targetContext.applicationContext as OzenApplication
+        val displayBefore = app.settings.current.value.display
+        val said = "Grandma, the doctor called about tomorrow"
+        val named = "Grandmother Rivka from up north said: $said"
+        val line = committed(said)
+        val scale = String(shell("settings get system font_scale")).trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
+        try {
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), said, System.currentTimeMillis() / 1_000.0, line = line.id)) }
+            compose.mainClock.advanceTimeBy(500)
+            assertTrue("the pill never showed", compose.onAllNodesWithText("Said: $said").fetchSemanticsNodes().isNotEmpty())
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line.copy(speakerClusterID = 1)), speakerName = { "Grandmother Rivka from up north" })
+            }
+            compose.mainClock.advanceTimeBy(500)
+            assertTrue("the pill did not take the speaker's name", compose.onAllNodesWithText(named).fetchSemanticsNodes().isNotEmpty())
+            compose.mainClock.advanceTimeBy(10_500)
+            assertTrue("gone on the shorter label's 9.7 s", compose.onAllNodesWithText(named).fetchSemanticsNodes().isNotEmpty())
+            compose.mainClock.advanceTimeBy(3_000)
+            assertTrue("still there past the longer label's 12.9 s", compose.onAllNodesWithText(named).fetchSemanticsNodes().isEmpty())
+        } finally {
+            compose.mainClock.autoAdvance = true
+            shell("settings put system font_scale $scale")
+            app.settings.change { it.display = displayBefore }
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun aSaidPillClosedByATapStaysClosedWhenTheTextSizeRebuildsTheScreen() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        val line = committed("Grandma, dinner is ready")
+        val scale = String(shell("settings get system font_scale")).trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
+        try {
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+                CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", System.currentTimeMillis() / 1_000.0, line = line.id))
+            }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Said: Grandma").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty() }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.waitForIdle()
+            assertTrue("the closed pill came back with the rebuilt screen", compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty())
+        } finally {
+            shell("settings put system font_scale $scale")
             compose.runOnUiThread { CaptionState.clear() }
         }
     }

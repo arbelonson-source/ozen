@@ -941,9 +941,9 @@ private fun CaptionScreen(
     var problemMarkedAt by rememberSaveable { mutableDoubleStateOf(0.0) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
-    // Closed by a tap: a text size change or TalkBack going on, which
-    // start its timer again, must not bring it back.
-    var closedWord by remember { mutableStateOf<UUID?>(null) }
+    // Closed by a tap: a text size change, which rebuilds the screen, or
+    // TalkBack going on, which start its timer again, must not bring it back.
+    var closedWord by rememberSaveable { mutableStateOf<UUID?>(null) }
     // Counted from when this screen appeared: talk that resumed while she
     // was in Settings or away is long over by the time she is back.
     val resumedBefore = remember { state.speechResumed }
@@ -960,13 +960,15 @@ private fun CaptionScreen(
     // she comes back. Back from Settings, an old one does not show again.
     // At the largest text sizes a long pill takes longer to read: it stays
     // longer, up to 20 s, counted from when it first showed, as on the
-    // iPhone (KeywordPill), and a text size change only adds what is left.
+    // iPhone (KeywordPill), and a text size change only adds what is left,
+    // as does the speaker's name arriving after the pill showed.
     val accessibilitySize = LocalDensity.current.fontScale > LARGEST_ORDINARY_FONT_SCALE
     val pillSpeaker = { word: HeardWord -> state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames } }
-    LaunchedEffect(state.heard?.id, state.heard?.at, talkBack, accessibilitySize) {
+    val pillSeconds = state.heard?.let { KeywordPill.visibleSeconds(KeywordPill.text(it.said, pillSpeaker(it)), accessibilitySize) }
+    LaunchedEffect(state.heard?.id, state.heard?.at, talkBack, pillSeconds) {
         val word = state.heard ?: return@LaunchedEffect
         if (word.id == closedWord) return@LaunchedEffect
-        val total = KeywordPill.visibleSeconds(KeywordPill.text(word.said, pillSpeaker(word)), accessibilitySize)
+        val total = pillSeconds ?: return@LaunchedEffect
         val kept = shownWord?.id == word.id
         if (secondsNow() - word.at > total) {
             if (kept && !talkBack) shownWord = null
