@@ -65,13 +65,21 @@ internal fun NameSpeakerDialog(
             if (renamed != null) asking = renamed else commit(false)
         }
     }
+    // The line's voice can change while the question is open (it is worked
+    // out again as more of the line is heard), and Save reads it again:
+    // checked again here, "Change everywhere" never renames someone the
+    // question didn't name. Another saved person now is asked about anew.
+    val changeEverywhere = {
+        val now = renames(name.trim())
+        if (now == null || now == asking) commit(false) else asking = now
+    }
     asking?.let { saved ->
         AlertDialog(
             onDismissRequest = { asking = null },
             title = { Text(tr("לשנות את ״%1״ ל־״%2״ בכל מקום, גם בשיחות השמורות?", "Change “%1” to “%2” everywhere, also in saved conversations?", listOf(saved, name.trim()))) },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
-                    TextButton(onClick = { commit(false) }) { Text(tr("לשנות בכל מקום", "Change everywhere")) }
+                    TextButton(onClick = changeEverywhere) { Text(tr("לשנות בכל מקום", "Change everywhere")) }
                     TextButton(onClick = { commit(true) }) { Text(tr("רק בשורה הזו", "Only this line")) }
                 }
             },
