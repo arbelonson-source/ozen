@@ -1,8 +1,8 @@
 import Foundation
 
-/// The broad category of an audio input, used only to label it sensibly in
-/// the picker UI (e.g. showing a Bluetooth icon) — selection logic itself
-/// doesn't care which kind is picked.
+/// The broad category of an audio input: it labels the input in the
+/// picker (e.g. a Bluetooth icon), and decides whether an input nobody
+/// picked is kept (`isOnTheListenersEar`).
 public enum AudioPortType: String, Sendable, Equatable, Codable {
     case builtInMic
     case bluetooth
@@ -21,6 +21,28 @@ public enum AudioPortType: String, Sendable, Equatable, Codable {
     public var isOnTheListenersEar: Bool {
         self == .bluetooth || self == .hearingAid
     }
+
+    /// What a microphone is, from its connection and its own name, on both
+    /// phones. A Phonak Roger is a remote microphone near the talker over
+    /// any connection, and its name starts with "Roger" ("Roger On",
+    /// "Phonak Roger Select"); "Roger's AirPods" or "Rogers AirPods" are
+    /// someone's earbuds, which must not be kept as a microphone near the
+    /// talker. A hearing aid connects like any Bluetooth headset and goes by
+    /// its maker's name as a whole word ("Insignia" is no Signia). A name
+    /// never makes a USB, wired or built-in microphone a hearing aid: Ozen
+    /// would stop picking it by itself. Not checked against real
+    /// accessories: one the names miss shows as Bluetooth and can still be
+    /// picked by hand.
+    public static func of(connection: AudioPortType, name: String) -> AudioPortType {
+        let lowered = name.lowercased()
+        let whole = NSRange(lowered.startIndex..., in: lowered)
+        if rogerName?.firstMatch(in: lowered, range: whole) != nil { return .remoteMic }
+        if connection == .bluetooth, hearingAidName?.firstMatch(in: lowered, range: whole) != nil { return .hearingAid }
+        return connection
+    }
+
+    private static let rogerName = try? NSRegularExpression(pattern: #"^[\p{Z}\t]*(?:phonak[\p{Z}\t]+)?roger(?![\p{L}\p{M}'\u2019\u02BC])"#)
+    private static let hearingAidName = try? NSRegularExpression(pattern: #"(?<![\p{L}\p{M}])(?:hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon)(?![\p{L}\p{M}])"#)
 }
 
 /// A microphone Ozen could record from, described independently of
