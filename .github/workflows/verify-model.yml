@@ -66,7 +66,7 @@ jobs:
           MAX_PERCENT: ${{ inputs.max_percent }}
         run: python3 scripts/model-release/wer.py report "$MAX_PERCENT"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: model-check-report

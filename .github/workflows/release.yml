@@ -56,7 +56,7 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK" | tee signature.txt
           grep -q "certificate SHA-256 digest: cb25d52af671aa79854c0314e4ca6686ae35524fd0467037222096be9df330ec" signature.txt
           cp "$APK" ../Ozen.apk
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ozen-apk
           path: Ozen.apk
@@ -127,7 +127,7 @@ jobs:
           cp -R "$APP_PATH" Payload/
           zip -r -q Ozen.ipa Payload
           ls -la Ozen.ipa
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ozen-ipa
           path: Ozen.ipa

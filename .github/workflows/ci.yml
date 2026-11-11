@@ -92,7 +92,7 @@ jobs:
       - name: Lint finds no errors
         working-directory: android
         run: ./gradlew :app:lintDebug || { cat app/build/reports/lint-results-debug.txt; exit 1; }
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ozen-android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -185,7 +185,7 @@ jobs:
           fi
       - name: Keep the raw test log
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: xcodebuild-raw-log
           path: xcodebuild-raw.log

@@ -127,7 +127,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
       - name: Keep the build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xcodebuild-testflight-log
           path: xcodebuild-testflight.log
