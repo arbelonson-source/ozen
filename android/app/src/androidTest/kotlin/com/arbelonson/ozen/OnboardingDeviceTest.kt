@@ -171,16 +171,22 @@ class OnboardingDeviceTest {
                 compose.onNodeWithText("Weiter").performClick()
                 compose.waitForIdle()
             }
-            compose.onNode(hasSetTextAction()).performClick()
             val window = compose.activity.window
+            val top = {
+                compose.runOnUiThread {
+                    IntArray(2).also { window.decorView.findViewById<View>(android.R.id.content).getLocationOnScreen(it) }[1]
+                }
+            }
+            // Measured before the keyboard, not taken to be 0: on GitHub's
+            // emulator, a phone with a camera cutout, the screen starts 128
+            // pixels down, below the status bar, keyboard or not.
+            val before = top()
+            compose.onNode(hasSetTextAction()).performClick()
             compose.waitUntil(5_000) {
                 compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) > 0 }
             }
             Thread.sleep(1_000)
-            val top = compose.runOnUiThread {
-                IntArray(2).also { window.decorView.findViewById<View>(android.R.id.content).getLocationOnScreen(it) }[1]
-            }
-            assertEquals("the whole screen slid up", 0, top)
+            assertEquals("the whole screen slid up", before, top())
         } finally {
             shell("settings put system font_scale 1.0")
             app.settings.change { it.appLanguage = language }
