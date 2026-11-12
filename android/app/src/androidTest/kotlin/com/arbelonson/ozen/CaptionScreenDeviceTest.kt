@@ -119,6 +119,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1044,19 +1045,19 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
             compose.runOnUiThread { ListeningService.start(app) }
             val lately = { SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE)).entries().takeLast(6).joinToString(" | ") { it.text } }
-            assertTrue("never public: ${listening()?.visibility}, phase ${app.captions.pipeline.phase}, journal ${lately()}", within(10_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+            assertWithin(10_000, { "never public: ${listening()?.visibility}, phase ${app.captions.pipeline.phase}, journal ${lately()}" }) { listening()?.visibility == Notification.VISIBILITY_PUBLIC }
 
             val text = { listening()?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() }
-            assertTrue("no captions in it: ${text()}", within(5_000) { text() != null })
+            assertWithin(5_000, { "no captions in it: ${text()}" }) { text() != null }
 
             // Marked private, a notification still shows in full on a phone set
             // to show sensitive content when locked: the lines must not be in it.
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = false) }
-            assertTrue("still showing ${text()}", within(5_000) { listening() != null && text() == null })
+            assertWithin(5_000, { "still showing ${text()}" }) { listening() != null && text() == null }
             assertNull(listening()!!.extras.getCharSequence(Notification.EXTRA_BIG_TEXT))
 
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
-            assertTrue("never back: ${text()}", within(5_000) { text() != null && listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+            assertWithin(5_000, { "never back: ${text()}" }) { text() != null && listening()?.visibility == Notification.VISIBILITY_PUBLIC }
         } finally {
             compose.runOnUiThread { app.captions.pipeline.stop() }
             app.settings.change { it.display = before }
@@ -1074,7 +1075,7 @@ class CaptionScreenDeviceTest {
         assertTrue(reply.length > limit)
         try {
             compose.runOnUiThread { app.captions.speak(reply) }
-            assertTrue("a reply of ${reply.length} characters was never said", within(10_000) { app.captions.isSpeaking })
+            assertWithin(10_000, { "a reply of ${reply.length} characters was never said" }) { app.captions.isSpeaking }
         } finally {
             compose.runOnUiThread { app.captions.stopSpeaking() }
         }
@@ -1251,7 +1252,7 @@ class CaptionScreenDeviceTest {
         } finally {
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         }
-        assertTrue("still ${app.captions.voice.installed.value}, not $real", within(5_000) { app.captions.voice.installed.value == real })
+        assertWithin(5_000, { "still ${app.captions.voice.installed.value}, not $real" }) { app.captions.voice.installed.value == real }
     }
 
     @Test
@@ -1694,6 +1695,10 @@ class CaptionScreenDeviceTest {
             Thread.sleep(50)
         }
         return condition()
+    }
+
+    private fun assertWithin(millis: Long, message: () -> String, condition: () -> Boolean) {
+        if (!within(millis, condition)) fail(message())
     }
 
     @Test
@@ -2653,7 +2658,7 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Close").assertExists()
             compose.runOnUiThread { app.captions.wordsHeard(listOf(hit), line) }
-            assertTrue("no buzz with Settings open: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+            assertWithin(5_000, { "no buzz with Settings open: $buzzed" }) { AlertVibration.keyword in buzzed }
         } finally {
             Buzz.play = before
             compose.onNodeWithText("Close").performScrollTo().performClick()
@@ -2689,7 +2694,7 @@ class CaptionScreenDeviceTest {
             // Longer than the five seconds the word's pill shows for.
             Thread.sleep(6_000)
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-            assertTrue("a word nothing told her of never buzzed on her return: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+            assertWithin(5_000, { "a word nothing told her of never buzzed on her return: $buzzed" }) { AlertVibration.keyword in buzzed }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(1, buzzed.count { it == AlertVibration.keyword })
         } finally {
@@ -2718,7 +2723,7 @@ class CaptionScreenDeviceTest {
             instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit), line) }
             Thread.sleep(6_000)
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-            assertTrue("a word no notification could show never buzzed on her return: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+            assertWithin(5_000, { "a word no notification could show never buzzed on her return: $buzzed" }) { AlertVibration.keyword in buzzed }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isNotEmpty() }
         } finally {
             Buzz.play = before

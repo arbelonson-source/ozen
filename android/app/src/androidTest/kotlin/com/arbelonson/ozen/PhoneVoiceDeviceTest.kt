@@ -9,6 +9,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -39,7 +40,7 @@ class PhoneVoiceDeviceTest {
         val before = voice.installed.value
         speechEngineStopped()
         instrumentation.runOnMainSync { voice.refreshVoice() }
-        assertTrue("voices after coming back: ${voice.installed.value}", within(10_000) { voice.installed.value == before })
+        assertWithin(10_000, { "voices after coming back: ${voice.installed.value}" }) { voice.installed.value == before }
     }
 
     @Test
@@ -48,9 +49,9 @@ class PhoneVoiceDeviceTest {
         val held = connections()
         assertTrue("nothing holds the speech engine", held > 0)
         instrumentation.runOnMainSync { voice.rest() }
-        assertTrue("still held after resting: ${connections()} of $held", within(5_000) { connections() == held - 1 })
+        assertWithin(5_000, { "still held after resting: ${connections()} of $held" }) { connections() == held - 1 }
         instrumentation.runOnMainSync { voice.refreshVoice() }
-        assertTrue("not held again after coming back: ${connections()} of $held", within(10_000) { connections() == held })
+        assertWithin(10_000, { "not held again after coming back: ${connections()} of $held" }) { connections() == held }
     }
 
     @Test
@@ -73,7 +74,7 @@ class PhoneVoiceDeviceTest {
         assertTrue("never spoke", within(10_000) { voice.isSpeaking })
         speechEngineStopped()
         instrumentation.runOnMainSync { voice.refreshVoice() }
-        assertTrue("still speaking after coming back: $events", within(10_000) { !voice.isBusy && !voice.isSpeaking })
+        assertWithin(10_000, { "still speaking after coming back: $events" }) { !voice.isBusy && !voice.isSpeaking }
         assertEquals(false, events.last())
     }
 
@@ -117,5 +118,9 @@ class PhoneVoiceDeviceTest {
             Thread.sleep(50)
         }
         return condition()
+    }
+
+    private fun assertWithin(millis: Long, message: () -> String, condition: () -> Boolean) {
+        if (!within(millis, condition)) fail(message())
     }
 }
