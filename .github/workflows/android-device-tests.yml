@@ -3,9 +3,11 @@ name: Android device tests
 # Nightly and by hand from the Actions tab, not on every push: the device
 # tests change far less often than the code, and the run holds a runner
 # for about ten minutes with a warm cache. By hand, "classes" can name other
-# tests, or "all" runs every device test but the whisper package (it needs
-# model files) and the screen tour (it takes the screenshots), so a full run
-# doesn't need a computer with an emulator.
+# tests, or "all" runs every device test but the whisper package and the
+# screen tour (it takes the screenshots), so a full run doesn't need a
+# computer with an emulator. A run by hand also gets the three model files
+# the tests that need one look for (Base, Small and Ozen's Hebrew model),
+# downloaded once from where the app downloads them and kept in the cache.
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +30,19 @@ permissions:
 env:
   API_LEVEL: 35
   PROFILE: pixel_6
+  # The Hebrew model needs about 1.7 GB to load (three times its file).
+  RAM: 4096M
+  # name, URL and SHA-256 as in PhoneModelCatalog.
+  MODELS: >-
+    ggml-base-q5_1.bin
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base-q5_1.bin
+    422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898
+    ggml-small-q5_1.bin
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small-q5_1.bin
+    ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb
+    ggml-ozen-a3-q5_0.bin
+    https://github.com/arbelonson-source/ozen-models/releases/download/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/ggml-ozen-a3-q5_0.bin
+    c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af
   SMOKE: >-
     com.arbelonson.ozen.DiagnosticsScreenDeviceTest,
     com.arbelonson.ozen.MobileDataNoteDeviceTest,
@@ -78,6 +93,31 @@ jobs:
           esac
           echo "Device tests: $selectors"
           echo "SELECTORS=$selectors" >> "$GITHUB_ENV"
+      - name: Name the model files' cache
+        if: inputs.classes != ''
+        id: models-key
+        run: echo "key=phone-models-$(printf '%s' "$MODELS" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Cache the model files
+        if: inputs.classes != ''
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/ozen-models
+          key: ${{ steps.models-key.outputs.key }}
+      - name: Check or download the model files
+        if: inputs.classes != ''
+        run: |
+          mkdir -p ~/ozen-models
+          set -- $MODELS
+          while [ $# -ge 3 ]; do
+            file="$HOME/ozen-models/$1"
+            if ! echo "$3  $file" | sha256sum --check --status 2>/dev/null; then
+              curl --fail --location --silent --show-error --retry 3 -o "$file" "$2"
+              echo "$3  $file" | sha256sum --check
+            else
+              echo "$1: cached, checksum OK"
+            fi
+            shift 3
+          done
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -93,7 +133,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-${{ env.PROFILE }}
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-${{ env.PROFILE }}-${{ env.RAM }}
       - name: Create the emulator snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -102,6 +142,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: ${{ env.PROFILE }}
+          ram-size: ${{ env.RAM }}
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -113,11 +154,12 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: ${{ env.PROFILE }}
+          ram-size: ${{ env.RAM }}
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && for model in $HOME/ozen-models/*.bin; do [ -f "$model" ] || continue; adb push "$model" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files && cp /data/local/tmp/$(basename $model) files/' && rm /data/local/tmp/$(basename $model)" || exit 1; done && adb shell "run-as com.arbelonson.ozen ls -l files" && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
       - name: Count the tests that ran
         if: always()
         working-directory: android
