@@ -95,7 +95,7 @@ struct SoundsOnlyTests {
         await pipeline.resume(settings: .default)
         #expect(pipeline.phase.isListening)
         #expect(!pipeline.isListeningForSoundsOnly)
-        #expect(built.aliveCount == 1)
+        #expect(await eventually { built.aliveCount == 1 })
 
         pipeline.stop()
         await pipeline.listenForSoundsOnly()
