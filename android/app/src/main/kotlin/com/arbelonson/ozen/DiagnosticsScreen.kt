@@ -93,13 +93,14 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     }
     // The journal is a file read and most of a refresh's time, a tenth of
     // a second and more once it fills up: read on the main thread every
-    // two seconds, the screen stopped drawing that long each time.
+    // two seconds, the screen stopped drawing that long each time. Read
+    // first right away, as free space is only read here.
     LaunchedEffect(Unit) { source.checkBuiltInRecognition() }
     LaunchedEffect(reread) {
         while (true) {
-            delay(2_000)
             val journal = withContext(Dispatchers.IO) { source.readJournal() }
             now = source.diagnostics(journal)
+            delay(2_000)
         }
     }
     // The iPhone's level row moves about twenty times a second, so it shows
@@ -312,7 +313,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("טמפרטורה", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
             value(tr("חיסכון בסוללה", "Battery Saver"), if (now.batterySaver) tr("פעיל", "On") else tr("כבוי", "Off"))
             value(tr("סוללה", "Battery"), DiagnosticsReport.battery(now.batteryPercent, now.charging))
-            value(tr("מקום פנוי", "Free space"), ByteSize.text(now.freeBytes))
+            value(tr("מקום פנוי", "Free space"), now.freeBytes?.let { ByteSize.text(it) } ?: "—")
             value(tr("זיכרון", "Memory"), DiagnosticsReport.memory(now.memoryInUseBytes, now.memoryAvailableBytes))
             value(tr("דגם המכשיר", "Device model"), "${Build.MANUFACTURER} ${Build.MODEL}")
             value("Android", Build.VERSION.RELEASE)
