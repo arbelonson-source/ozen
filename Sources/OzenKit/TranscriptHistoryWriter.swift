@@ -16,6 +16,10 @@ import Foundation
 /// An autosave identical to what this writer last wrote is skipped: in a
 /// quiet room the conversation doesn't change for hours, and writing the
 /// same file again every twenty seconds only spends battery.
+///
+/// An autosave of a conversation still open rebuilds History's summary and
+/// search text at most every two minutes (see `TranscriptHistoryStore.save`);
+/// one that has ended always does.
 public final class TranscriptHistoryWriter: Sendable {
     private let store: TranscriptHistoryStore
     private let queue: DispatchQueue
@@ -42,7 +46,7 @@ public final class TranscriptHistoryWriter: Sendable {
         queue.async { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             var saved = true
             if lastWritten.record != record {
-                saved = failure.capture { try store.save(record) }
+                saved = failure.capture { try store.save(record, throttleCaches: record.endedAt == nil) }
                 lastWritten.record = saved ? record : nil
                 pendingSaves.records[record.id] = saved ? nil : record
             }

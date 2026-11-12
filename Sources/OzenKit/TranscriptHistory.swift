@@ -437,6 +437,19 @@ extension TranscriptSessionSummary {
 /// record and writes it back.
 public struct TranscriptHistoryStore: Sendable {
     private let directoryURL: URL
+    private let now: @Sendable () -> Date
+    private let memory = TranscriptAutosaveMemory()
+
+    /// How many conversations' last saves are remembered (see `save`).
+    static let rememberedConversations = 8
+    /// The longest an open conversation's History caches wait between
+    /// autosaves that rebuild them (see `save`).
+    static let cacheRefreshInterval: TimeInterval = 120
+
+    /// Times a save read a conversation file back, and times it rebuilt
+    /// History's caches, for tests.
+    var conversationReads: Int { memory.reads }
+    var cacheRefreshes: Int { memory.refreshes }
 
     /// Bumped whenever `TranscriptSessionSummary` changes meaning, so
     /// summaries written by an older build are rebuilt instead of trusted.
@@ -448,8 +461,9 @@ public struct TranscriptHistoryStore: Sendable {
         var summary: TranscriptSessionSummary
     }
 
-    public init(directoryURL: URL) {
+    public init(directoryURL: URL, now: @escaping @Sendable () -> Date = { Date() }) {
         self.directoryURL = directoryURL
+        self.now = now
     }
 
     private var summariesURL: URL {
@@ -500,37 +514,53 @@ public struct TranscriptHistoryStore: Sendable {
     /// Reading the history back without them is unaffected — a missing or
     /// stale cache is already rebuilt from the record the next time
     /// anything asks for it (see `summaries(of:)`).
+    ///
+    /// While captions run, every twenty-second autosave read the whole
+    /// conversation back for its name and source, and rebuilt both caches
+    /// from every line: after three hours, a quarter of a second each time,
+    /// growing with the talk. The name and source this store last wrote are
+    /// remembered instead (and trusted only while the file still has the
+    /// date and size of that write), and `throttleCaches` rebuilds the
+    /// caches at most every `cacheRefreshInterval`; History rebuilds a stale
+    /// one from the conversation when it is opened meanwhile.
     @discardableResult
-    public func save(_ record: TranscriptSessionRecord, updateSearchCaches: Bool = true) throws -> Bool {
+    public func save(_ record: TranscriptSessionRecord, updateSearchCaches: Bool = true, throttleCaches: Bool = false) throws -> Bool {
         guard !record.segments.isEmpty else { return false }
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         let url = fileURL(for: record.id)
         var record = record
-        if record.title == nil {
-            // A save that skipped the caches leaves the summary older than
-            // the conversation, so the next save can't trust it: the name
-            // is then read from the conversation file itself.
-            if let summary = cachedSummary(forRecordFile: url) {
-                record.title = summary.title
-            } else if let data = try? Data(contentsOf: url) {
-                record.title = (try? JSONDecoder().decode(SavedTitle.self, from: data))?.title
+        if let remembered = memory.remembered(url) {
+            if record.title == nil { record.title = remembered.title }
+            record.engine = remembered.engine
+            record.modelVariant = remembered.modelVariant
+            record.inputName = remembered.inputName
+        } else if let data = readConversation(at: url) {
+            if record.title == nil {
+                // A save that skipped the caches leaves the summary older than
+                // the conversation, so the next save can't trust it: the name
+                // is then read from the conversation file itself.
+                record.title = cachedSummary(forRecordFile: url)?.title
+                    ?? (try? JSONDecoder().decode(SavedTitle.self, from: data))?.title
+            }
+            // What wrote a conversation is what its first save said, within
+            // seconds of its first lines. Later saves (the stop after an engine
+            // switch, a rename the next day) stamped it with whatever engine
+            // and microphone were in use by then, and History showed those,
+            // and judged its uncertain lines by them.
+            if let source = try? JSONDecoder().decode(SavedSource.self, from: data),
+               let engine = source.engine {
+                record.engine = engine
+                record.modelVariant = source.modelVariant
+                record.inputName = source.inputName
             }
         }
-        // What wrote a conversation is what its first save said, within
-        // seconds of its first lines. Later saves (the stop after an engine
-        // switch, a rename the next day) stamped it with whatever engine
-        // and microphone were in use by then, and History showed those,
-        // and judged its uncertain lines by them.
-        if let data = try? Data(contentsOf: url),
-           let source = try? JSONDecoder().decode(SavedSource.self, from: data),
-           let engine = source.engine {
-            record.engine = engine
-            record.modelVariant = source.modelVariant
-            record.inputName = source.inputName
-        }
+        memory.forget(url)
         let data = try JSONEncoder().encode(record)
         try data.write(to: url, options: .privateFile)
+        memory.remember(record, at: url)
         guard updateSearchCaches else { return true }
+        if throttleCaches, !memory.cacheRefreshDue(url, at: now()) { return true }
+        memory.countRefresh()
         // Written after the record, so a fresh summary is never older than
         // its conversation. If this write fails the conversation is still
         // saved; the list just rebuilds the summary next time.
@@ -538,6 +568,11 @@ public struct TranscriptHistoryStore: Sendable {
         writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
         writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
         return true
+    }
+
+    private func readConversation(at url: URL) -> Data? {
+        memory.countRead()
+        return try? Data(contentsOf: url)
     }
 
     private struct SavedTitle: Decodable {
@@ -971,6 +1006,7 @@ public struct TranscriptHistoryStore: Sendable {
               patch(&object)
         else { return false }
         let patched = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        memory.forget(url)
         try patched.write(to: url, options: .privateFile)
         if let record = try? JSONDecoder().decode(TranscriptSessionRecord.self, from: patched) {
             let written = Self.modificationDate(of: url)
@@ -1031,6 +1067,7 @@ public struct TranscriptHistoryStore: Sendable {
 
     public func delete(id: UUID) throws {
         let url = fileURL(for: id)
+        memory.forget(url)
         try? FileManager.default.removeItem(at: summaryURL(forRecordFile: url))
         try? FileManager.default.removeItem(at: searchTextURL(forRecordFile: url))
         for older in olderSearchTextURLs(forRecordFile: url) {
@@ -1041,6 +1078,7 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     public func deleteAll() throws {
+        memory.forgetAll()
         for url in recordFiles() {
             try FileManager.default.removeItem(at: url)
         }
