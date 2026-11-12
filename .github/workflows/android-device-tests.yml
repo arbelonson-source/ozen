@@ -230,10 +230,14 @@ jobs:
               print(f"FAILED {cls}#{test}")
           for cls, test, code in skipped:
               print(f"skipped {cls}#{test}")
+          ended = {(cls, test) for cls, test, code in results}
+          for cls, test in started:
+              if (cls, test) not in ended:
+                  print(f"unfinished {cls}#{test}")
           finished = re.search(r"^INSTRUMENTATION_CODE: -1", text, re.M) is not None
-          if not results:
+          if not results and not started:
               sys.exit("No device test ran: the class filter matched nothing or the run never started.")
-          ran = {(cls, test) for cls, test, code in results}
+          ran = {(cls, test) for cls, test, code in results} | set(started)
           missing = []
           chosen = os.environ["SELECTORS"]
           for selector in ([] if chosen == "all" else chosen.split(",")):
@@ -244,10 +248,6 @@ jobs:
               print(f"no test ran for {selector}")
           if missing:
               sys.exit(f"{len(missing)} of the chosen tests ran none: renamed or removed?")
-          ended = {(cls, test) for cls, test, code in results}
-          for cls, test in started:
-              if (cls, test) not in ended:
-                  print(f"unfinished {cls}#{test}")
           if not finished or "INSTRUMENTATION_FAILED" in text:
               sys.exit("The test run did not finish: the app or the runner crashed, or a test was still running at the time limit (see logcat).")
           if failed:
