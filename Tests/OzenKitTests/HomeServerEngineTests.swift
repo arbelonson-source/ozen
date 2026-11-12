@@ -106,8 +106,8 @@ private func text(_ utterance: Int, _ words: String, final: Bool) -> String {
     #"{"type":"text","utterance":\#(utterance),"text":"\#(words)","final":\#(final),"confidence":0.9}"#
 }
 
-private func engine(_ socket: ScriptedSocket?, address: String = "10.0.0.5", token: String? = "1234", beam: Int? = nil) -> HomeServerEngine {
-    HomeServerEngine(address: address, token: { token }, connector: Connector(socket: socket), handshakeSeconds: 1, client: "Ozen 36, iOS 18.2", beam: beam)
+private func engine(_ socket: ScriptedSocket?, address: String = "10.0.0.5", token: String? = "1234", beam: Int? = nil, handshakeSeconds: Double = 1) -> HomeServerEngine {
+    HomeServerEngine(address: address, token: { token }, connector: Connector(socket: socket), handshakeSeconds: handshakeSeconds, client: "Ozen 36, iOS 18.2", beam: beam)
 }
 
 @Suite("Home server")
@@ -551,7 +551,10 @@ struct HomeServerEngineTests {
     func sendsReport() async {
         let saving = ScriptedSocket(helloReply: ready)
         await saving.setReportReply(#"{"type":"report_saved","name":"20260926-2100.txt"}"#)
-        #expect(await engine(saving).sendReport("levels -40 dB", languageCode: "he"))
+        // A server that answers is never waited out, so a long limit costs
+        // nothing here; one second ran out before the scripted answer on a
+        // busy CI runner (and on one core), and the report was never sent.
+        #expect(await engine(saving, handshakeSeconds: 30).sendReport("levels -40 dB", languageCode: "he"))
         let sent = await saving.sentTexts
         #expect(sent.first?.contains(#""purpose":"report""#) == true)
         #expect(sent.contains(HomeServer.report("levels -40 dB")))
