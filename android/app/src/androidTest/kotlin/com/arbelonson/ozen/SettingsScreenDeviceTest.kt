@@ -181,12 +181,13 @@ class SettingsScreenDeviceTest {
     // differs from the phone's; from there it ends the walkthrough.
     private fun skipTheWalkthrough() {
         compose.onNodeWithText("Skip").performClick()
-        compose.waitForIdle()
-        if (!app.settings.current.value.hasCompletedOnboarding &&
-            compose.onAllNodesWithText("Which language do people around you speak?").fetchSemanticsNodes().isNotEmpty()
-        ) {
-            compose.onNodeWithText("Skip").performClick()
+        val languagePage = "Which language do people around you speak?"
+        // On GitHub's slower emulator the language page came a moment after
+        // the first tap, so it was missed and its Skip never tapped.
+        compose.waitUntil(5_000) {
+            app.settings.current.value.hasCompletedOnboarding || compose.onAllNodesWithText(languagePage).fetchSemanticsNodes().isNotEmpty()
         }
+        if (!app.settings.current.value.hasCompletedOnboarding) compose.onNodeWithText("Skip").performClick()
     }
 
     @Before
@@ -741,6 +742,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-device-test")
         compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
         compose.onNodeWithText("Allow and save").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Key saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Key saved on the phone").performScrollTo()
         assertEquals("dg-device-test", app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(TranscriptionEngineKind.Cloud, app.settings.current.value.engine)
@@ -2288,8 +2290,16 @@ class SettingsScreenDeviceTest {
 
             app.settings.change { it.spokenLanguage = UILanguage.Hebrew }
             compose.waitForIdle()
-            compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
             compose.onNodeWithText("The backup download stopped. Try again.").assertDoesNotExist()
+            // Hebrew's backup is Ozen's own model, which downloads too now:
+            // ready when it is on the phone, offered at its own size when it
+            // is not (GitHub's emulator has no model files).
+            if (File(app.filesDir, app.settings.current.value.phoneModel.file).exists()) {
+                compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+                compose.onNodeWithText("Backup on the phone is ready", substring = true).assertExists()
+            } else {
+                compose.onNodeWithText("Download a backup to the phone (", substring = true).assertExists()
+            }
         } finally {
             app.settings.change { it.spokenLanguage = languageBefore }
         }
