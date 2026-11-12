@@ -1677,7 +1677,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Copy report").performScrollTo().performClick()
             compose.onNodeWithText("Copied").assertExists()
             var copied = ""
-            compose.runOnUiThread { copied = clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+            copied = copiedText().toString()
             assertTrue(copied, copied.startsWith("Ozen diagnostics\nphase: "))
             assertTrue(copied, copied.contains("home server: 192.168.1.20:8765 code saved: true"))
             val eventsInReport = copied.substringBefore("journal, previous runs included")
@@ -1828,7 +1828,7 @@ class SettingsScreenDeviceTest {
         assertTrue("deleting the caption lines took the rest with them", since(marked).any { it.startsWith("PROBLEM MARKED: engine ") })
 
         compose.onNodeWithText("Copy report").performScrollTo().performClick()
-        val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+        val copied = copiedText().toString()
         val inReport = copied.substringAfter("journal, previous runs included (oldest first):\n", missingDelimiterValue = "")
         assertTrue(copied, inReport.indexOf(backOnScreen) in 0 until inReport.indexOf(problem))
     }
@@ -1911,7 +1911,7 @@ class SettingsScreenDeviceTest {
             AlertNotifier.allowed = { true }
             compose.waitUntil(5_000) { compose.onAllNodes(hasText("Phone notifications") and hasText("Working")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Copy report").performScrollTo().performClick()
-            val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+            val copied = copiedText().toString()
             assertTrue(copied, copied.contains(" notifications allowed: yes haptics: ") && copied.contains(" network: $connection cellular downloads: "))
             assertTrue(copied, copied.contains("\nmodel state: ") && copied.contains(" vocabulary: 3\n"))
         } finally {
@@ -2760,7 +2760,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Copy the ${donation.coin} address").performScrollTo().performClick()
             compose.waitForIdle()
             var copied: String? = null
-            compose.runOnUiThread { copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString() }
+            copied = copiedText()
             assertEquals(donation.address, copied)
             compose.onNodeWithText("Copy the ${donation.coin} address").assertDoesNotExist()
         }
@@ -2855,5 +2855,15 @@ class SettingsScreenDeviceTest {
         const val OLDER_PRINT = "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."
         const val BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."
         const val LOCK_SCREEN_BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."
+    }
+
+    // Android lets only the app in focus read the clipboard. On a slow
+    // emulator the focus comes a moment after the screen does, and a read
+    // before it comes back empty: three of these reads did on GitHub's.
+    private fun copiedText(): String? {
+        val clipboard = app.getSystemService(ClipboardManager::class.java)
+        var text: String? = null
+        runCatching { compose.waitUntil(10_000) { compose.runOnUiThread { text = clipboard.primaryClip?.getItemAt(0)?.text?.toString() }; text != null } }
+        return text
     }
 }
