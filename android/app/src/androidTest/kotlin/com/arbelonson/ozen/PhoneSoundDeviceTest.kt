@@ -24,6 +24,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -55,6 +56,10 @@ class PhoneSoundDeviceTest {
         return check()
     }
 
+    private fun assertWithin(millis: Long, message: () -> String, check: () -> Boolean) {
+        if (!within(millis, check)) fail(message())
+    }
+
     private fun toneForTwoSeconds() {
         val rate = 16_000
         val samples = ShortArray(rate * 2) { (sin(2 * PI * 1_000 * it / rate) * 3_000).toInt().toShort() }
@@ -81,7 +86,7 @@ class PhoneSoundDeviceTest {
         val model = File(app.filesDir, settings.phoneModel.file)
         assumeTrue("put the model at ${model.path}", settings.engine != TranscriptionEngineKind.WhisperKit || model.exists())
         compose.runOnUiThread { app.captions.listen() }
-        assertTrue("captions never listened: ${app.captions.pipeline.phase}", within(90_000) { app.captions.pipeline.phase == PipelinePhase.Listening })
+        assertWithin(90_000, { "captions never listened: ${app.captions.pipeline.phase}" }) { app.captions.pipeline.phase == PipelinePhase.Listening }
         val microphone = app.captions.pipeline.selectedInputUID
         assertNotEquals(PhoneSound.UID, microphone)
         Thread.sleep(1_000)
