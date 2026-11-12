@@ -93,21 +93,29 @@ jobs:
           esac
           echo "Device tests: $selectors"
           echo "SELECTORS=$selectors" >> "$GITHUB_ENV"
+      - name: Name the model files' cache
+        if: inputs.classes != ''
+        id: models-key
+        run: echo "key=phone-models-$(printf '%s' "$MODELS" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - name: Cache the model files
         if: inputs.classes != ''
-        id: models-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/ozen-models
-          key: phone-models-422f1ae4-ae85e4a9-c74b6669
-      - name: Download the model files
-        if: inputs.classes != '' && steps.models-cache.outputs.cache-hit != 'true'
+          key: ${{ steps.models-key.outputs.key }}
+      - name: Check or download the model files
+        if: inputs.classes != ''
         run: |
           mkdir -p ~/ozen-models
           set -- $MODELS
           while [ $# -ge 3 ]; do
-            curl --fail --location --silent --show-error --retry 3 -o ~/ozen-models/"$1" "$2"
-            echo "$3  $HOME/ozen-models/$1" | sha256sum --check
+            file="$HOME/ozen-models/$1"
+            if ! echo "$3  $file" | sha256sum --check --status 2>/dev/null; then
+              curl --fail --location --silent --show-error --retry 3 -o "$file" "$2"
+              echo "$3  $file" | sha256sum --check
+            else
+              echo "$1: cached, checksum OK"
+            fi
             shift 3
           done
       - name: Enable KVM
