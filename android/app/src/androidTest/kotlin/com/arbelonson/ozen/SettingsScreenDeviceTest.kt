@@ -898,7 +898,10 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://192.168.1.21:8765")
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-kept-on-back")
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        compose.onNodeWithText("Close").assertDoesNotExist()
+        // Settings saves what was typed before it closes, off the main
+        // thread, which the test rule does not wait for: on GitHub's slower
+        // emulator Close was still there when looked for at once.
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Close").fetchSemanticsNodes().isEmpty() }
         assertEquals("ws://192.168.1.21:8765", app.settings.current.value.homeServerAddress)
         assertEquals("code-kept-on-back", app.homeServerCode.read())
     }
