@@ -41,7 +41,8 @@ core and app tests, and builds the debug APK.
   Run it by hand from the Actions tab with `classes` set to `all` for every
   device test, or to class names separated by commas. A run by hand also puts
   the Base, Small and Hebrew model files on the emulator, so the tests that
-  need a model on the phone run there too.
+  need a model on the phone run there too, and a minute of Hebrew read aloud
+  for the tests that caption a recording (`scripts/device-test-reading`).
 
 ## How changes are written
 

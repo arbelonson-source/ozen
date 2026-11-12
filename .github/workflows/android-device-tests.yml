@@ -7,7 +7,9 @@ name: Android device tests
 # screen tour (it takes the screenshots), so a full run doesn't need a
 # computer with an emulator. A run by hand also gets the three model files
 # the tests that need one look for (Base, Small and Ozen's Hebrew model),
-# downloaded once from where the app downloads them and kept in the cache.
+# downloaded once from where the app downloads them and kept in the cache,
+# and a minute of Hebrew read aloud for the tests that caption a recording
+# (see scripts/device-test-reading).
 on:
   workflow_dispatch:
     inputs:
@@ -43,6 +45,13 @@ env:
     ggml-ozen-a3-q5_0.bin
     https://github.com/arbelonson-source/ozen-models/releases/download/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/ggml-ozen-a3-q5_0.bin
     c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af
+  # URL, SHA-256, and the seconds to cut: LibriVox's public-domain reading
+  # of Brenner's "There", whose text is scripts/device-test-reading/there.txt.
+  READING: >-
+    https://archive.org/download/in_winter_ol_librivox/inwinter_01_brenner_64kb.mp3
+    f05c7e091a6b32290a545802f6bc4222664812e417bbf030300954a4a0195f7e
+    38.6
+    102.6
   SMOKE: >-
     com.arbelonson.ozen.DiagnosticsScreenDeviceTest,
     com.arbelonson.ozen.MobileDataNoteDeviceTest,
@@ -118,6 +127,34 @@ jobs:
             fi
             shift 3
           done
+      - name: Name the reading's cache
+        if: inputs.classes != ''
+        id: reading-key
+        run: echo "key=device-test-reading-$(printf '%s' "$READING" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Cache the reading
+        if: inputs.classes != ''
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/ozen-reading-source
+          key: ${{ steps.reading-key.outputs.key }}
+      # Without it those tests are skipped, as before, rather than the run
+      # failing because archive.org didn't answer.
+      - name: Make the reading
+        if: inputs.classes != ''
+        continue-on-error: true
+        run: |
+          set -- $READING
+          mkdir -p ~/ozen-reading-source ~/ozen-reading-next
+          mp3="$HOME/ozen-reading-source/reading.mp3"
+          if ! echo "$2  $mp3" | sha256sum --check --status 2>/dev/null; then
+            curl --fail --location --silent --show-error --retry 3 -o "$mp3" "$1"
+            echo "$2  $mp3" | sha256sum --check
+          fi
+          command -v ffmpeg > /dev/null || { sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg; }
+          ffmpeg -v error -y -i "$mp3" -ss "$3" -to "$4" -ac 1 -ar 16000 -c:a pcm_s16le ~/ozen-reading-next/clip.wav
+          cp scripts/device-test-reading/there.txt ~/ozen-reading-next/clip.txt
+          mv ~/ozen-reading-next ~/ozen-reading
+          ls -l ~/ozen-reading
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -159,7 +196,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && for model in $HOME/ozen-models/*.bin; do [ -f "$model" ] || continue; adb push "$model" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files && cp /data/local/tmp/$(basename $model) files/' && rm /data/local/tmp/$(basename $model)" || exit 1; done && adb shell "run-as com.arbelonson.ozen ls -l files" && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && for model in $HOME/ozen-models/*.bin; do [ -f "$model" ] || continue; adb push "$model" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files && cp /data/local/tmp/$(basename $model) files/' && rm /data/local/tmp/$(basename $model)" || exit 1; done && for clip in $HOME/ozen-reading/clip.wav $HOME/ozen-reading/clip.txt; do [ -f "$clip" ] || continue; adb push "$clip" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files/device-test && cp /data/local/tmp/$(basename $clip) files/device-test/' && rm /data/local/tmp/$(basename $clip)" || exit 1; done && adb shell "run-as com.arbelonson.ozen ls -l files" && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
       - name: Count the tests that ran
         if: always()
         working-directory: android
