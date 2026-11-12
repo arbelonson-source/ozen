@@ -88,6 +88,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.CloudHTTPResponse
 import com.arbelonson.ozen.core.CloudProvider
@@ -2647,6 +2648,40 @@ class SettingsScreenDeviceTest {
         onMain.clear()
         compose.waitUntil(7_000) { onMain.size >= 2 }
         assertEquals("the journal was read on the main thread, which then drew nothing", listOf(false, false), onMain.take(2))
+    }
+
+    @Test
+    fun diagnosticsShowTheFreeSpaceDownloadsGoByReadAlongWithTheJournal() {
+        // The journal is read away from the main thread (the test above);
+        // the main thread itself can't be told apart here, as this rule
+        // resumes the screen's refresh on the reading thread.
+        val readingJournal = ThreadLocal.withInitial { false }
+        val outsideTheJournal = CopyOnWriteArrayList<Boolean>()
+        val source = object : DiagnosticsSource by app.captions {
+            override fun readJournal(): DiagnosticsJournal {
+                readingJournal.set(true)
+                try {
+                    return app.captions.readJournal()
+                } finally {
+                    readingJournal.set(false)
+                }
+            }
+
+            override fun diagnostics(journal: DiagnosticsJournal?) = app.captions.diagnostics(journal ?: readJournal())
+        }
+        val freeBefore = app.captions.freeSpace
+        // No emulator has this much, so the row can only show it by asking
+        // what downloads ask.
+        val room = 987_600_000_000L
+        try {
+            app.captions.freeSpace = { room.also { outsideTheJournal += !readingJournal.get() } }
+            compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(source, onClose = {}) } }
+            compose.onNode(hasText("Free space") and hasText(ByteSize.text(room))).performScrollTo().assertExists()
+            compose.waitUntil(7_000) { outsideTheJournal.size >= 3 }
+            assertEquals("free space was read outside the journal read, on the main thread in the app", listOf(false, false, false), outsideTheJournal.take(3))
+        } finally {
+            app.captions.freeSpace = freeBefore
+        }
     }
 
     @Test

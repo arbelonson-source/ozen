@@ -85,8 +85,13 @@ data class DiagnosticsFacts(
     val lockScreenShowing: Boolean = false,
 )
 
-/** The journal as the report shows it, oldest first, and whether any of it is marked caption lines. */
-data class DiagnosticsJournal(val lines: List<String>, val hasMarkedCaptionLines: Boolean)
+/**
+ * What the report reads away from the main thread: the journal as it shows
+ * it, oldest first, whether any of it is marked caption lines, and the room
+ * a download has, which Android works out in a call to the system that can
+ * take a while.
+ */
+data class DiagnosticsJournal(val lines: List<String>, val hasMarkedCaptionLines: Boolean, val freeBytes: Long)
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
 interface DiagnosticsSource {
@@ -96,7 +101,7 @@ interface DiagnosticsSource {
      */
     fun diagnostics(journal: DiagnosticsJournal? = null): DiagnosticsFacts
 
-    /** Reads the journal from its file, away from the main thread too. */
+    /** Reads the journal from its file and the room for downloads, away from the main thread too. */
     fun readJournal(): DiagnosticsJournal
 
     /** The microphone's level this moment, read far more often than the rest. */

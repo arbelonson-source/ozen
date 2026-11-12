@@ -1116,7 +1116,14 @@ class CaptionSession(
     private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost, pipeline.inputInUse, pipeline.routedElsewhere)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
-    override fun readJournal() = DiagnosticsJournal(journal.reportLines(::utcOffsetAt), journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) })
+    // Free space is the figure downloads go by, cache other apps can give
+    // back counted, so the report agrees with a download that says the
+    // phone is full or that it fits.
+    override fun readJournal() = DiagnosticsJournal(
+        journal.reportLines(::utcOffsetAt),
+        journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
+        freeBytes = freeSpace(),
+    )
 
     override fun diagnostics(journal: DiagnosticsJournal?): DiagnosticsFacts {
         val read = journal ?: readJournal()
@@ -1152,7 +1159,7 @@ class CaptionSession(
             batterySaver = power.isPowerSaveMode,
             batteryPercent = battery?.let { it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) * 100 / it.getIntExtra(BatteryManager.EXTRA_SCALE, 100) }?.takeIf { it >= 0 },
             charging = (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0,
-            freeBytes = context.filesDir.usableSpace,
+            freeBytes = read.freeBytes,
             memoryInUseBytes = Debug.getPss() * 1_024,
             memoryAvailableBytes = memory.availMem,
             memoryTotalBytes = memory.totalMem,
