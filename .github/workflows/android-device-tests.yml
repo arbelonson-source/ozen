@@ -102,6 +102,9 @@ jobs:
           esac
           echo "Device tests: $selectors"
           echo "SELECTORS=$selectors" >> "$GITHUB_ENV"
+          # Under the job's own limit: a job that runs out is cancelled, and
+          # then neither instrument.txt nor logcat.txt is uploaded.
+          echo "INSTRUMENT_MINUTES=${{ inputs.classes != '' && 115 || 35 }}" >> "$GITHUB_ENV"
       - name: Name the model files' cache
         if: inputs.classes != ''
         id: models-key
@@ -199,7 +202,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && for model in $HOME/ozen-models/*.bin; do [ -f "$model" ] || continue; adb push "$model" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files && cp /data/local/tmp/$(basename $model) files/' && rm /data/local/tmp/$(basename $model)" || exit 1; done && for clip in $HOME/ozen-reading/clip.wav $HOME/ozen-reading/clip.txt; do [ -f "$clip" ] || continue; adb push "$clip" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files/device-test && cp /data/local/tmp/$(basename $clip) files/device-test/' && rm /data/local/tmp/$(basename $clip)" || exit 1; done && adb shell "run-as com.arbelonson.ozen ls -l files" && { adb logcat -G 64M || echo "::warning::the log buffer stays at its default size, so logcat.txt keeps only the last minutes"; } && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && for model in $HOME/ozen-models/*.bin; do [ -f "$model" ] || continue; adb push "$model" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files && cp /data/local/tmp/$(basename $model) files/' && rm /data/local/tmp/$(basename $model)" || exit 1; done && for clip in $HOME/ozen-reading/clip.wav $HOME/ozen-reading/clip.txt; do [ -f "$clip" ] || continue; adb push "$clip" /data/local/tmp/ && adb shell "run-as com.arbelonson.ozen sh -c 'mkdir -p files/device-test && cp /data/local/tmp/$(basename $clip) files/device-test/' && rm /data/local/tmp/$(basename $clip)" || exit 1; done && adb shell "run-as com.arbelonson.ozen ls -l files" && { adb logcat -G 64M || echo "::warning::the log buffer stays at its default size, so logcat.txt keeps only the last minutes"; } && timeout ${INSTRUMENT_MINUTES}m adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; [ $status = 124 ] && echo "::error::the tests ran past $INSTRUMENT_MINUTES minutes and were stopped"; adb logcat -d > app/build/logcat.txt; exit $status
       - name: Count the tests that ran
         if: always()
         working-directory: android
@@ -208,7 +211,7 @@ jobs:
           import os, pathlib, re, sys
           path = pathlib.Path("app/build/instrument.txt")
           text = path.read_text(errors="replace") if path.exists() else ""
-          results, current = [], {}
+          results, started, current = [], [], {}
           for line in text.splitlines():
               if line.startswith("INSTRUMENTATION_STATUS: class="):
                   current["class"] = line.split("=", 1)[1]
@@ -216,7 +219,9 @@ jobs:
                   current["test"] = line.split("=", 1)[1]
               elif line.startswith("INSTRUMENTATION_STATUS_CODE: "):
                   code = int(line.split(": ", 1)[1])
-                  if code in (0, -1, -2, -3, -4):
+                  if code == 1:
+                      started.append((current.get("class", "?"), current.get("test", "?")))
+                  elif code in (0, -1, -2, -3, -4):
                       results.append((current.get("class", "?"), current.get("test", "?"), code))
           failed = [r for r in results if r[1] and r[2] in (-1, -2)]
           skipped = [r for r in results if r[2] in (-3, -4)]
@@ -239,8 +244,12 @@ jobs:
               print(f"no test ran for {selector}")
           if missing:
               sys.exit(f"{len(missing)} of the chosen tests ran none: renamed or removed?")
+          ended = {(cls, test) for cls, test, code in results}
+          for cls, test in started:
+              if (cls, test) not in ended:
+                  print(f"unfinished {cls}#{test}")
           if not finished or "INSTRUMENTATION_FAILED" in text:
-              sys.exit("The test run did not finish: the app or the runner crashed (see logcat).")
+              sys.exit("The test run did not finish: the app or the runner crashed, or a test was still running at the time limit (see logcat).")
           if failed:
               sys.exit(f"{len(failed)} device test(s) failed.")
           EOF
