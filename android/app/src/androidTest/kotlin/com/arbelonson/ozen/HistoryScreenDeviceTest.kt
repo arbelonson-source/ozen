@@ -120,6 +120,7 @@ class HistoryScreenDeviceTest {
         seed("Search test opening line" to null, "The dentist moved it to Thursday" to null)
         seed("Search test other conversation" to null)
         compose.onNodeWithText("History").performClick()
+        waitFor("Search test other conversation")
         compose.onNodeWithText("Search test other conversation", substring = true).assertExists()
 
         compose.onNodeWithText("Search what was said").performTextInput("dentist thursday")
@@ -223,6 +224,7 @@ class HistoryScreenDeviceTest {
         lines[35] = "Come back at 10:30 on Sunday" to null
         seed(*lines.toTypedArray())
         compose.onNodeWithText("History").performClick()
+        waitFor("Nice weather we are having")
         compose.onNodeWithText("Nice weather we are having", substring = true).performClick()
 
         waitFor("Numbers mentioned")
@@ -246,6 +248,7 @@ class HistoryScreenDeviceTest {
         ScreenReader.announce = { _, text -> announced += text }
         try {
             compose.onNodeWithText("History").performClick()
+            waitFor("Landing test opening line")
             compose.onNodeWithText("Landing test opening line", substring = true).performClick()
             waitFor("Numbers mentioned")
             compose.onNode(hasText("at 10:30 on Sunday", substring = true) and hasClickAction()).performClick()
@@ -254,9 +257,11 @@ class HistoryScreenDeviceTest {
             compose.waitUntil(5_000) { highlighted("Landing test the dentist at 10:30") }
 
             compose.onNodeWithText("Back").performClick()
+            waitFor("Search what was said")
             compose.onNodeWithText("Search what was said").performTextInput("dentist")
             waitFor("Landing test the dentist at 10:30 on Sunday")
             compose.onNodeWithText("Landing test the dentist at 10:30 on Sunday", substring = true).performClick()
+            waitFor("Next match (1 of 2)")
             compose.onNodeWithText("Next match (1 of 2)").performClick()
             compose.waitUntil(5_000) { shownLine("Landing test call the dentist back") }
             compose.waitUntil(5_000) { spoken("Landing test call the dentist back") in announced }
@@ -278,6 +283,7 @@ class HistoryScreenDeviceTest {
         ScreenReader.announce = { _, text -> announced += text to android.os.SystemClock.elapsedRealtime() }
         try {
             compose.onNodeWithText("History").performClick()
+            waitFor("Hold test opening line")
             compose.onNodeWithText("Hold test opening line", substring = true).performClick()
             waitFor("Numbers mentioned")
             AnnouncementHold.holdFor(3_000)
@@ -300,6 +306,7 @@ class HistoryScreenDeviceTest {
     fun anOpenedConversationSaysALineCanBeHeldToStarCopyOrFixAWord() {
         seed("Hold hint test good morning" to null)
         compose.onNodeWithText("History").performClick()
+        waitFor("Hold hint test good morning")
         compose.onNodeWithText("Hold hint test good morning", substring = true).performClick()
         waitFor("Press and hold a line to mark it as important, copy it or fix a word.")
     }
@@ -334,6 +341,7 @@ class HistoryScreenDeviceTest {
     private fun openFixAWord(line: String) {
         seed(line to null)
         compose.onNodeWithText("History").performClick()
+        waitFor(line)
         compose.onNodeWithText(line, substring = true).performClick()
         compose.waitUntil(5_000) { shownLine(line) }
         val fix = compose.onNodeWithContentDescription(line, substring = true).fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" }
@@ -361,6 +369,7 @@ class HistoryScreenDeviceTest {
         store.save(record)
         seeded += record.id
         compose.onNodeWithText("History").performClick()
+        waitFor("Numbers row test at 10:30")
         compose.onNodeWithText("Numbers row test at 10:30", substring = true).performClick()
         waitFor("Numbers mentioned")
         val row = { text: String -> compose.onNode(hasText(text, substring = true) and hasClickAction()) }
@@ -387,6 +396,7 @@ class HistoryScreenDeviceTest {
             "Nice weather we are having" to "Dana",
         )
         compose.onNodeWithText("History").performClick()
+        waitFor("Summary test weather is lovely")
         compose.onNodeWithText("Summary test weather is lovely", substring = true).performClick()
 
         waitFor("Summary")
@@ -422,6 +432,7 @@ class HistoryScreenDeviceTest {
         try {
             app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
             compose.onNodeWithText("History").performClick()
+            waitFor("Pharmacy test it closes")
             compose.onNodeWithText("Pharmacy test it closes", substring = true).performClick()
             compose.waitUntil(5_000) { shownLine("Pharmacy test two pills") }
             compose.onNodeWithText("Share").performClick()
@@ -852,6 +863,7 @@ class HistoryScreenDeviceTest {
         app.settings.change { it.historyRetention = HistoryRetention.Forever }
         val old = seed("Turning retention old line" to null, startedAt = System.currentTimeMillis() / 1_000.0 - 40 * 86_400)
         compose.onNodeWithText("History").performClick()
+        waitFor("Automatic deletion")
         compose.onNodeWithText("Automatic deletion").performClick()
         compose.onNodeWithText("After a month").performClick()
         compose.onNodeWithText("Delete and continue this way").assertExists()
@@ -1402,6 +1414,7 @@ class HistoryScreenDeviceTest {
         app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark) }
         seed("Colour test good morning" to "Dana", "Colour test how did you sleep" to "Avi", "Colour test fine thanks" to "Dana")
         compose.onNodeWithText("History").performClick()
+        waitFor("Colour test good morning")
         compose.onNodeWithText("Colour test good morning", substring = true).performClick()
         compose.waitUntil(5_000) { shownLine("Colour test fine thanks") }
         // A saved line is one node to the screen reader, its name inside it
@@ -1446,6 +1459,7 @@ class HistoryScreenDeviceTest {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 60
         seed("Heading test opening line" to null, "Heading test last line" to null, startedAt = startedAt)
         compose.onNodeWithText("History").performClick()
+        waitFor("Heading test opening line")
         compose.onNodeWithText("Heading test opening line", substring = true).performClick()
         compose.waitUntil(5_000) { shownLine("Heading test last line") }
         compose.onNodeWithText("Today at ${clockTime(startedAt)}").assertIsDisplayed()
@@ -1460,6 +1474,7 @@ class HistoryScreenDeviceTest {
     fun aSavedConversationIsListedUnderTodayAndReadsBackLineByLine() {
         seed("Device history opening line" to "Dana", "Device history second line" to "Dana")
         compose.onNodeWithText("History").performClick()
+        waitFor("Today")
         compose.onNodeWithText("Today").assertExists()
         compose.onNodeWithText("Device history opening line", substring = true).performClick()
         compose.onNodeWithContentDescription("Dana: Device history opening line", substring = true).assertExists()
@@ -1474,6 +1489,7 @@ class HistoryScreenDeviceTest {
     fun savingConversationsSwitchesOffAndOnAndTheFooterSaysWhichItIs() {
         app.settings.change { it.saveHistory = true }
         compose.onNodeWithText("History").performClick()
+        waitFor("Conversations are saved on this phone")
         compose.onNodeWithText("Conversations are saved on this phone", substring = true).assertExists()
         compose.onNodeWithText("Save conversations").performClick()
         compose.waitForIdle()
@@ -1489,6 +1505,7 @@ class HistoryScreenDeviceTest {
         app.settings.change { it.historyRetention = HistoryRetention.Forever }
         val old = seed("Device history from long ago" to null, startedAt = System.currentTimeMillis() / 1_000.0 - 40 * 86_400)
         compose.onNodeWithText("History").performClick()
+        waitFor("Automatic deletion")
         compose.onNodeWithText("Automatic deletion").performClick()
         compose.onNodeWithText("After a month").performClick()
         compose.onNodeWithText("old conversation", substring = true).assertExists()
@@ -1511,6 +1528,7 @@ class HistoryScreenDeviceTest {
     fun deletingAConversationAsksFirstThenRemovesItFromTheListAndThePhone() {
         val id = seed("Device history line to delete" to null)
         compose.onNodeWithText("History").performClick()
+        waitFor("Device history line to delete")
         compose.onNodeWithText("Device history line to delete", substring = true).performClick()
         compose.onNodeWithText("Delete").performClick()
         compose.onNodeWithText("Delete this conversation?").assertExists()
