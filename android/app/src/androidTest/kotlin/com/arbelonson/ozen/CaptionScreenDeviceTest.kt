@@ -1324,6 +1324,9 @@ class CaptionScreenDeviceTest {
             compose.runOnUiThread { delete.action() }
             compose.waitUntil(5_000) { stored() == english - "Slower, please" - "Wait, I didn't catch that" + "Please write it down for me" }
 
+            // With the menu gone, the keyboard comes back for the new-phrase
+            // field, and a press while it slides in can miss the button.
+            keyboardAway()
             compose.onNodeWithText("Restore defaults").performScrollTo().performClick()
             compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
             compose.onNode(hasText("Restore") and hasAnyAncestor(isDialog())).performClick()
