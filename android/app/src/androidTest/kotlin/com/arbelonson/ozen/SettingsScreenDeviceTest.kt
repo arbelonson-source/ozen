@@ -2654,6 +2654,7 @@ class SettingsScreenDeviceTest {
         try {
             app.settings.change { it.appLanguage = AppLanguage.German }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.onAllNodesWithText("Einstellungen").onFirst().performClick()
@@ -2686,6 +2687,7 @@ class SettingsScreenDeviceTest {
                 it.notifyWhenInBackground = true
             }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.onAllNodesWithText("Einstellungen").onFirst().performClick()
