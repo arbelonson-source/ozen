@@ -137,17 +137,20 @@ jobs:
         with:
           path: ~/ozen-reading-source
           key: ${{ steps.reading-key.outputs.key }}
-      # Without it those tests are skipped, as before, rather than the run
-      # failing because archive.org didn't answer.
+      # Only archive.org not answering is let through: those tests are then
+      # skipped, as before, and the run says so. A changed file or a failed
+      # cut fails the run.
       - name: Make the reading
         if: inputs.classes != ''
-        continue-on-error: true
         run: |
           set -- $READING
           mkdir -p ~/ozen-reading-source ~/ozen-reading-next
           mp3="$HOME/ozen-reading-source/reading.mp3"
           if ! echo "$2  $mp3" | sha256sum --check --status 2>/dev/null; then
-            curl --fail --location --silent --show-error --retry 3 -o "$mp3" "$1"
+            if ! curl --fail --location --silent --show-error --retry 3 -o "$mp3" "$1"; then
+              echo "::warning::archive.org didn't answer, so the tests that caption a recording are skipped in this run"
+              exit 0
+            fi
             echo "$2  $mp3" | sha256sum --check
           fi
           command -v ffmpeg > /dev/null || { sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg; }
