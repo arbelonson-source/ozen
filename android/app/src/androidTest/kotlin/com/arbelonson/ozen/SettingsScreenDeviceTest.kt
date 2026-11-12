@@ -88,6 +88,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.CloudHTTPResponse
 import com.arbelonson.ozen.core.CloudProvider
@@ -2616,6 +2617,8 @@ class SettingsScreenDeviceTest {
             row("Temperature", "Hot · captions are slowing down")
             row("Device model", "${Build.MANUFACTURER} ${Build.MODEL}")
             row("Android", Build.VERSION.RELEASE)
+            // Read away from the main thread, so it comes a moment after the rest.
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText("Free space") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB)$"))).fetchSemanticsNodes().isNotEmpty() }
             compose.onNode(hasText("Free space") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB)$"))).performScrollTo().assertExists()
             compose.onNode(hasText("Memory") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB) in use · [0-9.]+\u00A0(KB|MB|GB) more$"))).performScrollTo().assertExists()
 
@@ -2647,6 +2650,25 @@ class SettingsScreenDeviceTest {
         onMain.clear()
         compose.waitUntil(7_000) { onMain.size >= 2 }
         assertEquals("the journal was read on the main thread, which then drew nothing", listOf(false, false), onMain.take(2))
+    }
+
+    @Test
+    fun diagnosticsShowTheFreeSpaceDownloadsGoByNeverReadOnTheMainThread() {
+        val onMain = CopyOnWriteArrayList<Boolean>()
+        val freeBefore = app.captions.freeSpace
+        // No emulator has this much, so the row can only show it by asking
+        // what downloads ask.
+        val room = 987_600_000_000L
+        val shown = { compose.onAllNodes(hasText("Free space") and hasText(ByteSize.text(room))).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            app.captions.freeSpace = { room.also { onMain += Looper.myLooper() == Looper.getMainLooper() } }
+            compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(app.captions, onClose = {}) } }
+            compose.waitUntil(5_000) { shown() }
+            compose.waitUntil(7_000) { onMain.size >= 2 }
+            assertEquals("free space was read on the main thread, which then drew nothing", listOf(false, false), onMain.take(2))
+        } finally {
+            app.captions.freeSpace = freeBefore
+        }
     }
 
     @Test

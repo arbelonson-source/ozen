@@ -57,7 +57,8 @@ data class DiagnosticsFacts(
     val batteryPercent: Int?,
     /** Plugged in, charging or full, as the iPhone's "charging" means. */
     val charging: Boolean,
-    val freeBytes: Long,
+    /** Room for downloads, null until it was first read away from the main thread. */
+    val freeBytes: Long?,
     val memoryInUseBytes: Long,
     val memoryAvailableBytes: Long?,
     /** The phone's whole memory, for telling a 3–4 GB phone from a big one. */
@@ -85,8 +86,13 @@ data class DiagnosticsFacts(
     val lockScreenShowing: Boolean = false,
 )
 
-/** The journal as the report shows it, oldest first, and whether any of it is marked caption lines. */
-data class DiagnosticsJournal(val lines: List<String>, val hasMarkedCaptionLines: Boolean)
+/**
+ * What the report reads away from the main thread: the journal as it shows
+ * it, oldest first, whether any of it is marked caption lines, and the room
+ * a download has, which Android works out in a call to the system that can
+ * take a while (null when it wasn't read).
+ */
+data class DiagnosticsJournal(val lines: List<String>, val hasMarkedCaptionLines: Boolean, val freeBytes: Long?)
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
 interface DiagnosticsSource {
@@ -96,7 +102,7 @@ interface DiagnosticsSource {
      */
     fun diagnostics(journal: DiagnosticsJournal? = null): DiagnosticsFacts
 
-    /** Reads the journal from its file, away from the main thread too. */
+    /** Reads the journal from its file and the room for downloads, away from the main thread too. */
     fun readJournal(): DiagnosticsJournal
 
     /** The microphone's level this moment, read far more often than the rest. */
@@ -159,7 +165,7 @@ object DiagnosticsReport {
                 "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"} " +
                 "cellular downloads: ${settings.allowCellularModelDownload}",
             "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
-            "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${ByteSize.text(facts.freeBytes)}",
+            "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${facts.freeBytes?.let { ByteSize.text(it) } ?: "-"}",
             "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"} phone ${facts.memoryTotalBytes?.let(ByteSize::text) ?: "-"}",
             "built-in recognition: ${facts.builtInRecognition}",
             "device: ${facts.device} app ${facts.appVersion}",
