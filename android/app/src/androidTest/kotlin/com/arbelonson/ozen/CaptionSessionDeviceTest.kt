@@ -1103,8 +1103,14 @@ class CaptionSessionDeviceTest {
 
     // No model on the phone: in a device test its download always fails
     // (OzenTestRunner), since every language now has one.
+    // On mobile data (GitHub's emulator) the missing model waits for Wi-Fi
+    // instead of failing to download: still a phone without its model.
     private val PipelinePhase.modelMissing: Boolean
-        get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind in setOf(EngineUnavailability.Kind.ModelNotOnDevice, EngineUnavailability.Kind.ModelDownloadFailed)
+        get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind in setOf(
+            EngineUnavailability.Kind.ModelNotOnDevice,
+            EngineUnavailability.Kind.ModelDownloadFailed,
+            EngineUnavailability.Kind.WaitingForWiFi,
+        )
 
     @Test
     fun aSmokeAlarmNearThePhoneBuzzesAndTakesTheBannerEvenWhileTheCaptionsCannotRun() = runBlocking {
