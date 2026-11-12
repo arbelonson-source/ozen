@@ -1118,15 +1118,22 @@ class CaptionSession(
     /** What the diagnostics screen shows and its report says, as things stand now. */
     // Free space is the figure downloads go by, cache other apps can give
     // back counted, so the report agrees with a download that says the
-    // phone is full or that it fits.
-    override fun readJournal() = DiagnosticsJournal(
+    // phone is full or that it fits. That is a slow call to the system, so
+    // only the read away from the main thread makes it; facts built
+    // without that read (the screen's first draw) show the last figure.
+    @Volatile
+    private var lastFreeBytes: Long? = null
+
+    private fun journalNow(freeBytes: Long?) = DiagnosticsJournal(
         journal.reportLines(::utcOffsetAt),
         journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
-        freeBytes = freeSpace(),
+        freeBytes,
     )
 
+    override fun readJournal() = journalNow(freeSpace().also { lastFreeBytes = it })
+
     override fun diagnostics(journal: DiagnosticsJournal?): DiagnosticsFacts {
-        val read = journal ?: readJournal()
+        val read = journal ?: journalNow(lastFreeBytes)
         val power = context.getSystemService(PowerManager::class.java)
         // The sticky broadcast, not BatteryManager's properties: it is what
         // Android itself shows, test overrides included.
