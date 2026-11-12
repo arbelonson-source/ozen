@@ -39,7 +39,9 @@ core and app tests, and builds the debug APK.
   or a phone: `./gradlew :app:connectedDebugAndroidTest` in `android/`. On
   GitHub, the "Android device tests" workflow runs a smoke subset every night.
   Run it by hand from the Actions tab with `classes` set to `all` for every
-  device test, or to class names separated by commas.
+  device test, or to class names separated by commas. A run by hand also puts
+  the Base, Small and Hebrew model files on the emulator, so the tests that
+  need a model on the phone run there too.
 
 ## How changes are written
 
