@@ -99,6 +99,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelineFailure
+import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -181,14 +182,19 @@ class SettingsScreenDeviceTest {
     // differs from the phone's; from there it ends the walkthrough.
     private fun skipTheWalkthrough() {
         compose.onNodeWithText("Skip").performClick()
-        val languagePage = "Which language do people around you speak?"
-        // On GitHub's slower emulator the language page came a moment after
-        // the first tap, so it was missed and its Skip never tapped.
-        compose.waitUntil(5_000) {
-            app.settings.current.value.hasCompletedOnboarding || compose.onAllNodesWithText(languagePage).fetchSemanticsNodes().isNotEmpty()
+        compose.waitForIdle()
+        if (!app.settings.current.value.hasCompletedOnboarding &&
+            compose.onAllNodesWithText("Which language do people around you speak?").fetchSemanticsNodes().isNotEmpty()
+        ) {
+            compose.onNodeWithText("Skip").performClick()
         }
-        if (!app.settings.current.value.hasCompletedOnboarding) compose.onNodeWithText("Skip").performClick()
     }
+
+    // Ending the walkthrough first tests a phone whose speed was never
+    // measured, ten seconds and more. GitHub's emulator is new each run, so
+    // there the walkthrough outlasted the wait for its end; a known speed
+    // skips the test, as in OnboardingDeviceTest.
+    private val knownSpeed = PhoneSpeed(1000.0, 4, 1.0)
 
     @Before
     fun remember() {
@@ -1989,7 +1995,9 @@ class SettingsScreenDeviceTest {
 
     @Test
     fun settingsShowsTheWalkthroughAgainOnceSheConfirmsWithCaptionsStoppedUntilItEnds() {
+        val speedBefore = app.settings.current.value.phoneSpeed
         try {
+            app.settings.change { it.phoneSpeed = knownSpeed }
             compose.runOnUiThread { app.captions.listen() }
             compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
             compose.onNodeWithText("Settings").performClick()
@@ -2013,7 +2021,10 @@ class SettingsScreenDeviceTest {
                 if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
                 app.captions.launchHandled = true
             }
-            app.settings.change { it.hasCompletedOnboarding = true }
+            app.settings.change {
+                it.hasCompletedOnboarding = true
+                it.phoneSpeed = speedBefore
+            }
         }
     }
 
@@ -2022,6 +2033,7 @@ class SettingsScreenDeviceTest {
         val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
         assumeFalse("the English model is already on this phone", english.exists())
         val before = app.settings.current.value
+        val speedBefore = before.phoneSpeed
         val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
         val unreachable = PipelinePhase.Failed(
             PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
@@ -2034,6 +2046,7 @@ class SettingsScreenDeviceTest {
                 it.engine = TranscriptionEngineKind.WhisperKit
                 it.spokenLanguage = UILanguage.English
                 it.allowCellularModelDownload = true
+                it.phoneSpeed = knownSpeed
             }
             compose.runOnUiThread {
                 CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
@@ -2068,6 +2081,7 @@ class SettingsScreenDeviceTest {
             }
             app.settings.change {
                 it.hasCompletedOnboarding = true
+                it.phoneSpeed = speedBefore
                 it.engine = before.engine
                 it.spokenLanguage = before.spokenLanguage
                 it.allowCellularModelDownload = before.allowCellularModelDownload
