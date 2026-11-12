@@ -831,7 +831,8 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Deepgram").performScrollTo().performClick()
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-kept-on-close")
         compose.onNodeWithText("Close").performScrollTo().performClick()
-        compose.onNodeWithText("Close").assertDoesNotExist()
+        // Settings saves what was typed on a coroutine and only then closes.
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Close").fetchSemanticsNodes().isEmpty() }
         compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) == "dg-kept-on-close" }
         assertEquals("dg-kept-on-close", app.cloudKeys.read(CloudProvider.Deepgram))
     }
@@ -846,7 +847,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Close").performScrollTo().performClick()
         compose.onNodeWithText("Send the audio to Deepgram?").assertExists()
         compose.onNodeWithText("Cancel").performClick()
-        compose.onNodeWithText("Close").assertDoesNotExist()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Close").fetchSemanticsNodes().isEmpty() }
         compose.waitForIdle()
         assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(emptySet<CloudProvider>(), app.settings.current.value.cloudSoundAcknowledged)
@@ -863,7 +864,9 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Send the audio to Deepgram?").assertExists()
         assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
         compose.onNodeWithText("Allow and save").performClick()
-        compose.onNodeWithText("Close").assertDoesNotExist()
+        // As above: the key is stored on a coroutine before Settings close.
+        // On GitHub's emulator Close was still there when looked for at once.
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Close").fetchSemanticsNodes().isEmpty() }
         compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) == "dg-asked-on-back" }
         assertEquals(setOf(CloudProvider.Deepgram), app.settings.current.value.cloudSoundAcknowledged)
     }
@@ -912,6 +915,7 @@ class SettingsScreenDeviceTest {
         compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://10.0.2.2:9")
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-for-the-test")
+        keyboardAway()
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
         compose.waitUntil(timeoutMillis = 30_000) {
             compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -926,6 +930,7 @@ class SettingsScreenDeviceTest {
         compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://10.0.2.2:9")
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-for-the-test")
+        keyboardAway()
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
         compose.waitUntil(timeoutMillis = 30_000) {
             compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()

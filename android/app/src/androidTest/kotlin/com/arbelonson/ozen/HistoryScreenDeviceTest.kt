@@ -1136,7 +1136,10 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { store.load(pills)!!.segments.none { it.isStarred } }
         compose.onNodeWithText("Back").performClick()
         compose.waitUntil(5_000) { shownLine("Starred list test call the pharmacy") }
-        assertTrue(compose.onAllNodesWithContentDescription("Starred list test two pills", substring = true).fetchSemanticsNodes().isEmpty())
+        // The pharmacy line was on the list before, so it is there at once;
+        // the list reads the stars again off the main thread, and on GitHub's
+        // emulator the unstarred line was still on it when looked for then.
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Starred list test two pills", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
     // A screen reader's action fired twice before the list was read back
