@@ -16,12 +16,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.io.File
 import kotlin.math.PI
 import kotlin.math.sin
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,6 +73,13 @@ class PhoneSoundDeviceTest {
         instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.RECORD_AUDIO)
         shell("appops set ${app.packageName} PROJECT_MEDIA allow")
         val savedBefore = app.settings.current.value.preferredInputUID
+        // The input only changes while captions listen, and on the phone's
+        // own engine they listen only with its model on the phone. GitHub's
+        // emulator has no model files, and the captions there never got past
+        // starting.
+        val settings = app.settings.current.value
+        val model = File(app.filesDir, settings.phoneModel.file)
+        assumeTrue("put the model at ${model.path}", settings.engine != TranscriptionEngineKind.WhisperKit || model.exists())
         compose.runOnUiThread { app.captions.listen() }
         assertTrue("captions never listened: ${app.captions.pipeline.phase}", within(90_000) { app.captions.pipeline.phase == PipelinePhase.Listening })
         val microphone = app.captions.pipeline.selectedInputUID
