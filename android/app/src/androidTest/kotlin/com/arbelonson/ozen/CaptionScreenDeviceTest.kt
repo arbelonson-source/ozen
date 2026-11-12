@@ -985,9 +985,24 @@ class CaptionScreenDeviceTest {
         val languageBefore = app.settings.current.value.appLanguage
         val autoRotateBefore = shell("settings get system accelerometer_rotation").trim()
         val userRotationBefore = shell("settings get system user_rotation").trim()
+        // Swiping instead of buttons (GitHub's emulator) leaves nothing at the
+        // sides of a sideways phone, so the field would have no bar to stay
+        // clear of: the buttons are put on for this test.
+        val navigationOverlays = mapOf(
+            "0" to "com.android.internal.systemui.navbar.threebutton",
+            "1" to "com.android.internal.systemui.navbar.twobutton",
+            "2" to "com.android.internal.systemui.navbar.gestural",
+        )
+        val navigation = { shell("settings get secure navigation_mode").trim() }
+        val navigationBefore = navigation()
         val problems = mutableListOf<String>()
         try {
             shell("settings put system accelerometer_rotation 0")
+            if (navigationBefore != "0") {
+                shell("cmd overlay enable-exclusive --category ${navigationOverlays.getValue("0")}")
+                compose.waitUntil(10_000) { navigation() == "0" }
+                compose.waitForIdle()
+            }
             for (language in listOf(AppLanguage.English, AppLanguage.Hebrew)) {
                 app.settings.change { it.appLanguage = language }
                 compose.activityRule.scenario.recreate()
@@ -1030,6 +1045,10 @@ class CaptionScreenDeviceTest {
         } finally {
             shell(if (userRotationBefore == "null") "settings delete system user_rotation" else "settings put system user_rotation $userRotationBefore")
             shell(if (autoRotateBefore == "null") "settings delete system accelerometer_rotation" else "settings put system accelerometer_rotation $autoRotateBefore")
+            navigationOverlays[navigationBefore]?.takeIf { navigation() != navigationBefore }?.let { overlay ->
+                shell("cmd overlay enable-exclusive --category $overlay")
+                runCatching { compose.waitUntil(10_000) { navigation() == navigationBefore } }
+            }
             app.settings.change { it.appLanguage = languageBefore }
         }
         assertTrue(problems.joinToString("; "), problems.isEmpty())
