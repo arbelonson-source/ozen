@@ -25,6 +25,7 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -108,6 +109,14 @@ class ModelLoadCrashDeviceTest {
 
     @Test
     fun switchingOfflineKeepsTheCardSayingWhyAndTheCaptionsStartOnceTheLighterModelIsIn() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isNotEmpty() }
+        val lighter = requireNotNull(app.captions.loadCrash.showing.value).file
+        // Once there is Wi-Fi again the lighter model comes back from the
+        // side, where the test put it. A phone without it (GitHub's emulator)
+        // starts a real download instead, and the switch it leaves running
+        // took the Switch button away in the next test.
+        val lighterFile = File(app.filesDir, lighter)
+        assumeTrue("put the model at ${lighterFile.path}", lighterFile.exists())
         val networkBefore = app.captions.networkNow
         val freeBefore = app.captions.freeSpace
         val heavyFile = File(app.filesDir, heavy)
@@ -119,8 +128,6 @@ class ModelLoadCrashDeviceTest {
             modelFiles.hold(keep = heavy)
             app.captions.freeSpace = { 8_000_000_000L }
             app.captions.networkNow = { NetworkConditions.offline }
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isNotEmpty() }
-            val lighter = requireNotNull(app.captions.loadCrash.showing.value).file
             compose.onNodeWithTag("model-load-crash-switch").performClick()
             compose.waitUntil(5_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.Offline }
             compose.waitForIdle()
