@@ -150,6 +150,7 @@ class PhoneModelSettingsDeviceTest {
         val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
         try {
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             openSection()

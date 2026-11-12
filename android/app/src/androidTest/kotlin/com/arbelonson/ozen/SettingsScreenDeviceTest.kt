@@ -99,6 +99,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelineFailure
+import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -188,6 +189,12 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Skip").performClick()
         }
     }
+
+    // Ending the walkthrough first tests a phone whose speed was never
+    // measured, ten seconds and more. GitHub's emulator is new each run, so
+    // there the walkthrough outlasted the wait for its end; a known speed
+    // skips the test, as in OnboardingDeviceTest.
+    private val knownSpeed = PhoneSpeed(1000.0, 4, 1.0)
 
     @Before
     fun remember() {
@@ -741,6 +748,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-device-test")
         compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
         compose.onNodeWithText("Allow and save").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Key saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Key saved on the phone").performScrollTo()
         assertEquals("dg-device-test", app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(TranscriptionEngineKind.Cloud, app.settings.current.value.engine)
@@ -1987,7 +1995,9 @@ class SettingsScreenDeviceTest {
 
     @Test
     fun settingsShowsTheWalkthroughAgainOnceSheConfirmsWithCaptionsStoppedUntilItEnds() {
+        val speedBefore = app.settings.current.value.phoneSpeed
         try {
+            app.settings.change { it.phoneSpeed = knownSpeed }
             compose.runOnUiThread { app.captions.listen() }
             compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
             compose.onNodeWithText("Settings").performClick()
@@ -2011,7 +2021,10 @@ class SettingsScreenDeviceTest {
                 if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
                 app.captions.launchHandled = true
             }
-            app.settings.change { it.hasCompletedOnboarding = true }
+            app.settings.change {
+                it.hasCompletedOnboarding = true
+                it.phoneSpeed = speedBefore
+            }
         }
     }
 
@@ -2020,6 +2033,7 @@ class SettingsScreenDeviceTest {
         val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
         assumeFalse("the English model is already on this phone", english.exists())
         val before = app.settings.current.value
+        val speedBefore = before.phoneSpeed
         val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
         val unreachable = PipelinePhase.Failed(
             PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
@@ -2032,6 +2046,7 @@ class SettingsScreenDeviceTest {
                 it.engine = TranscriptionEngineKind.WhisperKit
                 it.spokenLanguage = UILanguage.English
                 it.allowCellularModelDownload = true
+                it.phoneSpeed = knownSpeed
             }
             compose.runOnUiThread {
                 CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
@@ -2066,6 +2081,7 @@ class SettingsScreenDeviceTest {
             }
             app.settings.change {
                 it.hasCompletedOnboarding = true
+                it.phoneSpeed = speedBefore
                 it.engine = before.engine
                 it.spokenLanguage = before.spokenLanguage
                 it.allowCellularModelDownload = before.allowCellularModelDownload
@@ -2288,8 +2304,16 @@ class SettingsScreenDeviceTest {
 
             app.settings.change { it.spokenLanguage = UILanguage.Hebrew }
             compose.waitForIdle()
-            compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
             compose.onNodeWithText("The backup download stopped. Try again.").assertDoesNotExist()
+            // Hebrew's backup is Ozen's own model, which downloads too now:
+            // ready when it is on the phone, offered at its own size when it
+            // is not (GitHub's emulator has no model files).
+            if (File(app.filesDir, app.settings.current.value.phoneModel.file).exists()) {
+                compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+                compose.onNodeWithText("Backup on the phone is ready", substring = true).assertExists()
+            } else {
+                compose.onNodeWithText("Download a backup to the phone (", substring = true).assertExists()
+            }
         } finally {
             app.settings.change { it.spokenLanguage = languageBefore }
         }
@@ -2644,6 +2668,7 @@ class SettingsScreenDeviceTest {
         try {
             app.settings.change { it.appLanguage = AppLanguage.German }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.onAllNodesWithText("Einstellungen").onFirst().performClick()
@@ -2676,6 +2701,7 @@ class SettingsScreenDeviceTest {
                 it.notifyWhenInBackground = true
             }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.onAllNodesWithText("Einstellungen").onFirst().performClick()

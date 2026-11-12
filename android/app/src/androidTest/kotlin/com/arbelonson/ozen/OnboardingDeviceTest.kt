@@ -132,6 +132,7 @@ class OnboardingDeviceTest {
         try {
             app.settings.change { it.appLanguage = AppLanguage.German }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
             repeat(5) {
@@ -163,22 +164,29 @@ class OnboardingDeviceTest {
         try {
             app.settings.change { it.appLanguage = AppLanguage.German }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
             repeat(5) {
                 compose.onNodeWithText("Weiter").performClick()
                 compose.waitForIdle()
             }
-            compose.onNode(hasSetTextAction()).performClick()
             val window = compose.activity.window
+            val top = {
+                compose.runOnUiThread {
+                    IntArray(2).also { window.decorView.findViewById<View>(android.R.id.content).getLocationOnScreen(it) }[1]
+                }
+            }
+            // Measured before the keyboard, not taken to be 0: on GitHub's
+            // emulator, a phone with a camera cutout, the screen starts 128
+            // pixels down, below the status bar, keyboard or not.
+            val before = top()
+            compose.onNode(hasSetTextAction()).performClick()
             compose.waitUntil(5_000) {
                 compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) > 0 }
             }
             Thread.sleep(1_000)
-            val top = compose.runOnUiThread {
-                IntArray(2).also { window.decorView.findViewById<View>(android.R.id.content).getLocationOnScreen(it) }[1]
-            }
-            assertEquals("the whole screen slid up", 0, top)
+            assertEquals("the whole screen slid up", before, top())
         } finally {
             shell("settings put system font_scale 1.0")
             app.settings.change { it.appLanguage = language }
@@ -215,6 +223,7 @@ class OnboardingDeviceTest {
         val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
         try {
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Next") }
             repeat(4) {
@@ -355,6 +364,7 @@ class OnboardingDeviceTest {
         val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
         try {
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Next") }
             repeat(4) {

@@ -2483,6 +2483,7 @@ class CaptionScreenDeviceTest {
         val scale = String(shell("settings get system font_scale")).trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
         try {
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.runOnUiThread {
@@ -2518,6 +2519,7 @@ class CaptionScreenDeviceTest {
         try {
             app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.runOnUiThread {
@@ -2562,6 +2564,7 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Said: Grandma").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty() }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.waitForIdle()
@@ -3369,6 +3372,7 @@ class CaptionScreenDeviceTest {
         try {
             app.settings.change { it.appLanguage = AppLanguage.German }
             shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
             compose.waitForIdle()
