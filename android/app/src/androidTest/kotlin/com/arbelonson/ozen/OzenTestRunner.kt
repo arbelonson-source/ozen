@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.app.Application
+import android.os.Build
 import androidx.test.runner.AndroidJUnitRunner
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import java.io.File
@@ -11,6 +12,7 @@ class OzenTestRunner : AndroidJUnitRunner() {
     override fun callApplicationOnCreate(app: Application) {
         CaptionSession.newModelFetcher = { NoDownloads }
         super.callApplicationOnCreate(app)
+        for (permission in ListeningPermissions.wanted(Build.VERSION.SDK_INT)) uiAutomation.grantRuntimePermission(app.packageName, permission)
         (app as OzenApplication).settings.change { it.hasCompletedOnboarding = true }
         app.captions.launchHandled = true
         app.captions.modelFetcher = NoDownloads
