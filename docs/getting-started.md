@@ -20,7 +20,8 @@ Settings → **Speech model on the phone**.
 Ozen turns what the people around you say into large captions on your
 phone, as they speak. It was made for someone who is deaf or hard of
 hearing. The captions are written in the language the people around you
-speak, chosen from twelve (Hebrew unless you pick another). The buttons and
+speak, chosen from twelve (Hebrew unless you pick another; Amharic captions
+are still often wrong). The buttons and
 settings can be in any of the same twelve languages. Once the speech model is on the
 phone, the captions are written on the phone itself, with no internet.
 
@@ -41,7 +42,9 @@ there have been answered. On the last page the button changes to **Start**
    can type a reply that the phone says aloud.
 3. **The language.** Which language the people around you speak, from a
    list of twelve with Hebrew first. The captions are written in it, and
-   Settings can change it at any time.
+   Settings can change it at any time. Captions in Amharic are often wrong
+   for now: when Amharic is picked, this page and Settings say so, and it is
+   worth checking anything important with the person speaking.
 4. **One-time setup.** You choose how the captions are written. See the
    next section.
 5. **Choose the speech model.** Only when the captions use a downloaded
