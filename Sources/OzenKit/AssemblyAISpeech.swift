@@ -127,6 +127,15 @@ public enum AssemblyAISpeech: CloudStreamService {
             var text: String
             var start: Double?
             var end: Double?
+
+            enum CodingKeys: String, CodingKey { case text, start, end }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                text = try container.decode(String.self, forKey: .text)
+                start = try? container.decode(Double.self, forKey: .start)
+                end = try? container.decode(Double.self, forKey: .end)
+            }
         }
 
         var type: String?

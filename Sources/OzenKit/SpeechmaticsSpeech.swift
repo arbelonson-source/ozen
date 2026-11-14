@@ -160,6 +160,15 @@ public enum SpeechmaticsSpeech: CloudStreamService {
         var attachesTo: String?
         var alternatives: [Alternative]?
 
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            type = try container.decodeIfPresent(String.self, forKey: .type)
+            alternatives = try container.decodeIfPresent([Alternative].self, forKey: .alternatives)
+            attachesTo = try container.decodeIfPresent(String.self, forKey: .attachesTo)
+            startTime = try? container.decode(Double.self, forKey: .startTime)
+            endTime = try? container.decode(Double.self, forKey: .endTime)
+        }
+
         enum CodingKeys: String, CodingKey {
             case type, alternatives
             case startTime = "start_time"

@@ -10,5 +10,8 @@ internal object CloudTime {
 
     fun milliseconds(ms: Int?): Int? = ms?.takeIf { it in 0..LONGEST_MS }
 
-    fun span(start: Int, end: Int?): Long = if (end == null) 0L else end.toLong() - start.toLong()
+    fun span(start: Int, end: Int?, wordStart: Int? = null): Long {
+        val latest = listOfNotNull(end, wordStart).maxOrNull() ?: return 0L
+        return latest.toLong() - start.toLong()
+    }
 }

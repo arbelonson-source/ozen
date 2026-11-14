@@ -160,13 +160,10 @@ object AssemblyAISpeech : CloudStreamService {
         }
     }
 
-    private fun optionalNumber(element: JsonElement?): Double? {
-        if (element == null || element is JsonNull) return null
-        val primitive = element as? JsonPrimitive ?: throw Unreadable()
-        if (primitive.isString) throw Unreadable()
-        val value = primitive.content.toDoubleOrNull() ?: throw Unreadable()
-        if (!value.isFinite()) throw Unreadable()
-        return value
+    private fun optionalTime(element: JsonElement?): Double? {
+        val primitive = element as? JsonPrimitive ?: return null
+        if (primitive.isString) return null
+        return primitive.content.toDoubleOrNull()?.takeIf { it.isFinite() }
     }
 
     private fun decoded(frame: String): Frame? {
@@ -183,7 +180,7 @@ object AssemblyAISpeech : CloudStreamService {
                 (list as? JsonArray ?: throw Unreadable()).map { entry ->
                     val word = entry as? JsonObject ?: throw Unreadable()
                     val text = optionalText(word["text"]) ?: throw Unreadable()
-                    Frame.Word(text, optionalNumber(word["start"]), optionalNumber(word["end"]))
+                    Frame.Word(text, optionalTime(word["start"]), optionalTime(word["end"]))
                 }
             }
             Frame(

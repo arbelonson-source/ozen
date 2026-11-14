@@ -15,8 +15,8 @@ enum CloudTime {
         return ms
     }
 
-    static func span(from start: Int, to end: Int?) -> Int {
-        guard let end else { return 0 }
-        return end.subtractingReportingOverflow(start).partialValue
+    static func span(from start: Int, to end: Int?, wordStart: Int? = nil) -> Int {
+        guard let latest = [end, wordStart].compactMap({ $0 }).max() else { return 0 }
+        return latest.subtractingReportingOverflow(start).partialValue
     }
 }

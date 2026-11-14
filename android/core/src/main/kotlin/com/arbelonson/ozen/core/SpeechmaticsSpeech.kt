@@ -171,6 +171,12 @@ object SpeechmaticsSpeech : CloudStreamService {
         return primitive.content
     }
 
+    private fun optionalTime(element: JsonElement?): Double? {
+        val primitive = element as? JsonPrimitive ?: return null
+        if (primitive.isString) return null
+        return primitive.content.toDoubleOrNull()?.takeIf { it.isFinite() }
+    }
+
     private fun optionalNumber(element: JsonElement?): Double? {
         if (element == null || element is JsonNull) return null
         val primitive = element as? JsonPrimitive ?: throw Unreadable()
@@ -199,8 +205,8 @@ object SpeechmaticsSpeech : CloudStreamService {
         }
         return Result(
             type = optionalText(result["type"]),
-            startTime = optionalNumber(result["start_time"]),
-            endTime = optionalNumber(result["end_time"]),
+            startTime = optionalTime(result["start_time"]),
+            endTime = optionalTime(result["end_time"]),
             attachesTo = optionalText(result["attaches_to"]),
             alternatives = alternatives,
         )

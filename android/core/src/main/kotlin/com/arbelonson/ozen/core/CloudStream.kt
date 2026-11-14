@@ -91,11 +91,11 @@ internal class CloudStreamLines(private val spaced: Boolean = true) {
             // Only before a new word: a piece that goes on the last word
             // has no space in front of it. Without spaces, any piece will do.
             val tooLong = (!spaced || startsWithWhitespace(token.text)) &&
-                (startMs?.let { CloudTime.span(it, token.endMs) >= MAX_LINE_MS } ?: false)
+                (startMs?.let { CloudTime.span(it, CloudTime.milliseconds(token.endMs), CloudTime.milliseconds(token.startMs)) >= MAX_LINE_MS } ?: false)
             if (hasWords && (otherVoice || tooLong)) {
                 close(out, at)
             }
-            if (words.isEmpty()) {
+            if (startMs == null) {
                 startMs = CloudTime.milliseconds(token.startMs)
             }
             // A line begun by a word of no known voice takes the first

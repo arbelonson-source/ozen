@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class CloudOddTimesTest {
     private fun speechmatics(start: String, end: String): List<CloudStreamToken> {
@@ -45,5 +46,35 @@ class CloudOddTimesTest {
         assertEquals("שלום", tokens.first().text)
         assertNull(tokens.first().startMs)
         assertNull(tokens.first().endMs)
+    }
+
+    @Test
+    fun `a time too large for a number keeps the words, in both services`() {
+        assertEquals(listOf(" שלום"), speechmatics("1e400", "2").map { it.text })
+        assertNull(speechmatics("1e400", "2").first().startMs)
+        assertNull(speechmatics("1.5", "-1e400").first().endMs)
+        assertEquals(" שלום", assembly("1e400", "200").first().text)
+        assertNull(assembly("1e400", "200").first().startMs)
+    }
+
+    @Test
+    fun `a line whose first word has no time still splits once a later word gives it a start`() {
+        val lines = CloudStreamLines(spaced = false)
+        val first = CloudStreamToken(text = "א", isFinal = true)
+        val second = CloudStreamToken(text = " ב", isFinal = true, startMs = 1_000, endMs = 2_000)
+        val third = CloudStreamToken(text = " ג", isFinal = true, startMs = 3_000, endMs = 1_000 + CloudStreamLines.MAX_LINE_MS)
+        val shown = lines.take(listOf(first, second, third), 1.0)
+        assertTrue(shown.any { it.isFinal && it.text == "א ב" })
+    }
+
+    @Test
+    fun `words whose end is before their start still let a long line split`() {
+        val lines = CloudStreamLines(spaced = false)
+        var closed = 0
+        for (i in 0 until 30) {
+            val word = CloudStreamToken(text = " ו", isFinal = true, startMs = i * 1_500, endMs = 0)
+            closed += lines.take(listOf(word), 1.0).count { it.isFinal }
+        }
+        assertTrue(closed > 0)
     }
 }

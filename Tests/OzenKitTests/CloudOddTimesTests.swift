@@ -58,4 +58,34 @@ struct CloudOddTimesTests {
         #expect(shown.map(\.text).joined().contains("א"))
         #expect(shown.map(\.text).joined().contains("ב"))
     }
+
+    @Test("a time too large for a number keeps the words, in both services")
+    func hugeExponentKeepsWords() {
+        #expect(speechmatics("1e400", "2").map(\.text) == [" שלום"])
+        #expect(speechmatics("1e400", "2").first?.startMs == nil)
+        #expect(speechmatics("1.5", "-1e400").first?.endMs == nil)
+        #expect(assembly("1e400", "200").first?.text == " שלום")
+        #expect(assembly("1e400", "200").first?.startMs == nil)
+    }
+
+    @Test("a line whose first word has no time still splits once a later word gives it a start")
+    func lateStartStillSplits() {
+        var lines = CloudStreamLines(spaced: false)
+        let first = CloudStreamToken(text: "א", isFinal: true)
+        let second = CloudStreamToken(text: " ב", isFinal: true, startMs: 1_000, endMs: 2_000)
+        let third = CloudStreamToken(text: " ג", isFinal: true, startMs: 3_000, endMs: 1_000 + CloudStreamLines.maxLineMs)
+        let shown = lines.take([first, second, third], at: 1)
+        #expect(shown.contains { $0.isFinal && $0.text == "א ב" })
+    }
+
+    @Test("words whose end is before their start still let a long line split")
+    func reversedWordsStillSplit() {
+        var lines = CloudStreamLines(spaced: false)
+        var closed = 0
+        for i in 0..<30 {
+            let word = CloudStreamToken(text: " ו", isFinal: true, startMs: i * 1_500, endMs: 0)
+            closed += lines.take([word], at: 1).filter { $0.isFinal }.count
+        }
+        #expect(closed > 0)
+    }
 }
