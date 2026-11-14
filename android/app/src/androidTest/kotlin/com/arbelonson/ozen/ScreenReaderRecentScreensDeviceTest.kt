@@ -10,11 +10,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,11 +20,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.DisplayPreferences.Theme
 import com.arbelonson.ozen.core.BackupModelStatus
-import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.PhoneModelCatalog
-import com.arbelonson.ozen.core.PhoneSound
-import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.UILanguage
 import java.util.concurrent.CopyOnWriteArrayList
@@ -62,39 +56,6 @@ class ScreenReaderRecentScreensDeviceTest {
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {
         compose.runOnUiThread { compose.activity.setContent { Column { content() } } }
-    }
-
-    @Test
-    fun theMicrophoneDropBannerKeepsItsCloseButtonAsAControlOfItsOwn() {
-        var chosen = 0
-        var dismissed = 0
-        show { MicrophoneDropBanner("The microphone dropped", "Pick another one", { chosen += 1 }, { dismissed += 1 }) }
-        compose.onAllNodes(hasClickAction()).assertCountEquals(2)
-        compose.onNodeWithContentDescription("Close").performClick()
-        assertEquals(1, dismissed)
-        assertEquals(0, chosen)
-        compose.onNodeWithText("The microphone dropped").performClick()
-        assertEquals(1, chosen)
-        compose.onNodeWithText("The microphone dropped")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-    }
-
-    @Test
-    fun theSavingTroublePhoneSoundAndBatteryBannersKeepTheirCloseButtonsAsControlsOfTheirOwn() {
-        var dismissed = 0
-        show {
-            SavingTroubleBanner { dismissed += 1 }
-            PhoneSoundStoppedBanner { dismissed += 1 }
-            BatteryBanner(BatteryWarning.Critical(9)) { dismissed += 1 }
-        }
-        compose.onAllNodesWithContentDescription("Close").assertCountEquals(3)
-        for (title in listOf(SavingTroubleNotice.title, PhoneSound.stoppedNotice, "Battery at 9%")) {
-            compose.onNodeWithText(title).assert(!hasClickAction())
-            compose.onNodeWithText(title)
-                .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-        }
-        for (at in 0..2) compose.onAllNodesWithContentDescription("Close")[at].performClick()
-        assertEquals(3, dismissed)
     }
 
     @Test

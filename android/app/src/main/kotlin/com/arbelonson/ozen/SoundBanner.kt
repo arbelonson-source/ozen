@@ -133,7 +133,7 @@ internal fun soundTone(importance: SoundEvent.Importance): NoticeTone = when (im
  * (tonal containers, never a saturated fill), an icon in a 40 dp circle, a title,
  * a line under it that wraps in full (the banner area scrolls when several are showing), and an optional [trailing]
  * mark. An emergency also has a strong edge on its leading side, and a phone that
- * asks for more contrast gets a 2 dp outline. Clicking and TalkBack words for the whole card come in on [modifier]; those for the text beside [trailing] come in on [bodyModifier], so a control in [trailing], such as a close button, stays a node of its own.
+ * asks for more contrast gets a 2 dp outline. Clicking and TalkBack words come in on [modifier].
  */
 @Composable
 internal fun NoticeBanner(
@@ -142,7 +142,6 @@ internal fun NoticeBanner(
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
-    bodyModifier: Modifier = Modifier,
     trailing: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -166,7 +165,7 @@ internal fun NoticeBanner(
     ) {
         if (tone == NoticeTone.Emergency) Box(Modifier.width(4.dp).fillMaxHeight().background(colors.error))
         Row(
-            Modifier.weight(1f).then(bodyModifier).padding(start = OzenSpacing.Page - if (tone == NoticeTone.Emergency) 4.dp else 0.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            Modifier.weight(1f).padding(start = OzenSpacing.Page - if (tone == NoticeTone.Emergency) 4.dp else 0.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

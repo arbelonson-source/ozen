@@ -141,7 +141,7 @@ internal fun SavingTroubleBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
-        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
@@ -153,7 +153,7 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         PhoneSound.stoppedNotice,
         "",
-        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
@@ -170,7 +170,7 @@ internal fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
         } else {
             tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
         },
-        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
@@ -182,7 +182,7 @@ internal fun MicrophoneDropBanner(title: String, detail: String, onChooseMicroph
         NoticeTone.Warning,
         title,
         detail,
-        bodyModifier = Modifier
+        Modifier
             .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), role = Role.Button, onClick = onChooseMicrophone)
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
