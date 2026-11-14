@@ -128,8 +128,8 @@ public enum SpeechmaticsSpeech: CloudStreamService {
                 text: (joined ? "" : " ") + best.content,
                 isFinal: isFinal,
                 speaker: best.speaker == unknownSpeaker ? nil : best.speaker,
-                startMs: result.startTime.map { Int(($0 * 1_000).rounded()) },
-                endMs: result.endTime.map { Int(($0 * 1_000).rounded()) }
+                startMs: result.startTime.flatMap(CloudTime.milliseconds(fromSeconds:)),
+                endMs: result.endTime.flatMap(CloudTime.milliseconds(fromSeconds:))
             ))
             heldByLast = attaches == "next" || attaches == "both"
         }

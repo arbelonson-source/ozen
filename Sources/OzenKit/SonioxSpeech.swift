@@ -71,7 +71,7 @@ public enum SonioxSpeech: CloudStreamService {
         }
         guard parsed.tokens != nil || parsed.finished != nil else { return nil }
         let tokens = (parsed.tokens ?? []).map {
-            Token(text: $0.text, isFinal: $0.isFinal ?? false, speaker: $0.speaker, startMs: $0.startMs, endMs: $0.endMs)
+            Token(text: $0.text, isFinal: $0.isFinal ?? false, speaker: $0.speaker, startMs: CloudTime.milliseconds($0.startMs), endMs: CloudTime.milliseconds($0.endMs))
         }
         return .tokens(tokens, finished: parsed.finished ?? false)
     }

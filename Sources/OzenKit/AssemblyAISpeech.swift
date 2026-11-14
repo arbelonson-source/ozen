@@ -110,8 +110,8 @@ public enum AssemblyAISpeech: CloudStreamService {
                 text: gap + (turn.transcript ?? ""),
                 isFinal: true,
                 speaker: speaker,
-                startMs: words.first?.start.map { Int($0.rounded()) },
-                endMs: words.last?.end.map { Int($0.rounded()) }
+                startMs: words.first?.start.flatMap(CloudTime.milliseconds(fromMs:)),
+                endMs: words.last?.end.flatMap(CloudTime.milliseconds(fromMs:))
             ),
             CloudStreamToken(text: CloudStreamLines.endOfLine, isFinal: true),
         ]

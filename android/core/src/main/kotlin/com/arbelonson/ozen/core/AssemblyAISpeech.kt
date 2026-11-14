@@ -119,15 +119,12 @@ object AssemblyAISpeech : CloudStreamService {
                 text = gap + (turn.transcript ?: ""),
                 isFinal = true,
                 speaker = speaker,
-                startMs = words.firstOrNull()?.start?.let { rounded(it) },
-                endMs = words.lastOrNull()?.end?.let { rounded(it) },
+                startMs = words.firstOrNull()?.start?.let { CloudTime.milliseconds(it) },
+                endMs = words.lastOrNull()?.end?.let { CloudTime.milliseconds(it) },
             ),
             CloudStreamToken(text = CloudStreamLines.END_OF_LINE, isFinal = true),
         )
     }
-
-    private fun rounded(value: Double): Int =
-        (if (value < 0) -Math.floor(-value + 0.5) else Math.floor(value + 0.5)).toInt()
 
     private fun json(list: List<String>): String = JsonArray(list.map { JsonPrimitive(it) }).toString()
 

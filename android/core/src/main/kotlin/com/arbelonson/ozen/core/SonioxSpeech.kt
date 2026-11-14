@@ -74,7 +74,7 @@ object SonioxSpeech : CloudStreamService {
         parsed.errorCode?.let { return CloudStreamReply.Failure(failure(it)) }
         if (parsed.tokens == null && parsed.finished == null) return null
         val tokens = (parsed.tokens ?: emptyList()).map {
-            CloudStreamToken(text = it.text, isFinal = it.isFinal ?: false, speaker = it.speaker, startMs = it.startMs, endMs = it.endMs)
+            CloudStreamToken(text = it.text, isFinal = it.isFinal ?: false, speaker = it.speaker, startMs = CloudTime.milliseconds(it.startMs), endMs = CloudTime.milliseconds(it.endMs))
         }
         return CloudStreamReply.Tokens(tokens, finished = parsed.finished ?: false)
     }
