@@ -98,6 +98,9 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     /** The phone's audio mode, read to tell a call's end with nothing recording; a seam for tests. */
     internal var audioMode: () -> Int = { manager.mode }
 
+    /** True while the phone is in a call or a voice call from an app, as opposed to another app merely recording. */
+    val callInProgress: Boolean get() = audioMode() != AudioManager.MODE_NORMAL
+
     /** One read from the recording; a seam for tests to make it fail. */
     internal var readChunk: (AudioRecord, ShortArray) -> Int = { record, buffer -> record.read(buffer, 0, buffer.size) }
 

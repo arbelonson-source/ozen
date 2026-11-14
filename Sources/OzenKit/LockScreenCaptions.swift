@@ -347,7 +347,7 @@ extension LockScreenCaptions {
         // and a failure nothing retries doesn't end with the call.
         if interruptedByCall, phase != .idle, phase != .paused || pausedForSpeech,
            !phase.failedForGood(recoveringByItself: recoveringByItself) {
-            return (true, tr("הכתוביות מושהות בגלל שיחת טלפון", "Captions paused for a call"))
+            return (true, tr("הכתוביות מושהות בגלל שיחה או אפליקציה אחרת", "Captions paused for a call or another app"))
         }
         switch phase {
         case .listening:

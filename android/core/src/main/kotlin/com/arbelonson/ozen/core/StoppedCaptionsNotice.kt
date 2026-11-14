@@ -6,13 +6,17 @@ package com.arbelonson.ozen.core
  * With the phone in a pocket or on the table with the screen off, the
  * doorbell and name alerts are the whole point of leaving captions on.
  * When captions stop there and nothing will bring them back by itself,
- * those alerts stop too, and nothing on a dark screen says so. Three ways
+ * those alerts stop too, and nothing on a dark screen says so. Four ways
  * that happens:
  *
  * - a failure automatic recovery won't retry, or has given up on;
  * - a phone call ends but the system never hands the microphone back, which
  *   it doesn't promise to do;
- * - the phone ended the app and it came back without being able to listen.
+ * - the phone ended the app and it came back without being able to listen;
+ * - something that is not a call (an alarm app, another app recording) takes
+ *   the microphone and, for a minute, doesn't give it back. The app does not
+ *   take the microphone back from it, since that may be audio she chose; she
+ *   is only told.
  *
  * The notice is withdrawn from the notification shade once captions run
  * again, or are paused or stopped on purpose, so an old "stopped" never
@@ -31,16 +35,28 @@ class StoppedCaptionsNotice {
 
         /** Sounds alone were listened for, and the microphone stopped and did not come back. */
         data object SoundAlertsStopped : Cause()
+
+        /** Something other than a call has the microphone. */
+        data object OtherAppHasMicrophone : Cause()
     }
 
     sealed class Update {
         data class Post(val content: AlertNotificationContent) : Update()
 
         data class Withdraw(val identifier: String) : Update()
+
+        /** Deliver [content] after [afterSeconds] unless cancelled first. */
+        data class Schedule(val content: AlertNotificationContent, val afterSeconds: Double) : Update()
+
+        /** Drop the scheduled notice, and the delivered one if it went out. */
+        data class Cancel(val identifier: String) : Update()
     }
 
     /** A notice is sitting in the notification shade. */
     private var posted = false
+
+    /** What is sitting there was scheduled for later, not delivered now. */
+    private var postedAsSchedule = false
 
     /**
      * She has been told about this stop: by the notice, or by opening the
@@ -74,6 +90,11 @@ class StoppedCaptionsNotice {
         if (!isEnabled || told) return null
         posted = true
         told = true
+        if (cause == Cause.OtherAppHasMicrophone) {
+            postedAsSchedule = true
+            return Update.Schedule(content(cause), OTHER_APP_DELAY_SECONDS)
+        }
+        postedAsSchedule = false
         return Update.Post(content(cause))
     }
 
@@ -85,12 +106,16 @@ class StoppedCaptionsNotice {
 
     private fun withdrawIfPosted(sweep: Boolean): Update? {
         if (!posted && !sweep) return null
+        val cancelling = posted && postedAsSchedule && !sweep
         posted = false
-        return Update.Withdraw(IDENTIFIER)
+        return if (cancelling) Update.Cancel(IDENTIFIER) else Update.Withdraw(IDENTIFIER)
     }
 
     companion object {
         const val IDENTIFIER = "captions-stopped"
+
+        /** How long another app has to keep the microphone before she is told. */
+        const val OTHER_APP_DELAY_SECONDS = 60.0
 
         /**
          * Why captions are stopped for good right now, or null when they run,
@@ -99,7 +124,11 @@ class StoppedCaptionsNotice {
          * [callEndedDuringInterruption] is true once a call that took the
          * microphone is known to be over while the system still hasn't said the
          * interruption ended. Until then an interruption is someone on the
-         * phone, which is no news to her.
+         * phone, which is no news to her. [interruptedByCall] is true when a
+         * call is, or was during this interruption, going on; an interruption
+         * without one is something else using the microphone. [soundsOnlyChosen]
+         * is true while only sound alerts are listened for, which leaves the
+         * phase idle or paused although something is running.
          */
         fun cause(
             phase: PipelinePhase,
@@ -107,12 +136,15 @@ class StoppedCaptionsNotice {
             systemInterrupted: Boolean,
             callEndedDuringInterruption: Boolean,
             soundsOnlyStopped: Boolean = false,
+            interruptedByCall: Boolean = false,
+            soundsOnlyChosen: Boolean = false,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
                 // microphone back, so what matters is only whether it did.
-                if (!callEndedDuringInterruption || !(phase.isListening || phase.failure != null)) return null
-                return Cause.CallEnded
+                if (!(phase.isListening || phase.failure != null || soundsOnlyChosen)) return null
+                if (callEndedDuringInterruption) return Cause.CallEnded
+                return if (interruptedByCall) null else Cause.OtherAppHasMicrophone
             }
             if (soundsOnlyStopped) return Cause.SoundAlertsStopped
             val failure = phase.failure
@@ -124,13 +156,21 @@ class StoppedCaptionsNotice {
 
         internal fun content(cause: Cause): AlertNotificationContent = AlertNotificationContent(
             identifier = IDENTIFIER,
-            title = if (cause == Cause.SoundAlertsStopped) tr("ההתראות על צלילים נעצרו", "Sound alerts stopped") else tr("הכתוביות נעצרו", "Captions stopped"),
+            title = when (cause) {
+                Cause.SoundAlertsStopped -> tr("ההתראות על צלילים נעצרו", "Sound alerts stopped")
+                Cause.OtherAppHasMicrophone -> tr("הכתוביות מושהות", "Captions paused")
+                else -> tr("הכתוביות נעצרו", "Captions stopped")
+            },
             body = body(cause),
             threadIdentifier = "status",
             isUrgent = true,
         )
 
         private fun body(cause: Cause): String = when (cause) {
+            Cause.OtherAppHasMicrophone -> tr(
+                "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",
+                "Another app is using the microphone, so captions and sound alerts are paused. Open Ozen to bring them back.",
+            )
             Cause.EndedByPhone -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             Cause.SoundAlertsStopped -> tr(
                 "המיקרופון הפסיק לפעול ולא חזר. פתחו את אוזן כדי להפעיל שוב את ההתראות על צלילים.",

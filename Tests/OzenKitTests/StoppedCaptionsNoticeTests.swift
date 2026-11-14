@@ -14,13 +14,17 @@ struct StoppedCaptionsNoticeTests {
         _ phase: PipelinePhase,
         retryScheduled: Bool = false,
         interrupted: Bool = false,
-        callEnded: Bool = false
+        byCall: Bool = false,
+        callEnded: Bool = false,
+        soundsOnly: Bool = false
     ) -> StoppedCaptionsNotice.Cause? {
         StoppedCaptionsNotice.cause(
             phase: phase,
             retryScheduled: retryScheduled,
             systemInterrupted: interrupted,
-            callEndedDuringInterruption: callEnded
+            interruptedByCall: byCall,
+            callEndedDuringInterruption: callEnded,
+            soundsOnlyChosen: soundsOnly
         )
     }
 
@@ -46,12 +50,72 @@ struct StoppedCaptionsNoticeTests {
 
     @Test("during a call nothing is a stop; after it, a microphone that never came back is")
     func calls() {
-        #expect(cause(.listening, interrupted: true) == nil)
-        #expect(cause(.failed(glitch), interrupted: true) == nil)
-        #expect(cause(.listening, interrupted: true, callEnded: true) == .callEnded)
-        #expect(cause(.failed(glitch), interrupted: true, callEnded: true) == .callEnded)
+        #expect(cause(.listening, interrupted: true, byCall: true) == nil)
+        #expect(cause(.failed(glitch), interrupted: true, byCall: true) == nil)
+        #expect(cause(.listening, interrupted: true, byCall: true, callEnded: true) == .callEnded)
+        #expect(cause(.failed(glitch), interrupted: true, byCall: true, callEnded: true) == .callEnded)
         // Paused before the call: nothing was running to stop.
-        #expect(cause(.paused, interrupted: true, callEnded: true) == nil)
+        #expect(cause(.paused, interrupted: true, byCall: true, callEnded: true) == nil)
+    }
+
+    @Test("another app keeping the microphone is a stop to tell about, unless a call is why or captions were paused")
+    func otherAppHasMicrophone() {
+        #expect(cause(.listening, interrupted: true) == .otherAppHasMicrophone)
+        #expect(cause(.failed(glitch), interrupted: true) == .otherAppHasMicrophone)
+        #expect(cause(.paused, interrupted: true) == nil)
+        #expect(cause(.idle, interrupted: true) == nil)
+        #expect(cause(.listening, interrupted: true, byCall: true) == nil)
+        #expect(cause(.listening, interrupted: false) == nil)
+    }
+
+    @Test("sound alerts alone, which leave the phase idle or paused, are told about when another app or a stuck call has the microphone")
+    func soundsOnlyInterrupted() {
+        #expect(cause(.idle, interrupted: true, soundsOnly: true) == .otherAppHasMicrophone)
+        #expect(cause(.paused, interrupted: true, soundsOnly: true) == .otherAppHasMicrophone)
+        #expect(cause(.idle, interrupted: true, byCall: true, soundsOnly: true) == nil)
+        #expect(cause(.idle, interrupted: true, byCall: true, callEnded: true, soundsOnly: true) == .callEnded)
+        #expect(cause(.idle, interrupted: true) == nil)
+    }
+
+    @Test("the other-app notice goes out after a minute, once, and is cancelled when the app opens or the microphone is back")
+    func otherAppScheduled() {
+        var notice = StoppedCaptionsNotice()
+        #expect(StoppedCaptionsNotice.otherAppDelay == 60)
+        #expect(notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: false) == nil)
+
+        guard case .schedule(let content, let delay) = notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a notification to schedule")
+            return
+        }
+        #expect(delay == 60)
+        #expect(content.identifier == StoppedCaptionsNotice.identifier)
+        #expect(content.isUrgent)
+        #expect(notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true) == nil)
+
+        #expect(notice.update(for: .otherAppHasMicrophone, appIsActive: true, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true) == nil)
+
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == nil)
+        guard case .schedule = notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true) else {
+            Issue.record("a new interruption should be told again")
+            return
+        }
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+    }
+
+    @Test("the other-app notice says another app is using the microphone and what to do")
+    func otherAppWording() {
+        let body = StoppedCaptionsNotice.content(for: .otherAppHasMicrophone).body
+        #expect(body.contains("אפליקציה אחרת"))
+        #expect(!body.contains("שיחת הטלפון"))
+        Localization.$override.withValue(.english) {
+            let content = StoppedCaptionsNotice.content(for: .otherAppHasMicrophone)
+            #expect(content.title == "Captions paused")
+            #expect(content.body.contains("Another app"))
+            #expect(content.body.contains("sound alerts"))
+            #expect(content.body.contains("Open Ozen"))
+            #expect(!content.body.contains("After the call"))
+        }
     }
 
     @Test("posted once while the phone is put away, never while the app is on screen or switched off")
@@ -144,7 +208,7 @@ struct StoppedCaptionsNoticeTests {
         // Opening the app doesn't wake the computer; captions come back by
         // themselves once it answers.
         #expect(computer.contains("אין תשובה מהמחשב"))
-        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, cloudCredit, offline, computer]).count == 9)
+        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, cloudCredit, offline, computer, StoppedCaptionsNotice.content(for: .otherAppHasMicrophone).body]).count == 10)
     }
 
     @Test("the message is in English when the app is")
