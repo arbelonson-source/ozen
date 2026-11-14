@@ -1,0 +1,35 @@
+{
+  "english": {
+    "numbers": [
+      "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+      "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+      "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+      "hundred", "thousand", "million", "billion", "dozen", "twice"
+    ],
+    "scales": ["hundred", "thousand", "million", "billion"],
+    "connectors": ["and"],
+    "fractions": ["half", "quarter", "halves", "quarters", "third", "thirds"],
+    "fractionLinks": ["a", "an", "the", "of"],
+    "clockLinks": ["past", "to"],
+    "ambiguous": ["one"],
+    "notACountBefore": ["the", "this", "that", "which", "no", "any", "each", "another", "every", "some", "of"],
+    "onceWords": ["once"],
+    "repeatLinks": ["a", "an", "per", "each", "every"],
+    "repeatUnits": ["time", "times", "twice", "once"],
+    "periods": ["day", "week", "month", "year", "hour", "night", "morning", "evening"],
+    "idioms": ["one", "two", "once"],
+    "units": [
+      "pill", "pills", "tablet", "tablets", "capsule", "capsules", "drop", "drops",
+      "teaspoon", "teaspoons", "tablespoon", "tablespoons", "spoonful", "spoonfuls",
+      "cup", "cups", "dose", "doses", "shot", "shots", "injection", "injections",
+      "puff", "puffs", "unit", "units",
+      "mg", "milligram", "milligrams", "mcg", "microgram", "micrograms",
+      "ml", "milliliter", "milliliters", "millilitre", "millilitres", "liter", "liters", "litre", "litres", "cc",
+      "g", "gram", "grams", "kg", "kilo", "kilos", "kilogram", "kilograms",
+      "cm", "meter", "meters", "metre", "metres", "kilometer", "kilometers", "mile", "miles",
+      "degree", "degrees", "percent", "dollar", "dollars", "euro", "euros", "shekel", "shekels", "pound", "pounds", "cent", "cents",
+      "second", "seconds", "minute", "minutes", "hour", "hours", "day", "days", "week", "weeks", "month", "months", "year", "years",
+      "time", "times", "o'clock", "oclock", "am", "pm", "a.m", "p.m"
+    ]
+  }
+}

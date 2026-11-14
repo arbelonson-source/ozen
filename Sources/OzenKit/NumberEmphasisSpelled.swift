@@ -1,0 +1,124 @@
+import Foundation
+
+extension NumberEmphasis {
+    static func spelledRanges(in text: String, profile: NumberWordProfile) -> [Range<String.Index>] {
+        let words = self.words(in: text)
+        let lowered: [String?] = words.map { $0.core?.lowercased().replacingOccurrences(of: "\u{2019}", with: "'") }
+        func joinsNext(_ index: Int, _ end: String.Index) -> Bool {
+            index + 1 < words.count && end == words[index].text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
+        }
+        func wordEnd(_ index: Int) -> String.Index { words[index].coreRange?.upperBound ?? words[index].text.endIndex }
+        func isNumber(_ index: Int) -> Bool { lowered[index].map(profile.numbers.contains) ?? false }
+
+        func runEnd(from start: Int) -> Int {
+            var last = start
+            while joinsNext(last, wordEnd(last)) {
+                if isNumber(last + 1) {
+                    last += 1
+                } else if let word = lowered[last + 1], profile.connectors.contains(word), let previous = lowered[last],
+                          profile.scales.contains(previous), last + 2 < words.count, isNumber(last + 2),
+                          joinsNext(last + 1, wordEnd(last + 1)) {
+                    last += 2
+                } else {
+                    break
+                }
+            }
+            return last
+        }
+
+        func unit(after last: Int, _ end: String.Index, throughLinks: Bool) -> (last: Int, end: String.Index, core: String)? {
+            guard joinsNext(last, end) else { return nil }
+            var cursor = last
+            if throughLinks {
+                while joinsNext(cursor, wordEnd(cursor)), cursor + 1 < words.count, let link = lowered[cursor + 1],
+                      profile.fractionLinks.contains(link) {
+                    cursor += 1
+                }
+            }
+            guard cursor + 1 < words.count, joinsNext(cursor, cursor == last ? end : wordEnd(cursor)) else { return nil }
+            if words[cursor + 1].text == "₪" { return (cursor + 1, words[cursor + 1].text.endIndex, "₪") }
+            guard let core = lowered[cursor + 1], profile.units.contains(core) else { return nil }
+            return (cursor + 1, wordEnd(cursor + 1), core)
+        }
+
+        func repeated(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
+            guard joinsNext(last, end), last + 2 < words.count, let link = lowered[last + 1], profile.repeatLinks.contains(link),
+                  joinsNext(last + 1, wordEnd(last + 1)), let period = lowered[last + 2], profile.periods.contains(period)
+            else { return nil }
+            return (last + 2, wordEnd(last + 2))
+        }
+
+        func finish(_ last: Int, _ end: String.Index, _ core: String?, afterFraction: Bool) -> (last: Int, end: String.Index, joined: Bool) {
+            var last = last
+            var end = end
+            var core = core
+            var joined = false
+            if let tail = unit(after: last, end, throughLinks: afterFraction) {
+                (last, end, core) = (tail.last, tail.end, tail.core)
+                joined = true
+            }
+            if let core, profile.repeatUnits.contains(core), let again = repeated(after: last, end) {
+                (last, end) = again
+            }
+            return (last, end, joined)
+        }
+
+        var result: [Range<String.Index>] = []
+        var lastJoined = -1
+        for (position, word) in words.enumerated() where position > lastJoined {
+            var span: (start: String.Index, last: Int, end: String.Index)?
+            if let firstDigit = word.text.firstIndex(where: \.isNumber), let lastDigit = word.text.lastIndex(where: \.isNumber) {
+                var end = word.text.index(after: lastDigit)
+                if end < word.text.endIndex, gluedUnitSigns.contains(word.text[end]) { end = word.text.index(after: end) }
+                let done = finish(position, end, nil, afterFraction: false)
+                span = (firstDigit, done.last, done.end)
+            } else if let core = lowered[position], let start = word.coreRange?.lowerBound {
+                let previous = position > 0 ? lowered[position - 1] : nil
+                if profile.onceWords.contains(core) {
+                    if let previous, profile.notACountBefore.contains(previous) { continue }
+                    guard let again = repeated(after: position, wordEnd(position)) else { continue }
+                    span = (start, again.last, again.end)
+                } else if isNumber(position) {
+                    var last = runEnd(from: position)
+                    var end = wordEnd(last)
+                    var afterFraction = false
+                    if joinsNext(last, end), let next = lowered[last + 1], profile.fractions.contains(next) {
+                        last += 1
+                        end = wordEnd(last)
+                        afterFraction = true
+                    }
+                    let done = finish(last, end, lowered[last], afterFraction: afterFraction)
+                    let alone = position == last
+                    if alone, profile.ambiguous.contains(core) {
+                        if let previous, profile.notACountBefore.contains(previous) { continue }
+                        if !done.joined { continue }
+                    }
+                    span = (start, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
+                } else if profile.fractions.contains(core) {
+                    if joinsNext(position, wordEnd(position)), let link = lowered[position + 1], profile.clockLinks.contains(link),
+                       joinsNext(position + 1, wordEnd(position + 1)), position + 2 < words.count, isNumber(position + 2) {
+                        let last = runEnd(from: position + 2)
+                        let done = finish(last, wordEnd(last), nil, afterFraction: false)
+                        span = (start, done.last, done.end)
+                    } else {
+                        let done = finish(position, wordEnd(position), nil, afterFraction: true)
+                        if done.joined { span = (start, done.last, done.end) }
+                    }
+                }
+            }
+            guard let span else { continue }
+            result.append(span.start..<span.end)
+            lastJoined = span.last
+        }
+        return result
+    }
+
+    static func spelledListable(_ text: String, profile: NumberWordProfile) -> Bool {
+        spelledRanges(in: text, profile: profile).contains { range in
+            let found = text[range]
+            if found.contains(where: \.isNumber) { return true }
+            if found.contains(where: { $0.isWhitespace || $0 == "-" }) { return true }
+            return !profile.idioms.contains(found.lowercased())
+        }
+    }
+}

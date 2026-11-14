@@ -224,7 +224,7 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
                     }
                     Row {
                         if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = LocalDecimalComma.current), style = MaterialTheme.typography.bodyLarge)
+                        Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = LocalDecimalComma.current, languageCode = LocalSpokenLanguage.current), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }

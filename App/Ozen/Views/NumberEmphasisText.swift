@@ -2,8 +2,8 @@ import SwiftUI
 import OzenKit
 
 extension Text {
-    init(caption shown: String, emphasizingNumbers: Bool, size: Double, numberColor: Color?, uncertainWords: [String] = [], linkingPhoneNumbers: Bool = false) {
-        let ranges = emphasizingNumbers ? NumberEmphasis.ranges(in: shown) : []
+    init(caption shown: String, emphasizingNumbers: Bool, languageCode: String, size: Double, numberColor: Color?, uncertainWords: [String] = [], linkingPhoneNumbers: Bool = false) {
+        let ranges = emphasizingNumbers ? NumberEmphasis.ranges(in: shown, languageCode: languageCode) : []
         let doubtful = UncertainWords.ranges(in: shown, words: uncertainWords)
         let phones = linkingPhoneNumbers ? PhoneNumbers.matches(in: shown) : []
         guard !ranges.isEmpty || !doubtful.isEmpty || !phones.isEmpty else {

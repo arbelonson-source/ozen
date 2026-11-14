@@ -612,7 +612,7 @@ private fun opened(
     record = record,
     lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode, slots = slots) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
-    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, usesDecimalComma(languageCode)) },
+    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, usesDecimalComma(languageCode), languageCode) },
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
     stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
     slots = slots,
@@ -1054,7 +1054,7 @@ private fun NumbersSection(numbers: NumbersMentioned, languageCode: String, isUn
                     // The row's state says it once; the mark's own label would say it twice.
                     if (unsure) Box(Modifier.clearAndSetSemantics {}) { UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        captionText(CaptionLayout.directed(said.text, languageCode), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current),
+                        captionText(CaptionLayout.directed(said.text, languageCode), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current, languageCode = LocalSpokenLanguage.current),
                         style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     )
                 }
@@ -1115,7 +1115,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
                 Row {
                     if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = LocalDecimalComma.current), style = MaterialTheme.typography.bodyLarge)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = LocalDecimalComma.current, languageCode = LocalSpokenLanguage.current), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }

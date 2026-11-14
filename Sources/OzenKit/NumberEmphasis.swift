@@ -15,7 +15,20 @@ public enum NumberEmphasis {
     /// to the last, with a percent sign right after; and the unit that
     /// follows, when one does ("3 kadurim" — "3 pills", "chatzi kadur" —
     /// "half a pill", "500 mg"), since the amount alone doesn't say what of.
-    public static func ranges(in text: String) -> [Range<String.Index>] {
+    public static func ranges(in text: String, languageCode: String = "he") -> [Range<String.Index>] {
+        guard let profile = NumberWordProfile.profile(for: languageCode) else { return hebrewRanges(in: text) }
+        var merged: [Range<String.Index>] = []
+        for range in (spelledRanges(in: text, profile: profile) + hebrewRanges(in: text)).sorted(by: { $0.lowerBound < $1.lowerBound }) {
+            if let last = merged.last, range.lowerBound < last.upperBound {
+                merged[merged.count - 1] = last.lowerBound..<max(last.upperBound, range.upperBound)
+            } else {
+                merged.append(range)
+            }
+        }
+        return merged
+    }
+
+    private static func hebrewRanges(in text: String) -> [Range<String.Index>] {
         let words = self.words(in: text)
         var result: [Range<String.Index>] = []
         var lastJoined = -1
@@ -150,8 +163,9 @@ public enum NumberEmphasis {
     /// Those two are mostly idioms ("pa'am achat" — "once", "be-yom sheni" —
     /// "on Monday"); a list of every line with them in it would be most of
     /// the conversation.
-    public static func hasListableNumber(_ text: String) -> Bool {
-        ranges(in: text).contains { range in
+    public static func hasListableNumber(_ text: String, languageCode: String = "he") -> Bool {
+        if let profile = NumberWordProfile.profile(for: languageCode), spelledListable(text, profile: profile) { return true }
+        return hebrewRanges(in: text).contains { range in
             let found = text[range]
             if found.contains(where: \.isNumber) { return true }
             // The number is the first word; a unit may follow it.
@@ -166,7 +180,7 @@ public enum NumberEmphasis {
         }
     }
 
-    private struct Word {
+    struct Word {
         let text: Substring
         /// The letters, without punctuation, quotes or direction marks.
         let coreRange: Range<String.Index>?
@@ -174,7 +188,7 @@ public enum NumberEmphasis {
         let core: String?
     }
 
-    private static func words(in text: String) -> [Word] {
+    static func words(in text: String) -> [Word] {
         var words: [Word] = []
         var start: String.Index?
         var index = text.startIndex
@@ -219,7 +233,7 @@ public enum NumberEmphasis {
     /// itself (see `isThousandsGroupComma`), still ends it the way any
     /// other punctuation does: "be-sha'a 10:30, kadurim" ("at 10:30,
     /// pills") isn't "10:30" pills.
-    private static func isImmediatelyFollowedByComma(_ index: String.Index, in text: String) -> Bool {
+    static func isImmediatelyFollowedByComma(_ index: String.Index, in text: String) -> Bool {
         index < text.endIndex && text[index] == ","
     }
 
@@ -242,7 +256,7 @@ public enum NumberEmphasis {
 
     /// Signs meaning a unit that can be glued right onto the digits with
     /// no space: "20%", "150₪", "$500".
-    private static let gluedUnitSigns: Set<Character> = ["%", "₪", "$"]
+    static let gluedUnitSigns: Set<Character> = ["%", "₪", "$"]
 
     /// The number word inside `word` and the prefixes attached in front
     /// of it (at most two: vav + bet + "shesh" — "and" + "at" + "six"), or nil

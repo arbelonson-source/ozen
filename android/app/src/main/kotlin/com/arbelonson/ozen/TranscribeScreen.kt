@@ -357,7 +357,7 @@ private fun LinesList(
             Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
                 Text(
-                    captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null),
+                    captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null, languageCode = languageCode),
                     style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     modifier = Modifier.weight(1f),
                 )

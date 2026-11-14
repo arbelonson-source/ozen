@@ -54,7 +54,7 @@ object CaptionLayout {
      * and spoken text stays as recognized.
      */
     fun displayText(text: String, languageCode: String): String =
-        directed(joiningNumbers(readableText(text)), languageCode)
+        directed(joiningNumbers(readableText(text), languageCode), languageCode)
 
     /**
      * Spaces inside a phone number, a dose, or between an amount and what
@@ -65,9 +65,9 @@ object CaptionLayout {
      * not fit a line at the largest text size. Same as the iPhone, same
      * length, so offsets stay valid. Display only.
      */
-    internal fun joiningNumbers(text: String): String {
+    internal fun joiningNumbers(text: String, languageCode: String): String {
         val phones = PhoneNumbers.matches(text).map { it.start until it.end }
-        val amounts = NumberEmphasis.ranges(text).map { it.start until it.endExclusive }
+        val amounts = NumberEmphasis.ranges(text, languageCode = languageCode).map { it.start until it.endExclusive }
             .filter { span -> span.count { text[it] == ' ' } == 1 }
         val result = StringBuilder(text)
         for (span in phones + amounts) {

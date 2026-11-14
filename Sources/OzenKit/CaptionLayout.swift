@@ -45,7 +45,7 @@ public enum CaptionLayout {
     /// copied and shared text gets only the number isolates (copiedText),
     /// and spoken text stays as recognized.
     public static func displayText(_ text: String, languageCode: String) -> String {
-        directed(keepingNumbersTogether(readableText(text)), languageCode: languageCode)
+        directed(keepingNumbersTogether(readableText(text), languageCode: languageCode), languageCode: languageCode)
     }
 
     /// A phone number, a dose, or an amount and what it counts ("3
@@ -54,7 +54,7 @@ public enum CaptionLayout {
     /// hyphens. A longer run of number words still wraps at its spaces:
     /// held as one, it would not fit a line at the largest text size.
     /// For display only; the digits are the same.
-    static func keepingNumbersTogether(_ text: String) -> String {
+    static func keepingNumbersTogether(_ text: String, languageCode: String) -> String {
         var joined = Set<String.Index>()
         var hyphens = Set<String.Index>()
         for match in PhoneNumbers.matches(in: text) {
@@ -63,7 +63,7 @@ public enum CaptionLayout {
                 if text[index] == "-" { hyphens.insert(index) }
             }
         }
-        for range in NumberEmphasis.ranges(in: text) {
+        for range in NumberEmphasis.ranges(in: text, languageCode: languageCode) {
             let spaces = text[range].indices.filter { text[$0] == " " }
             if spaces.count == 1 { joined.formUnion(spaces) }
         }
