@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CaptionTextTest {
-    private val shown = CaptionLayout.displayText("\u05E0\u05D9\u05E4\u05D2\u05E9 \u05D1-10:30 \u05D0\u05E6\u05DC \u05D4\u05E8\u05D5\u05E4\u05D0")
+    private val shown = CaptionLayout.displayText("\u05E0\u05D9\u05E4\u05D2\u05E9 \u05D1-10:30 \u05D0\u05E6\u05DC \u05D4\u05E8\u05D5\u05E4\u05D0", "he")
 
     private fun emphasized(text: androidx.compose.ui.text.AnnotatedString) =
         text.spanStyles.map { shown.substring(it.start, it.end).filter { char -> char.isDigit() || char == ':' } }
@@ -52,7 +52,7 @@ class CaptionTextTest {
 
     @Test
     fun `a phone number in a finished line links to the dialer, and only when asked`() {
-        val line = CaptionLayout.displayText("Call the clinic on 050 123 4567 tomorrow")
+        val line = CaptionLayout.displayText("Call the clinic on 050 123 4567 tomorrow", "he")
         val text = captionText(line, emphasizeNumbers = false, numberColor = null, linkingPhoneNumbers = true)
         assertEquals(line, text.text)
         val link = text.getLinkAnnotations(0, text.length).single()

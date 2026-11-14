@@ -53,6 +53,7 @@ object LockScreenCaptions {
      */
     fun lines(
         segments: List<TranscriptSegment>,
+        languageCode: String,
         count: Int = LINE_COUNT,
         textSize: LockScreenTextSize = LockScreenTextSize.Regular,
         name: (TranscriptSegment) -> String?,
@@ -87,7 +88,7 @@ object LockScreenCaptions {
                 speaker = speakers[offset],
                 // Without the mark, a line ending in a Latin brand or
                 // medication name reorders instead of reading right to left.
-                text = CaptionLayout.directed(tail(segment.text, room)),
+                text = CaptionLayout.directed(tail(segment.text, room), languageCode),
                 isFinal = segment.isCommitted,
                 lastUpdate = segment.lastUpdateTimestamp,
                 sameSpeakerAsAbove = sameSpeakerAsAbove[offset],

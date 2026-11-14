@@ -19,7 +19,7 @@ struct CaptionRow: View {
     let isUncertain: Bool
     var marksUncertainWords = false
     /// The spoken language's code, for a line with no letters of its own.
-    var languageCode = "he"
+    let languageCode: String
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -153,7 +153,7 @@ struct NameSpeakerSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(CaptionLayout.displayText(segment.text))
+                    Text(CaptionLayout.displayText(segment.text, languageCode: viewModel.settings.languageCode))
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)

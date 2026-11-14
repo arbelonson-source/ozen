@@ -1241,7 +1241,7 @@ private fun CaptionScreen(
                             listeningCutCard?.invoke()
                             if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
-                                RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
+                                RecentConversationCard(recent, look, languageCode, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
                             } else if (offer == null && offersNameAlert) {
                                 NameAlertOffer(look, onNameAlert, onDismissNameAlert)
                             }
@@ -1255,7 +1255,7 @@ private fun CaptionScreen(
                         // on the iPhone.
                         val recent = state.recentConversation
                         val leading: (@Composable () -> Unit)? = recent?.let {
-                            { RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent) }
+                            { RecentConversationCard(recent, look, languageCode, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent) }
                         }
                         val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null && listeningCutCard == null) null else {
                             {

@@ -22,7 +22,7 @@ struct FixWordSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var words: [String] {
-        CaptionLayout.displayText(text).split(whereSeparator: \.isWhitespace).map(String.init)
+        CaptionLayout.displayText(text, languageCode: languageCode).split(whereSeparator: \.isWhitespace).map(String.init)
     }
     private var fix: WordFix { WordFix(heard: heard, written: written) }
     /// Saving needs a fix that changes this line: a typed word the line

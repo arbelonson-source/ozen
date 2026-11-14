@@ -50,7 +50,7 @@ class LockScreenSharedCasesTest {
                 )
             }
             val size = LockScreenTextSize.entries.single { it.name.equals(set.getValue("textSize").jsonPrimitive.content, ignoreCase = true) }
-            val lines = LockScreenCaptions.lines(segments, set.getValue("count").jsonPrimitive.int, size) { names[it.speakerClusterID.toString()] }
+            val lines = LockScreenCaptions.lines(segments, "he", set.getValue("count").jsonPrimitive.int, size) { names[it.speakerClusterID.toString()] }
             val expected = set.getValue("expected").jsonArray.map { it.jsonObject }.map {
                 listOf(it.getValue("speaker").jsonPrimitive.contentOrNull ?: "-", it.getValue("text").jsonPrimitive.content, "${it.getValue("isFinal").jsonPrimitive.boolean}", "${it.getValue("sameSpeakerAsAbove").jsonPrimitive.boolean}")
             }

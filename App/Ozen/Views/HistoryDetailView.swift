@@ -63,7 +63,8 @@ struct HistoryDetailView: View {
                     NumberLineLabel(
                         segment: segment,
                         isUncertain: viewModel.display.markUncertainLines
-                            && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant)
+                            && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant),
+                        languageCode: viewModel.settings.languageCode
                     )
                 }
                 .accessibilityHint(tr("מעבר לשורה בשיחה", "Jump to this line in the conversation"))
@@ -415,6 +416,7 @@ struct HistoryDetailView: View {
 private struct NumberLineLabel: View {
     let segment: SavedSegment
     let isUncertain: Bool
+    let languageCode: String
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // The emphasized numbers grow with the .body text around them. Fixed
@@ -438,7 +440,7 @@ private struct NumberLineLabel: View {
                         .accessibilityLabel(tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "))
                 }
                 Text(
-                    caption: CaptionLayout.directed(segment.text),
+                    caption: CaptionLayout.directed(segment.text, languageCode: languageCode),
                     emphasizingNumbers: true,
                     size: numberSize,
                     numberColor: nil

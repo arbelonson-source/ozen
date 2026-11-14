@@ -44,7 +44,7 @@ public enum CaptionLayout {
     /// paragraph's direction whatever word comes first. For display only:
     /// copied and shared text gets only the number isolates (copiedText),
     /// and spoken text stays as recognized.
-    public static func displayText(_ text: String, languageCode: String = "he") -> String {
+    public static func displayText(_ text: String, languageCode: String) -> String {
         directed(keepingNumbersTogether(readableText(text)), languageCode: languageCode)
     }
 
@@ -84,7 +84,7 @@ public enum CaptionLayout {
 
     /// The marks alone, without breaking the text into paragraphs: for a
     /// one- or two-line preview.
-    public static func directed(_ text: String, languageCode: String = "he") -> String {
+    public static func directed(_ text: String, languageCode: String) -> String {
         guard isRightToLeft(languageCode: languageCode) else { return text }
         return isolatingNumbers(text)
             .split(separator: "\n", omittingEmptySubsequences: false)

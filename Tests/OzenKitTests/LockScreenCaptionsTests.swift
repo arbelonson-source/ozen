@@ -21,12 +21,12 @@ struct LockScreenCaptionsTests {
     @Test("the newest lines with text, the one still being written included")
     func newestLines() {
         let segments = [line("one"), line("two"), line("  "), line("three", final: false)]
-        let lines = LockScreenCaptions.lines(from: segments) { _ in nil }
+        let lines = LockScreenCaptions.lines(from: segments, languageCode: "he") { _ in nil }
         #expect(lines == [
-            LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("two"), isFinal: true),
-            LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("three"), isFinal: false),
+            LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("two", languageCode: "he"), isFinal: true),
+            LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("three", languageCode: "he"), isFinal: false),
         ])
-        #expect(LockScreenCaptions.lines(from: []) { _ in nil }.isEmpty)
+        #expect(LockScreenCaptions.lines(from: [], languageCode: "he") { _ in nil }.isEmpty)
     }
 
     @Test("a line from before a quiet stretch doesn't sit above the words just said")
@@ -36,75 +36,75 @@ struct LockScreenCaptionsTests {
         }
         let evening = said("אל תשכחי את הכדור בבוקר", at: 0)
         let morning = said("בוקר טוב", at: 8 * 3600)
-        #expect(LockScreenCaptions.lines(from: [evening, morning], name: names).map(\.text) == [CaptionLayout.directed("בוקר טוב")])
+        #expect(LockScreenCaptions.lines(from: [evening, morning], languageCode: "he", name: names).map(\.text) == [CaptionLayout.directed("בוקר טוב", languageCode: "he")])
 
         // A pause shorter than the caption screen's gap keeps them together.
         let reply = said("בוקר אור", at: 8 * 3600 + 60)
-        #expect(LockScreenCaptions.lines(from: [evening, morning, reply], name: names).map(\.text) == [
-            CaptionLayout.directed("בוקר טוב"), CaptionLayout.directed("בוקר אור"),
+        #expect(LockScreenCaptions.lines(from: [evening, morning, reply], languageCode: "he", name: names).map(\.text) == [
+            CaptionLayout.directed("בוקר טוב", languageCode: "he"), CaptionLayout.directed("בוקר אור", languageCode: "he"),
         ])
     }
 
     @Test("a line ending in a Latin brand name reads right to left, its own mark included")
     func directionMarks() {
-        let lines = LockScreenCaptions.lines(from: [line("תתקשר ב-WhatsApp")]) { _ in nil }
-        #expect(lines == [LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("תתקשר ב-WhatsApp"), isFinal: true)])
+        let lines = LockScreenCaptions.lines(from: [line("תתקשר ב-WhatsApp")], languageCode: "he") { _ in nil }
+        #expect(lines == [LockScreenCaptionLine(speaker: nil, text: CaptionLayout.directed("תתקשר ב-WhatsApp", languageCode: "he"), isFinal: true)])
         #expect(lines[0].text.hasPrefix(CaptionLayout.rightToLeftMark))
     }
 
     @Test("the top line always says who is talking; below it a name shows only where the speaker changes")
     func namesOnTopAndWhereTheSpeakerChanges() {
-        let changing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1), line("c", speaker: 2)], name: names)
+        let changing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1), line("c", speaker: 2)], languageCode: "he", name: names)
         #expect(changing.map(\.speaker) == ["Speaker 1", "Speaker 2"])
-        let continuing = LockScreenCaptions.lines(from: [line("a", speaker: 2), line("b", speaker: 1), line("c", speaker: 1)], name: names)
+        let continuing = LockScreenCaptions.lines(from: [line("a", speaker: 2), line("b", speaker: 1), line("c", speaker: 1)], languageCode: "he", name: names)
         #expect(continuing.map(\.speaker) == ["Speaker 1", nil])
-        let unnamed = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b")], name: names)
+        let unnamed = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b")], languageCode: "he", name: names)
         #expect(unnamed.map(\.speaker) == ["Speaker 1", nil])
     }
 
     @Test("a line shown alone takes the name above only when it is the same speaker, never when nobody was recognised on it")
     func aloneLineKnowsItsSpeaker() {
-        let continuing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1)], name: names)
+        let continuing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1)], languageCode: "he", name: names)
         #expect(continuing.map(\.speaker) == ["Speaker 1", nil])
         #expect(continuing.map(\.sameSpeakerAsAbove) == [false, true])
-        let unnamed = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b")], name: names)
+        let unnamed = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b")], languageCode: "he", name: names)
         #expect(unnamed.map(\.sameSpeakerAsAbove) == [false, false])
-        let changing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 2)], name: names)
+        let changing = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 2)], languageCode: "he", name: names)
         #expect(changing.map(\.sameSpeakerAsAbove) == [false, false])
     }
 
     @Test("asked for one line, the newest comes with its speaker's name even mid-run")
     func singleLine() {
-        let one = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1), line("  ")], count: 1, name: names)
-        #expect(one == [LockScreenCaptionLine(speaker: "Speaker 1", text: CaptionLayout.directed("b"), isFinal: true)])
+        let one = LockScreenCaptions.lines(from: [line("a", speaker: 1), line("b", speaker: 1), line("  ")], languageCode: "he", count: 1, name: names)
+        #expect(one == [LockScreenCaptionLine(speaker: "Speaker 1", text: CaptionLayout.directed("b", languageCode: "he"), isFinal: true)])
     }
 
     @Test("long lines are cut to what fits: the newest line gets more room than the one before, and a name takes its share")
     func linesCutToFit() {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
-        let lines = LockScreenCaptions.lines(from: [line(long), line(long)]) { _ in nil }
+        let lines = LockScreenCaptions.lines(from: [line(long), line(long)], languageCode: "he") { _ in nil }
         #expect(lines.count == 2)
         #expect(plain(lines[0].text).count <= LockScreenTextSize.regular.earlierLineMaximumCharacters)
         #expect(plain(lines[1].text).count <= LockScreenTextSize.regular.newestLineMaximumCharacters)
         #expect(plain(lines[1].text).count > LockScreenTextSize.regular.earlierLineMaximumCharacters)
         #expect(lines.allSatisfy { $0.text.hasSuffix("word40") })
 
-        let named = LockScreenCaptions.lines(from: [line(long, speaker: 1)], name: names)
+        let named = LockScreenCaptions.lines(from: [line(long, speaker: 1)], languageCode: "he", name: names)
         #expect(named[0].speaker == "Speaker 1")
         #expect(plain(named[0].text).count + "Speaker 1: ".count <= LockScreenTextSize.regular.newestLineMaximumCharacters)
 
         let longName: (TranscriptSegment) -> String? = { _ in String(repeating: "n", count: 90) }
-        let crowded = LockScreenCaptions.lines(from: [line(long)], name: longName)
-        #expect(crowded[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: long, maximumCharacters: LockScreenCaptions.minimumCharacters)))
+        let crowded = LockScreenCaptions.lines(from: [line(long)], languageCode: "he", name: longName)
+        #expect(crowded[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: long, maximumCharacters: LockScreenCaptions.minimumCharacters), languageCode: "he"))
     }
 
     @Test("a short earlier line hands its unused room to the newest line instead of going to waste")
     func shortEarlierLineFreesRoomForNewest() {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
-        let short = LockScreenCaptions.lines(from: [line("hi"), line(long)]) { _ in nil }
+        let short = LockScreenCaptions.lines(from: [line("hi"), line(long)], languageCode: "he") { _ in nil }
         #expect(plain(short[1].text).count > LockScreenTextSize.regular.newestLineMaximumCharacters)
 
-        let full = LockScreenCaptions.lines(from: [line(long), line(long)]) { _ in nil }
+        let full = LockScreenCaptions.lines(from: [line(long), line(long)], languageCode: "he") { _ in nil }
         #expect(plain(short[1].text).count > plain(full[1].text).count)
     }
 
@@ -116,34 +116,34 @@ struct LockScreenCaptionsTests {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
         let words = Array(repeating: "tomorrow", count: 12).joined(separator: " ")
         let budget = LockScreenTextSize.regular.newestLineMaximumCharacters
-        let full = LockScreenCaptions.lines(from: [line(long), line(words)]) { _ in nil }
-        #expect(full[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget)))
+        let full = LockScreenCaptions.lines(from: [line(long), line(words)], languageCode: "he") { _ in nil }
+        #expect(full[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget), languageCode: "he"))
 
-        let rachel = LockScreenCaptions.lines(from: [line(words)]) { _ in "Rachel" }
-        #expect(rachel[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget - "Rachel: ".count)))
+        let rachel = LockScreenCaptions.lines(from: [line(words)], languageCode: "he") { _ in "Rachel" }
+        #expect(rachel[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget - "Rachel: ".count), languageCode: "he"))
 
         // Four-letter words start a word one character further in: a line
         // with no name loses none of its room to one.
         let short = Array(repeating: "good", count: 25).joined(separator: " ")
-        let unnamed = LockScreenCaptions.lines(from: [line(long), line(short)]) { _ in nil }
-        #expect(unnamed[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: short, maximumCharacters: budget)))
+        let unnamed = LockScreenCaptions.lines(from: [line(long), line(short)], languageCode: "he") { _ in nil }
+        #expect(unnamed[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: short, maximumCharacters: budget), languageCode: "he"))
     }
 
     @Test("the newest line never outgrows the widget's three rows, counting the name it shows or gets back when shown alone")
     func newestLineFitsThreeRows() {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
         for (size, threeRows) in [(LockScreenTextSize.regular, 3 * 30), (.large, 3 * 23)] {
-            let newSpeaker = LockScreenCaptions.lines(from: [line("hi", speaker: 1), line(long, speaker: 2)], textSize: size, name: names)
+            let newSpeaker = LockScreenCaptions.lines(from: [line("hi", speaker: 1), line(long, speaker: 2)], languageCode: "he", textSize: size, name: names)
             #expect(newSpeaker[1].speaker == "Speaker 2")
             #expect(plain(newSpeaker[1].text).count + "Speaker 2: ".count <= threeRows, "\(size)")
             #expect(newSpeaker[1].text.hasSuffix("word40"))
 
-            let sameSpeaker = LockScreenCaptions.lines(from: [line("hi", speaker: 1), line(long, speaker: 1)], textSize: size, name: names)
+            let sameSpeaker = LockScreenCaptions.lines(from: [line("hi", speaker: 1), line(long, speaker: 1)], languageCode: "he", textSize: size, name: names)
             #expect(sameSpeaker[1].speaker == nil)
             #expect(sameSpeaker[1].sameSpeakerAsAbove)
             #expect(plain(sameSpeaker[1].text).count + "Speaker 1: ".count <= threeRows, "\(size)")
 
-            let unknown = LockScreenCaptions.lines(from: [line("hi"), line(long)], textSize: size) { _ in nil }
+            let unknown = LockScreenCaptions.lines(from: [line("hi"), line(long)], languageCode: "he", textSize: size) { _ in nil }
             #expect(plain(unknown[1].text).count <= threeRows, "\(size)")
         }
     }
@@ -151,7 +151,7 @@ struct LockScreenCaptionsTests {
     @Test("large lock screen text keeps fewer characters, and follows the caption size in the app")
     func largeText() {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
-        let lines = LockScreenCaptions.lines(from: [line(long), line(long)], textSize: .large) { _ in nil }
+        let lines = LockScreenCaptions.lines(from: [line(long), line(long)], languageCode: "he", textSize: .large) { _ in nil }
         #expect(plain(lines[0].text).count <= LockScreenTextSize.large.earlierLineMaximumCharacters)
         #expect(plain(lines[1].text).count <= LockScreenTextSize.large.newestLineMaximumCharacters)
         #expect(plain(lines[1].text).count > LockScreenTextSize.regular.earlierLineMaximumCharacters)
@@ -241,6 +241,15 @@ struct LockScreenCaptionsTests {
             maximumCharacters: 45
         )
         #expect(tail.hasPrefix("…notes"))
+    }
+
+    @Test("a line of only digits and punctuation reads left to right in a left-to-right language")
+    func numberOnlyLineFollowsTheSpokenLanguage() {
+        let english = LockScreenCaptions.lines(from: [line("10:30.")], languageCode: "en") { _ in nil }
+        #expect(english.map(\.text) == ["10:30."])
+        #expect(!english[0].text.contains(CaptionLayout.rightToLeftMark))
+        let hebrew = LockScreenCaptions.lines(from: [line("10:30.")], languageCode: "he") { _ in nil }
+        #expect(hebrew[0].text.hasPrefix(CaptionLayout.rightToLeftMark))
     }
 }
 

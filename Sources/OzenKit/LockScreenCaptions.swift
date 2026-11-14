@@ -44,6 +44,7 @@ public enum LockScreenCaptions {
     /// `textSize`'s usual maximum.
     public static func lines(
         from segments: [TranscriptSegment],
+        languageCode: String,
         count: Int = lineCount,
         textSize: LockScreenTextSize = .regular,
         name: (TranscriptSegment) -> String?
@@ -90,7 +91,7 @@ public enum LockScreenCaptions {
                 // the mark, a line ending in a Latin brand or medication
                 // name reorders under the system's bidi algorithm instead
                 // of reading right to left.
-                text: CaptionLayout.directed(tail(of: segment.text, maximumCharacters: room)),
+                text: CaptionLayout.directed(tail(of: segment.text, maximumCharacters: room), languageCode: languageCode),
                 isFinal: segment.isCommitted,
                 lastUpdate: segment.lastUpdateTimestamp,
                 sameSpeakerAsAbove: sameSpeakerAsAbove[offset]

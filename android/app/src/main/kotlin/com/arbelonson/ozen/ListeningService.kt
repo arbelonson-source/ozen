@@ -111,10 +111,11 @@ class ListeningService : Service() {
      */
     private fun content(): LockScreenCaptionContent {
         val screen = CaptionState.screen.value
-        val display = settings.current.value.display
+        val current = settings.current.value
+        val display = current.display
         val textSize = LockScreenTextSize.of(display.fontSize)
         val status = screen.status.title.takeUnless { screen.captionsRunning }
-        return LockScreenCaptions.content(status, now = secondsNow(), textSize) { CaptionState.lockScreenLines(it, textSize, display.showSpeakerNames) }
+        return LockScreenCaptions.content(status, now = secondsNow(), textSize) { CaptionState.lockScreenLines(it, textSize, display.showSpeakerNames, current.languageCode) }
             .copy(status = screen.status.title)
     }
 

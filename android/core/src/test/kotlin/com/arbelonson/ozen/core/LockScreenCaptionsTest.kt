@@ -37,15 +37,15 @@ class LockScreenCaptionsTest {
 
     @Test
     fun `the newest lines with text, the one still being written included`() {
-        val lines = LockScreenCaptions.lines(listOf(line("one"), line("two"), line("  "), line("three", final = false))) { null }
+        val lines = LockScreenCaptions.lines(listOf(line("one"), line("two"), line("  "), line("three", final = false)), "he") { null }
         assertEquals(
             listOf(
-                LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("two"), isFinal = true),
-                LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("three"), isFinal = false),
+                LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("two", "he"), isFinal = true),
+                LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("three", "he"), isFinal = false),
             ),
             lines,
         )
-        assertTrue(LockScreenCaptions.lines(emptyList()) { null }.isEmpty())
+        assertTrue(LockScreenCaptions.lines(emptyList(), "he") { null }.isEmpty())
     }
 
     @Test
@@ -54,66 +54,66 @@ class LockScreenCaptionsTest {
             TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = 1, startTimestamp = at, lastUpdateTimestamp = at + 3)
         val evening = said("אל תשכחי את הכדור בבוקר", 0.0)
         val morning = said("בוקר טוב", 8 * 3600.0)
-        assertEquals(listOf(CaptionLayout.directed("בוקר טוב")), LockScreenCaptions.lines(listOf(evening, morning), name = names).map { it.text })
+        assertEquals(listOf(CaptionLayout.directed("בוקר טוב", "he")), LockScreenCaptions.lines(listOf(evening, morning), "he", name = names).map { it.text })
 
         val reply = said("בוקר אור", 8 * 3600.0 + 60)
         assertEquals(
-            listOf(CaptionLayout.directed("בוקר טוב"), CaptionLayout.directed("בוקר אור")),
-            LockScreenCaptions.lines(listOf(evening, morning, reply), name = names).map { it.text },
+            listOf(CaptionLayout.directed("בוקר טוב", "he"), CaptionLayout.directed("בוקר אור", "he")),
+            LockScreenCaptions.lines(listOf(evening, morning, reply), "he", name = names).map { it.text },
         )
     }
 
     @Test
     fun `a line ending in a Latin brand name reads right to left, its own mark included`() {
-        val lines = LockScreenCaptions.lines(listOf(line("תתקשר ב-WhatsApp"))) { null }
-        assertEquals(listOf(LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("תתקשר ב-WhatsApp"), isFinal = true)), lines)
+        val lines = LockScreenCaptions.lines(listOf(line("תתקשר ב-WhatsApp")), "he") { null }
+        assertEquals(listOf(LockScreenCaptionLine(speaker = null, text = CaptionLayout.directed("תתקשר ב-WhatsApp", "he"), isFinal = true)), lines)
         assertTrue(lines[0].text.startsWith(CaptionLayout.RIGHT_TO_LEFT_MARK))
     }
 
     @Test
     fun `the top line always says who is talking, and below it a name shows only where the speaker changes`() {
-        assertEquals(listOf("Speaker 1", "Speaker 2"), LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1), line("c", 2)), name = names).map { it.speaker })
-        assertEquals(listOf("Speaker 1", null), LockScreenCaptions.lines(listOf(line("a", 2), line("b", 1), line("c", 1)), name = names).map { it.speaker })
-        assertEquals(listOf("Speaker 1", null), LockScreenCaptions.lines(listOf(line("a", 1), line("b")), name = names).map { it.speaker })
+        assertEquals(listOf("Speaker 1", "Speaker 2"), LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1), line("c", 2)), "he", name = names).map { it.speaker })
+        assertEquals(listOf("Speaker 1", null), LockScreenCaptions.lines(listOf(line("a", 2), line("b", 1), line("c", 1)), "he", name = names).map { it.speaker })
+        assertEquals(listOf("Speaker 1", null), LockScreenCaptions.lines(listOf(line("a", 1), line("b")), "he", name = names).map { it.speaker })
     }
 
     @Test
     fun `a line shown alone takes the name above only when it is the same speaker, never when nobody was recognised on it`() {
-        val continuing = LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1)), name = names)
+        val continuing = LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1)), "he", name = names)
         assertEquals(listOf("Speaker 1", null), continuing.map { it.speaker })
         assertEquals(listOf(false, true), continuing.map { it.sameSpeakerAsAbove })
-        assertEquals(listOf(false, false), LockScreenCaptions.lines(listOf(line("a", 1), line("b")), name = names).map { it.sameSpeakerAsAbove })
-        assertEquals(listOf(false, false), LockScreenCaptions.lines(listOf(line("a", 1), line("b", 2)), name = names).map { it.sameSpeakerAsAbove })
+        assertEquals(listOf(false, false), LockScreenCaptions.lines(listOf(line("a", 1), line("b")), "he", name = names).map { it.sameSpeakerAsAbove })
+        assertEquals(listOf(false, false), LockScreenCaptions.lines(listOf(line("a", 1), line("b", 2)), "he", name = names).map { it.sameSpeakerAsAbove })
     }
 
     @Test
     fun `asked for one line, the newest comes with its speaker's name even mid-run`() {
-        val one = LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1), line("  ")), count = 1, name = names)
-        assertEquals(listOf(LockScreenCaptionLine(speaker = "Speaker 1", text = CaptionLayout.directed("b"), isFinal = true)), one)
+        val one = LockScreenCaptions.lines(listOf(line("a", 1), line("b", 1), line("  ")), "he", count = 1, name = names)
+        assertEquals(listOf(LockScreenCaptionLine(speaker = "Speaker 1", text = CaptionLayout.directed("b", "he"), isFinal = true)), one)
     }
 
     @Test
     fun `long lines are cut to what fits, the newest line with more room than the one before, and a name takes its share`() {
-        val lines = LockScreenCaptions.lines(listOf(line(long), line(long))) { null }
+        val lines = LockScreenCaptions.lines(listOf(line(long), line(long)), "he") { null }
         assertEquals(2, lines.size)
         assertTrue(plain(lines[0].text).length <= LockScreenTextSize.Regular.earlierLineMaximumCharacters)
         assertTrue(plain(lines[1].text).length <= LockScreenTextSize.Regular.newestLineMaximumCharacters)
         assertTrue(plain(lines[1].text).length > LockScreenTextSize.Regular.earlierLineMaximumCharacters)
         assertTrue(lines.all { it.text.endsWith("word40") })
 
-        val named = LockScreenCaptions.lines(listOf(line(long, 1)), name = names)
+        val named = LockScreenCaptions.lines(listOf(line(long, 1)), "he", name = names)
         assertEquals("Speaker 1", named[0].speaker)
         assertTrue(plain(named[0].text).length + "Speaker 1: ".length <= LockScreenTextSize.Regular.newestLineMaximumCharacters)
 
-        val crowded = LockScreenCaptions.lines(listOf(line(long))) { "n".repeat(90) }
-        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(long, LockScreenCaptions.MINIMUM_CHARACTERS)), crowded[0].text)
+        val crowded = LockScreenCaptions.lines(listOf(line(long)), "he") { "n".repeat(90) }
+        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(long, LockScreenCaptions.MINIMUM_CHARACTERS), "he"), crowded[0].text)
     }
 
     @Test
     fun `a short earlier line hands its unused room to the newest line instead of going to waste`() {
-        val short = LockScreenCaptions.lines(listOf(line("hi"), line(long))) { null }
+        val short = LockScreenCaptions.lines(listOf(line("hi"), line(long)), "he") { null }
         assertTrue(plain(short[1].text).length > LockScreenTextSize.Regular.newestLineMaximumCharacters)
-        val full = LockScreenCaptions.lines(listOf(line(long), line(long))) { null }
+        val full = LockScreenCaptions.lines(listOf(line(long), line(long)), "he") { null }
         assertTrue(plain(short[1].text).length > plain(full[1].text).length)
     }
 
@@ -123,38 +123,38 @@ class LockScreenCaptionsTest {
         // below, so one character more or less room shows or drops a word.
         val words = List(12) { "tomorrow" }.joinToString(" ")
         val budget = LockScreenTextSize.Regular.newestLineMaximumCharacters
-        val full = LockScreenCaptions.lines(listOf(line(long), line(words))) { null }
-        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(words, budget)), full[1].text)
+        val full = LockScreenCaptions.lines(listOf(line(long), line(words)), "he") { null }
+        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(words, budget), "he"), full[1].text)
 
-        val rachel = LockScreenCaptions.lines(listOf(line(words))) { "Rachel" }
-        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(words, budget - "Rachel: ".length)), rachel[0].text)
+        val rachel = LockScreenCaptions.lines(listOf(line(words)), "he") { "Rachel" }
+        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(words, budget - "Rachel: ".length), "he"), rachel[0].text)
 
         val short = List(25) { "good" }.joinToString(" ")
-        val unnamed = LockScreenCaptions.lines(listOf(line(long), line(short))) { null }
-        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(short, budget)), unnamed[1].text)
+        val unnamed = LockScreenCaptions.lines(listOf(line(long), line(short)), "he") { null }
+        assertEquals(CaptionLayout.directed(LockScreenCaptions.tail(short, budget), "he"), unnamed[1].text)
     }
 
     @Test
     fun `the newest line never outgrows three rows, counting the name it shows or gets back when shown alone`() {
         for ((size, threeRows) in listOf(LockScreenTextSize.Regular to 3 * 30, LockScreenTextSize.Large to 3 * 23)) {
-            val newSpeaker = LockScreenCaptions.lines(listOf(line("hi", 1), line(long, 2)), textSize = size, name = names)
+            val newSpeaker = LockScreenCaptions.lines(listOf(line("hi", 1), line(long, 2)), "he", textSize = size, name = names)
             assertEquals("Speaker 2", newSpeaker[1].speaker)
             assertTrue(plain(newSpeaker[1].text).length + "Speaker 2: ".length <= threeRows, "$size")
             assertTrue(newSpeaker[1].text.endsWith("word40"))
 
-            val sameSpeaker = LockScreenCaptions.lines(listOf(line("hi", 1), line(long, 1)), textSize = size, name = names)
+            val sameSpeaker = LockScreenCaptions.lines(listOf(line("hi", 1), line(long, 1)), "he", textSize = size, name = names)
             assertEquals(null, sameSpeaker[1].speaker)
             assertTrue(sameSpeaker[1].sameSpeakerAsAbove)
             assertTrue(plain(sameSpeaker[1].text).length + "Speaker 1: ".length <= threeRows, "$size")
 
-            val unknown = LockScreenCaptions.lines(listOf(line("hi"), line(long)), textSize = size) { null }
+            val unknown = LockScreenCaptions.lines(listOf(line("hi"), line(long)), "he", textSize = size) { null }
             assertTrue(plain(unknown[1].text).length <= threeRows, "$size")
         }
     }
 
     @Test
     fun `large lock screen text keeps fewer characters, and follows the caption size in the app`() {
-        val lines = LockScreenCaptions.lines(listOf(line(long), line(long)), textSize = LockScreenTextSize.Large) { null }
+        val lines = LockScreenCaptions.lines(listOf(line(long), line(long)), "he", textSize = LockScreenTextSize.Large) { null }
         assertTrue(plain(lines[0].text).length <= LockScreenTextSize.Large.earlierLineMaximumCharacters)
         assertTrue(plain(lines[1].text).length <= LockScreenTextSize.Large.newestLineMaximumCharacters)
         assertTrue(plain(lines[1].text).length > LockScreenTextSize.Regular.earlierLineMaximumCharacters)
@@ -201,6 +201,15 @@ class LockScreenCaptionsTest {
     @Test
     fun `a cut never splits a character drawn from two UTF-16 units`() {
         assertEquals("…" + "👍".repeat(9), LockScreenCaptions.tail("👍".repeat(30), 10))
+    }
+
+    @Test
+    fun `a line of only digits and punctuation reads left to right in a left-to-right language`() {
+        val english = LockScreenCaptions.lines(listOf(line("10:30.")), "en") { null }
+        assertEquals(listOf("10:30."), english.map { it.text })
+        assertTrue(!english[0].text.contains(CaptionLayout.RIGHT_TO_LEFT_MARK))
+        val hebrew = LockScreenCaptions.lines(listOf(line("10:30.")), "he") { null }
+        assertTrue(hebrew[0].text.startsWith(CaptionLayout.RIGHT_TO_LEFT_MARK))
     }
 }
 
