@@ -6,10 +6,14 @@ Ozen for iPhone and iPad is free in the [App Store](https://apps.apple.com/app/i
 (iOS 17 or newer). This guide follows the iPhone and iPad.
 
 On Android (see [Installing on Android](../README.md#installing-on-android)),
-the app asks the same things in nearly the same words. It has no setup page,
-because it always starts with the phone's own speech model, and its
-microphone page has its own buttons to approve the microphone and
-notifications.
+the app asks the same things in nearly the same words. It also opens with
+short pages, seven of them: **Ozen**, **How it works**, the language, **The
+speech model**, **The microphone**, **When you're called** and **Ready**.
+There is no separate setup page. The speech model page tests how fast the
+phone is and picks a model that suits it, and its microphone page has its
+own buttons to approve the microphone and notifications. Where this guide
+says "Settings → Whisper → Model" for the iPhone, the Android place is
+Settings → **Speech model on the phone**.
 
 ## What Ozen does
 
@@ -180,7 +184,12 @@ the phone does not caption itself, and they come back by themselves. Tap
 Under the box are **Quick phrases** (mishpatim muchanim), ready sentences you
 can tap to say at once. **Edit** (aricha) lets you add phrases or restore
 the original ones. If the phone has no voice for the language, the screen
-says where to add one.
+says so and where to add one. On an iPhone with iOS 26 or newer it is
+Settings → Accessibility → Read & Speak → Voices; on older iOS it is
+Settings → Accessibility → Spoken Content → Voices. On Android the screen
+shows the note (for example "No voice for … is installed on this phone, so
+these phrases can't be read aloud.") with an **Open phone settings** button,
+which opens the phone's text-to-speech settings where it can.
 
 **Full screen, big letters** (masach male be-otiyot gdolot) opens a pad that
 fills the whole screen with huge letters. Hand the phone to the other
@@ -222,8 +231,12 @@ saved conversations. You can search what was said, and delete one or all of
 them. The list has a **Starred lines** (shurot mesumanot) entry that gathers
 every line you starred. A switch there, **Save conversations** (shmirat
 shichot), turns saving off, and an automatic deletion setting removes old
-conversations. Conversations with a starred line or a name are always kept.
-They stay on the phone, and in its own backup when the backup is on.
+conversations. When the automatic deletion runs, conversations with a
+starred line or a name you gave are kept. **Delete all** (mechikat ha-kol)
+is different: it deletes every conversation, those ones too, and the current
+one, and it can't be undone. Conversations stay on the phone, and in its own
+backup when the backup is on (the iPhone's iCloud or computer backup; Android's
+cloud backup is switched off for Ozen).
 
 Near the bottom of Settings, **Show the initial walkthrough again**
 (lehatzig shuv et ha-hesber ha-rishoni) brings back the pages from the

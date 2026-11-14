@@ -6,6 +6,28 @@ app's language (Hebrew unless someone chose another in Settings → App
 language). Find the words the person using Ozen reads to you below: each is
 given in English, with how the Hebrew sounds in brackets.
 
+## iPhone and Android
+
+Both phones show the same status button and most of the same messages. This
+page was first written for the iPhone, so some steps name iPhone places.
+These parts are for the iPhone only: iPhone Storage, Settings → Whisper →
+Model, Apple's engine, Live Activities and the lock screen captions, Focus
+modes, Flash for Alerts, and the Control Center button. Where a step differs,
+it gives both phones.
+
+On Android, the same things are here:
+
+- **The speech model:** Settings → **Speech model on the phone**. Each model
+  shows its size, an accuracy score ("N out of 5"), whether it keeps up with
+  this phone, and a **Delete** button once it is on the phone. Pick a smaller
+  one if the phone is slow.
+- **The way the captions are written:** Settings → **Transcription engine**
+  (the phone's model, the home computer or a cloud service).
+- **Space:** the phone's own Settings → Storage. Deleting a model you don't use
+  frees room too.
+- **Send the report:** Settings → Diagnostics → **Send report**, as on the
+  iPhone.
+
 ## First: send the report
 
 Settings → Diagnostics (avchun) → **Send report** (shlichat ha-doch). It
@@ -35,15 +57,22 @@ leaves the rest of the journal.
 | --- | --- | --- |
 | "Listening" (me'azina) | Captions are running. | Nothing. If no words appear, check the microphone (below). |
 | "Listening · Cloud captions aren't available, so the phone carries on by itself" (me'azina · ha-timlul ba-anan lo zamin, mamshichim ba-zihuy she-ba-telefon) | Cloud captions lost their key, credit or internet, and a Whisper model already on the phone took over. Captions keep coming, a little less accurate. | Nothing urgent. After a lost connection or a cloud outage, captions go back to the cloud by themselves once it answers again (checked every minute, between sentences; if it keeps dropping again soon after, less and less often, up to every 16 minutes). A key or credit problem needs fixing in Settings; the cloud is then tried again the next time captions start (after Stop, or reopening the app). A pause and resume stays on the phone's model. |
+| "Listening · With the phone's built-in recognition until the model downloads over Wi-Fi" | The speech model is still to download and the phone is not on Wi-Fi (on Android, Wi-Fi without a data limit). The phone's built-in recognition writes the captions meanwhile, usually a little less accurately, with everything staying on the phone. | Nothing. Connect to Wi-Fi and the model downloads by itself; captions then move over to it. |
+| "Listening · With the phone's built-in recognition while the model gets ready" | The model has downloaded and is being set up. The built-in recognition keeps the captions going until it is ready. | Nothing. Keep the app open and wait. |
+| "Listening · The model is ready, captions continue with it" | The model took over from the built-in recognition. It shows for a few seconds. | Nothing. |
+| "Listening · Over cellular data" (iPhone) or “Listening · Over mobile data” (Android) | Captions are coming from the cloud or the home computer, over a connection that costs data (mobile data) and not over Wi-Fi. The home computer uses about 120 MB an hour away from Wi-Fi; [Cloud services](cloud-services.md) gives each service's figure. | Nothing, unless the data plan is small: connect to Wi-Fi. |
+| "Listening for sounds only" | Captions are off, but the phone still listens for the doorbell, alarms and the like. | Tap it to bring the captions back. |
+| “Sound alerts paused for a call” (Android) | Captions are off, and a phone call has the microphone. | Nothing. Sound alerts continue by themselves when the call ends. |
+| "Transcription stopped" | The speech engine ended by itself. Ozen usually tries again on its own. | If the line stays, tap it to continue. If it keeps coming back, send the report (above). |
 | "Paused" (mushhe) | Paused by a tap. | Tap it to continue. |
 | "The phone is talking" (ha-telefon medaber) | The phone is saying a typed reply aloud; captions pause so they don't caption it. | Nothing. They continue by themselves when it finishes. Tapping it stops the phone talking. |
 | "Captions are off" (ha-ktuviyot kvuyot) | Stopped (for example by Siri). | Tap it to start. |
 | "Captions paused for a call or another app" (ha-ktuviyot mushhot biglal sicha o aplikatzia acheret) | A phone call or another app has the microphone (an app recording a voice message, for example). | Nothing. They come back once the call ends or the other app lets go of the microphone; tapping it tries right away. If they don't, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
 | "Downloading the language model · N%" (moridim et model ha-dibur · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
-| "Waiting for Wi-Fi to download the language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular. Where the phone's built-in recognition works on the phone for your language, the tap also offers captions with it until the model is ready. |
-| "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (Settings → General → iPhone Storage; on an iPad it is iPad Storage), then open Ozen again and it starts by itself. Or tap to pick a smaller model, or switch to Apple's engine, which needs no download. |
+| "Waiting for Wi-Fi to download the language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular data. On Android the button adds “Downloads on its own on Wi-Fi without a data limit” (a phone hotspot does not count) and the tap offers the download over mobile data. Where the phone's built-in recognition works on the phone for your language, the tap also offers captions with it until the model is ready (see the "built-in recognition" lines above). |
+| "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (iPhone: Settings → General → iPhone Storage; on an iPad it is iPad Storage; Android: the phone's Settings → Storage, or Delete a model you don't use in Settings → Speech model on the phone), then open Ozen again and it starts by itself. Or tap to pick a smaller model. On an iPhone you can also switch to Apple's engine, which needs no download. |
 | "Downloading the model failed" (horadat ha-model nichshela) | The download failed, usually a dead connection. | It retries by itself for about 20 minutes, less and less often. Check the internet, then tap to try again. |
-| "Loading the model failed" (te'inat ha-model nichshela) | The model is on the phone but didn't load. | Tap to try again. If it keeps failing, pick a smaller model in Settings. |
+| "Loading the model failed" (te'inat ha-model nichshela) | The model is on the phone but didn't load. | Tap to try again. If it keeps failing, pick a smaller model (iPhone: Settings → Whisper → Model; Android: Settings → Speech model on the phone). |
 | "Setting the model up for this phone" (matimim et ha-model la-telefon ha-ze) | The first time a model loads on this phone, iOS prepares it for the phone's chip. It takes a few minutes, once per model and again after each iOS update (iOS throws the prepared copy away), and the very first model also needs the internet once. This is also what the home computer's backup does the first time it takes over. | Keep the app open and wait; it doesn't happen again for this model until iOS is next updated. |
 | "Still loading the model" (ha-model adayin nit'an) | A model that loaded quickly before is taking long this time, usually because iOS threw away the copy it had prepared for the phone to free space, or the app was reinstalled, so it is being prepared again. | Keep the app open and wait; it can take a few minutes. |
 | "Loading the model / almost ready" (to'anim et ha-model / kim'at muchanim) | Starting up. | Wait a few seconds. |
@@ -73,7 +102,23 @@ Sounds at home, once Sounds at home is on; on Android it is in Settings →
 Alerts, once "Alert on phone when the screen is off" (hatra'a ba-telefon
 kshe-ha-masach kavuy) is on. It lists each step and, where the phone lets
 Ozen check, whether it is done; its buttons open the right page of the
-phone's settings.
+phone's settings. Go through every step, and finish with the checklist's
+test: lock the phone and wait for the sample alert.
+
+The two lists are not the same:
+
+- **iPhone:** Notifications; Sleep and Do Not Disturb; Light (Flash for
+  Alerts); Vibration; Charging and keeping Ozen open; Try it. For
+  **Vibration**, go to iPhone Settings → Sounds & Haptics → Haptics and
+  choose **Play in Silent Mode**, so the phone vibrates in Silent Mode too.
+  For **Charging and keeping Ozen open**, keep the phone charging, near you,
+  and leave Ozen open: swiping it away in the app switcher stops alerts.
+- **Android:** a notices step if Ozen's notifications are off in the phone's
+  settings; Sounds at home; Battery (and the phone maker's own battery
+  manager, where there is one); Urgent sounds in Do Not Disturb; **Silent
+  mode and charging**; the test. For **Silent mode and charging**: on silent
+  the alerts don't vibrate either, unless they come through Do Not Disturb,
+  so keep the phone on vibrate, charging and near you.
 
 On an iPhone, a locked phone in Sleep or Do Not Disturb holds back Ozen's
 notifications, including a smoke detector or siren: Ozen can't mark them
@@ -106,7 +151,7 @@ says where to look on the common ones.
   Wi-Fi (the status button shows the download); captions come back by
   themselves when it has arrived. "Not now" (the x) puts the card away for
   three days, then for longer each time; the model can also be picked in
-  Settings → Whisper → Model.
+  Settings → Whisper → Model (on Android, Settings → Speech model on the phone).
 - **The buttons at the bottom disappeared.** While captions run and follow
   the newest line, they slide away after a few seconds so they don't cover
   it. Touch the screen, or the small arrow at the bottom, to bring them back.
@@ -180,7 +225,9 @@ says where to look on the common ones.
   it keeps happening, look in the report for "iOS low on memory (app using
   … MB)" and at the "Memory" (zikaron) row in Diagnostics: the speech model is most of
   that, so pick a smaller one in Settings → Whisper → Model (the
-  recommended one rather than a 3 GB one), or switch to Apple's engine.
+  recommended one rather than a 3 GB one), or switch to Apple's engine. On
+  Android the place is Settings → Speech model on the phone, where each model
+  has a Delete button and an accuracy score.
 - **Some words are in a different color.** Numbers (a time, how many pills,
   a phone number) stand out so they aren't missed: yellow among white text,
   white among yellow text, dark blue on a white background. Settings → Display (tetzuga) →
@@ -223,6 +270,14 @@ says where to look on the common ones.
   so a few after a Bluetooth microphone reconnects do no harm; a number
   that keeps climbing means that microphone, or its connection, is failing.
   Try the phone's own microphone to confirm.
+- **The phone can't read a typed reply aloud ("No voice … is installed").**
+  The phone has no voice for that language. On an iPhone with iOS 26 or
+  newer, add one in Settings → Accessibility → Read & Speak → Voices; on
+  older iOS, in Settings → Accessibility → Spoken Content → Voices (for
+  Hebrew, choose Hebrew in that list). On Android, tap **Open phone
+  settings** under the note: it opens the phone's text-to-speech settings
+  where it can, and that is where a voice is installed or a speech engine
+  chosen. If the note says the phone's media volume is at zero, turn it up.
 - **A small question mark next to a line.** The engine wasn't sure it heard
   that line right. Holding the line offers to ask the speaker to repeat it.
   On many lines, the phone is on a weaker model such as Small, which
@@ -248,8 +303,16 @@ says where to look on the common ones.
   "Alert on a fainter sound too" (lehatri'a gam al tzlil chalash yoter).
   If that brings false alarms, the same button undoes it. Not listed at all means the sound classifier didn't recognize
   it as a doorbell (some electronic chimes don't sound like one to it).
-- **The doorbell notification comes, but goes unnoticed.** With the
-  phone face down or across the room, go to iOS Settings → Accessibility →
+- **The doorbell notification comes, but goes unnoticed.** On Android, Ozen
+  can blink the camera light itself: Settings → Alerts → Sounds at home →
+  “Flash the camera light” (the row says “This phone has no camera light”
+  on a phone without one). “Try it”, which shows once the switch is on, blinks the light briefly. The
+  light blinks only while Ozen is listening and the phone is locked or Ozen
+  isn't on the screen: about 10 seconds, long flashes for an emergency and
+  two short ones for the door (in quiet hours, only emergencies). It works
+  best with the phone face down. If the phone's own Accessibility settings
+  also flash for every notification, one of the two is enough. On an
+  iPhone, with the phone face down or across the room, go to iOS Settings → Accessibility →
   Audio & Visual, turn on Flash for Alerts and choose LED Flash (on iOS 17
   and 18 the switch there is LED Flash for Alerts): the camera light then
   blinks for every notification, Ozen's included. With the app open, sirens and the
@@ -264,8 +327,8 @@ says where to look on the common ones.
   Diagnostics shows "Alert vibration: Failed, using standard vibration instead" (retet le-hatra'ot: nichshal, ve-lachen mishtamshim be-retet ragil) and the report says why.
 - **A banner "Saving on the phone failed" (ha-shmira ba-telefon nichshela), or History says the last save failed.**
   The phone is out of storage, so new conversations and settings changes
-  aren't being kept, though captions still work. Free some space (Settings →
-  General → iPhone Storage; on an iPad it is iPad Storage) and saving resumes by itself; the banner comes
+  aren't being kept, though captions still work. Free some space (iPhone: Settings →
+  General → iPhone Storage; on an iPad it is iPad Storage; Android: the phone's Settings → Storage) and saving resumes by itself; the banner comes
   back only if it fails again.
 - **A model in the model list is grayed out and can't be picked.** It says
   "Not enough room on the phone" (ein maspik makom ba-telefon): its
