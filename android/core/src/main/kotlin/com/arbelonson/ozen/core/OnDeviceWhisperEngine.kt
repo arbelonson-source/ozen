@@ -303,11 +303,19 @@ class OnDeviceWhisperEngine(
         }
     }
 
+    private fun voiceScorerOrNull(): ((FloatArray) -> Float?)? = try {
+        voiceScorerFactory()
+    } catch (_: java.io.IOException) {
+        null
+    } catch (_: RuntimeException) {
+        null
+    }
+
     private suspend fun runStreaming(languageCode: String, audio: Flow<FloatArray>, tokens: SendChannel<TranscriptToken>) {
         val pipe = synchronized(lock) { passes } ?: throw NotPrepared()
         val specialTokenBegin = pipe.specialTokenBegin
 
-        val intake = AudioIntake(voiceScorerFactory(), (pauseSeconds * sampleRate).toInt())
+        val intake = AudioIntake(voiceScorerOrNull(), (pauseSeconds * sampleRate).toInt())
         coroutineScope {
             // Taken in where the model runs, not on the collector's thread:
             // the app collects the captions on its main thread, and the voice

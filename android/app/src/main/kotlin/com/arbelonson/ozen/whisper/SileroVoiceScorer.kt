@@ -1,9 +1,11 @@
 package com.arbelonson.ozen.whisper
 
 import android.content.Context
+import android.util.Log
 import com.arbelonson.ozen.core.SileroScores
 import com.arbelonson.ozen.core.VoiceEvidence
 import java.io.File
+import java.io.IOException
 
 class SileroVoiceScorer private constructor(private var handle: Long) : AutoCloseable {
     @Synchronized
@@ -32,11 +34,24 @@ class SileroVoiceScorer private constructor(private var handle: Long) : AutoClos
 
         fun fromAssets(context: Context): SileroVoiceScorer? {
             val model = File(context.noBackupFilesDir, MODEL_ASSET)
-            val size = context.assets.openFd(MODEL_ASSET).use { it.length }
-            if (model.length() != size) {
-                val partial = File(model.path + ".partial")
-                context.assets.open(MODEL_ASSET).use { input -> partial.outputStream().use { input.copyTo(it) } }
-                if (!partial.renameTo(model)) return null
+            try {
+                val size = context.assets.openFd(MODEL_ASSET).use { it.length }
+                if (model.length() != size) {
+                    val partial = File(model.path + ".partial")
+                    try {
+                        context.assets.open(MODEL_ASSET).use { input -> partial.outputStream().use { input.copyTo(it) } }
+                    } catch (error: IOException) {
+                        partial.delete()
+                        throw error
+                    }
+                    if (!partial.renameTo(model)) {
+                        partial.delete()
+                        return null
+                    }
+                }
+            } catch (error: IOException) {
+                Log.w("SileroVoiceScorer", "voice check unavailable, captions go on without it", error)
+                return null
             }
             if (!WhisperCpp.loadCpu(context.applicationInfo.nativeLibraryDir)) return null
             return WhisperCpp.vadLoad(model.path).takeIf { it != 0L }?.let(::SileroVoiceScorer)
