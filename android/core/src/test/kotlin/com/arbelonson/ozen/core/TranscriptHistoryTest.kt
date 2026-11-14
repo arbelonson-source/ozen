@@ -1122,7 +1122,7 @@ class TranscriptHistorySearchCacheTest {
 
     private fun recordFile(dir: File, id: UUID) = File(dir, "${uuidString(id)}.json")
 
-    private fun searchFile(dir: File, id: UUID, version: Int = 4) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
+    private fun searchFile(dir: File, id: UUID, version: Int = 5) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
 
     @Test
     fun `deleting a conversation deletes its search words of the format before too`() {
@@ -1132,9 +1132,12 @@ class TranscriptHistorySearchCacheTest {
             store.save(saved)
             val older = searchFile(dir, saved.id, version = 3)
             older.writeText("the dentist moved it to thursday")
+            val previous = searchFile(dir, saved.id, version = 4)
+            previous.writeText("the dentist moved it to thursday")
 
             store.delete(saved.id)
             assertFalse(older.exists())
+            assertFalse(previous.exists())
             assertFalse(searchFile(dir, saved.id).exists())
         }
     }
@@ -1585,7 +1588,7 @@ class TranscriptHistoryTitleTest {
             assertEquals(listOf(id), store.search("רופא").map { it.id })
             assertTrue(store.search("סבתא").isEmpty())
             val remade = prepared.list()?.toList() ?: emptyList()
-            assertTrue(remade.any { it.endsWith(".search-v4.txt") })
+            assertTrue(remade.any { it.endsWith(".search-v5.txt") })
             assertEquals(listOf(id), store.search("רופא").map { it.id })
         }
     }
@@ -1921,6 +1924,71 @@ class TranscriptHistoryLenientReadTest {
             assertEquals(1, saved.store.renameSpeaker("Dana", "Dani"))
             assertNothingLost(saved)
             assertEquals(listOf("Dani", "Dani", "Dani"), rawLines(saved.file).map { it.getValue("speakerName").jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun `caches written before damaged optional values were tolerated are not trusted`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines -> lines[0]["confidence"] = JsonPrimitive("high") }
+            saved.store.listSummaries()
+            val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
+            val summaryFile = File(prepared, "${uuidString(saved.id)}.json")
+            val cached = Json.parseToJsonElement(summaryFile.readText()).jsonObject.toMutableMap()
+            cached["summary"] = JsonObject(cached.getValue("summary").jsonObject + ("segmentCount" to JsonPrimitive(2)))
+            cached["format"] = JsonPrimitive(4)
+            summaryFile.writeText(JsonObject(cached).toString())
+            val oldSearch = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            oldSearch.writeText("bravo two\ncharlie three\nbravo two\ncharlie three")
+            val later = System.currentTimeMillis() + 60_000
+            summaryFile.setLastModified(later)
+            oldSearch.setLastModified(later)
+
+            assertEquals(3, saved.store.listSummaries().first { it.id == saved.id }.segmentCount)
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+        }
+    }
+
+    @Test
+    fun `fixing a word reports failure and writes nothing when the change cannot be made`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            val before = saved.file.readText()
+            assertFalse(saved.store.fixText(saved.ids[1], saved.id) { throw IllegalArgumentException("no") })
+            assertEquals(before, saved.file.readText())
+        }
+    }
+
+    @Test
+    fun `a voice name only on an unreadable line is still fixed even when the cache lacks it`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines ->
+                lines[1]["speakerName"] = JsonPrimitive("Rina")
+                lines[1].remove("text")
+            }
+            saved.store.listSummaries()
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+            assertEquals(1, saved.store.renameSpeaker("Rina", "Rinat"))
+            assertEquals(listOf("Dana", "Rinat", "Dana"), rawLines(saved.file).map { it.getValue("speakerName").jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun `an autosave keeps the model and microphone of a conversation whose engine this build does not know`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { root, _ -> root["engine"] = JsonPrimitive("quantumListener") }
+            val again = TranscriptSessionRecord(
+                id = saved.id, startedAt = 1_000.0, engine = TranscriptionEngineKind.WhisperKit,
+                modelVariant = "large", inputName = "Headset",
+                segments = listOf(line(saved.ids[0], "alpha one")),
+            )
+            TranscriptHistoryStore(dir).save(again)
+            val loaded = assertNotNull(TranscriptHistoryStore(dir).load(saved.id))
+            assertEquals("small", loaded.modelVariant)
+            assertEquals("Phone microphone", loaded.inputName)
         }
     }
 }

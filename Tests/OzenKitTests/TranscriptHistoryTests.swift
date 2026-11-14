@@ -1175,7 +1175,7 @@ struct TranscriptHistorySearchCacheTests {
         dir.appendingPathComponent("\(id.uuidString).json")
     }
 
-    private func searchFile(_ dir: URL, _ id: UUID, version: Int = 4) -> URL {
+    private func searchFile(_ dir: URL, _ id: UUID, version: Int = 5) -> URL {
         dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v\(version).txt")
     }
 
@@ -1188,9 +1188,12 @@ struct TranscriptHistorySearchCacheTests {
         try store.save(saved)
         let older = searchFile(dir, saved.id, version: 3)
         try Data("the dentist moved it to thursday".utf8).write(to: older)
+        let previous = searchFile(dir, saved.id, version: 4)
+        try Data("the dentist moved it to thursday".utf8).write(to: previous)
 
         try store.delete(id: saved.id)
         #expect(!FileManager.default.fileExists(atPath: older.path))
+        #expect(!FileManager.default.fileExists(atPath: previous.path))
         #expect(!FileManager.default.fileExists(atPath: searchFile(dir, saved.id).path))
     }
 
@@ -1636,7 +1639,7 @@ struct TranscriptHistoryTitleTests {
         #expect(store.search("רופא").map(\.id) == [id])
         #expect(store.search("סבתא").isEmpty)
         let remade = try FileManager.default.contentsOfDirectory(atPath: prepared.path)
-        #expect(remade.contains { $0.hasSuffix(".search-v4.txt") })
+        #expect(remade.contains { $0.hasSuffix(".search-v5.txt") })
         #expect(store.search("רופא").map(\.id) == [id])
     }
 
@@ -1917,5 +1920,105 @@ struct TranscriptHistoryLenientReadTests {
         #expect(lines[0]["confidence"] as? String == "high")
         #expect(lines[1]["isCommitted"] == nil)
         #expect(store.listSummaries().first { $0.id == id }?.title == "Visit")
+    }
+
+    private func partlyUnreadable(_ url: URL) throws {
+        try edit(url) { object, lines in
+            object["engine"] = "quantumListener"
+            lines[0]["confidence"] = "high"
+            lines[1].removeValue(forKey: "isCommitted")
+        }
+    }
+
+    @Test("caches written before damaged optional values were tolerated are not trusted")
+    func oldCachesAreRebuilt() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try edit(url) { _, lines in lines[0]["confidence"] = "high" }
+        _ = store.listSummaries()
+        let prepared = dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName)
+        let summaryFile = prepared.appendingPathComponent("\(id.uuidString).json")
+        var cached = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: summaryFile)) as? [String: Any])
+        var summary = try #require(cached["summary"] as? [String: Any])
+        summary["segmentCount"] = 2
+        cached["summary"] = summary
+        cached["format"] = 4
+        try JSONSerialization.data(withJSONObject: cached).write(to: summaryFile)
+        let oldSearch = prepared.appendingPathComponent("\(id.uuidString).search-v5.txt")
+        try Data("bravo two\ncharlie three\nbravo two\ncharlie three".utf8).write(to: oldSearch)
+        let later = Date().addingTimeInterval(60)
+        try FileManager.default.setAttributes([.modificationDate: later], ofItemAtPath: summaryFile.path)
+        try FileManager.default.setAttributes([.modificationDate: later], ofItemAtPath: oldSearch.path)
+
+        #expect(store.listSummaries().first { $0.id == id }?.segmentCount == 3)
+        #expect(store.search("alpha").map(\.id) == [id])
+    }
+
+    @Test("starring a partly readable record keeps every line it could not read")
+    func toggleStarKeepsUnreadableLines() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (store, id, url) = try savedConversation(in: dir, ids: ids)
+        try partlyUnreadable(url)
+        #expect(try store.toggleStar(segmentID: ids[2], inSession: id) == true)
+        let object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let lines = try #require(object["segments"] as? [[String: Any]])
+        #expect(object["engine"] as? String == "quantumListener")
+        try #require(lines.count == 3)
+        #expect(lines[0]["confidence"] as? String == "high")
+        #expect(lines[1]["isCommitted"] == nil)
+        #expect(lines[2]["isStarred"] as? Bool == true)
+    }
+
+    @Test("fixing a word in a partly readable record keeps every line it could not read")
+    func replaceTextKeepsUnreadableLines() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (store, id, url) = try savedConversation(in: dir, ids: ids)
+        try partlyUnreadable(url)
+        try store.replaceText(segmentID: ids[2], inSession: id, with: "charlie fixed")
+        let object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let lines = try #require(object["segments"] as? [[String: Any]])
+        #expect(object["engine"] as? String == "quantumListener")
+        try #require(lines.count == 3)
+        #expect(lines[0]["confidence"] as? String == "high")
+        #expect(lines[1]["isCommitted"] == nil)
+        #expect(lines[2]["text"] as? String == "charlie fixed")
+    }
+
+    @Test("fixing a voice name in a partly readable record keeps every line it could not read")
+    func renameSpeakerKeepsUnreadableLines() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, _, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try partlyUnreadable(url)
+        #expect(try store.renameSpeaker(from: "Dana", to: "Dani") == 1)
+        let object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let lines = try #require(object["segments"] as? [[String: Any]])
+        #expect(object["engine"] as? String == "quantumListener")
+        try #require(lines.count == 3)
+        #expect(lines.map { $0["speakerName"] as? String } == ["Dani", "Dani", "Dani"])
+        #expect(lines[0]["confidence"] as? String == "high")
+        #expect(lines[1]["isCommitted"] == nil)
+    }
+
+    @Test("an autosave keeps the model and microphone of a conversation whose engine this build does not know")
+    func autosaveKeepsSourceOfUnknownEngine() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (_, id, url) = try savedConversation(in: dir, ids: ids)
+        try edit(url) { object, _ in object["engine"] = "quantumListener" }
+        let again = TranscriptSessionRecord(
+            id: id, startedAt: 1_000, engine: .whisperKit, modelVariant: "large", inputName: "Headset",
+            segments: [line(ids[0], "alpha one")]
+        )
+        try TranscriptHistoryStore(directoryURL: dir).save(again)
+        let loaded = try #require(TranscriptHistoryStore(directoryURL: dir).load(id: id))
+        #expect(loaded.modelVariant == "small")
+        #expect(loaded.inputName == "iPhone Microphone")
     }
 }

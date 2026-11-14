@@ -539,17 +539,18 @@ class TranscriptHistoryStore(
      * format is in the file name, so a future change simply stops
      * finding the old files and rebuilds them. (v1 also held "speaker 2"
      * and "unknown speaker" labels; v3 had no lines as said, so a result's
-     * preview showed "10:30" as "1030".)
+     * preview showed "10:30" as "1030"; v4 left out a line whose optional
+     * value was damaged, which is kept now.)
      */
     private fun searchTextFile(recordFile: File): File =
-        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v4.txt")
+        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v5.txt")
 
     /**
      * Search files of earlier formats hold the conversation's words too,
      * so deleting it deletes them.
      */
     private fun olderSearchTextFiles(recordFile: File): List<File> =
-        listOf("v1", "v2", "v3").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
+        listOf("v1", "v2", "v3", "v4").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
 
     /**
      * Saves a session, overwriting any earlier save with the same id -
@@ -603,9 +604,8 @@ class TranscriptHistoryStore(
                 // and microphone were in use by then, and History showed those,
                 // and judged its uncertain lines by them.
                 val source = lenientHistory { savedSource(data) }
-                val engine = source?.engine
-                if (source != null && engine != null) {
-                    toSave = toSave.copy(engine = engine, modelVariant = source.modelVariant, inputName = source.inputName)
+                if (source != null) {
+                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName)
                 }
             } else if (toSave.title == null) {
                 toSave = toSave.copy(title = cachedSummary(file)?.title)
@@ -681,7 +681,7 @@ class TranscriptHistoryStore(
     private fun savedSource(data: ByteArray): SavedSource {
         val container = parseHistoryBytes(data).asHistoryObject()
         return SavedSource(
-            engine = container.optional("engine")?.asHistoryEngine(),
+            engine = lenientHistory { container.optional("engine")?.asHistoryEngine() },
             modelVariant = container.optional("modelVariant")?.asHistoryString(),
             inputName = container.optional("inputName")?.asHistoryString(),
         )
@@ -869,17 +869,14 @@ class TranscriptHistoryStore(
     /**
      * A saved voice was renamed: every saved conversation that said the
      * old name now says the new one, so fixing a misspelling reaches the
-     * days before it too, and a search for the new name finds them. A
-     * conversation whose search text doesn't hold the old name is skipped
-     * without being opened. Returns how many conversations changed.
+     * days before it too, and a search for the new name finds them. Every
+     * conversation is checked as raw JSON, because its search text leaves
+     * out a line this build cannot read. Returns how many changed.
      */
     fun renameSpeaker(from: String, to: String): Int {
         if (from.isEmpty() || to.isEmpty() || from == to) return 0
-        val needle = normalizedForSearch(from)
         var changed = 0
         for (file in recordFiles()) {
-            val cached = cachedSearchText(file)?.let(::preparedSearch)
-            if (cached != null && !cached.words.contains(needle)) continue
             val data = readBytes(file) ?: continue
             val patched = patchRecordFile(file, data, writeSearchText = true) { object_ ->
                 var any = false
@@ -941,8 +938,8 @@ class TranscriptHistoryStore(
     /**
      * Changes one field of a conversation file in place. The file is
      * patched as raw JSON, so a line this build cannot read, or a field it
-     * does not know, is written back exactly as found instead of being
-     * dropped by a decode and re-encode. `patch` returns null to leave the
+     * does not know, is written back with its values instead of being
+     * dropped by a decode and re-encode (spacing is not kept). `patch` returns null to leave the
      * file untouched. Returns whether the file was rewritten.
      */
     private fun patchRecordFile(file: File, data: ByteArray, writeSearchText: Boolean, patch: (JsonObject) -> JsonObject?): Boolean {
@@ -969,17 +966,14 @@ class TranscriptHistoryStore(
         val file = fileFor(inSession)
         if (!file.exists()) return false
         val data = file.readBytes()
-        var found = false
-        patchRecordFile(file, data, writeSearchText = true) { object_ ->
+        return patchRecordFile(file, data, writeSearchText = true) { object_ ->
             val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null
             val line = lines[index] as JsonObject
             val old = (line["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return@patchRecordFile null
-            found = true
             JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(change(old)))) })))
         }
-        return found
     }
 
     fun sweepStrayTemporaries(olderThanMillis: Long = 60_000) {
@@ -1122,7 +1116,7 @@ class TranscriptHistoryStore(
          * Bumped whenever [TranscriptSessionSummary] changes meaning, so
          * summaries written by an older build are rebuilt instead of trusted.
          */
-        internal const val SUMMARY_FORMAT = 4
+        internal const val SUMMARY_FORMAT = 5
         internal const val SUMMARIES_FOLDER_NAME = "summaries"
         internal const val REMEMBERED_CONVERSATIONS = 8
         internal const val CACHE_REFRESH_MILLIS = 120_000L
