@@ -241,7 +241,7 @@ struct HistoryView: View {
         NavigationLink {
             HistoryDetailView(viewModel: viewModel, sessionID: session.id, searchQuery: query, onHistoryChanged: reload)
         } label: {
-            SessionRow(session: session, isSearchResult: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            SessionRow(session: session, languageCode: viewModel.settings.languageCode, isSearchResult: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .accessibilityIdentifier("conversationRow")
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -361,7 +361,7 @@ struct HistoryView: View {
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: { session in
-            Text(session.title ?? CaptionLayout.directed(session.preview))
+            Text(session.title ?? CaptionLayout.directed(session.preview, languageCode: viewModel.settings.languageCode))
         }
         .confirmationDialog(tr("למחוק את כל השיחות השמורות?", "Delete all saved conversations?"), isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
             Button(tr("מחיקת הכול", "Delete all"), role: .destructive) {
@@ -446,6 +446,7 @@ private struct SessionRow: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let session: TranscriptSessionSummary
+    let languageCode: String
     /// True while a search query is active, so the preview below (which
     /// `TranscriptHistoryStore.search` fills with the matching line, not
     /// always the conversation's first line) reads as a match rather than
@@ -491,7 +492,7 @@ private struct SessionRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Text(CaptionLayout.directed(session.preview))
+                Text(CaptionLayout.directed(session.preview, languageCode: languageCode))
                     .font(.body)
                     .lineLimit(2)
                     .foregroundStyle(.secondary)

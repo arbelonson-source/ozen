@@ -53,7 +53,7 @@ object CaptionLayout {
      * copied and shared text gets only the number isolates ([copiedText]),
      * and spoken text stays as recognized.
      */
-    fun displayText(text: String, languageCode: String = "he"): String =
+    fun displayText(text: String, languageCode: String): String =
         directed(joiningNumbers(readableText(text)), languageCode)
 
     /**
@@ -88,7 +88,7 @@ object CaptionLayout {
      * The marks alone, without breaking the text into paragraphs: for a
      * one- or two-line preview.
      */
-    fun directed(text: String, languageCode: String = "he"): String {
+    fun directed(text: String, languageCode: String): String {
         if (!isRightToLeft(languageCode)) return text
         return isolatingNumbers(text)
             .split("\n")

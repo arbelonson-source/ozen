@@ -39,6 +39,7 @@ struct LockScreenSharedCasesTests {
             }
             let lines = LockScreenCaptions.lines(
                 from: segments,
+                languageCode: "he",
                 count: set["count"] as! Int,
                 textSize: LockScreenTextSize(rawValue: set["textSize"] as! String)!,
                 name: { $0.speakerClusterID.flatMap { names[String($0)] } }

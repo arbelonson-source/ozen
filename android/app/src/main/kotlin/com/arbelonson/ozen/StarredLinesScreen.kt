@@ -84,7 +84,7 @@ internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
  * conversation deleted there takes its lines off this list too.
  */
 @Composable
-internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit, languageCode: String = "he") {
+internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit, languageCode: String) {
     var opened by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     // Kept while a line's conversation is open, so Back finds the list where
     // it was; the lines are still read again behind it.

@@ -193,7 +193,7 @@ fun HistoryScreen(
     marksUncertain: Boolean,
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
-    languageCode: String = "he",
+    languageCode: String,
     onTranscribe: ((Uri) -> Unit)? = null,
 ) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
@@ -333,7 +333,7 @@ fun HistoryScreen(
                     Column(modifier = Modifier.testTag(ON_THIS_DATE), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(tr("בתאריך הזה בשנים קודמות", "On this date in earlier years"))
                         for (session in shown.onThisDate) {
-                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
+                            ConversationRowView(ConversationRow.of(session, languageCode = languageCode), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
                         }
                     }
                 }
@@ -351,7 +351,7 @@ fun HistoryScreen(
                     items(day.sessions, key = { it.id.toString() }) { session ->
                         // A deleted conversation fades and the rest close up over it.
                         Box(Modifier.animateItem()) {
-                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
+                            ConversationRowView(ConversationRow.of(session, languageCode = languageCode), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
                         }
                     }
                 }
@@ -380,7 +380,7 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingDeletionID = null },
             title = { Text(tr("למחוק את השיחה הזו?", "Delete this conversation?")) },
-            text = { DialogText(session.title ?: CaptionLayout.directed(session.preview)) },
+            text = { DialogText(session.title ?: CaptionLayout.directed(session.preview, languageCode)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -639,7 +639,7 @@ internal fun ConversationScreen(
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
     line: UUID? = null,
-    languageCode: String = "he",
+    languageCode: String,
 ) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
@@ -822,7 +822,7 @@ internal fun ConversationScreen(
                             shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats, shown.slots) } }
                             if (numbers != null) {
                                 item(key = "numbers") {
-                                    NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
+                                    NumbersSection(numbers, languageCode, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
                                         jumpTo(shown, said.id)
                                     }
                                 }
@@ -1020,7 +1020,7 @@ private fun SummaryRow(label: String, value: String) {
 
 /** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */
 @Composable
-private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment) -> Boolean, onJump: (SavedSegment) -> Unit) {
+private fun NumbersSection(numbers: NumbersMentioned, languageCode: String, isUncertain: (SavedSegment) -> Boolean, onJump: (SavedSegment) -> Unit) {
     val jump = tr("מעבר לשורה בשיחה", "Jump to this line in the conversation")
     val copy = tr("העתקה", "Copy")
     val unsureLabel = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ").trim()
@@ -1054,7 +1054,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
                     // The row's state says it once; the mark's own label would say it twice.
                     if (unsure) Box(Modifier.clearAndSetSemantics {}) { UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current),
+                        captionText(CaptionLayout.directed(said.text, languageCode), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current),
                         style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     )
                 }

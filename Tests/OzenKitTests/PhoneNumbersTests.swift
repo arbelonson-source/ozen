@@ -60,7 +60,7 @@ struct PhoneNumbersTests {
 
     @Test("the number is still found in the line as the caption screen draws it, with its direction marks")
     func displayedLine() {
-        let shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.")
+        let shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.", languageCode: "he")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567"])
     }
 

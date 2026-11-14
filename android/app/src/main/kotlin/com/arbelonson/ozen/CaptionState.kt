@@ -302,9 +302,9 @@ object CaptionState {
      * speaker names are on: the lines keep their names either way, and the
      * screen leaves them out as it draws.
      */
-    fun lockScreenLines(count: Int, textSize: LockScreenTextSize, namesShown: Boolean): List<LockScreenCaptionLine> {
+    fun lockScreenLines(count: Int, textSize: LockScreenTextSize, namesShown: Boolean, languageCode: String): List<LockScreenCaptionLine> {
         val names = state.value.lines.associate { it.id to it.speaker }
-        return LockScreenCaptions.lines(segmentsShown, count, textSize) { names[it.id]?.takeIf { namesShown } }
+        return LockScreenCaptions.lines(segmentsShown, languageCode, count, textSize) { names[it.id]?.takeIf { namesShown } }
     }
 
     /**

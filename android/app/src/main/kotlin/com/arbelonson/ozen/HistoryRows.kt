@@ -34,7 +34,7 @@ data class ConversationRow(
     val starredSpoken: String? = null,
 ) {
     companion object {
-        fun of(summary: TranscriptSessionSummary, zone: ZoneId = ZoneId.systemDefault()) = ConversationRow(
+        fun of(summary: TranscriptSessionSummary, zone: ZoneId = ZoneId.systemDefault(), languageCode: String) = ConversationRow(
             id = summary.id,
             title = summary.title,
             time = clockTime(summary.startedAt, zone),
@@ -42,7 +42,7 @@ data class ConversationRow(
             speakers = summary.speakerNames.takeIf { it.isNotEmpty() }?.let { names ->
                 names.take(3).joinToString(", ") + if (names.size > 3) tr(" ועוד", " and more") else ""
             },
-            preview = CaptionLayout.directed(summary.preview),
+            preview = CaptionLayout.directed(summary.preview, languageCode),
             lines = ConversationStats.linesText(summary.segmentCount),
             starred = summary.starredCount,
             starredSpoken = summary.starredCount.takeIf { it > 0 }?.let {
@@ -75,7 +75,7 @@ data class SavedLine(
             record: TranscriptSessionRecord,
             zone: ZoneId = ZoneId.systemDefault(),
             markUncertain: Boolean = false,
-            languageCode: String = "he",
+            languageCode: String,
             slots: SpeakerColorSlots = slotsOf(record.segments),
         ): List<SavedLine> {
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
@@ -112,7 +112,7 @@ data class SavedLine(
             line: StarredLine,
             zone: ZoneId = ZoneId.systemDefault(),
             markUncertain: Boolean = false,
-            languageCode: String = "he",
+            languageCode: String,
             slots: SpeakerColorSlots? = null,
         ): SavedLine {
             val segment = line.segment

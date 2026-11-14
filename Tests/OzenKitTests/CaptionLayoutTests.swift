@@ -45,11 +45,11 @@ struct CaptionLayoutTests {
     @Test("in Hebrew every paragraph reads right to left, even one opening with a Latin word")
     func rightToLeftParagraphs() {
         let mark = "\u{200F}"
-        #expect(CaptionLayout.displayText("OK, אז נתראה מחר") == mark + "OK, אז נתראה מחר")
+        #expect(CaptionLayout.displayText("OK, אז נתראה מחר", languageCode: "he") == mark + "OK, אז נתראה מחר")
         #expect(CaptionLayout.displayText("שלום", languageCode: "he-IL") == mark + "שלום")
 
         let long = "אתמול הלכנו לשוק בבוקר מוקדם. WhatsApp שלחה הודעה וקנינו ירקות טריים לכל השבוע. אחר כך ישבנו בבית קפה קטן ליד התחנה."
-        let shown = CaptionLayout.displayText(long)
+        let shown = CaptionLayout.displayText(long, languageCode: "he")
         let paragraphs = shown.split(separator: "\n")
         #expect(paragraphs.count >= 2)
         #expect(paragraphs.allSatisfy { $0.hasPrefix(mark) })
@@ -60,13 +60,13 @@ struct CaptionLayoutTests {
     @Test("trailing punctuation after a Latin word or a digit gets a mark of its own, anchoring it at the line's end")
     func trailingPunctuationAnchored() {
         let mark = "\u{200F}"
-        #expect(CaptionLayout.displayText("תתקשר ב-WhatsApp.").hasSuffix(mark))
-        #expect(CaptionLayout.displayText("התרופה היא Acamol!").hasSuffix(mark))
-        #expect(CaptionLayout.displayText("בדקו ב-WhatsApp)").hasSuffix(mark))
+        #expect(CaptionLayout.displayText("תתקשר ב-WhatsApp.", languageCode: "he").hasSuffix(mark))
+        #expect(CaptionLayout.displayText("התרופה היא Acamol!", languageCode: "he").hasSuffix(mark))
+        #expect(CaptionLayout.displayText("בדקו ב-WhatsApp)", languageCode: "he").hasSuffix(mark))
         // Punctuation after a Hebrew word needs no trailing mark: it's
         // already anchored by the paragraph's own right-to-left context.
-        #expect(!CaptionLayout.displayText("מה שלומך?").hasSuffix(mark))
-        #expect(!CaptionLayout.displayText("שלום").hasSuffix(mark))
+        #expect(!CaptionLayout.displayText("מה שלומך?", languageCode: "he").hasSuffix(mark))
+        #expect(!CaptionLayout.displayText("שלום", languageCode: "he").hasSuffix(mark))
     }
 
     @Test("a left-to-right language is shown exactly as laid out")
@@ -78,13 +78,13 @@ struct CaptionLayoutTests {
     @Test("a paragraph without a Hebrew letter, English said to her, keeps its own left-to-right reading")
     func englishParagraphsReadLeftToRight() {
         let mark = "\u{200F}"
-        #expect(CaptionLayout.displayText("Good morning, how did you sleep?") == "Good morning, how did you sleep?")
-        #expect(CaptionLayout.directed("I can take you, no problem.") == "I can take you, no problem.")
-        #expect(CaptionLayout.directed("10:30?") == mark + "10:30?" + mark)
-        #expect(CaptionLayout.directed("OK, אז נתראה מחר.") == mark + "OK, אז נתראה מחר.")
+        #expect(CaptionLayout.displayText("Good morning, how did you sleep?", languageCode: "he") == "Good morning, how did you sleep?")
+        #expect(CaptionLayout.directed("I can take you, no problem.", languageCode: "he") == "I can take you, no problem.")
+        #expect(CaptionLayout.directed("10:30?", languageCode: "he") == mark + "10:30?" + mark)
+        #expect(CaptionLayout.directed("OK, אז נתראה מחר.", languageCode: "he") == mark + "OK, אז נתראה מחר.")
 
         let mixed = "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע. Pretty good, thanks, I have a doctor's appointment at ten."
-        let paragraphs = CaptionLayout.displayText(mixed).split(separator: "\n").map(String.init)
+        let paragraphs = CaptionLayout.displayText(mixed, languageCode: "he").split(separator: "\n").map(String.init)
         #expect(paragraphs == [mark + "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע.", "Pretty good, thanks, I have a doctor's appointment at ten."])
     }
 
@@ -100,7 +100,7 @@ struct CaptionLayoutTests {
     @Test("a preview gets the marks without being broken into paragraphs")
     func previewNotParagraphed() {
         let long = "אתמול הלכנו לשוק בבוקר מוקדם. WhatsApp שלחה הודעה וקנינו ירקות טריים לכל השבוע. אחר כך ישבנו בבית קפה קטן ליד התחנה."
-        #expect(CaptionLayout.directed(long) == "\u{200F}" + long)
+        #expect(CaptionLayout.directed(long, languageCode: "he") == "\u{200F}" + long)
     }
 
     @Test("a single sentence longer than a paragraph stays whole")
@@ -116,17 +116,17 @@ struct CaptionLayoutNumberDirectionTests {
 
     @Test("a star code, a number in spaced groups and an international number are each kept left to right in a Hebrew line")
     func numbersIsolated() {
-        #expect(CaptionLayout.displayText("תתקשרי לקופה *2700") == mark + "תתקשרי לקופה " + open + "*2700" + close)
-        #expect(CaptionLayout.displayText("תתקשרי 050 123 4567 מחר") == mark + "תתקשרי " + open + "050\u{00A0}123\u{00A0}4567" + close + " מחר")
-        #expect(CaptionLayout.directed("אליו +972-3-1234567.") == mark + "אליו " + open + "+972-3-1234567" + close + ".")
-        #expect(CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח") == mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח")
+        #expect(CaptionLayout.displayText("תתקשרי לקופה *2700", languageCode: "he") == mark + "תתקשרי לקופה " + open + "*2700" + close)
+        #expect(CaptionLayout.displayText("תתקשרי 050 123 4567 מחר", languageCode: "he") == mark + "תתקשרי " + open + "050\u{00A0}123\u{00A0}4567" + close + " מחר")
+        #expect(CaptionLayout.directed("אליו +972-3-1234567.", languageCode: "he") == mark + "אליו " + open + "+972-3-1234567" + close + ".")
+        #expect(CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח", languageCode: "he") == mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח")
     }
 
     @Test("times, doses and English lines are not isolated, a dose is held together, and the numbers still dial from the shown line")
     func otherTextUntouched() {
-        #expect(CaptionLayout.displayText("בשעה 10:30, 3 כדורים") == mark + "בשעה 10:30, 3\u{00A0}כדורים")
+        #expect(CaptionLayout.displayText("בשעה 10:30, 3 כדורים", languageCode: "he") == mark + "בשעה 10:30, 3\u{00A0}כדורים")
         #expect(CaptionLayout.displayText("call 050 123 4567", languageCode: "en") == "call 050\u{00A0}123\u{00A0}4567")
-        let shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר")
+        let shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר", languageCode: "he")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567", "+97231234567"])
     }
 
@@ -309,22 +309,22 @@ struct CaptionPipelineLongRunTests {
     @Test("a shown phone number and a dose are held together so they cannot wrap, and a copied line keeps plain spaces")
     func numbersHeldTogether() {
         let nb = "\u{00A0}"
-        #expect(CaptionLayout.displayText("תתקשרי 054 123 4567 מחר").contains("054" + nb + "123" + nb + "4567"))
-        #expect(CaptionLayout.displayText("קחי 500 מ״ג פעמיים").contains("500" + nb + "מ״ג"))
+        #expect(CaptionLayout.displayText("תתקשרי 054 123 4567 מחר", languageCode: "he").contains("054" + nb + "123" + nb + "4567"))
+        #expect(CaptionLayout.displayText("קחי 500 מ״ג פעמיים", languageCode: "he").contains("500" + nb + "מ״ג"))
         #expect(CaptionLayout.displayText("take 500 mg", languageCode: "en") == "take 500" + nb + "mg")
-        #expect(CaptionLayout.displayText("תתקשרי 050-1234567").contains("050\u{2011}1234567"))
+        #expect(CaptionLayout.displayText("תתקשרי 050-1234567", languageCode: "he").contains("050\u{2011}1234567"))
         #expect(CaptionLayout.copiedText("תתקשרי 054 123 4567").contains("054 123 4567"))
         #expect(CaptionLayout.copiedText("קחי 500 מ״ג").contains("500 מ״ג"))
-        let shown = CaptionLayout.displayText("תתקשרי 054 123 4567 מחר")
+        let shown = CaptionLayout.displayText("תתקשרי 054 123 4567 מחר", languageCode: "he")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0541234567"])
     }
 
     @Test("a dose written with a long unit word is held together too")
     func longUnitsHeldTogether() {
         let nb = "\u{00A0}"
-        #expect(CaptionLayout.displayText("קחי 30 מיליגרם בבוקר").contains("30" + nb + "מיליגרם"))
-        #expect(CaptionLayout.displayText("קחי 5 מיליליטר בבוקר").contains("5" + nb + "מיליליטר"))
-        #expect(CaptionLayout.displayText("קחי 2 ליטר מים").contains("2" + nb + "ליטר"))
-        #expect(CaptionLayout.displayText("קחי 5 מיליליטרים").contains("5 מיליליטרים"))
+        #expect(CaptionLayout.displayText("קחי 30 מיליגרם בבוקר", languageCode: "he").contains("30" + nb + "מיליגרם"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטר בבוקר", languageCode: "he").contains("5" + nb + "מיליליטר"))
+        #expect(CaptionLayout.displayText("קחי 2 ליטר מים", languageCode: "he").contains("2" + nb + "ליטר"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטרים", languageCode: "he").contains("5 מיליליטרים"))
     }
 }

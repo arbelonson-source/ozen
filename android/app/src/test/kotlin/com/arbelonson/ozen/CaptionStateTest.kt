@@ -80,8 +80,8 @@ class CaptionStateTest {
         show(PipelinePhase.Listening, listOf(done, growing))
         assertEquals(
             listOf(
-                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true, copied = CaptionLayout.copiedText("שלום לכולם"), spoken = "שלום לכולם"),
-                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false, copied = CaptionLayout.copiedText("מה שלומך"), spoken = "מה שלומך"),
+                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם", "he"), isFinal = true, copied = CaptionLayout.copiedText("שלום לכולם"), spoken = "שלום לכולם"),
+                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך", "he"), isFinal = false, copied = CaptionLayout.copiedText("מה שלומך"), spoken = "מה שלומך"),
             ),
             CaptionState.screen.value.lines,
         )
@@ -585,18 +585,18 @@ class CaptionStateTest {
             PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, languageCode = "en",
             speakerName = { mapOf(0 to "Dana", 1 to "Speaker 2").getValue(it.speakerClusterID!!) },
         )
-        val shown = CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true)
+        val shown = CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true, languageCode = "he")
         assertEquals(listOf("Dana", "Speaker 2"), shown.map { it.speaker })
         assertEquals(listOf("How did you sleep", "Fine thanks"), shown.map { it.text })
         assertEquals(listOf(5.0, 8.0), shown.map { it.lastUpdate })
         // The names are known, but she turned them off: the locked phone
         // names no one, as the screen and the iPhone's lock screen don't.
-        assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = false).map { it.speaker })
+        assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = false, languageCode = "he").map { it.speaker })
 
         CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines)
-        assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true).map { it.speaker })
+        assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true, languageCode = "he").map { it.speaker })
         CaptionState.clear()
-        assertTrue(CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true).isEmpty())
+        assertTrue(CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true, languageCode = "he").isEmpty())
     }
 
     @Test

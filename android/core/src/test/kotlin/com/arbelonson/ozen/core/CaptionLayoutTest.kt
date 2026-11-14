@@ -57,11 +57,11 @@ class CaptionLayoutTest {
     @Test
     fun `in Hebrew every paragraph reads right to left, even one opening with a Latin word`() {
         val mark = "‏"
-        assertEquals(mark + "OK, אז נתראה מחר", CaptionLayout.displayText("OK, אז נתראה מחר"))
+        assertEquals(mark + "OK, אז נתראה מחר", CaptionLayout.displayText("OK, אז נתראה מחר", "he"))
         assertEquals(mark + "שלום", CaptionLayout.displayText("שלום", languageCode = "he-IL"))
 
         val long = "אתמול הלכנו לשוק בבוקר מוקדם. WhatsApp שלחה הודעה וקנינו ירקות טריים לכל השבוע. אחר כך ישבנו בבית קפה קטן ליד התחנה."
-        val shown = CaptionLayout.displayText(long)
+        val shown = CaptionLayout.displayText(long, "he")
         val paragraphs = shown.split("\n").filter { it.isNotEmpty() }
         assertTrue(paragraphs.size >= 2)
         assertTrue(paragraphs.all { it.startsWith(mark) })
@@ -72,13 +72,13 @@ class CaptionLayoutTest {
     @Test
     fun `trailing punctuation after a Latin word or a digit gets a mark of its own, anchoring it at the line's end`() {
         val mark = "‏"
-        assertTrue(CaptionLayout.displayText("תתקשר ב-WhatsApp.").endsWith(mark))
-        assertTrue(CaptionLayout.displayText("התרופה היא Acamol!").endsWith(mark))
-        assertTrue(CaptionLayout.displayText("בדקו ב-WhatsApp)").endsWith(mark))
+        assertTrue(CaptionLayout.displayText("תתקשר ב-WhatsApp.", "he").endsWith(mark))
+        assertTrue(CaptionLayout.displayText("התרופה היא Acamol!", "he").endsWith(mark))
+        assertTrue(CaptionLayout.displayText("בדקו ב-WhatsApp)", "he").endsWith(mark))
         // Punctuation after a Hebrew word needs no trailing mark: it's
         // already anchored by the paragraph's own right-to-left context.
-        assertFalse(CaptionLayout.displayText("מה שלומך?").endsWith(mark))
-        assertFalse(CaptionLayout.displayText("שלום").endsWith(mark))
+        assertFalse(CaptionLayout.displayText("מה שלומך?", "he").endsWith(mark))
+        assertFalse(CaptionLayout.displayText("שלום", "he").endsWith(mark))
     }
 
     @Test
@@ -90,13 +90,13 @@ class CaptionLayoutTest {
     @Test
     fun `a paragraph without a Hebrew letter, English said to her, keeps its own left-to-right reading`() {
         val mark = "‏"
-        assertEquals("Good morning, how did you sleep?", CaptionLayout.displayText("Good morning, how did you sleep?"))
-        assertEquals("I can take you, no problem.", CaptionLayout.directed("I can take you, no problem."))
-        assertEquals(mark + "10:30?" + mark, CaptionLayout.directed("10:30?"))
-        assertEquals(mark + "OK, אז נתראה מחר.", CaptionLayout.directed("OK, אז נתראה מחר."))
+        assertEquals("Good morning, how did you sleep?", CaptionLayout.displayText("Good morning, how did you sleep?", "he"))
+        assertEquals("I can take you, no problem.", CaptionLayout.directed("I can take you, no problem.", "he"))
+        assertEquals(mark + "10:30?" + mark, CaptionLayout.directed("10:30?", "he"))
+        assertEquals(mark + "OK, אז נתראה מחר.", CaptionLayout.directed("OK, אז נתראה מחר.", "he"))
 
         val mixed = "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע. Pretty good, thanks, I have a doctor's appointment at ten."
-        val paragraphs = CaptionLayout.displayText(mixed).split("\n").filter { it.isNotEmpty() }
+        val paragraphs = CaptionLayout.displayText(mixed, "he").split("\n").filter { it.isNotEmpty() }
         assertEquals(
             listOf(mark + "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע.", "Pretty good, thanks, I have a doctor's appointment at ten."),
             paragraphs,
@@ -115,7 +115,7 @@ class CaptionLayoutTest {
     @Test
     fun `a preview gets the marks without being broken into paragraphs`() {
         val long = "אתמול הלכנו לשוק בבוקר מוקדם. WhatsApp שלחה הודעה וקנינו ירקות טריים לכל השבוע. אחר כך ישבנו בבית קפה קטן ליד התחנה."
-        assertEquals("‏" + long, CaptionLayout.directed(long))
+        assertEquals("‏" + long, CaptionLayout.directed(long, "he"))
     }
 
     @Test
@@ -143,17 +143,17 @@ class CaptionLayoutNumberDirectionTest {
 
     @Test
     fun `a star code, a number in spaced groups and an international number are each kept left to right in a Hebrew line`() {
-        assertEquals(mark + "תתקשרי לקופה " + open + "*2700" + close, CaptionLayout.displayText("תתקשרי לקופה *2700"))
-        assertEquals(mark + "תתקשרי " + open + "050\u00A0123\u00A04567" + close + " מחר", CaptionLayout.displayText("תתקשרי 050 123 4567 מחר"))
-        assertEquals(mark + "אליו " + open + "+972-3-1234567" + close + ".", CaptionLayout.directed("אליו +972-3-1234567."))
-        assertEquals(mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח", CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח"))
+        assertEquals(mark + "תתקשרי לקופה " + open + "*2700" + close, CaptionLayout.displayText("תתקשרי לקופה *2700", "he"))
+        assertEquals(mark + "תתקשרי " + open + "050\u00A0123\u00A04567" + close + " מחר", CaptionLayout.displayText("תתקשרי 050 123 4567 מחר", "he"))
+        assertEquals(mark + "אליו " + open + "+972-3-1234567" + close + ".", CaptionLayout.directed("אליו +972-3-1234567.", "he"))
+        assertEquals(mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח", CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח", "he"))
     }
 
     @Test
     fun `times stay as they were, doses and numbers keep their words together, and the numbers still dial from the shown line`() {
-        assertEquals(mark + "בשעה 10:30, 3\u00A0כדורים", CaptionLayout.displayText("בשעה 10:30, 3 כדורים"))
+        assertEquals(mark + "בשעה 10:30, 3\u00A0כדורים", CaptionLayout.displayText("בשעה 10:30, 3 כדורים", "he"))
         assertEquals("call 050\u00A0123\u00A04567", CaptionLayout.displayText("call 050 123 4567", languageCode = "en"))
-        val shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר")
+        val shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר", "he")
         assertEquals(listOf("0501234567", "+97231234567"), PhoneNumbers.matches(shown).map { it.dialable })
     }
 

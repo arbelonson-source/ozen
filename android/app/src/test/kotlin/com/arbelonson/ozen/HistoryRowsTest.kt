@@ -40,7 +40,7 @@ class HistoryRowsTest {
 
     @Test
     fun `a conversation row shows its start in the phone's time zone, how long it ran, and how many lines`() = Localization.withLanguage(UILanguage.English) {
-        val row = ConversationRow.of(summary(), jerusalem)
+        val row = ConversationRow.of(summary(), jerusalem, languageCode = "he")
         assertTrue(row.time.contains("10:00"), row.time)
         assertEquals("25 minutes", row.duration)
         assertEquals("12 lines", row.lines)
@@ -51,20 +51,20 @@ class HistoryRowsTest {
 
     @Test
     fun `a row shows how many of its lines are starred, said in words to a screen reader, and nothing when none are`() = Localization.withLanguage(UILanguage.English) {
-        val starred = ConversationRow.of(summary(starred = 2), jerusalem)
+        val starred = ConversationRow.of(summary(starred = 2), jerusalem, languageCode = "he")
         assertEquals(2, starred.starred)
         assertEquals("2 starred lines", starred.starredSpoken)
-        val none = ConversationRow.of(summary(), jerusalem)
+        val none = ConversationRow.of(summary(), jerusalem, languageCode = "he")
         assertEquals(0, none.starred)
         assertNull(none.starredSpoken)
     }
 
     @Test
     fun `up to three names are listed, then and more`() = Localization.withLanguage(UILanguage.English) {
-        assertEquals("Dana, Yossi", ConversationRow.of(summary(listOf("Dana", "Yossi")), jerusalem).speakers)
+        assertEquals("Dana, Yossi", ConversationRow.of(summary(listOf("Dana", "Yossi")), jerusalem, languageCode = "he").speakers)
         assertEquals(
             "Dana, Yossi, Ronit and more",
-            ConversationRow.of(summary(listOf("Dana", "Yossi", "Ronit", "Avi")), jerusalem).speakers,
+            ConversationRow.of(summary(listOf("Dana", "Yossi", "Ronit", "Avi")), jerusalem, languageCode = "he").speakers,
         )
     }
 
@@ -173,7 +173,7 @@ class HistoryRowsTest {
 
     @Test
     fun `a named conversation keeps its name`() = Localization.withLanguage(UILanguage.English) {
-        assertEquals("Doctor's visit", ConversationRow.of(summary(title = "Doctor's visit"), jerusalem).title)
+        assertEquals("Doctor's visit", ConversationRow.of(summary(title = "Doctor's visit"), jerusalem, languageCode = "he").title)
     }
 
     @Test
@@ -191,7 +191,7 @@ class HistoryRowsTest {
                 line("Later on", morning + 400, "Yossi"),
             ),
         )
-        val lines = SavedLine.of(record, jerusalem)
+        val lines = SavedLine.of(record, jerusalem, languageCode = "he")
         assertEquals(listOf(true, false, false, true), lines.map { it.time != null })
         assertTrue(lines[0].time!!.contains("10:00"), lines[0].time)
         assertEquals(listOf("Dana", null, "Yossi", "Yossi"), lines.map { it.speaker })
@@ -213,13 +213,13 @@ class HistoryRowsTest {
                 SavedSegment(UUID.randomUUID(), "Call the pharmacy", null, null, morning + 10, true, isStarred = true, confidence = 0.95f),
             ),
         )
-        val marked = SavedLine.of(record, jerusalem, markUncertain = true)
+        val marked = SavedLine.of(record, jerusalem, markUncertain = true, languageCode = "he")
         assertEquals(listOf(true, false), marked.map { it.unsure })
         assertEquals(listOf(false, true), marked.map { it.starred })
         assertTrue(marked[0].spoken.contains("May not have been heard correctly. Two pills after dinner"), marked[0].spoken)
         assertTrue(marked[1].spoken.contains("Marked as important. Call the pharmacy"), marked[1].spoken)
 
-        val unmarked = SavedLine.of(record, jerusalem, markUncertain = false)
+        val unmarked = SavedLine.of(record, jerusalem, markUncertain = false, languageCode = "he")
         assertEquals(listOf(false, false), unmarked.map { it.unsure })
         assertFalse(unmarked[0].spoken.contains("May not have been heard"), unmarked[0].spoken)
         assertEquals(listOf(false, true), unmarked.map { it.starred })
@@ -261,11 +261,11 @@ class HistoryRowsTest {
             inputName = null,
             segments = listOf(mom, dad),
         )
-        val lines = SavedLine.of(record, jerusalem)
+        val lines = SavedLine.of(record, jerusalem, languageCode = "he")
         assertNotEquals(lines[0].slot, lines[1].slot)
         val starred = listOf(mom, dad).map { StarredLine(record.id, morning, it) }
         val slots = SpeakerColorSlots.of(starred.map { it.segment.speakerClusterID to it.segment.speakerName })
-        val shown = starred.map { SavedLine.of(it, jerusalem, slots = slots) }
+        val shown = starred.map { SavedLine.of(it, jerusalem, slots = slots, languageCode = "he") }
         assertNotEquals(shown[0].slot, shown[1].slot)
         assertEquals(lines.map { it.slot }, shown.map { it.slot })
     }
@@ -281,8 +281,8 @@ class HistoryRowsTest {
             inputName = null,
             segments = listOf(heard),
         )
-        assertEquals(2, SavedLine.of(record, jerusalem).single().cluster)
-        assertEquals(2, SavedLine.of(StarredLine(record.id, morning, heard, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem).cluster)
+        assertEquals(2, SavedLine.of(record, jerusalem, languageCode = "he").single().cluster)
+        assertEquals(2, SavedLine.of(StarredLine(record.id, morning, heard, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, languageCode = "he").cluster)
     }
 
     @Test
@@ -295,18 +295,18 @@ class HistoryRowsTest {
             inputName = null,
             segments = listOf(line("תתקשרי למרפאה 050 123 4567", morning)),
         )
-        val copied = SavedLine.of(record, jerusalem).single().copied
+        val copied = SavedLine.of(record, jerusalem, languageCode = "he").single().copied
         assertEquals(CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567"), copied)
         assertTrue(copied.contains("050 123 4567"), copied)
         assertTrue(copied != "תתקשרי למרפאה 050 123 4567", copied)
-        assertEquals(listOf("0501234567"), SavedLine.of(record, jerusalem).single().phones.map { it.dialable })
+        assertEquals(listOf("0501234567"), SavedLine.of(record, jerusalem, languageCode = "he").single().phones.map { it.dialable })
     }
 
     @Test
     fun `a starred line always shows its time and a real speaker's name, and is read without saying it is starred`() = Localization.withLanguage(UILanguage.English) {
         val at = morning + 90
         val pills = SavedSegment(UUID.randomUUID(), "Two pills after dinner", "Dana", null, at, true, isStarred = true, confidence = 0.05f)
-        val row = SavedLine.of(StarredLine(UUID.randomUUID(), morning, pills, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = true)
+        val row = SavedLine.of(StarredLine(UUID.randomUUID(), morning, pills, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = true, languageCode = "he")
         val time = clockTime(at, jerusalem)
         assertEquals(time, row.time)
         assertEquals("Dana", row.speaker)
@@ -315,7 +315,7 @@ class HistoryRowsTest {
         assertEquals(CaptionLayout.copiedText("Two pills after dinner"), row.copied)
 
         val unnamed = SavedSegment(UUID.randomUUID(), "Call the pharmacy", "Speaker 2", null, at, true, isStarred = true, confidence = 0.05f)
-        val plain = SavedLine.of(StarredLine(UUID.randomUUID(), morning, unnamed, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = false)
+        val plain = SavedLine.of(StarredLine(UUID.randomUUID(), morning, unnamed, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = false, languageCode = "he")
         assertNull(plain.speaker)
         assertFalse(plain.unsure)
         assertEquals("$time. Call the pharmacy", plain.spoken)

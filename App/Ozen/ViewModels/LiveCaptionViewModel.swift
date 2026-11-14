@@ -369,7 +369,7 @@ public final class LiveCaptionViewModel {
                     guard let self else { return [] }
                     let pipeline = self.pipeline
                     let namesShown = self.settings.display.showSpeakerNames
-                    return LockScreenCaptions.lines(from: pipeline.segments, count: count, textSize: textSize) { segment in
+                    return LockScreenCaptions.lines(from: pipeline.segments, languageCode: self.settings.languageCode, count: count, textSize: textSize) { segment in
                         namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil
                     }
                 }
