@@ -32,6 +32,7 @@ class SileroVoiceScorer private constructor(private var handle: Long) : AutoClos
     companion object {
         const val MODEL_ASSET = "silero-v6.2.0-ggml.bin"
 
+        @Synchronized
         fun fromAssets(context: Context): SileroVoiceScorer? {
             val model = File(context.noBackupFilesDir, MODEL_ASSET)
             try {
