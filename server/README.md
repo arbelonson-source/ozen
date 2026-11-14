@@ -72,6 +72,7 @@ In PowerShell as administrator:
 Unregister-ScheduledTask -TaskName 'Ozen server' -Confirm:$false
 Get-CimInstance Win32_Process -Filter "name='python.exe'" | Where-Object { $_.CommandLine -like '*C:\ozen\*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 Remove-NetFirewallRule -DisplayName 'Ozen server'
+Remove-NetFirewallRule -DisplayName 'Ozen server (encrypted)'
 Remove-Item -Recurse -Force C:\ozen
 ```
 
@@ -185,13 +186,15 @@ The last line starts it at boot, before anyone signs in. Its log:
 
 Both setup scripts end by making `pairing.html` next to the server: a QR code
 with the address and code in it. Open the iPhone's Camera, point it at the
-code, tap the Ozen link, and confirm. To make it again, or for a different
+code, tap the Ozen link, and confirm. On Android, scan it with the camera or
+a QR scanner and tap the Ozen link; or open Settings → Home computer and
+type the address and the code in by hand, then tap Save code. To make it again, or for a different
 address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
 
 ## Reaching it from the phone
 
 - **Same Wi-Fi:** the computer's address, for example `192.168.1.20`. The
-  Windows setup lets the phone through the firewall; on Linux with a
+  Windows setup lets the phone through the firewall (two rules, `Ozen server` for port 8765 and `Ozen server (encrypted)` for port 8766); on Linux with a
   firewall on (ufw is, on some distributions), let it in from the home
   network: `sudo ufw allow from 192.168.1.0/24 to any port 8765 proto tcp`
   (your network's own range in place of `192.168.1.0/24`). Tailscale
@@ -212,7 +215,8 @@ address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
   `wss://<computer>.<tailnet>.ts.net` in the phone. The
   `https://<computer>.<tailnet>.ts.net` that the funnel command prints works
   too; the app turns it into `wss://`. Only someone with the pairing code
-  gets captions.
+  gets captions. Away from Wi-Fi the phone uses about 120 MB of mobile data
+  an hour.
 
 ## Starting it with Windows
 

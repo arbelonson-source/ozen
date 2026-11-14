@@ -46,7 +46,8 @@ on, and when it is on the sound goes to Apple.
 | --- | --- | --- |
 | Saved conversations | Ozen's own storage on the phone, one small file each | Until you delete them, or the automatic deletion does |
 | Settings, saved speakers' voice prints, names and alert words, word fixes | One settings file in Ozen's storage | Until you change or delete them |
-| Cloud keys and the home computer's pairing code | The phone's Keychain | Until you delete them |
+| Cloud keys and the home computer's pairing code | The iPhone's Keychain; on Android, encrypted with the Android Keystore in storage that is not backed up | Until you delete them |
+| The last sound heard while you were away | A small record in Ozen's storage: only the kind of sound and the time | Up to 12 hours, and it is dropped once the app is back on the screen |
 | Sound from a marked problem | A few short clips in Ozen's storage | Up to 5, the newest kept |
 | The journal | One small log file | About 500 lines; older lines drop off |
 | Speech models | Ozen's storage | Until you delete the model |
@@ -64,11 +65,14 @@ those saved earlier stay until you delete them.
 
 **Automatic deletion** (mechika otomatit), in the same place, can delete
 conversations after a week, a month, 3 months or a year. At first it is set
-to Never. Conversations with a starred line or a name you gave are always
-kept. A conversation you have open is left alone.
+to Never. When it runs, conversations with a starred line or a name you gave
+are kept, and a conversation you have open is left alone. **Delete all** does
+not keep them: it deletes everything, those conversations and the current one
+too.
 
-Saved conversations are in the phone's iCloud or computer backup when that is
-on. The History screen says so under the switch.
+On an iPhone, saved conversations are in the iCloud or computer backup when
+that is on. The History screen says so under the switch. On Android, Ozen
+turns off Android's cloud backup for itself.
 
 ### Recent sound
 
@@ -96,11 +100,23 @@ nothing sends it anywhere by itself. When you mark a problem while **Save
 conversations** is on, it also keeps the last 4 caption lines, so someone can
 see the words that were wrong. With saving off it keeps no caption lines.
 
+### The last sound heard while you were away
+
+When sound alerts hear a sound while Ozen is not on the screen, Ozen keeps
+one small record of it, so it can show it when you come back to the app: the
+most important sound heard meanwhile (the newest, if several are equally
+important). The record holds only the kind of sound (a doorbell, for
+example), the time and an internal number. The sound itself is not kept. The
+record is dropped after 12 hours, or once the app is back on the screen.
+
 ### Cloud keys and the pairing code
 
 Each cloud service's key, and the pairing code for the home computer, are in
-the phone's Keychain. They are marked as staying on this phone, so they do
-not move to another phone with a backup. They are not in the report below.
+the iPhone's Keychain. They are marked as staying on this phone, so they do
+not move to another phone with a backup. On Android they are encrypted with
+the Android Keystore and kept in the app's no-backup storage, so they are not
+in any backup or phone-to-phone transfer either. They are not in the report
+below.
 The settings file holds the home computer's address, but not the code.
 
 ## How to delete each thing

@@ -61,7 +61,9 @@ computer** (eich mechinim et ha-machshev ba-bayit).
      free account.
 4. **Scan the square code.** At the end, a page with a black-and-white
    square opens on the computer. On the iPhone, open the Camera, point it
-   at the square, tap the Ozen link, and confirm. To see the square again
+   at the square, tap the Ozen link, and confirm. On Android, scan it with
+   the phone's camera or a QR scanner, tap the link, and confirm; or type
+   the address and code in by hand (see "Typing it in" below). To see the square again
    later, open the Start menu and choose "Ozen - pair a phone".
 
 The first time the server starts, it downloads the speech model, so allow
@@ -69,7 +71,9 @@ about 10 more minutes before the first captions appear.
 
 The setup also makes a pairing code (a secret password, kept in
 `C:\ozen\pairing-code`), lets the phone through the Windows firewall on
-home networks on port 8765, and starts the server whenever Windows starts,
+home networks (port 8765 for the plain link and port 8766 for the encrypted
+one; the two rules are called `Ozen server` and `Ozen server (encrypted)`),
+and starts the server whenever Windows starts,
 before anyone signs in. It starts it again if it stops. The log is
 `C:\ozen\server.log`.
 
@@ -96,7 +100,9 @@ systemctl --user enable --now ozen-server
 sudo loginctl enable-linger "$USER"
 ```
 
-If the computer has a firewall switched on, the
+On Windows, the setup adds two firewall rules for home networks, `Ozen server`
+(port 8765) and `Ozen server (encrypted)` (port 8766). If the
+computer has another firewall switched on, the
 [server README](../server/README.md#reaching-it-from-the-phone) shows the rule
 that lets the phone in.
 
@@ -110,6 +116,9 @@ that lets the phone in.
   public, but useless without the pairing code. The QR code then carries
   this address.
 
+Away from Wi-Fi it uses about 120 MB of mobile data an hour (the iPhone's
+Settings text says cellular data).
+
 If you said no, or Tailscale did not finish, the QR code carries the home
 Wi-Fi address and works at home only. The Start menu item "Ozen - pair a
 phone" makes the code again each time, so it stays right after a new router.
@@ -118,7 +127,9 @@ phone" makes the code again each time, so it stays right after a new router.
 
 ### The easy way
 
-Scan the QR code with the iPhone Camera and tap the Ozen link. The app asks
+On an iPhone, scan the QR code with the Camera and tap the Ozen link. On
+Android, scan it with the phone's camera or a QR scanner and tap the Ozen
+link (Android hands links that start with `ozen://` to Ozen). Either way the app asks
 **Connect to the home computer?** (lehitchaber la-machshev ba-bayit?) and
 tells you which computer the sound would go to. Tap **Connect**
 (lehitchaber) only if it is your family's computer. The app then saves the
@@ -220,7 +231,7 @@ phone's own speech recognition until the QR code is scanned again. You can
 also pick another engine under **Transcription engine** (manoa timlul).
 
 On a Windows computer, the [server README](../server/README.md#removing-it)
-lists the commands that remove the startup task, the firewall rule and the
+lists the commands that remove the startup task, the two firewall rules and the
 `C:\ozen` folder (run in PowerShell as administrator). Then delete "Ozen -
 pair a phone" from the Start menu, and uninstall Tailscale from Windows
 Settings, under Apps, if it was only there for Ozen.

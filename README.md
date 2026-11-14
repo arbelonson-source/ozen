@@ -459,7 +459,7 @@ Open a section for the details.
   0.2 s after they are said; a finished sentence settles about 0.9 s after
   the speaker stops (on an RTX 2080 Ti). Setup is one double-click
   (`Ozen-Home-Setup.cmd` from the latest release) and pairing is a QR
-  code; if the PC can't be reached, the phone's own model carries on,
+  code (Android takes the same link, or the address and code typed in); away from Wi‑Fi it uses about 120 MB of mobile data an hour; if the PC can't be reached, the phone's own model carries on,
   once it has been downloaded as a backup (Settings → Home computer →
   "Download a backup to the phone"; without it captions wait for the PC,
   start again within about 15 seconds of it answering, and the status line
@@ -731,10 +731,12 @@ processor:
 2. Open the downloaded file. Android asks whether to allow installing apps
    from the browser or the Files app; allow it, then tap Install.
 3. Open Ozen. The walkthrough asks which language the people around you
-   speak. The first time captions start, Ozen downloads the speech model
-   for that language (574 MB, over Wi-Fi unless "Download models on
-   cellular data too" is on in Settings) and shows how far it has got;
-   after that it works without the internet.
+   speak, then tests how fast the phone is and suggests a speech model.
+   The first time captions start, Ozen downloads that model (574 MB for
+   the recommended one; on a slower phone the walkthrough may suggest
+   Small, about 190 MB, or Base, about 60 MB), over Wi-Fi unless
+   "Download models on cellular data too" is on in Settings, and shows how
+   far it has got; after that it works without the internet.
 
 A newer `Ozen.apk` installs over the old one and keeps the conversations,
 names and settings. The Hebrew model is Ozen's own, the same one the
