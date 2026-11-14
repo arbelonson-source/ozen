@@ -31,6 +31,21 @@ private class FlakySoundDetector(broken: Boolean) : SoundEventDetecting {
     }
 }
 
+private class ReportingSoundDetector : SoundEventDetecting {
+    private val reporters = java.util.concurrent.CopyOnWriteArrayList<(Boolean) -> Unit>()
+
+    val runs: Int get() = reporters.size
+
+    fun report(available: Boolean, run: Int) = reporters[run](available)
+
+    override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> = observations(audio) {}
+
+    override fun observations(audio: Flow<FloatArray>, availability: (Boolean) -> Unit): Flow<SoundObservation> {
+        reporters += availability
+        return flow { audio.collect {} }
+    }
+}
+
 class CaptionPipelineSoundClassifierTest {
     @Test
     fun `a classifier that keeps failing is reported by the pipeline, which stops saying sound detection runs`() = runTest {
@@ -77,5 +92,44 @@ class CaptionPipelineSoundClassifierTest {
         assertTrue(eventually { pipeline.soundAlertsNotWorking })
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
         assertFalse(pipeline.soundAlertsNotWorking)
+    }
+
+    @Test
+    fun `sounds-only listening that ended with the classifier failing does not carry that into what comes next`() = runTest {
+        val detector = ReportingSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        pipeline.start(AppSettings.default)
+        pipeline.listenForSoundsOnly()
+        assertTrue(pipeline.isListeningForSoundsOnly)
+        detector.report(false, detector.runs - 1)
+        assertTrue(eventually { pipeline.soundAlertsNotWorking })
+        assertFalse(pipeline.stats.soundDetectionRunning)
+
+        pipeline.systemInterruptionChanged(true)
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertFalse(pipeline.soundAlertsNotWorking)
+
+        pipeline.systemInterruptionChanged(false)
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+        assertFalse(pipeline.soundAlertsNotWorking)
+        assertTrue(pipeline.stats.soundDetectionRunning)
+    }
+
+    @Test
+    fun `a report from the classifier of an earlier run is ignored, and the current run's is not`() = runTest {
+        val detector = ReportingSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        pipeline.start(AppSettings.default)
+        val old = detector.runs - 1
+        pipeline.stop()
+        pipeline.start(AppSettings.default)
+        assertTrue(detector.runs - 1 > old)
+
+        detector.report(false, old)
+        assertFalse(eventually(kotlin.time.Duration.parse("200ms")) { pipeline.soundAlertsNotWorking })
+        assertTrue(pipeline.stats.soundDetectionRunning)
+
+        detector.report(false, detector.runs - 1)
+        assertTrue(eventually { pipeline.soundAlertsNotWorking })
     }
 }

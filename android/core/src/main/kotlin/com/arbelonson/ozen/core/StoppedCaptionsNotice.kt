@@ -93,9 +93,10 @@ class StoppedCaptionsNotice {
         if (!isEnabled || told) return null
         posted = true
         told = true
-        if (cause == Cause.OtherAppHasMicrophone) {
+        if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
             postedAsSchedule = true
-            return Update.Schedule(content(cause), OTHER_APP_DELAY_SECONDS)
+            val delay = if (cause == Cause.SoundAlertsNotWorking) SOUND_ALERTS_DELAY_SECONDS else OTHER_APP_DELAY_SECONDS
+            return Update.Schedule(content(cause), delay)
         }
         postedAsSchedule = false
         return Update.Post(content(cause))
@@ -119,6 +120,9 @@ class StoppedCaptionsNotice {
 
         /** How long another app has to keep the microphone before she is told. */
         const val OTHER_APP_DELAY_SECONDS = 60.0
+
+        /** How long sound alerts have to keep failing before she is told while the app is away. */
+        const val SOUND_ALERTS_DELAY_SECONDS = 60.0
 
         /**
          * Why captions are stopped for good right now, or null when they run,

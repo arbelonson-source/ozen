@@ -388,6 +388,34 @@ final class FlakySoundDetector: SoundEventDetecting, @unchecked Sendable {
     }
 }
 
+/// A classifier whose availability reports the test sends by hand, one
+/// reporter per run the pipeline started.
+final class ReportingSoundDetector: SoundEventDetecting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var reporters: [@Sendable (Bool) -> Void] = []
+
+    var runs: Int { lock.withLock { reporters.count } }
+
+    func report(_ available: Bool, run: Int) {
+        let reporter = lock.withLock { reporters[run] }
+        reporter(available)
+    }
+
+    func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation> {
+        observations(audio: audio, availability: { _ in })
+    }
+
+    func observations(audio: AsyncStream<[Float]>, availability: @escaping @Sendable (Bool) -> Void) -> AsyncStream<SoundObservation> {
+        lock.withLock { reporters.append(availability) }
+        return AsyncStream { continuation in
+            Task {
+                for await _ in audio {}
+                continuation.finish()
+            }
+        }
+    }
+}
+
 // MARK: - Helpers
 
 @MainActor
@@ -2893,6 +2921,46 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.soundAlertsNotWorking })
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
         #expect(!pipeline.soundAlertsNotWorking)
+    }
+
+    @Test("sounds-only listening that ended with the classifier failing does not carry that into what comes next")
+    func soundsOnlyEndingClearsTheNotWorkingReport() async {
+        let detector = ReportingSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        detector.report(false, run: detector.runs - 1)
+        #expect(await eventually { pipeline.soundAlertsNotWorking })
+        #expect(!pipeline.stats.soundDetectionRunning)
+
+        pipeline.systemInterruptionChanged(active: true)
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(!pipeline.soundAlertsNotWorking)
+
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+        #expect(!pipeline.soundAlertsNotWorking)
+        #expect(pipeline.stats.soundDetectionRunning)
+    }
+
+    @Test("a report from the classifier of an earlier run is ignored, and the current run's is not")
+    func reportFromAnOldRunIsIgnored() async {
+        let detector = ReportingSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        let old = detector.runs - 1
+        pipeline.stop()
+        await pipeline.start(settings: .default)
+        #expect(detector.runs - 1 > old)
+
+        detector.report(false, run: old)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!pipeline.soundAlertsNotWorking)
+        #expect(pipeline.stats.soundDetectionRunning)
+
+        detector.report(false, run: detector.runs - 1)
+        #expect(await eventually { pipeline.soundAlertsNotWorking })
     }
 
     @Test("sound observations become alerts through the policy, and audio reaches the detector")

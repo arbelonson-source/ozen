@@ -318,23 +318,29 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
-    fun `the not-working notice is posted once while away, withdrawn when sound alerts work again, and told again after`() {
+    fun `the not-working notice goes out after a minute of it not working, once, and is cancelled when sound alerts work again or the app opens`() {
         val notice = StoppedCaptionsNotice()
         val notWorking = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        assertEquals(60.0, StoppedCaptionsNotice.SOUND_ALERTS_DELAY_SECONDS)
         notice.update(notWorking, appIsActive = true, isEnabled = true)
         assertNull(notice.update(notWorking, appIsActive = false, isEnabled = false))
-        val posted = notice.update(notWorking, appIsActive = false, isEnabled = true)
-        if (posted !is StoppedCaptionsNotice.Update.Post) fail("expected a notification")
-        assertEquals(StoppedCaptionsNotice.IDENTIFIER, posted.content.identifier)
-        assertTrue(posted.content.isUrgent)
+        val scheduled = notice.update(notWorking, appIsActive = false, isEnabled = true)
+        if (scheduled !is StoppedCaptionsNotice.Update.Schedule) fail("expected a notification to schedule")
+        assertEquals(60.0, scheduled.afterSeconds)
+        assertEquals(StoppedCaptionsNotice.IDENTIFIER, scheduled.content.identifier)
+        assertTrue(scheduled.content.isUrgent)
         assertNull(notice.update(notWorking, appIsActive = false, isEnabled = true))
         assertEquals(
-            StoppedCaptionsNotice.Update.Withdraw(StoppedCaptionsNotice.IDENTIFIER),
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
             notice.update(null, appIsActive = false, isEnabled = true),
         )
-        assertIs<StoppedCaptionsNotice.Update.Post>(
+        assertIs<StoppedCaptionsNotice.Update.Schedule>(
             notice.update(notWorking, appIsActive = false, isEnabled = true),
             "a new stop should be told again",
+        )
+        assertEquals(
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(notWorking, appIsActive = true, isEnabled = true),
         )
     }
 

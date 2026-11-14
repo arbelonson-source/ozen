@@ -45,6 +45,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// How long another app has to keep the microphone before she is told.
     public static let otherAppDelay: TimeInterval = 60
 
+    /// How long sound alerts have to keep failing before she is told while the app is away.
+    public static let soundAlertsDelay: TimeInterval = 60
+
     public static let identifier = "captions-stopped"
     /// A notice is sitting in Notification Center.
     private var posted = false
@@ -108,9 +111,10 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         guard isEnabled, !told, let cause else { return nil }
         posted = true
         told = true
-        if cause == .otherAppHasMicrophone {
+        if cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking {
             postedAsSchedule = true
-            return .schedule(Self.content(for: cause), after: Self.otherAppDelay)
+            let delay = cause == .soundAlertsNotWorking ? Self.soundAlertsDelay : Self.otherAppDelay
+            return .schedule(Self.content(for: cause), after: delay)
         }
         postedAsSchedule = false
         return .post(Self.content(for: cause))

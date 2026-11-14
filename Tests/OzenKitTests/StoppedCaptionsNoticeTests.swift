@@ -237,23 +237,26 @@ struct StoppedCaptionsNoticeTests {
         #expect(cause(.listening) == nil)
     }
 
-    @Test("the not-working notice is posted once while away, withdrawn when sound alerts work again, and told again after")
+    @Test("the not-working notice goes out after a minute of it not working, once, and is cancelled when sound alerts work again or the app opens")
     func soundAlertsNotWorkingNotice() {
         var notice = StoppedCaptionsNotice()
+        #expect(StoppedCaptionsNotice.soundAlertsDelay == 60)
         #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == nil)
         #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: false) == nil)
-        guard case .post(let content) = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
-            Issue.record("expected a notification")
+        guard case .schedule(let content, let delay) = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a notification to schedule")
             return
         }
+        #expect(delay == 60)
         #expect(content.identifier == StoppedCaptionsNotice.identifier)
         #expect(content.isUrgent)
         #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) == nil)
-        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .withdraw(identifier: StoppedCaptionsNotice.identifier))
-        guard case .post = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        guard case .schedule = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
             Issue.record("a new stop should be told again")
             return
         }
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
     }
 
     @Test("the not-working notice says sounds may be missed and that Ozen keeps trying")
