@@ -90,7 +90,7 @@ object NumberEmphasis {
      * kadur" - "half a pill", "500 mg"), since the amount alone doesn't say
      * what of.
      */
-    fun ranges(text: String, decimalComma: Boolean = false, languageCode: String = "he"): List<OpenEndRange<Int>> {
+    fun ranges(text: String, languageCode: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
         val profile = NumberWordProfile.profile(languageCode) ?: return hebrewRanges(text, decimalComma)
         val merged = mutableListOf<OpenEndRange<Int>>()
         for (range in (spelledRanges(text, decimalComma, profile) + hebrewRanges(text, decimalComma)).sortedBy { it.start }) {
@@ -155,7 +155,7 @@ object NumberEmphasis {
      * Monday"); a list of every line with them in it would be most of the
      * conversation.
      */
-    fun hasListableNumber(text: String, decimalComma: Boolean = false, languageCode: String = "he"): Boolean {
+    fun hasListableNumber(text: String, languageCode: String, decimalComma: Boolean = false): Boolean {
         val profile = NumberWordProfile.profile(languageCode)
         if (profile != null && spelledListable(text, decimalComma, profile)) return true
         return hasHebrewListableNumber(text, decimalComma)
@@ -512,6 +512,8 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
     fun joinsNext(index: Int, end: Int): Boolean =
         index + 1 < words.size && end == words[index].end && !emphasisFollowedByComma(line, end, decimalComma)
     fun isNumber(index: Int): Boolean = lowered[index]?.let { it in profile.numbers } ?: false
+    fun hasDigit(index: Int): Boolean = (words[index].start until words[index].end).any { isEmphasisNumber(line.graphemes[it]) }
+    fun digitEnd(index: Int): Int = (words[index].start until words[index].end).last { isEmphasisNumber(line.graphemes[it]) } + 1
 
     fun runEnd(start: Int): Int {
         var last = start
@@ -546,7 +548,25 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
     fun repeatedAfter(last: Int, end: Int): Pair<Int, Int>? {
         if (!joinsNext(last, end) || last + 2 >= words.size) return null
         if (lowered[last + 1] !in profile.repeatLinks || !joinsNext(last + 1, coreEnd(last + 1))) return null
-        return if (lowered[last + 2] in profile.periods) last + 2 to coreEnd(last + 2) else null
+        var counted = last + 2
+        if (hasDigit(counted)) {
+            if (!joinsNext(counted, digitEnd(counted))) return null
+        } else if (isNumber(counted)) {
+            counted = runEnd(counted)
+            if (!joinsNext(counted, coreEnd(counted))) return null
+        } else {
+            counted -= 1
+        }
+        if (counted + 1 >= words.size || lowered[counted + 1] !in profile.periods) return null
+        return counted + 1 to coreEnd(counted + 1)
+    }
+
+    fun mixedFraction(last: Int, end: Int): Pair<Int, Int>? {
+        if (!joinsNext(last, end) || lowered[last + 1] !in profile.connectors) return null
+        var cursor = last + 1
+        while (joinsNext(cursor, coreEnd(cursor)) && cursor + 1 < words.size && lowered[cursor + 1] in profile.fractionLinks) cursor += 1
+        if (cursor + 1 >= words.size || !joinsNext(cursor, coreEnd(cursor)) || lowered[cursor + 1] !in profile.fractions) return null
+        return cursor + 1 to coreEnd(cursor + 1)
     }
 
     fun finish(last: Int, end: Int, core: String?, afterFraction: Boolean): SpelledTail {
@@ -583,7 +603,8 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         if (firstDigit != null && lastDigit != null) {
             var digitsEnd = lastDigit + 1
             if (digitsEnd < word.end && line.graphemes[digitsEnd] in emphasisGluedUnitSigns) digitsEnd += 1
-            val done = finish(position, digitsEnd, null, false)
+            val mixed = mixedFraction(position, digitsEnd)
+            val done = if (mixed != null) finish(mixed.first, mixed.second, null, true) else finish(position, digitsEnd, null, false)
             start = firstDigit
             last = done.last
             end = done.end
@@ -599,7 +620,12 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 var runLast = runEnd(position)
                 var runStop = coreEnd(runLast)
                 var afterFraction = false
-                if (joinsNext(runLast, runStop) && lowered[runLast + 1] in profile.fractions) {
+                val mixed = mixedFraction(runLast, runStop)
+                if (mixed != null) {
+                    runLast = mixed.first
+                    runStop = mixed.second
+                    afterFraction = true
+                } else if (joinsNext(runLast, runStop) && lowered[runLast + 1] in profile.fractions) {
                     runLast += 1
                     runStop = coreEnd(runLast)
                     afterFraction = true
@@ -615,10 +641,11 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 end = if (keepTail) done.end else runStop
             } else if (core in profile.fractions) {
                 val clock = joinsNext(position, coreEnd(position)) && lowered[position + 1] in profile.clockLinks &&
-                    joinsNext(position + 1, coreEnd(position + 1)) && position + 2 < words.size && isNumber(position + 2)
+                    joinsNext(position + 1, coreEnd(position + 1)) && position + 2 < words.size &&
+                    (isNumber(position + 2) || hasDigit(position + 2))
                 if (clock) {
-                    val runLast = runEnd(position + 2)
-                    val done = finish(runLast, coreEnd(runLast), null, false)
+                    val runLast = if (hasDigit(position + 2)) position + 2 else runEnd(position + 2)
+                    val done = finish(runLast, if (hasDigit(runLast)) digitEnd(runLast) else coreEnd(runLast), null, false)
                     start = word.coreStart
                     last = done.last
                     end = done.end

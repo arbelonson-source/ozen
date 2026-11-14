@@ -9,6 +9,8 @@ extension NumberEmphasis {
         }
         func wordEnd(_ index: Int) -> String.Index { words[index].coreRange?.upperBound ?? words[index].text.endIndex }
         func isNumber(_ index: Int) -> Bool { lowered[index].map(profile.numbers.contains) ?? false }
+        func hasDigit(_ index: Int) -> Bool { words[index].text.contains(where: \.isNumber) }
+        func digitEnd(_ index: Int) -> String.Index { words[index].text.index(after: words[index].text.lastIndex(where: \.isNumber)!) }
 
         func runEnd(from start: Int) -> Int {
             var last = start
@@ -43,9 +45,29 @@ extension NumberEmphasis {
 
         func repeated(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
             guard joinsNext(last, end), last + 2 < words.count, let link = lowered[last + 1], profile.repeatLinks.contains(link),
-                  joinsNext(last + 1, wordEnd(last + 1)), let period = lowered[last + 2], profile.periods.contains(period)
+                  joinsNext(last + 1, wordEnd(last + 1))
             else { return nil }
-            return (last + 2, wordEnd(last + 2))
+            var counted = last + 2
+            if hasDigit(counted) {
+                guard joinsNext(counted, digitEnd(counted)) else { return nil }
+            } else if isNumber(counted) {
+                counted = runEnd(from: counted)
+                guard joinsNext(counted, wordEnd(counted)) else { return nil }
+            } else {
+                counted -= 1
+            }
+            guard counted + 1 < words.count, let period = lowered[counted + 1], profile.periods.contains(period) else { return nil }
+            return (counted + 1, wordEnd(counted + 1))
+        }
+
+        func mixedFraction(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
+            guard joinsNext(last, end), let connector = lowered[last + 1], profile.connectors.contains(connector) else { return nil }
+            var cursor = last + 1
+            while joinsNext(cursor, wordEnd(cursor)), cursor + 1 < words.count, let link = lowered[cursor + 1], profile.fractionLinks.contains(link) {
+                cursor += 1
+            }
+            guard cursor + 1 < words.count, joinsNext(cursor, wordEnd(cursor)), let fraction = lowered[cursor + 1], profile.fractions.contains(fraction) else { return nil }
+            return (cursor + 1, wordEnd(cursor + 1))
         }
 
         func finish(_ last: Int, _ end: String.Index, _ core: String?, afterFraction: Bool) -> (last: Int, end: String.Index, joined: Bool) {
@@ -70,8 +92,13 @@ extension NumberEmphasis {
             if let firstDigit = word.text.firstIndex(where: \.isNumber), let lastDigit = word.text.lastIndex(where: \.isNumber) {
                 var end = word.text.index(after: lastDigit)
                 if end < word.text.endIndex, gluedUnitSigns.contains(word.text[end]) { end = word.text.index(after: end) }
-                let done = finish(position, end, nil, afterFraction: false)
-                span = (firstDigit, done.last, done.end)
+                if let mixed = mixedFraction(after: position, end) {
+                    let done = finish(mixed.last, mixed.end, nil, afterFraction: true)
+                    span = (firstDigit, done.last, done.end)
+                } else {
+                    let done = finish(position, end, nil, afterFraction: false)
+                    span = (firstDigit, done.last, done.end)
+                }
             } else if let core = lowered[position], let start = word.coreRange?.lowerBound {
                 let previous = position > 0 ? lowered[position - 1] : nil
                 if profile.onceWords.contains(core) {
@@ -82,7 +109,10 @@ extension NumberEmphasis {
                     var last = runEnd(from: position)
                     var end = wordEnd(last)
                     var afterFraction = false
-                    if joinsNext(last, end), let next = lowered[last + 1], profile.fractions.contains(next) {
+                    if let mixed = mixedFraction(after: last, end) {
+                        (last, end) = mixed
+                        afterFraction = true
+                    } else if joinsNext(last, end), let next = lowered[last + 1], profile.fractions.contains(next) {
                         last += 1
                         end = wordEnd(last)
                         afterFraction = true
@@ -96,9 +126,9 @@ extension NumberEmphasis {
                     span = (start, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
                 } else if profile.fractions.contains(core) {
                     if joinsNext(position, wordEnd(position)), let link = lowered[position + 1], profile.clockLinks.contains(link),
-                       joinsNext(position + 1, wordEnd(position + 1)), position + 2 < words.count, isNumber(position + 2) {
-                        let last = runEnd(from: position + 2)
-                        let done = finish(last, wordEnd(last), nil, afterFraction: false)
+                       joinsNext(position + 1, wordEnd(position + 1)), position + 2 < words.count, isNumber(position + 2) || hasDigit(position + 2) {
+                        let last = hasDigit(position + 2) ? position + 2 : runEnd(from: position + 2)
+                        let done = finish(last, hasDigit(last) ? digitEnd(last) : wordEnd(last), nil, afterFraction: false)
                         span = (start, done.last, done.end)
                     } else {
                         let done = finish(position, wordEnd(position), nil, afterFraction: true)

@@ -891,6 +891,24 @@
     "input": "No one came",
     "language": "en",
     "expected": false
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take it once every two days",
+    "language": "en",
+    "expected": ["once every two days"]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take one and a half tablets",
+    "language": "en",
+    "expected": ["one and a half tablets"]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Meet at half past 3",
+    "language": "en",
+    "expected": ["half past 3"]
    }
  ]
 }

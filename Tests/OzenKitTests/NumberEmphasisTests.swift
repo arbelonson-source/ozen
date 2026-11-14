@@ -5,7 +5,7 @@ import Testing
 @Suite("Numbers standing out in captions")
 struct NumberEmphasisTests {
     private func emphasized(_ text: String) -> [String] {
-        NumberEmphasis.ranges(in: text).map { String(text[$0]) }
+        NumberEmphasis.ranges(in: text, languageCode: "he").map { String(text[$0]) }
     }
 
     @Test("\"one\" or \"pa'am\" as the very last word of a line, even before a trailing space, is read safely")
@@ -83,8 +83,8 @@ struct NumberEmphasisTests {
         // Punctuation after the number ends it; a unit before it isn't one.
         #expect(emphasized("בשעה 10:30, דקות ספורות") == ["10:30"])
         #expect(emphasized("פעם אחת ביום") == ["אחת"])
-        #expect(NumberEmphasis.hasListableNumber("חצי כדור בערב"))
-        #expect(NumberEmphasis.hasListableNumber("שני ימים"))
+        #expect(NumberEmphasis.hasListableNumber("חצי כדור בערב", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("שני ימים", languageCode: "he"))
     }
 
     @Test("twice, two days, two weeks and the other words that are two by themselves stand out and are listed")
@@ -92,8 +92,8 @@ struct NumberEmphasisTests {
         #expect(emphasized("פעמיים ביום, אחרי האוכל") == ["פעמיים"])
         #expect(emphasized("נתראה בעוד שבועיים, ולפני זה יומיים בלי") == ["שבועיים", "יומיים"])
         #expect(emphasized("תוך שעתיים, לחודשיים ובשנתיים האחרונות") == ["שעתיים", "לחודשיים", "ובשנתיים"])
-        #expect(NumberEmphasis.hasListableNumber("כדור פעמיים ביום"))
-        #expect(NumberEmphasis.hasListableNumber("ביקורת בעוד שבועיים"))
+        #expect(NumberEmphasis.hasListableNumber("כדור פעמיים ביום", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("ביקורת בעוד שבועיים", languageCode: "he"))
         #expect(emphasized("בדיקה שבועית וכדור יומי, תשלום חודשי") == [])
     }
 
@@ -120,7 +120,7 @@ struct NumberEmphasisTests {
     @Test("quarters count only after a number, and a unit with the article still joins its amount")
     func quartersAndTheUnit() {
         #expect(emphasized("רבעי הירח משתנים כל שבוע") == [])
-        #expect(NumberEmphasis.hasListableNumber("הדוח יוצא בכל רבעי השנה") == false)
+        #expect(NumberEmphasis.hasListableNumber("הדוח יוצא בכל רבעי השנה", languageCode: "he") == false)
         #expect(emphasized("שתיתי כבר שלושת רבעי הכוס") == ["שלושת רבעי הכוס"])
         #expect(emphasized("חצי הכוס, ורבע השעה הראשונה") == ["חצי הכוס", "ורבע השעה"])
         #expect(emphasized("ממיסים חצי הכף במים") == ["חצי הכף"])
@@ -135,8 +135,8 @@ struct NumberEmphasisTests {
         #expect(emphasized("זריקה פעם בשלושה ימים") == ["פעם", "בשלושה ימים"])
         #expect(emphasized("כדור פעם בשש שעות") == ["פעם", "בשש שעות"])
         #expect(emphasized("אף פעם ביום כזה, עוד פעם בבוקר, פעם הייתי שם") == [])
-        #expect(NumberEmphasis.hasListableNumber("כדור פעם ביום"))
-        #expect(NumberEmphasis.hasListableNumber("פעם הייתי שם") == false)
+        #expect(NumberEmphasis.hasListableNumber("כדור פעם ביום", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("פעם הייתי שם", languageCode: "he") == false)
     }
 
     @Test("today, this week and this year after an amount are not its unit; after a half or a quarter they are")
@@ -200,23 +200,23 @@ struct NumberEmphasisTests {
 
     @Test("lines listed under numbers said: digits and real amounts, not the idioms of one and two")
     func listable() {
-        #expect(NumberEmphasis.hasListableNumber("ניפגש ב-10:30"))
-        #expect(NumberEmphasis.hasListableNumber("לקחת שלושה כדורים"))
-        #expect(NumberEmphasis.hasListableNumber("ובערב חצי כדור"))
-        #expect(NumberEmphasis.hasListableNumber("רק פעם אחת") == false)
-        #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני") == false)
-        #expect(NumberEmphasis.hasListableNumber("כל אחד לבד") == false)
-        #expect(NumberEmphasis.hasListableNumber("") == false)
+        #expect(NumberEmphasis.hasListableNumber("ניפגש ב-10:30", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("לקחת שלושה כדורים", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("ובערב חצי כדור", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("רק פעם אחת", languageCode: "he") == false)
+        #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני", languageCode: "he") == false)
+        #expect(NumberEmphasis.hasListableNumber("כל אחד לבד", languageCode: "he") == false)
+        #expect(NumberEmphasis.hasListableNumber("", languageCode: "he") == false)
     }
 
     @Test("one or two as part of a time or an amount is listed: eleven, half past one, two pills")
     func listableOnesAndTwos() {
-        #expect(NumberEmphasis.hasListableNumber("נתראה באחת עשרה בלילה"))
-        #expect(NumberEmphasis.hasListableNumber("התור באחת וחצי בצהריים"))
-        #expect(NumberEmphasis.hasListableNumber("לקחת שני כדורים"))
-        #expect(NumberEmphasis.hasListableNumber("עד אחת-עשרה בלילה"))
-        #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר") == false)
-        #expect(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת") == false)
+        #expect(NumberEmphasis.hasListableNumber("נתראה באחת עשרה בלילה", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("התור באחת וחצי בצהריים", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("לקחת שני כדורים", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("עד אחת-עשרה בלילה", languageCode: "he"))
+        #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר", languageCode: "he") == false)
+        #expect(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת", languageCode: "he") == false)
     }
 
     @Test("on by default, survives older settings files, and can be turned off")

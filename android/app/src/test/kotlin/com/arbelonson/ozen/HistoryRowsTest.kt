@@ -155,7 +155,7 @@ class HistoryRowsTest {
             startedAt = morning, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
             segments = listOf(line("Good morning", at = morning)) + numbered + line("See you then", at = morning + 20),
         )
-        val mentioned = NumbersMentioned.of(record)
+        val mentioned = NumbersMentioned.of(record, "he")
         assertEquals(numbered.take(12).map { it.id }, mentioned.listed.map { it.id })
         assertEquals("Plus 2 lines with numbers later in the conversation", mentioned.moreText)
     }
@@ -166,7 +166,7 @@ class HistoryRowsTest {
             startedAt = morning, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
             segments = listOf(line("Good morning", at = morning), line("See you then", at = morning + 20)),
         )
-        val mentioned = NumbersMentioned.of(record)
+        val mentioned = NumbersMentioned.of(record, "he")
         assertTrue(mentioned.listed.isEmpty())
         assertNull(mentioned.moreText)
     }

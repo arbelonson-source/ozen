@@ -37,9 +37,9 @@ fun captionText(
     doubtfulWords: List<String> = emptyList(),
     linkingPhoneNumbers: Boolean = false,
     decimalComma: Boolean = false,
-    languageCode: String = "he",
+    languageCode: String,
 ): AnnotatedString {
-    val ranges = if (emphasizeNumbers) NumberEmphasis.ranges(shown, decimalComma, languageCode) else emptyList()
+    val ranges = if (emphasizeNumbers) NumberEmphasis.ranges(shown, languageCode, decimalComma) else emptyList()
     val doubted = if (doubtfulWords.isEmpty()) emptyList() else UncertainWords.ranges(shown, doubtfulWords)
     val phones = if (linkingPhoneNumbers) PhoneNumbers.matches(shown) else emptyList()
     if (ranges.isEmpty() && doubted.isEmpty() && phones.isEmpty()) return AnnotatedString(shown)

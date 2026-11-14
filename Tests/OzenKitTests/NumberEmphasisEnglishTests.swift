@@ -84,4 +84,19 @@ struct NumberEmphasisEnglishTests {
         #expect(CaptionLayout.displayText("Take three pills at nine", languageCode: "en") == "Take three\u{00A0}pills at nine")
         #expect(CaptionLayout.displayText("Take three pills at nine", languageCode: "he") == "Take three pills at nine")
     }
+
+    @Test("once every two days keeps the counted period")
+    func onceEveryTwoDays() {
+        #expect(emphasized("Take it once every two days") == ["once every two days"])
+    }
+
+    @Test("one and a half is one amount")
+    func mixedFraction() {
+        #expect(emphasized("Take one and a half tablets") == ["one and a half tablets"])
+    }
+
+    @Test("half past a number written in digits")
+    func halfPastDigits() {
+        #expect(emphasized("Meet at half past 3") == ["half past 3"])
+    }
 }

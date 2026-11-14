@@ -612,7 +612,7 @@ private fun opened(
     record = record,
     lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode, slots = slots) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
-    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, usesDecimalComma(languageCode), languageCode) },
+    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, languageCode, usesDecimalComma(languageCode)) },
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
     stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
     slots = slots,

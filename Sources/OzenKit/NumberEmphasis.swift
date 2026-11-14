@@ -15,7 +15,7 @@ public enum NumberEmphasis {
     /// to the last, with a percent sign right after; and the unit that
     /// follows, when one does ("3 kadurim" — "3 pills", "chatzi kadur" —
     /// "half a pill", "500 mg"), since the amount alone doesn't say what of.
-    public static func ranges(in text: String, languageCode: String = "he") -> [Range<String.Index>] {
+    public static func ranges(in text: String, languageCode: String) -> [Range<String.Index>] {
         guard let profile = NumberWordProfile.profile(for: languageCode) else { return hebrewRanges(in: text) }
         var merged: [Range<String.Index>] = []
         for range in (spelledRanges(in: text, profile: profile) + hebrewRanges(in: text)).sorted(by: { $0.lowerBound < $1.lowerBound }) {
@@ -163,7 +163,7 @@ public enum NumberEmphasis {
     /// Those two are mostly idioms ("pa'am achat" — "once", "be-yom sheni" —
     /// "on Monday"); a list of every line with them in it would be most of
     /// the conversation.
-    public static func hasListableNumber(_ text: String, languageCode: String = "he") -> Bool {
+    public static func hasListableNumber(_ text: String, languageCode: String) -> Bool {
         if let profile = NumberWordProfile.profile(for: languageCode), spelledListable(text, profile: profile) { return true }
         return hebrewRanges(in: text).contains { range in
             let found = text[range]

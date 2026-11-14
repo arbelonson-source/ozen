@@ -36,12 +36,12 @@ class NumberEmphasisSharedCasesTest {
             val expected = item.getValue("expected")
             when (item.getValue("kind").jsonPrimitive.content) {
                 "emphasized" -> {
-                    val actual = NumberEmphasis.ranges(input, decimalComma, language).map { input.substring(it.start, it.endExclusive) }
+                    val actual = NumberEmphasis.ranges(input, language, decimalComma).map { input.substring(it.start, it.endExclusive) }
                     assertEquals((expected as JsonArray).map { it.jsonPrimitive.content }, actual, "input: $input")
                 }
                 "listable" -> assertEquals(
                     (expected as JsonPrimitive).boolean,
-                    NumberEmphasis.hasListableNumber(input, decimalComma, language),
+                    NumberEmphasis.hasListableNumber(input, language, decimalComma),
                     "input: $input",
                 )
                 else -> error("bad case: $input")

@@ -1315,7 +1315,7 @@ class TranscriptHistoryStore(
                 emptyList()
             } else {
                 record.segments.zip(formatted)
-                    .filter { NumberEmphasis.hasListableNumber(it.first.text, decimalComma) }
+                    .filter { NumberEmphasis.hasListableNumber(it.first.text, "he", decimalComma) }
                     .take(NUMBERS_BLOCK_LIMIT)
                     .map { it.second }
             }

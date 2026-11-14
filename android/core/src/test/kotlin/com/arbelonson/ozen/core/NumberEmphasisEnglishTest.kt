@@ -85,4 +85,19 @@ class NumberEmphasisEnglishTest {
         assertEquals("Take three\u00A0pills at nine", CaptionLayout.displayText("Take three pills at nine", "en"))
         assertEquals("Take three pills at nine", CaptionLayout.displayText("Take three pills at nine", "he"))
     }
+
+    @Test
+    fun `once every two days keeps the counted period`() {
+        assertEquals(listOf("once every two days"), emphasized("Take it once every two days"))
+    }
+
+    @Test
+    fun `one and a half is one amount`() {
+        assertEquals(listOf("one and a half tablets"), emphasized("Take one and a half tablets"))
+    }
+
+    @Test
+    fun `half past a number written in digits`() {
+        assertEquals(listOf("half past 3"), emphasized("Meet at half past 3"))
+    }
 }

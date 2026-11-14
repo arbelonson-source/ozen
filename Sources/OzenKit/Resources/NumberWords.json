@@ -16,7 +16,7 @@
     "onceWords": ["once"],
     "repeatLinks": ["a", "an", "per", "each", "every"],
     "repeatUnits": ["time", "times", "twice", "once"],
-    "periods": ["day", "week", "month", "year", "hour", "night", "morning", "evening"],
+    "periods": ["day", "week", "month", "year", "hour", "night", "morning", "evening", "days", "weeks", "months", "years", "hours", "nights"],
     "idioms": ["one", "two", "once"],
     "units": [
       "pill", "pills", "tablet", "tablets", "capsule", "capsules", "drop", "drops",
