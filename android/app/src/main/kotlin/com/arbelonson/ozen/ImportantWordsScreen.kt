@@ -31,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -72,10 +75,13 @@ internal fun ImportantWordsScreen(
     val pendingDelete = pendingDeleteId?.let { id -> alerts.firstOrNull { it.id == id } }
     val listed = ImportantWords.listed(draft, alerts)
     val typedWordIsOn = listed?.isEnabled == true
+    val context = LocalContext.current
     val add = {
         if (!typedWordIsOn) {
+            val phrase = draft.trim()
             onChange(ImportantWords.adding(draft, alerts))
             draft = ""
+            if (phrase.isNotEmpty()) ScreenReader.saidAdded(context, shown(phrase))
         }
     }
     val otherLetters = tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found.")
@@ -104,7 +110,7 @@ internal fun ImportantWordsScreen(
                     tr("״%1״ כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", listOf(shown))
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
         if (HebrewText.isInOtherLetters(draft, captionLanguage)) Text(otherLetters, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))

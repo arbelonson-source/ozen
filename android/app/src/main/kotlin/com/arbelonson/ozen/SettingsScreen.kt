@@ -165,6 +165,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
+import com.arbelonson.ozen.core.BackupModel
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
@@ -914,7 +915,24 @@ interface PhoneBackup {
 /** The iPhone's backup row: whether the phone can carry on by itself, and how the download is going. */
 @Composable
 internal fun PhoneBackupRow(status: BackupModelStatus, onDownload: () -> Unit) {
+    val context = LocalContext.current
+    var previous by remember { mutableStateOf(status) }
+    LaunchedEffect(status) {
+        val text = backupMessage(status)
+        if (text != null && BackupModel.announces(status, previous)) ScreenReader.said(context, text)
+        previous = status
+    }
     Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { PhoneBackupContent(status, onDownload) }
+}
+
+private fun backupMessage(status: BackupModelStatus): String? = when (status) {
+    BackupModelStatus.NotNeeded, is BackupModelStatus.Missing -> null
+    is BackupModelStatus.Downloading -> tr("מורידים את הגיבוי", "Downloading the backup")
+    BackupModelStatus.Ready -> tr("הגיבוי בטלפון מוכן: כשאין חיבור למחשב, הטלפון ממשיך לבד.", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself.")
+    BackupModelStatus.WaitingForWiFi -> tr("הגיבוי יורד רק ב־Wi‑Fi. התחברו ל־Wi‑Fi כדי להוריד אותו.", "The backup downloads only on Wi‑Fi. Connect to Wi‑Fi to download it.")
+    BackupModelStatus.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את הגיבוי עכשיו.", "There’s no internet, so the backup can’t be downloaded now.")
+    is BackupModelStatus.NotEnoughRoom -> tr("אין מספיק מקום בטלפון לגיבוי. צריך לפנות עוד %1.", "Not enough room on the phone for the backup. %1 more needs to be freed up.", listOf(PhasePresentation.sizeText(status.megabytes)))
+    BackupModelStatus.Failed -> tr("הורדת הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again.")
 }
 
 @Composable
@@ -1198,10 +1216,11 @@ private fun AlertsSection(
 @Composable
 internal fun TestAlertButton(sent: Boolean, content: AlertNotificationContent = BackgroundAlertPolicy.testNotification, onSent: () -> Unit) {
     val context = LocalContext.current
-    TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(content); onSent() }) {
+    val sentText = tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds")
+    TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(content); onSent(); ScreenReader.said(context, sentText) }) {
         Text(
             if (sent) {
-                tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds")
+                sentText
             } else {
                 tr("בדיקה שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
             },
