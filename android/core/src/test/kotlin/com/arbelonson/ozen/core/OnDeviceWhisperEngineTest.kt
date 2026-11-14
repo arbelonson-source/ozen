@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.exp
@@ -95,6 +96,7 @@ private class Rig(val engine: OnDeviceWhisperEngine, val passes: FakeWhisperPass
 
 private suspend fun TestScope.rig(
     scorer: ((FloatArray) -> Float?)? = null,
+    scorerFactory: () -> ((FloatArray) -> Float?)? = { scorer },
     heat: DeviceHeat = DeviceHeat.Nominal,
     lowPower: Boolean = false,
     onFit: (Int, Double, Boolean) -> Unit = { _, _, _ -> },
@@ -104,7 +106,7 @@ private suspend fun TestScope.rig(
     val engine = OnDeviceWhisperEngine(
         modelName = "fake-model",
         loader = FakeLoader(passes),
-        voiceScorerFactory = { scorer },
+        voiceScorerFactory = scorerFactory,
         heat = { heat },
         lowPowerMode = { lowPower },
         onFitMeasurement = onFit,
@@ -120,6 +122,17 @@ private suspend fun TestScope.rig(
 private fun Rig.stream(vararg parts: Pair<Float, Double>) = engine.stream("he", audioOf(*parts))
 
 class OnDeviceWhisperEngineTest {
+    @Test
+    fun a_voice_check_that_cannot_be_made_leaves_the_captions_as_they_are_without_it() = runTest {
+        val without = rig().stream(speech(3.0), silence(1.0)).toList()
+        assertTrue(without.isNotEmpty(), "the stream without a voice check gave no captions")
+        listOf(IOException("No space left on device"), IllegalStateException("model refused")).forEach { failure ->
+            val rig = rig(scorerFactory = { throw failure })
+            val tokens = rig.stream(speech(3.0), silence(1.0)).toList()
+            assertEquals(without.map { it.text }, tokens.map { it.text }, "after ${failure.message}")
+        }
+    }
+
     @Test
     fun nothing_but_silence_never_runs_the_model_and_ends_the_stream_without_captions() = runTest {
         val rig = rig()

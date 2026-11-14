@@ -41,15 +41,26 @@ class ModelDownloadService : Service() {
         getSystemService(NotificationManager::class.java).cancel(ENDED_NOTIFICATION_ID)
         if (wake == null) wake = DownloadWakeLock.of(this)
         val shown = notification(this, models.switching.value)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, shown, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NOTIFICATION_ID, shown)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, shown, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NOTIFICATION_ID, shown)
+            }
+        } catch (_: SecurityException) {
+            return foregroundRefused()
+        } catch (_: IllegalStateException) {
+            return foregroundRefused()
         }
         if (watching == null) watching = scope.launch { watch() }
         // The state moves with each whole percent; on a link slow enough to
         // stay on one for longer than the lock's time limit, this renews it.
         if (renewing == null) renewing = scope.launch { wake?.keepUp { models.switching.value } }
+        return START_NOT_STICKY
+    }
+
+    private fun foregroundRefused(): Int {
+        stopSelf()
         return START_NOT_STICKY
     }
 
