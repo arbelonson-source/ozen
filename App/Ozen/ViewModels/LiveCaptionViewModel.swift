@@ -105,6 +105,11 @@ public final class LiveCaptionViewModel {
     private let postNotification: ((AlertNotificationContent) -> Void)?
     /// Removes a delivered notification by its identifier.
     private let withdrawNotification: ((String) -> Void)?
+    /// Hands the system a notification to deliver after a delay, so it
+    /// still arrives if iOS suspends the app meanwhile.
+    private let scheduleNotification: ((AlertNotificationContent, TimeInterval) -> Void)?
+    /// Cancels a scheduled notification and removes it if it was delivered.
+    private let cancelScheduledNotification: ((String) -> Void)?
     /// Removes every delivered sound and word alert, also ones a previous
     /// run of the app posted.
     private let withdrawDeliveredAlerts: (() -> Void)?
@@ -130,6 +135,9 @@ public final class LiveCaptionViewModel {
     private let phoneCalls: PhoneCallMonitor?
     /// A call ended while iOS still holds the microphone for it.
     private var callEndedDuringInterruption = false
+    /// A call is, or was, part of the interruption going on; one that began
+    /// with no call is another app holding the microphone.
+    private var interruptedByCall = false
     private var reclaimAfterCallTask: Task<Void, Never>?
     /// How long after a call ends iOS gets to hand the microphone back by
     /// itself before the app asks for it.
@@ -242,6 +250,11 @@ public final class LiveCaptionViewModel {
             synthesizer: SpeechSynthesizer(),
             postNotification: { AlertNotifier.shared.post($0) },
             withdrawNotification: { AlertNotifier.shared.withdraw(identifier: $0) },
+            scheduleNotification: { AlertNotifier.shared.schedule($0, after: $1) },
+            cancelScheduledNotification: {
+                AlertNotifier.shared.cancelScheduled(identifier: $0)
+                AlertNotifier.shared.withdraw(identifier: $0)
+            },
             withdrawDeliveredAlerts: { AlertNotifier.shared.withdrawDeliveredAlerts() },
             notificationsAllowed: { await AlertNotifier.shared.isAllowed() },
             phoneCalls: PhoneCallMonitor(),
@@ -265,6 +278,8 @@ public final class LiveCaptionViewModel {
         synthesizer: (any SpeechSynthesizing)? = nil,
         postNotification: ((AlertNotificationContent) -> Void)? = nil,
         withdrawNotification: ((String) -> Void)? = nil,
+        scheduleNotification: ((AlertNotificationContent, TimeInterval) -> Void)? = nil,
+        cancelScheduledNotification: ((String) -> Void)? = nil,
         withdrawDeliveredAlerts: (() -> Void)? = nil,
         notificationsAllowed: (@MainActor () async -> Bool?)? = nil,
         phoneCalls: PhoneCallMonitor? = nil,
@@ -290,6 +305,8 @@ public final class LiveCaptionViewModel {
         self.synthesizer = synthesizer
         self.postNotification = postNotification
         self.withdrawNotification = withdrawNotification
+        self.scheduleNotification = scheduleNotification
+        self.cancelScheduledNotification = cancelScheduledNotification
         self.withdrawDeliveredAlerts = withdrawDeliveredAlerts
         self.notificationsAllowed = notificationsAllowed
         self.phoneCalls = phoneCalls
@@ -558,6 +575,7 @@ public final class LiveCaptionViewModel {
     func systemInterruptionChanged(began: Bool) {
         isInterruptedBySystem = began
         callEndedDuringInterruption = false
+        interruptedByCall = began && (interruptedByCall || phoneCalls?.isCallInProgress == true)
         // A call cuts the phone off mid-phrase, and the voice can be left
         // paused rather than finished: never saying it's done, it would
         // hold captions paused for good. The rest of a phrase said after
@@ -597,10 +615,14 @@ public final class LiveCaptionViewModel {
         reclaimAfterCallTask = nil
         if inProgress {
             callEndedDuringInterruption = false
+            interruptedByCall = true
             checkCaptionsStillRunning()
             return
         }
-        guard isInterruptedBySystem else { return }
+        guard isInterruptedBySystem else {
+            interruptedByCall = false
+            return
+        }
         reclaimAfterCallTask = Task { [weak self, callEndGrace, reclaimRetryDelays] in
             try? await Task.sleep(for: callEndGrace)
             for (attempt, delay) in ([Duration.zero] + reclaimRetryDelays).enumerated() {
@@ -665,11 +687,16 @@ public final class LiveCaptionViewModel {
             phase: pipeline.phase,
             retryScheduled: pipeline.isRecoveringByItself,
             systemInterrupted: isInterruptedBySystem,
+            interruptedByCall: interruptedByCall,
             callEndedDuringInterruption: callEndedDuringInterruption
         )
         switch stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
         case .post(let content)?:
             postNotification?(content)
+        case .schedule(let content, let delay)?:
+            scheduleNotification?(content, delay)
+        case .cancelScheduled(let identifier)?:
+            cancelScheduledNotification?(identifier)
         case .withdraw(let identifier)?:
             withdrawNotification?(identifier)
         case nil:

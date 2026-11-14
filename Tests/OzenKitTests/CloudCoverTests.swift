@@ -63,6 +63,7 @@ struct CloudCoverTests {
                     phase: captions.phase,
                     retryScheduled: captions.isRecoveringByItself,
                     systemInterrupted: false,
+                    interruptedByCall: false,
                     callEndedDuringInterruption: false
                 ))
             }

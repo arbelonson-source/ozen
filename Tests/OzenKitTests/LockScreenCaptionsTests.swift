@@ -344,7 +344,7 @@ struct LockScreenPresenceTests {
         Localization.$override.withValue(.english) {
             let failure = PipelineFailure(kind: .transcriptionStopped, detail: "")
             #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: true, pausedForSpeech: false) == (true, "Captions stopped. Open Ozen."))
-            #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: true, pausedForSpeech: false, recoveringByItself: true) == (true, "Captions paused for a call"))
+            #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: true, pausedForSpeech: false, recoveringByItself: true) == (true, "Captions paused for a call or another app"))
         }
     }
 
@@ -352,7 +352,7 @@ struct LockScreenPresenceTests {
     func englishStatus() {
         Localization.$override.withValue(.english) {
             let failure = PipelineFailure(kind: .transcriptionStopped, detail: "")
-            #expect(LockScreenCaptions.presence(phase: .listening, interruptedByCall: true, pausedForSpeech: false).status == "Captions paused for a call")
+            #expect(LockScreenCaptions.presence(phase: .listening, interruptedByCall: true, pausedForSpeech: false).status == "Captions paused for a call or another app")
             #expect(LockScreenCaptions.presence(phase: .startingAudio, interruptedByCall: false, pausedForSpeech: false).status == "Captions starting…")
             #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: false, pausedForSpeech: false).status == "Captions stopped. Open Ozen.")
             #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: false, pausedForSpeech: false, recoveringByItself: true) == (true, "Captions starting…"))

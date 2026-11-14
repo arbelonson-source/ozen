@@ -837,13 +837,41 @@ class CaptionSession(
     private fun checkCaptionsStillRunning() {
         when (val update = stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground)) {
             is StoppedCaptionsNotice.Update.Post -> if (!notifier.post(update.content)) stoppedCaptions.postFailed()
-            is StoppedCaptionsNotice.Update.Withdraw -> notifier.withdraw(update.identifier)
+            is StoppedCaptionsNotice.Update.Withdraw -> {
+                otherAppNotice?.cancel()
+                notifier.withdraw(update.identifier)
+            }
+            is StoppedCaptionsNotice.Update.Schedule -> {
+                otherAppNotice?.cancel()
+                otherAppNotice = scope.launch {
+                    delay((update.afterSeconds * 1000).toLong())
+                    if (!notifier.post(update.content)) stoppedCaptions.postFailed()
+                }
+            }
+            is StoppedCaptionsNotice.Update.Cancel -> {
+                otherAppNotice?.cancel()
+                notifier.withdraw(update.identifier)
+            }
             null -> Unit
         }
     }
 
+    /** Waits out the minute before telling her another app has the microphone. */
+    private var otherAppNotice: Job? = null
+
     private fun stoppedCause(): StoppedCaptionsNotice.Cause? =
-        if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false, soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself)
+        if (restartRefused) {
+            StoppedCaptionsNotice.Cause.EndedByPhone
+        } else {
+            StoppedCaptionsNotice.cause(
+                pipeline.phase,
+                pipeline.isRecoveringByItself,
+                interruptedBySystem,
+                callEndedDuringInterruption = false,
+                soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself,
+                interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
+            )
+        }
 
     /**
      * Captions that Android ended with the app could not be started again;

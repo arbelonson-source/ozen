@@ -1880,6 +1880,8 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         var reclaims = 0
         var posted: [AlertNotificationContent] = []
         var withdrawn: [String] = []
+        var scheduled: [(content: AlertNotificationContent, delay: TimeInterval)] = []
+        var cancelled: [String] = []
         var sweeps = 0
         init(reclaimAnswer: Bool) { self.reclaimAnswer = reclaimAnswer }
     }
@@ -1903,6 +1905,8 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
             historyStore: TranscriptHistoryStore(directoryURL: directory),
             postNotification: { phone.posted.append($0) },
             withdrawNotification: { phone.withdrawn.append($0) },
+            scheduleNotification: { phone.scheduled.append(($0, $1)) },
+            cancelScheduledNotification: { phone.cancelled.append($0) },
             withdrawDeliveredAlerts: { phone.sweeps += 1 },
             reclaimAudioSession: {
                 phone.reclaims += 1
@@ -2138,6 +2142,53 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         #expect(await eventually { viewModel.isInterruptedBySystem == false })
         #expect(phone.posted.count == 1)
         #expect(phone.withdrawn == [StoppedCaptionsNotice.identifier])
+    }
+
+    @Test("another app taking the microphone with the phone put away schedules one notice for a minute later, and the microphone coming back cancels it")
+    func otherAppSchedulesNotice() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.systemInterruptionChanged(began: true)
+
+        #expect(phone.scheduled.map(\.content.identifier) == [StoppedCaptionsNotice.identifier])
+        #expect(phone.scheduled.first?.delay == StoppedCaptionsNotice.otherAppDelay)
+        #expect(phone.posted.isEmpty)
+
+        viewModel.systemInterruptionChanged(began: false)
+        #expect(phone.cancelled == [StoppedCaptionsNotice.identifier])
+    }
+
+    @Test("a call that takes the microphone schedules nothing, and one that shows up just after the interruption cancels what was scheduled")
+    func callIsNotOtherApp() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.systemInterruptionChanged(began: true)
+        viewModel.phoneCallsChanged(inProgress: true)
+
+        #expect(phone.cancelled == [StoppedCaptionsNotice.identifier])
+        #expect(phone.withdrawn.isEmpty)
+    }
+
+    @Test("opening the app cancels the scheduled notice, and captions paused on purpose schedule none")
+    func otherAppNoticeCancelledOnOpen() async {
+        let phone = Phone(reclaimAnswer: false)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.systemInterruptionChanged(began: true)
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.scheduled.count == 1)
+        #expect(phone.cancelled == [StoppedCaptionsNotice.identifier])
+
+        await viewModel.togglePause()
+        viewModel.systemInterruptionChanged(began: false)
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.systemInterruptionChanged(began: true)
+        #expect(phone.scheduled.count == 1)
     }
 
     @Test("captions paused before the call leave the audio session and her notifications alone")

@@ -21,12 +21,14 @@ class StoppedCaptionsNoticeTest {
         phase: PipelinePhase,
         retryScheduled: Boolean = false,
         interrupted: Boolean = false,
+        byCall: Boolean = false,
         callEnded: Boolean = false,
     ): StoppedCaptionsNotice.Cause? = StoppedCaptionsNotice.cause(
         phase = phase,
         retryScheduled = retryScheduled,
         systemInterrupted = interrupted,
         callEndedDuringInterruption = callEnded,
+        interruptedByCall = byCall,
     )
 
     private fun failed(failure: PipelineFailure) = StoppedCaptionsNotice.Cause.Failed(failure)
@@ -67,12 +69,63 @@ class StoppedCaptionsNoticeTest {
 
     @Test
     fun `during a call nothing is a stop, after it, a microphone that never came back is`() {
-        assertNull(cause(PipelinePhase.Listening, interrupted = true))
-        assertNull(cause(PipelinePhase.Failed(glitch), interrupted = true))
-        assertEquals(StoppedCaptionsNotice.Cause.CallEnded, cause(PipelinePhase.Listening, interrupted = true, callEnded = true))
-        assertEquals(StoppedCaptionsNotice.Cause.CallEnded, cause(PipelinePhase.Failed(glitch), interrupted = true, callEnded = true))
+        assertNull(cause(PipelinePhase.Listening, interrupted = true, byCall = true))
+        assertNull(cause(PipelinePhase.Failed(glitch), interrupted = true, byCall = true))
+        assertEquals(StoppedCaptionsNotice.Cause.CallEnded, cause(PipelinePhase.Listening, interrupted = true, byCall = true, callEnded = true))
+        assertEquals(StoppedCaptionsNotice.Cause.CallEnded, cause(PipelinePhase.Failed(glitch), interrupted = true, byCall = true, callEnded = true))
         // Paused before the call: nothing was running to stop.
-        assertNull(cause(PipelinePhase.Paused, interrupted = true, callEnded = true))
+        assertNull(cause(PipelinePhase.Paused, interrupted = true, byCall = true, callEnded = true))
+    }
+
+    @Test
+    fun `another app keeping the microphone is a stop to tell about, unless a call is why or captions were paused`() {
+        assertEquals(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, cause(PipelinePhase.Listening, interrupted = true))
+        assertEquals(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, cause(PipelinePhase.Failed(glitch), interrupted = true))
+        assertNull(cause(PipelinePhase.Paused, interrupted = true))
+        assertNull(cause(PipelinePhase.Idle, interrupted = true))
+        assertNull(cause(PipelinePhase.Listening, interrupted = true, byCall = true))
+        assertNull(cause(PipelinePhase.Listening, interrupted = false))
+    }
+
+    @Test
+    fun `the other-app notice goes out after a minute, once, and is cancelled when the app opens or the microphone is back`() {
+        val notice = StoppedCaptionsNotice()
+        val id = StoppedCaptionsNotice.IDENTIFIER
+        val other = StoppedCaptionsNotice.Cause.OtherAppHasMicrophone
+        assertEquals(60.0, StoppedCaptionsNotice.OTHER_APP_DELAY_SECONDS)
+        assertNull(notice.update(other, appIsActive = false, isEnabled = false))
+
+        val scheduled = notice.update(other, appIsActive = false, isEnabled = true)
+        if (scheduled !is StoppedCaptionsNotice.Update.Schedule) fail("expected a notification to schedule")
+        assertEquals(60.0, scheduled.afterSeconds)
+        assertEquals(id, scheduled.content.identifier)
+        assertTrue(scheduled.content.isUrgent)
+        assertNull(notice.update(other, appIsActive = false, isEnabled = true))
+
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(id), notice.update(other, appIsActive = true, isEnabled = true))
+        assertNull(notice.update(other, appIsActive = false, isEnabled = true))
+
+        assertNull(notice.update(null, appIsActive = false, isEnabled = true))
+        assertIs<StoppedCaptionsNotice.Update.Schedule>(
+            notice.update(other, appIsActive = false, isEnabled = true),
+            "a new interruption should be told again",
+        )
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(id), notice.update(null, appIsActive = false, isEnabled = true))
+    }
+
+    @Test
+    fun `the other-app notice says another app is using the microphone and what to do`() {
+        val body = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone).body
+        assertTrue(body.contains("אפליקציה אחרת"))
+        assertTrue(!body.contains("שיחת הטלפון"))
+        Localization.withLanguage(UILanguage.English) {
+            val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone)
+            assertEquals("Captions paused", content.title)
+            assertTrue(content.body.contains("Another app"))
+            assertTrue(content.body.contains("sound alerts"))
+            assertTrue(content.body.contains("Open Ozen"))
+            assertTrue(!content.body.contains("After the call"))
+        }
     }
 
     @Test
