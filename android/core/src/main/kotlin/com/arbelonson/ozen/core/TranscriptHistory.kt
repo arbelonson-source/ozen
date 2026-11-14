@@ -97,18 +97,18 @@ class SavedSegment(
     }
 
     companion object {
-        /** Lines saved before stars existed load as not starred. */
+        /** Lines saved before stars existed load as not starred; a value that cannot be read is left out, the line stays. */
         internal fun fromJsonElement(element: JsonElement): SavedSegment {
             val container = element.asHistoryObject()
             return SavedSegment(
                 id = container.required("id").asHistoryUuid(),
                 text = container.required("text").asHistoryString(),
-                speakerName = container.optional("speakerName")?.asHistoryString(),
-                speakerClusterID = container.optional("speakerClusterID")?.asHistoryInt(),
+                speakerName = lenientHistory { container.optional("speakerName")?.asHistoryString() },
+                speakerClusterID = lenientHistory { container.optional("speakerClusterID")?.asHistoryInt() },
                 startTimestamp = container.required("startTimestamp").asHistoryDouble(),
                 isCommitted = container.required("isCommitted").asHistoryBoolean(),
-                isStarred = container.optional("isStarred")?.asHistoryBoolean() ?: false,
-                confidence = container.optional("confidence")?.asHistoryFloat(),
+                isStarred = lenientHistory { container.optional("isStarred")?.asHistoryBoolean() } ?: false,
+                confidence = lenientHistory { container.optional("confidence")?.asHistoryFloat() },
                 scoredBy = lenientHistory { container.optional("scoredBy")?.let { decodedScorer(it) } },
             )
         }
@@ -539,17 +539,18 @@ class TranscriptHistoryStore(
      * format is in the file name, so a future change simply stops
      * finding the old files and rebuilds them. (v1 also held "speaker 2"
      * and "unknown speaker" labels; v3 had no lines as said, so a result's
-     * preview showed "10:30" as "1030".)
+     * preview showed "10:30" as "1030"; v4 left out a line whose optional
+     * value was damaged, which is kept now.)
      */
     private fun searchTextFile(recordFile: File): File =
-        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v4.txt")
+        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v5.txt")
 
     /**
      * Search files of earlier formats hold the conversation's words too,
      * so deleting it deletes them.
      */
     private fun olderSearchTextFiles(recordFile: File): List<File> =
-        listOf("v1", "v2", "v3").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
+        listOf("v1", "v2", "v3", "v4").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
 
     /**
      * Saves a session, overwriting any earlier save with the same id -
@@ -603,9 +604,8 @@ class TranscriptHistoryStore(
                 // and microphone were in use by then, and History showed those,
                 // and judged its uncertain lines by them.
                 val source = lenientHistory { savedSource(data) }
-                val engine = source?.engine
-                if (source != null && engine != null) {
-                    toSave = toSave.copy(engine = engine, modelVariant = source.modelVariant, inputName = source.inputName)
+                if (source != null) {
+                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName)
                 }
             } else if (toSave.title == null) {
                 toSave = toSave.copy(title = cachedSummary(file)?.title)
@@ -681,7 +681,7 @@ class TranscriptHistoryStore(
     private fun savedSource(data: ByteArray): SavedSource {
         val container = parseHistoryBytes(data).asHistoryObject()
         return SavedSource(
-            engine = container.optional("engine")?.asHistoryEngine(),
+            engine = lenientHistory { container.optional("engine")?.asHistoryEngine() },
             modelVariant = container.optional("modelVariant")?.asHistoryString(),
             inputName = container.optional("inputName")?.asHistoryString(),
         )
@@ -869,25 +869,30 @@ class TranscriptHistoryStore(
     /**
      * A saved voice was renamed: every saved conversation that said the
      * old name now says the new one, so fixing a misspelling reaches the
-     * days before it too, and a search for the new name finds them. A
-     * conversation whose search text doesn't hold the old name is skipped
-     * without being opened. Returns how many conversations changed.
+     * days before it too, and a search for the new name finds them. Every
+     * conversation is checked as raw JSON, because its search text leaves
+     * out a line this build cannot read. Returns how many changed.
      */
     fun renameSpeaker(from: String, to: String): Int {
         if (from.isEmpty() || to.isEmpty() || from == to) return 0
-        val needle = normalizedForSearch(from)
         var changed = 0
         for (file in recordFiles()) {
-            val cached = cachedSearchText(file)?.let(::preparedSearch)
-            if (cached != null && !cached.words.contains(needle)) continue
-            val record = decodeRecord(file) ?: continue
-            if (record.segments.none { it.speakerName == from }) continue
-            val renamed = record.copy(segments = record.segments.map { if (it.speakerName == from) it.copy(speakerName = to) else it })
-            forget(record.id)
-            PrivateFileWrites.write(file, renamed.toJson().toByteArray(Charsets.UTF_8))
-            val written = modificationDate(file)
-            writeSummary(TranscriptSessionSummary.summarizing(renamed), file, written)
-            writeSearchText(searchableText(renamed), file, written)
+            val data = readBytes(file) ?: continue
+            val patched = patchRecordFile(file, data, writeSearchText = true) { object_ ->
+                var any = false
+                val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
+                val renamed = lines.map { entry ->
+                    val line = entry as? JsonObject
+                    if (line != null && (line["speakerName"] as? JsonPrimitive)?.takeIf { it.isString }?.content == from) {
+                        any = true
+                        JsonObject(line + ("speakerName" to JsonPrimitive(to)))
+                    } else {
+                        entry
+                    }
+                }
+                if (any) JsonObject(object_ + ("segments" to JsonArray(renamed))) else null
+            }
+            if (!patched) continue
             changed += 1
         }
         return changed
@@ -895,15 +900,12 @@ class TranscriptHistoryStore(
 
     /** Names a saved conversation, or removes its name with an empty one. */
     fun rename(id: UUID, title: String) {
-        val record = load(id) ?: return
-        val trimmed = historyTrimmed(title)
-        val renamed = record.copy(title = trimmed.ifEmpty { null })
         val file = fileFor(id)
-        forget(id)
-        PrivateFileWrites.write(file, renamed.toJson().toByteArray(Charsets.UTF_8))
-        val written = modificationDate(file)
-        writeSummary(TranscriptSessionSummary.summarizing(renamed), file, written)
-        writeSearchText(searchableText(renamed), file, written)
+        val data = readBytes(file) ?: return
+        val trimmed = historyTrimmed(title)
+        patchRecordFile(file, data, writeSearchText = true) { object_ ->
+            if (trimmed.isEmpty()) JsonObject(object_ - "title") else JsonObject(object_ + ("title" to JsonPrimitive(trimmed)))
+        }
     }
 
     /**
@@ -913,16 +915,43 @@ class TranscriptHistoryStore(
      * line's new state, or null when the conversation or line is gone.
      */
     fun toggleStar(segmentID: UUID, inSession: UUID): Boolean? {
-        val record = load(inSession) ?: return null
-        val index = record.segments.indexOfFirst { it.id == segmentID }
-        if (index < 0) return null
-        val toggled = record.segments[index].copy(isStarred = !record.segments[index].isStarred)
-        val updated = record.copy(segments = record.segments.toMutableList().also { it[index] = toggled })
         val file = fileFor(inSession)
-        forget(inSession)
-        PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
-        writeSummary(TranscriptSessionSummary.summarizing(updated), file, modificationDate(file))
-        return toggled.isStarred
+        val data = readBytes(file) ?: return null
+        var state: Boolean? = null
+        patchRecordFile(file, data, writeSearchText = false) { object_ ->
+            val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
+            val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
+            if (index < 0) return@patchRecordFile null
+            val line = lines[index] as JsonObject
+            val starred = !((line["isStarred"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true")
+            state = starred
+            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("isStarred" to JsonPrimitive(starred))) })))
+        }
+        return state
+    }
+
+    private fun rawSegmentID(entry: JsonElement): UUID? {
+        val text = ((entry as? JsonObject)?.get("id") as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+        return if (historyUuidPattern.matches(text)) UUID.fromString(text) else null
+    }
+
+    /**
+     * Changes one field of a conversation file in place. The file is
+     * patched as raw JSON, so a line this build cannot read, or a field it
+     * does not know, is written back with its values instead of being
+     * dropped by a decode and re-encode (spacing is not kept). `patch` returns null to leave the
+     * file untouched. Returns whether the file was rewritten.
+     */
+    private fun patchRecordFile(file: File, data: ByteArray, writeSearchText: Boolean, patch: (JsonObject) -> JsonObject?): Boolean {
+        val patched = lenientHistory { patch(parseHistoryJson(strictUtf8(data)).asHistoryObject()) } ?: return false
+        val id = lenientHistory { UUID.fromString(file.nameWithoutExtension) }
+        if (id != null) forget(id)
+        PrivateFileWrites.write(file, patched.toString().toByteArray(Charsets.UTF_8))
+        val record = lenientHistory { TranscriptSessionRecord.fromJson(patched.toString()) } ?: return true
+        val written = modificationDate(file)
+        writeSummary(TranscriptSessionSummary.summarizing(record), file, written)
+        if (writeSearchText) writeSearchText(searchableText(record), file, written)
+        return true
     }
 
     fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean = fixText(segmentID, inSession) { text }
@@ -937,18 +966,14 @@ class TranscriptHistoryStore(
         val file = fileFor(inSession)
         if (!file.exists()) return false
         val data = file.readBytes()
-        val record = lenientHistory { TranscriptSessionRecord.fromJson(strictUtf8(data)) } ?: return false
-        val index = record.segments.indexOfFirst { it.id == segmentID }
-        if (index < 0) return false
-        val segments = record.segments.toMutableList()
-        segments[index] = segments[index].copy(text = change(segments[index].text))
-        val updated = record.copy(segments = segments)
-        forget(inSession)
-        PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
-        val written = modificationDate(file)
-        writeSummary(TranscriptSessionSummary.summarizing(updated), file, written)
-        writeSearchText(searchableText(updated), file, written)
-        return true
+        return patchRecordFile(file, data, writeSearchText = true) { object_ ->
+            val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
+            val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
+            if (index < 0) return@patchRecordFile null
+            val line = lines[index] as JsonObject
+            val old = (line["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return@patchRecordFile null
+            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(change(old)))) })))
+        }
     }
 
     fun sweepStrayTemporaries(olderThanMillis: Long = 60_000) {
@@ -1091,7 +1116,7 @@ class TranscriptHistoryStore(
          * Bumped whenever [TranscriptSessionSummary] changes meaning, so
          * summaries written by an older build are rebuilt instead of trusted.
          */
-        internal const val SUMMARY_FORMAT = 4
+        internal const val SUMMARY_FORMAT = 5
         internal const val SUMMARIES_FOLDER_NAME = "summaries"
         internal const val REMEMBERED_CONVERSATIONS = 8
         internal const val CACHE_REFRESH_MILLIS = 120_000L

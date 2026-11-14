@@ -8,6 +8,14 @@ import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -1114,7 +1122,7 @@ class TranscriptHistorySearchCacheTest {
 
     private fun recordFile(dir: File, id: UUID) = File(dir, "${uuidString(id)}.json")
 
-    private fun searchFile(dir: File, id: UUID, version: Int = 4) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
+    private fun searchFile(dir: File, id: UUID, version: Int = 5) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
 
     @Test
     fun `deleting a conversation deletes its search words of the format before too`() {
@@ -1124,9 +1132,12 @@ class TranscriptHistorySearchCacheTest {
             store.save(saved)
             val older = searchFile(dir, saved.id, version = 3)
             older.writeText("the dentist moved it to thursday")
+            val previous = searchFile(dir, saved.id, version = 4)
+            previous.writeText("the dentist moved it to thursday")
 
             store.delete(saved.id)
             assertFalse(older.exists())
+            assertFalse(previous.exists())
             assertFalse(searchFile(dir, saved.id).exists())
         }
     }
@@ -1577,7 +1588,7 @@ class TranscriptHistoryTitleTest {
             assertEquals(listOf(id), store.search("רופא").map { it.id })
             assertTrue(store.search("סבתא").isEmpty())
             val remade = prepared.list()?.toList() ?: emptyList()
-            assertTrue(remade.any { it.endsWith(".search-v4.txt") })
+            assertTrue(remade.any { it.endsWith(".search-v5.txt") })
             assertEquals(listOf(id), store.search("רופא").map { it.id })
         }
     }
@@ -1732,5 +1743,252 @@ class TranscriptSourceLineTest {
         assertEquals("Cloud transcription · Speechmatics · Enhanced", record(cloud, SpeechmaticsSpeech.model, null).sourceLine(english))
         assertEquals("Cloud transcription · AssemblyAI · Universal-3.6 Pro", record(cloud, AssemblyAISpeech.model, null).sourceLine(english))
         assertEquals("The phone’s built-in recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
+    }
+}
+
+class TranscriptHistoryLenientReadTest {
+    private fun line(id: UUID, text: String) = SavedSegment(
+        id = id,
+        text = text,
+        speakerName = "Dana",
+        speakerClusterID = 1,
+        startTimestamp = 1.0,
+        isCommitted = true,
+        confidence = 0.9f,
+    )
+
+    private class Saved(val store: TranscriptHistoryStore, val id: UUID, val file: File, val ids: List<UUID>)
+
+    private fun savedConversation(dir: File): Saved {
+        val store = TranscriptHistoryStore(dir)
+        val ids = List(3) { UUID.randomUUID() }
+        val saved = TranscriptSessionRecord(
+            startedAt = 1_000.0,
+            engine = TranscriptionEngineKind.WhisperKit,
+            modelVariant = "small",
+            inputName = "Phone microphone",
+            segments = listOf(line(ids[0], "alpha one"), line(ids[1], "bravo two"), line(ids[2], "charlie three")),
+        )
+        store.save(saved)
+        return Saved(store, saved.id, File(dir, "${uuidString(saved.id)}.json"), ids)
+    }
+
+    private fun edit(file: File, change: (MutableMap<String, JsonElement>, MutableList<MutableMap<String, JsonElement>>) -> Unit) {
+        val root = Json.parseToJsonElement(file.readText()).jsonObject.toMutableMap()
+        val lines = root.getValue("segments").jsonArray.map { it.jsonObject.toMutableMap() }.toMutableList()
+        change(root, lines)
+        root["segments"] = JsonArray(lines.map { JsonObject(it) })
+        file.writeText(JsonObject(root).toString())
+    }
+
+    private fun rawLines(file: File): List<JsonObject> =
+        Json.parseToJsonElement(file.readText()).jsonObject.getValue("segments").jsonArray.map { it.jsonObject }
+
+    @Test
+    fun `a record with one bad line keeps the other lines and shows in History`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines -> lines[1].remove("text") }
+            val found = saved.store.listSummaries().first { it.id == saved.id }
+            assertEquals(2, found.segmentCount)
+            assertEquals(listOf(saved.ids[0], saved.ids[2]), saved.store.load(saved.id)?.segments?.map { it.id })
+        }
+    }
+
+    @Test
+    fun `a line with an unreadable optional value keeps its text`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines ->
+                lines[0]["confidence"] = JsonPrimitive("high")
+                lines[1]["speakerClusterID"] = JsonPrimitive("two")
+                lines[2]["isStarred"] = JsonPrimitive("yes")
+                lines[2]["speakerName"] = JsonPrimitive(7)
+            }
+            val loaded = assertNotNull(saved.store.load(saved.id))
+            assertEquals(listOf("alpha one", "bravo two", "charlie three"), loaded.segments.map { it.text })
+            assertNull(loaded.segments[0].confidence)
+            assertNull(loaded.segments[1].speakerClusterID)
+            assertFalse(loaded.segments[2].isStarred)
+            assertNull(loaded.segments[2].speakerName)
+            assertEquals("Dana", loaded.segments[1].speakerName)
+        }
+    }
+
+    @Test
+    fun `a record with an engine this build does not know loads with a fallback`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { root, _ ->
+                root["engine"] = JsonPrimitive("quantumListener")
+                root["modelVariant"] = JsonPrimitive(5)
+            }
+            val loaded = assertNotNull(saved.store.load(saved.id))
+            assertEquals(TranscriptionEngineKind.WhisperKit, loaded.engine)
+            assertEquals(3, loaded.segments.size)
+            assertTrue(saved.store.listSummaries().any { it.id == saved.id })
+        }
+    }
+
+    @Test
+    fun `a line saved with an engine this build does not know keeps its text`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines ->
+                lines[0]["scoredBy"] = JsonObject(mapOf("engine" to JsonPrimitive("quantumListener"), "model" to JsonPrimitive("x")))
+            }
+            val loaded = assertNotNull(saved.store.load(saved.id))
+            assertEquals(3, loaded.segments.size)
+            assertNull(loaded.segments[0].scoredBy)
+        }
+    }
+
+    @Test
+    fun `a file that is not JSON is skipped without hiding the others`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            File(dir, "${UUID.randomUUID()}.json").writeText("{\"id\": \"truncat")
+            assertEquals(listOf(saved.id), saved.store.listSummaries().map { it.id })
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+        }
+    }
+
+    @Test
+    fun `search finds text in a partly readable record`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { root, lines ->
+                root["engine"] = JsonPrimitive("quantumListener")
+                lines[0].remove("isCommitted")
+                lines[1]["confidence"] = JsonPrimitive("high")
+            }
+            assertEquals(listOf(saved.id), saved.store.search("bravo").map { it.id })
+            assertEquals(listOf(saved.id), saved.store.search("charlie").map { it.id })
+            assertTrue(saved.store.search("alpha").isEmpty())
+        }
+    }
+
+    private fun partlyUnreadable(saved: Saved) = edit(saved.file) { root, lines ->
+        root["engine"] = JsonPrimitive("quantumListener")
+        lines[0]["confidence"] = JsonPrimitive("high")
+        lines[1].remove("isCommitted")
+    }
+
+    private fun assertNothingLost(saved: Saved) {
+        val root = Json.parseToJsonElement(saved.file.readText()).jsonObject
+        val lines = rawLines(saved.file)
+        assertEquals("quantumListener", root.getValue("engine").jsonPrimitive.content)
+        assertEquals(3, lines.size)
+        assertEquals("high", lines[0].getValue("confidence").jsonPrimitive.content)
+        assertNull(lines[1]["isCommitted"])
+    }
+
+    @Test
+    fun `renaming a partly readable record keeps every line it could not read`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            partlyUnreadable(saved)
+            saved.store.rename(saved.id, "Visit")
+            assertNothingLost(saved)
+            assertEquals("Visit", saved.store.listSummaries().first { it.id == saved.id }.title)
+        }
+    }
+
+    @Test
+    fun `starring in a partly readable record keeps every line it could not read`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            partlyUnreadable(saved)
+            assertEquals(true, saved.store.toggleStar(saved.ids[2], saved.id))
+            assertNothingLost(saved)
+            assertEquals(true, rawLines(saved.file)[2].getValue("isStarred").jsonPrimitive.content.toBoolean())
+        }
+    }
+
+    @Test
+    fun `fixing a word in a partly readable record keeps every line it could not read`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            partlyUnreadable(saved)
+            assertTrue(saved.store.fixText(saved.ids[2], saved.id, "charlie fixed"))
+            assertNothingLost(saved)
+            assertEquals("charlie fixed", rawLines(saved.file)[2].getValue("text").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `fixing a voice name in a partly readable record keeps every line it could not read`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            partlyUnreadable(saved)
+            assertEquals(1, saved.store.renameSpeaker("Dana", "Dani"))
+            assertNothingLost(saved)
+            assertEquals(listOf("Dani", "Dani", "Dani"), rawLines(saved.file).map { it.getValue("speakerName").jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun `caches written before damaged optional values were tolerated are not trusted`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines -> lines[0]["confidence"] = JsonPrimitive("high") }
+            saved.store.listSummaries()
+            val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
+            val summaryFile = File(prepared, "${uuidString(saved.id)}.json")
+            val cached = Json.parseToJsonElement(summaryFile.readText()).jsonObject.toMutableMap()
+            cached["summary"] = JsonObject(cached.getValue("summary").jsonObject + ("segmentCount" to JsonPrimitive(2)))
+            cached["format"] = JsonPrimitive(4)
+            summaryFile.writeText(JsonObject(cached).toString())
+            val oldSearch = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            oldSearch.writeText("bravo two\ncharlie three\nbravo two\ncharlie three")
+            val later = System.currentTimeMillis() + 60_000
+            summaryFile.setLastModified(later)
+            oldSearch.setLastModified(later)
+
+            assertEquals(3, saved.store.listSummaries().first { it.id == saved.id }.segmentCount)
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+        }
+    }
+
+    @Test
+    fun `fixing a word reports failure and writes nothing when the change cannot be made`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            val before = saved.file.readText()
+            assertFalse(saved.store.fixText(saved.ids[1], saved.id) { throw IllegalArgumentException("no") })
+            assertEquals(before, saved.file.readText())
+        }
+    }
+
+    @Test
+    fun `a voice name only on an unreadable line is still fixed even when the cache lacks it`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { _, lines ->
+                lines[1]["speakerName"] = JsonPrimitive("Rina")
+                lines[1].remove("text")
+            }
+            saved.store.listSummaries()
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+            assertEquals(1, saved.store.renameSpeaker("Rina", "Rinat"))
+            assertEquals(listOf("Dana", "Rinat", "Dana"), rawLines(saved.file).map { it.getValue("speakerName").jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun `an autosave keeps the model and microphone of a conversation whose engine this build does not know`() {
+        withHistoryDirectory("ozen-history-lenient") { dir ->
+            val saved = savedConversation(dir)
+            edit(saved.file) { root, _ -> root["engine"] = JsonPrimitive("quantumListener") }
+            val again = TranscriptSessionRecord(
+                id = saved.id, startedAt = 1_000.0, engine = TranscriptionEngineKind.WhisperKit,
+                modelVariant = "large", inputName = "Headset",
+                segments = listOf(line(saved.ids[0], "alpha one")),
+            )
+            TranscriptHistoryStore(dir).save(again)
+            val loaded = assertNotNull(TranscriptHistoryStore(dir).load(saved.id))
+            assertEquals("small", loaded.modelVariant)
+            assertEquals("Phone microphone", loaded.inputName)
+        }
     }
 }

@@ -52,17 +52,18 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
         case id, text, speakerName, speakerClusterID, startTimestamp, isCommitted, isStarred, confidence, scoredBy
     }
 
-    /// Lines saved before stars existed load as not starred.
+    /// Lines saved before stars existed load as not starred. A value the
+    /// reader cannot make sense of is left out; the line itself stays.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         text = try container.decode(String.self, forKey: .text)
-        speakerName = try container.decodeIfPresent(String.self, forKey: .speakerName)
-        speakerClusterID = try container.decodeIfPresent(Int.self, forKey: .speakerClusterID)
+        speakerName = container.lenient(String.self, forKey: .speakerName)
+        speakerClusterID = container.lenient(Int.self, forKey: .speakerClusterID)
         startTimestamp = try container.decode(TimeInterval.self, forKey: .startTimestamp)
         isCommitted = try container.decode(Bool.self, forKey: .isCommitted)
-        isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
-        confidence = try container.decodeIfPresent(Float.self, forKey: .confidence)
+        isStarred = container.lenient(Bool.self, forKey: .isStarred) ?? false
+        confidence = container.lenient(Float.self, forKey: .confidence).flatMap { $0.isFinite ? $0 : nil }
         scoredBy = try? container.decodeIfPresent(CaptionConfidence.Scorer.self, forKey: .scoredBy)
     }
 }
@@ -453,7 +454,7 @@ public struct TranscriptHistoryStore: Sendable {
 
     /// Bumped whenever `TranscriptSessionSummary` changes meaning, so
     /// summaries written by an older build are rebuilt instead of trusted.
-    static let summaryFormat = 4
+    static let summaryFormat = 5
     static let summariesFolderName = "summaries"
 
     private struct CachedSummary: Codable {
@@ -484,15 +485,16 @@ public struct TranscriptHistoryStore: Sendable {
     /// format is in the file name, so a future change simply stops
     /// finding the old files and rebuilds them. (v1 also held "speaker 2"
     /// and "unknown speaker" labels; v3 had no lines as said, so a result's
-    /// preview showed "10:30" as "1030".)
+    /// preview showed "10:30" as "1030"; v4 left out a line whose optional
+    /// value was damaged, which is kept now.)
     private func searchTextURL(forRecordFile url: URL) -> URL {
-        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v4.txt")
+        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v5.txt")
     }
 
     /// Search files of earlier formats hold the conversation's words too,
     /// so deleting it deletes them.
     private func olderSearchTextURLs(forRecordFile url: URL) -> [URL] {
-        ["v1", "v2", "v3"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
+        ["v1", "v2", "v3", "v4"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
     }
 
     /// Saves a session, overwriting any earlier save with the same id —
@@ -547,9 +549,8 @@ public struct TranscriptHistoryStore: Sendable {
             // switch, a rename the next day) stamped it with whatever engine
             // and microphone were in use by then, and History showed those,
             // and judged its uncertain lines by them.
-            if let source = try? JSONDecoder().decode(SavedSource.self, from: data),
-               let engine = source.engine {
-                record.engine = engine
+            if let source = try? JSONDecoder().decode(SavedSource.self, from: data) {
+                record.engine = source.engine ?? record.engine
                 record.modelVariant = source.modelVariant
                 record.inputName = source.inputName
             }
@@ -583,6 +584,15 @@ public struct TranscriptHistoryStore: Sendable {
         let engine: TranscriptionEngineKind?
         let modelVariant: String?
         let inputName: String?
+
+        private enum CodingKeys: String, CodingKey { case engine, modelVariant, inputName }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            engine = container.lenient(TranscriptionEngineKind.self, forKey: .engine)
+            modelVariant = container.lenient(String.self, forKey: .modelVariant)
+            inputName = container.lenient(String.self, forKey: .inputName)
+        }
     }
 
     public func load(id: UUID) -> TranscriptSessionRecord? {
@@ -997,8 +1007,8 @@ public struct TranscriptHistoryStore: Sendable {
 
     /// Changes one field of a conversation file in place. The file is
     /// patched as raw JSON, so a line this build cannot read, or a field it
-    /// does not know, is written back exactly as found instead of being
-    /// dropped by a decode and re-encode. `patch` returns false to leave the
+    /// does not know, is written back with its values instead of being
+    /// dropped by a decode and re-encode (key order and spacing are not kept). `patch` returns false to leave the
     /// file untouched. Returns whether the file was rewritten.
     private func patchRecordFile(at url: URL, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
         guard let data = try? Data(contentsOf: url),
