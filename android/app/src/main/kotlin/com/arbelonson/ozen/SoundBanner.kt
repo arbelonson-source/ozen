@@ -133,7 +133,7 @@ internal fun soundTone(importance: SoundEvent.Importance): NoticeTone = when (im
  * (tonal containers, never a saturated fill), an icon in a 40 dp circle, a title,
  * a line under it that wraps in full (the banner area scrolls when several are showing), and an optional [trailing]
  * mark. An emergency also has a strong edge on its leading side, and a phone that
- * asks for more contrast gets a 2 dp outline. Clicking and TalkBack words come in on [modifier].
+ * asks for more contrast gets a 2 dp outline. Clicking and TalkBack words for the whole card come in on [modifier]; those for the text beside [trailing] come in on [bodyModifier], so a control in [trailing], such as a close button, stays a node of its own.
  */
 @Composable
 internal fun NoticeBanner(

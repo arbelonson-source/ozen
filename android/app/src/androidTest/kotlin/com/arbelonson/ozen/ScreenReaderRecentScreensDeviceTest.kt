@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,8 +23,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.DisplayPreferences.Theme
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.UILanguage
 import java.util.concurrent.CopyOnWriteArrayList
@@ -76,6 +80,24 @@ class ScreenReaderRecentScreensDeviceTest {
     }
 
     @Test
+    fun theSavingTroublePhoneSoundAndBatteryBannersKeepTheirCloseButtonsAsControlsOfTheirOwn() {
+        var dismissed = 0
+        show {
+            SavingTroubleBanner { dismissed += 1 }
+            PhoneSoundStoppedBanner { dismissed += 1 }
+            BatteryBanner(BatteryWarning.Critical(9)) { dismissed += 1 }
+        }
+        compose.onAllNodesWithContentDescription("Close").assertCountEquals(3)
+        for (title in listOf(SavingTroubleNotice.title, PhoneSound.stoppedNotice, "Battery at 9%")) {
+            compose.onNodeWithText(title).assert(!hasClickAction())
+            compose.onNodeWithText(title)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        }
+        for (at in 0..2) compose.onAllNodesWithContentDescription("Close")[at].performClick()
+        assertEquals(3, dismissed)
+    }
+
+    @Test
     fun aQuickPhraseAddedOnTheSayScreenIsSaidToTheScreenReaderOnce() {
         val phrases = mutableStateOf(listOf("Hello"))
         show {
@@ -90,6 +112,7 @@ class ScreenReaderRecentScreensDeviceTest {
         compose.onNodeWithContentDescription("Add").performClick()
         compose.waitUntil(5_000) { "Please write it down" in phrases.value }
         compose.waitUntil(5_000) { announced.isNotEmpty() }
+        compose.waitForIdle()
         assertEquals(listOf("Added: Please write it down"), announced.toList())
     }
 
@@ -103,6 +126,7 @@ class ScreenReaderRecentScreensDeviceTest {
         compose.onNodeWithContentDescription("Add").performClick()
         compose.waitUntil(5_000) { alerts.size == 1 }
         compose.waitUntil(5_000) { announced.isNotEmpty() }
+        compose.waitForIdle()
         assertEquals(listOf("Added: medicine"), announced.toList())
         compose.onNodeWithText("A word or name, e.g., grandma").performTextInput("medicine")
         compose.onNodeWithText("“medicine” is already in the list.")
@@ -117,6 +141,7 @@ class ScreenReaderRecentScreensDeviceTest {
         compose.onNodeWithText("Add").performClick()
         compose.waitUntil(5_000) { words == listOf("Rachel") }
         compose.waitUntil(5_000) { announced.isNotEmpty() }
+        compose.waitForIdle()
         assertEquals(listOf("Added: Rachel"), announced.toList())
     }
 
@@ -132,6 +157,7 @@ class ScreenReaderRecentScreensDeviceTest {
         compose.waitForIdle()
         status.value = BackupModelStatus.Ready
         compose.waitUntil(5_000) { announced.size == 2 }
+        compose.waitForIdle()
         assertEquals(
             listOf("Downloading the backup", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself."),
             announced.toList(),
@@ -147,10 +173,11 @@ class ScreenReaderRecentScreensDeviceTest {
             LighterModelOffer(model, waiting = false, inUseBytes = null, onSwitch = {}, onDismiss = {})
             ModelLoadCrashCard(model, lighter, inUseBytes = null, switching = PhoneModelSwitch.Idle, onSwitch = {}, onRetry = {})
         }
-        for (tag in listOf("listening-cut-dismiss", "model-fit-switch", "model-load-crash-retry", "model-load-crash-switch")) {
-            val touch = compose.onNodeWithTag(tag).fetchSemanticsNode().touchBoundsInRoot
-            val fingerSize = compose.activity.resources.displayMetrics.density * 48
-            assertTrue("$tag is ${touch.width} px wide, a finger needs $fingerSize", touch.width >= fingerSize - 1)
+        val tags = listOf("listening-cut-dismiss", "model-fit-switch", "model-load-crash-retry", "model-load-crash-switch")
+        val fingerSize = compose.activity.resources.displayMetrics.density * 48
+        for (tag in tags) {
+            val width = compose.onNodeWithTag(tag).fetchSemanticsNode().size.width
+            assertTrue("$tag is $width px wide, a finger needs $fingerSize", width > 0 && width >= fingerSize - 1)
         }
     }
 
@@ -162,6 +189,7 @@ class ScreenReaderRecentScreensDeviceTest {
         }
         compose.onNode(hasText("Test that an alert arrives when the phone is locked")).performClick()
         compose.waitUntil(5_000) { announced.isNotEmpty() }
+        compose.waitForIdle()
         assertEquals(listOf("Sent. Lock the phone, and it will arrive within 10 seconds"), announced.toList())
     }
 }

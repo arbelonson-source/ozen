@@ -141,7 +141,7 @@ internal fun SavingTroubleBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
@@ -153,7 +153,7 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         PhoneSound.stoppedNotice,
         "",
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
@@ -170,7 +170,7 @@ internal fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
         } else {
             tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
         },
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        bodyModifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
