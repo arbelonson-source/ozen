@@ -110,8 +110,8 @@ public enum AssemblyAISpeech: CloudStreamService {
                 text: gap + (turn.transcript ?? ""),
                 isFinal: true,
                 speaker: speaker,
-                startMs: words.first?.start.map { Int($0.rounded()) },
-                endMs: words.last?.end.map { Int($0.rounded()) }
+                startMs: words.first?.start.flatMap(CloudTime.milliseconds(fromMs:)),
+                endMs: words.last?.end.flatMap(CloudTime.milliseconds(fromMs:))
             ),
             CloudStreamToken(text: CloudStreamLines.endOfLine, isFinal: true),
         ]
@@ -127,6 +127,15 @@ public enum AssemblyAISpeech: CloudStreamService {
             var text: String
             var start: Double?
             var end: Double?
+
+            enum CodingKeys: String, CodingKey { case text, start, end }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                text = try container.decode(String.self, forKey: .text)
+                start = try? container.decode(Double.self, forKey: .start)
+                end = try? container.decode(Double.self, forKey: .end)
+            }
         }
 
         var type: String?

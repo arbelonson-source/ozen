@@ -81,12 +81,12 @@ struct CloudStreamLines {
             // Only before a new word: a piece that goes on the last word
             // has no space in front of it. Without spaces, any piece will do.
             let tooLong = (!spaced || token.text.first?.isWhitespace == true)
-                && (startMs.map { (token.endMs ?? $0) - $0 >= Self.maxLineMs } ?? false)
+                && (startMs.map { CloudTime.span(from: $0, to: CloudTime.milliseconds(token.endMs), wordStart: CloudTime.milliseconds(token.startMs)) >= Self.maxLineMs } ?? false)
             if hasWords && (otherVoice || tooLong) {
                 close(into: &out, at: timestamp)
             }
-            if words.isEmpty {
-                startMs = token.startMs
+            if startMs == nil {
+                startMs = CloudTime.milliseconds(token.startMs)
             }
             // A line begun by a word of no known voice takes the first
             // voice it hears, or a change of voice would never split it.

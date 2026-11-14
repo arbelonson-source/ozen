@@ -128,8 +128,8 @@ public enum SpeechmaticsSpeech: CloudStreamService {
                 text: (joined ? "" : " ") + best.content,
                 isFinal: isFinal,
                 speaker: best.speaker == unknownSpeaker ? nil : best.speaker,
-                startMs: result.startTime.map { Int(($0 * 1_000).rounded()) },
-                endMs: result.endTime.map { Int(($0 * 1_000).rounded()) }
+                startMs: result.startTime.flatMap(CloudTime.milliseconds(fromSeconds:)),
+                endMs: result.endTime.flatMap(CloudTime.milliseconds(fromSeconds:))
             ))
             heldByLast = attaches == "next" || attaches == "both"
         }
@@ -159,6 +159,15 @@ public enum SpeechmaticsSpeech: CloudStreamService {
         var endTime: Double?
         var attachesTo: String?
         var alternatives: [Alternative]?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            type = try container.decodeIfPresent(String.self, forKey: .type)
+            alternatives = try container.decodeIfPresent([Alternative].self, forKey: .alternatives)
+            attachesTo = try container.decodeIfPresent(String.self, forKey: .attachesTo)
+            startTime = try? container.decode(Double.self, forKey: .startTime)
+            endTime = try? container.decode(Double.self, forKey: .endTime)
+        }
 
         enum CodingKeys: String, CodingKey {
             case type, alternatives

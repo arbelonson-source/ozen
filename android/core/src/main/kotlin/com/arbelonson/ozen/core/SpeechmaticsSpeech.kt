@@ -139,17 +139,14 @@ object SpeechmaticsSpeech : CloudStreamService {
                     text = (if (joined) "" else " ") + best.content,
                     isFinal = isFinal,
                     speaker = if (best.speaker == UNKNOWN_SPEAKER) null else best.speaker,
-                    startMs = result.startTime?.let { rounded(it * 1_000) },
-                    endMs = result.endTime?.let { rounded(it * 1_000) },
+                    startMs = result.startTime?.let { CloudTime.milliseconds(it * 1_000) },
+                    endMs = result.endTime?.let { CloudTime.milliseconds(it * 1_000) },
                 ),
             )
             heldByLast = attaches == "next" || attaches == "both"
         }
         return tokens
     }
-
-    private fun rounded(value: Double): Int =
-        (if (value < 0) -Math.floor(-value + 0.5) else Math.floor(value + 0.5)).toInt()
 
     private fun sortedObject(content: Map<String, JsonElement>): JsonObject = JsonObject(TreeMap(content))
 
@@ -172,6 +169,12 @@ object SpeechmaticsSpeech : CloudStreamService {
         val primitive = element as? JsonPrimitive ?: throw Unreadable()
         if (!primitive.isString) throw Unreadable()
         return primitive.content
+    }
+
+    private fun optionalTime(element: JsonElement?): Double? {
+        val primitive = element as? JsonPrimitive ?: return null
+        if (primitive.isString) return null
+        return primitive.content.toDoubleOrNull()?.takeIf { it.isFinite() }
     }
 
     private fun optionalNumber(element: JsonElement?): Double? {
@@ -202,8 +205,8 @@ object SpeechmaticsSpeech : CloudStreamService {
         }
         return Result(
             type = optionalText(result["type"]),
-            startTime = optionalNumber(result["start_time"]),
-            endTime = optionalNumber(result["end_time"]),
+            startTime = optionalTime(result["start_time"]),
+            endTime = optionalTime(result["end_time"]),
             attachesTo = optionalText(result["attaches_to"]),
             alternatives = alternatives,
         )
