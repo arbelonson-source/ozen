@@ -52,17 +52,18 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
         case id, text, speakerName, speakerClusterID, startTimestamp, isCommitted, isStarred, confidence, scoredBy
     }
 
-    /// Lines saved before stars existed load as not starred.
+    /// Lines saved before stars existed load as not starred. A value the
+    /// reader cannot make sense of is left out; the line itself stays.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         text = try container.decode(String.self, forKey: .text)
-        speakerName = try container.decodeIfPresent(String.self, forKey: .speakerName)
-        speakerClusterID = try container.decodeIfPresent(Int.self, forKey: .speakerClusterID)
+        speakerName = container.lenient(String.self, forKey: .speakerName)
+        speakerClusterID = container.lenient(Int.self, forKey: .speakerClusterID)
         startTimestamp = try container.decode(TimeInterval.self, forKey: .startTimestamp)
         isCommitted = try container.decode(Bool.self, forKey: .isCommitted)
-        isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
-        confidence = try container.decodeIfPresent(Float.self, forKey: .confidence)
+        isStarred = container.lenient(Bool.self, forKey: .isStarred) ?? false
+        confidence = container.lenient(Float.self, forKey: .confidence).flatMap { $0.isFinite ? $0 : nil }
         scoredBy = try? container.decodeIfPresent(CaptionConfidence.Scorer.self, forKey: .scoredBy)
     }
 }

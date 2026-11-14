@@ -1785,3 +1785,137 @@ struct TranscriptSourceLineTests {
         #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple’s speech recognition")
     }
 }
+
+@Suite("Transcript history keeps a conversation it cannot fully read")
+struct TranscriptHistoryLenientReadTests {
+    private func makeTempDirectory() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-lenient-\(UUID())")
+    }
+
+    private func line(_ id: UUID, _ text: String) -> SavedSegment {
+        SavedSegment(id: id, text: text, speakerName: "Dana", speakerClusterID: 1, startTimestamp: 1, isCommitted: true, confidence: 0.9)
+    }
+
+    private func savedConversation(in dir: URL, ids: [UUID]) throws -> (store: TranscriptHistoryStore, id: UUID, url: URL) {
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let saved = TranscriptSessionRecord(
+            startedAt: 1_000,
+            engine: .whisperKit,
+            modelVariant: "small",
+            inputName: "iPhone Microphone",
+            segments: [line(ids[0], "alpha one"), line(ids[1], "bravo two"), line(ids[2], "charlie three")]
+        )
+        try store.save(saved)
+        return (store, saved.id, dir.appendingPathComponent("\(saved.id.uuidString).json"))
+    }
+
+    private func edit(_ url: URL, _ change: (inout [String: Any], inout [[String: Any]]) -> Void) throws {
+        var object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var lines = try #require(object["segments"] as? [[String: Any]])
+        change(&object, &lines)
+        object["segments"] = lines
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+    }
+
+    @Test("a record with one bad line keeps the other lines and shows in History")
+    func oneBadLineKeepsTheOthers() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (store, id, url) = try savedConversation(in: dir, ids: ids)
+        try edit(url) { _, lines in lines[1].removeValue(forKey: "text") }
+        let found = try #require(store.listSummaries().first { $0.id == id })
+        #expect(found.segmentCount == 2)
+        #expect(store.load(id: id)?.segments.map(\.id) == [ids[0], ids[2]])
+    }
+
+    @Test("a line with an unreadable optional value keeps its text")
+    func damagedOptionalValueKeepsTheLine() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (store, id, url) = try savedConversation(in: dir, ids: ids)
+        try edit(url) { _, lines in
+            lines[0]["confidence"] = "high"
+            lines[1]["speakerClusterID"] = "two"
+            lines[2]["isStarred"] = "yes"
+            lines[2]["speakerName"] = 7
+        }
+        let loaded = try #require(store.load(id: id))
+        #expect(loaded.segments.map(\.text) == ["alpha one", "bravo two", "charlie three"])
+        try #require(loaded.segments.count == 3)
+        #expect(loaded.segments[0].confidence == nil)
+        #expect(loaded.segments[1].speakerClusterID == nil)
+        #expect(loaded.segments[2].isStarred == false)
+        #expect(loaded.segments[2].speakerName == nil)
+        #expect(loaded.segments[1].speakerName == "Dana")
+    }
+
+    @Test("a record with an engine this build does not know loads with a fallback")
+    func unknownEngineFallsBack() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try edit(url) { object, _ in object["engine"] = "quantumListener"; object["modelVariant"] = 5 }
+        let loaded = try #require(store.load(id: id))
+        #expect(loaded.engine == .whisperKit)
+        #expect(loaded.segments.count == 3)
+        #expect(store.listSummaries().contains { $0.id == id })
+    }
+
+    @Test("a line saved with an engine this build does not know keeps its text")
+    func unknownScorerEngineKeepsTheLine() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try edit(url) { _, lines in lines[0]["scoredBy"] = ["engine": "quantumListener", "model": "x"] }
+        let loaded = try #require(store.load(id: id))
+        try #require(loaded.segments.count == 3)
+        #expect(loaded.segments[0].scoredBy == nil)
+    }
+
+    @Test("a file that is not JSON is skipped without hiding the others")
+    func notJSONIsSkipped() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, _) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try Data("{\"id\": \"truncat".utf8).write(to: dir.appendingPathComponent("\(UUID().uuidString).json"))
+        #expect(store.listSummaries().map(\.id) == [id])
+        #expect(store.search("alpha").map(\.id) == [id])
+    }
+
+    @Test("search finds text in a partly readable record")
+    func searchFindsPartlyReadableRecord() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try edit(url) { object, lines in
+            object["engine"] = "quantumListener"
+            lines[0].removeValue(forKey: "isCommitted")
+            lines[1]["confidence"] = "high"
+        }
+        #expect(store.search("bravo").map(\.id) == [id])
+        #expect(store.search("charlie").map(\.id) == [id])
+        #expect(store.search("alpha").isEmpty)
+    }
+
+    @Test("renaming a partly readable record keeps every line it could not read")
+    func renameKeepsUnreadableLines() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (store, id, url) = try savedConversation(in: dir, ids: [UUID(), UUID(), UUID()])
+        try edit(url) { object, lines in
+            object["engine"] = "quantumListener"
+            lines[0]["confidence"] = "high"
+            lines[1].removeValue(forKey: "isCommitted")
+        }
+        try store.rename(id: id, title: "Visit")
+        let object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let lines = try #require(object["segments"] as? [[String: Any]])
+        #expect(object["engine"] as? String == "quantumListener")
+        try #require(lines.count == 3)
+        #expect(lines[0]["confidence"] as? String == "high")
+        #expect(lines[1]["isCommitted"] == nil)
+        #expect(store.listSummaries().first { $0.id == id }?.title == "Visit")
+    }
+}
