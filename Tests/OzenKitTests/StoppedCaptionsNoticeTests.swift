@@ -16,7 +16,8 @@ struct StoppedCaptionsNoticeTests {
         interrupted: Bool = false,
         byCall: Bool = false,
         callEnded: Bool = false,
-        soundsOnly: Bool = false
+        soundsOnly: Bool = false,
+        soundAlertsNotWorking: Bool = false
     ) -> StoppedCaptionsNotice.Cause? {
         StoppedCaptionsNotice.cause(
             phase: phase,
@@ -24,7 +25,8 @@ struct StoppedCaptionsNoticeTests {
             systemInterrupted: interrupted,
             interruptedByCall: byCall,
             callEndedDuringInterruption: callEnded,
-            soundsOnlyChosen: soundsOnly
+            soundsOnlyChosen: soundsOnly,
+            soundAlertsNotWorking: soundAlertsNotWorking
         )
     }
 
@@ -223,6 +225,50 @@ struct StoppedCaptionsNoticeTests {
             #expect(computer.hasPrefix("No answer from the computer"))
         }
     }
+
+    @Test("sound alerts that can't work are a cause while captions run, are retried or wait, and not otherwise")
+    func soundAlertsNotWorkingCause() {
+        #expect(cause(.listening, soundAlertsNotWorking: true) == .soundAlertsNotWorking)
+        #expect(cause(.idle, soundsOnly: true, soundAlertsNotWorking: true) == .soundAlertsNotWorking)
+        #expect(cause(.failed(glitch), retryScheduled: true, soundAlertsNotWorking: true) == .soundAlertsNotWorking)
+        #expect(cause(.failed(engineFailure(.waitingForWiFi)), soundAlertsNotWorking: true) == .soundAlertsNotWorking)
+        #expect(cause(.failed(glitch), soundAlertsNotWorking: true) == .failed(glitch))
+        #expect(cause(.listening, interrupted: true, byCall: true, soundAlertsNotWorking: true) == nil)
+        #expect(cause(.listening) == nil)
+    }
+
+    @Test("the not-working notice is posted once while away, withdrawn when sound alerts work again, and told again after")
+    func soundAlertsNotWorkingNotice() {
+        var notice = StoppedCaptionsNotice()
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == nil)
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: false) == nil)
+        guard case .post(let content) = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a notification")
+            return
+        }
+        #expect(content.identifier == StoppedCaptionsNotice.identifier)
+        #expect(content.isUrgent)
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) == nil)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .withdraw(identifier: StoppedCaptionsNotice.identifier))
+        guard case .post = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+            Issue.record("a new stop should be told again")
+            return
+        }
+    }
+
+    @Test("the not-working notice says sounds may be missed and that Ozen keeps trying")
+    func soundAlertsNotWorkingWording() {
+        Localization.$override.withValue(.english) {
+            let content = StoppedCaptionsNotice.content(for: .soundAlertsNotWorking)
+            #expect(content.title == "Sound alerts aren’t working")
+            #expect(content.body.contains("keeps trying"))
+            #expect(content.body.contains("doorbell"))
+        }
+        let hebrew = Localization.$override.withValue(.hebrew) { StoppedCaptionsNotice.content(for: .soundAlertsNotWorking) }
+        #expect(hebrew.title == "ההתראות על צלילים לא פועלות")
+        #expect(hebrew.body.contains("ממשיכה לנסות"))
+    }
+
 }
 
 @Suite("CaptionPipeline phase change callback")

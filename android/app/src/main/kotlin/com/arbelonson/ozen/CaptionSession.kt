@@ -604,6 +604,10 @@ class CaptionSession(
             say = ::announceStopOrReturn,
         )
         pipeline.onPhaseChange = phaseChanges::phaseChanged
+        pipeline.onSoundAlertsAvailabilityChange = {
+            CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking)
+            checkCaptionsStillRunning()
+        }
         pipeline.onPreparationProgress = phaseChanges::preparationProgressed
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
@@ -871,6 +875,7 @@ class CaptionSession(
                 soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself,
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
+                soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
             )
         }
 

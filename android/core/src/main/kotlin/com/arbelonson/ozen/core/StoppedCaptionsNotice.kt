@@ -38,6 +38,9 @@ class StoppedCaptionsNotice {
 
         /** Something other than a call has the microphone. */
         data object OtherAppHasMicrophone : Cause()
+
+        /** Sound alerts are on, but the classifier keeps failing. */
+        data object SoundAlertsNotWorking : Cause()
     }
 
     sealed class Update {
@@ -138,6 +141,21 @@ class StoppedCaptionsNotice {
             soundsOnlyStopped: Boolean = false,
             interruptedByCall: Boolean = false,
             soundsOnlyChosen: Boolean = false,
+            soundAlertsNotWorking: Boolean = false,
+        ): Cause? {
+            val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen)
+            if (stop == null && soundAlertsNotWorking && !systemInterrupted) return Cause.SoundAlertsNotWorking
+            return stop
+        }
+
+        private fun stopCause(
+            phase: PipelinePhase,
+            retryScheduled: Boolean,
+            systemInterrupted: Boolean,
+            callEndedDuringInterruption: Boolean,
+            soundsOnlyStopped: Boolean,
+            interruptedByCall: Boolean,
+            soundsOnlyChosen: Boolean,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
@@ -158,6 +176,7 @@ class StoppedCaptionsNotice {
             identifier = IDENTIFIER,
             title = when (cause) {
                 Cause.SoundAlertsStopped -> tr("ההתראות על צלילים נעצרו", "Sound alerts stopped")
+                Cause.SoundAlertsNotWorking -> soundAlertsNotWorkingTitle()
                 Cause.OtherAppHasMicrophone -> tr("הכתוביות מושהות", "Captions paused")
                 else -> tr("הכתוביות נעצרו", "Captions stopped")
             },
@@ -166,7 +185,15 @@ class StoppedCaptionsNotice {
             isUrgent = true,
         )
 
+        fun soundAlertsNotWorkingTitle(): String = tr("ההתראות על צלילים לא פועלות", "Sound alerts aren’t working")
+
+        fun soundAlertsNotWorkingDetail(): String = tr(
+            "הזיהוי של צלילים לא עובד כרגע, ולכן ייתכן שלא תקבלו התראה על צלצול בדלת, אזעקה או בכי של תינוק. אוזן ממשיכה לנסות.",
+            "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.",
+        )
+
         private fun body(cause: Cause): String = when (cause) {
+            Cause.SoundAlertsNotWorking -> soundAlertsNotWorkingDetail()
             Cause.OtherAppHasMicrophone -> tr(
                 "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",
                 "Another app is using the microphone, so captions and sound alerts are paused. Open Ozen to bring them back.",

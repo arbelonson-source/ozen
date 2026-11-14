@@ -350,6 +350,9 @@ public final class LiveCaptionViewModel {
         pipeline.onKeywordHits = { [weak self] hits, segment in
             self?.alertRaised(keywords: hits, in: segment)
         }
+        pipeline.onSoundAlertsAvailabilityChange = { [weak self] in
+            self?.checkCaptionsStillRunning()
+        }
         pipeline.onPhaseChange = { [weak self] phase in
             self?.stepReached(phase)
             // A failure's automatic retry is lined up right after its phase
@@ -699,7 +702,8 @@ public final class LiveCaptionViewModel {
             systemInterrupted: isInterruptedBySystem,
             interruptedByCall: interruptedByCall,
             callEndedDuringInterruption: callEndedDuringInterruption,
-            soundsOnlyChosen: pipeline.soundsOnlyChosen
+            soundsOnlyChosen: pipeline.soundsOnlyChosen,
+            soundAlertsNotWorking: pipeline.soundAlertsNotWorking
         )
         switch stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
         case .post(let content)?:

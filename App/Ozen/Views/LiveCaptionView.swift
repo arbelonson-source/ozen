@@ -372,6 +372,10 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if viewModel.pipeline.soundAlertsNotWorking {
+                SoundAlertsNotWorkingBanner()
+                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let cut = viewModel.listeningCut {
                 ListeningCutBanner(text: cut.text()) {
                     withAnimation { viewModel.dismissListeningCut() }
@@ -396,6 +400,7 @@ struct LiveCaptionView: View {
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
+            || viewModel.pipeline.soundAlertsNotWorking
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
 

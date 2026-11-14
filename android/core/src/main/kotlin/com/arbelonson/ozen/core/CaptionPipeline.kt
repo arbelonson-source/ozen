@@ -491,6 +491,23 @@ class CaptionPipeline(
     private var embeddingTask: Job? = null
     private var soundTask: Job? = null
 
+    private var soundClassifierUnavailable = false
+        set(value) {
+            if (field == value) return
+            field = value
+            statsData.soundDetectionRunning = !value && soundTask != null
+            onSoundAlertsAvailabilityChange?.invoke()
+        }
+
+    /**
+     * Sound alerts are on, and the classifier can't be made to work: it
+     * keeps being tried again, and this clears when one works.
+     */
+    val soundAlertsNotWorking: Boolean get() = soundClassifierUnavailable && soundPolicy.preferences.isEnabled
+
+    /** Called when [soundAlertsNotWorking] may have changed. */
+    var onSoundAlertsAvailabilityChange: (() -> Unit)? = null
+
     /**
      * The microphone is on for sound alerts alone, while captions wait to
      * come back (see [listenForSoundsMeanwhile]). The phone's battery runs
@@ -921,7 +938,7 @@ class CaptionPipeline(
         val engineAudio = if (replay.isEmpty()) fan.outputs[0] else replaying(replay, fan.outputs[0])
         val tokens = engine.stream(settings.languageCode, engineAudio)
         val embedderAudio = fan.outputs[1]
-        val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]))
+        val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]), soundAvailabilityReporter(run))
 
         statsData.sessionStartedAt = now()
         listeningStartedAt = statsData.sessionStartedAt
@@ -2067,6 +2084,7 @@ class CaptionPipeline(
         soundPolicy.preferences = preferences
         settingsInUse?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
+        onSoundAlertsAvailabilityChange?.invoke()
         if (soundsOnlyChosen && !preferences.isEnabled) stop()
     }
 
@@ -3364,7 +3382,7 @@ class CaptionPipeline(
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
-        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0]))
+        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0]), soundAvailabilityReporter(run))
         soundTask = scope.launch {
             observations.takeWhile { runID == run }.collect { observation ->
                 handleSoundObservation(observation)
@@ -3455,6 +3473,12 @@ class CaptionPipeline(
         return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage
     }
 
+    private fun soundAvailabilityReporter(run: UUID): (Boolean) -> Unit = { available ->
+        scope.launch {
+            if (runID == run && soundTask != null) soundClassifierUnavailable = !available
+        }
+    }
+
     private fun stopListeningForSounds() {
         if (!isListeningForSoundsOnly) return
         isListeningForSoundsOnly = false
@@ -3462,6 +3486,7 @@ class CaptionPipeline(
         soundsOnlyWatch = null
         soundTask?.cancel()
         soundTask = null
+        soundClassifierUnavailable = false
         fanOut?.cancel()
         fanOut = null
         audio.stopCapture()
@@ -3638,6 +3663,7 @@ class CaptionPipeline(
         embeddingTask = null
         soundTask?.cancel()
         soundTask = null
+        soundClassifierUnavailable = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
         soundsOnlyWatch?.cancel()

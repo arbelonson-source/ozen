@@ -1184,6 +1184,7 @@ private fun CaptionScreen(
                         )
                     }
                     ArrivingBanner(Unit.takeIf { state.phoneSoundStopped }) { PhoneSoundStoppedBanner(onDismissPhoneSoundStopped) }
+                    ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
                     ArrivingBanner(state.battery) { BatteryBanner(it, onDismissBattery) }
                 }
                 Box(

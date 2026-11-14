@@ -28,6 +28,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         case callEnded
         /// Something other than a call has the microphone.
         case otherAppHasMicrophone
+        /// Sound alerts are on, but the classifier keeps failing.
+        case soundAlertsNotWorking
     }
 
     public enum Update: Sendable, Equatable {
@@ -71,7 +73,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         systemInterrupted: Bool,
         interruptedByCall: Bool,
         callEndedDuringInterruption: Bool,
-        soundsOnlyChosen: Bool = false
+        soundsOnlyChosen: Bool = false,
+        soundAlertsNotWorking: Bool = false
     ) -> Cause? {
         if systemInterrupted {
             // A failure during the call is retried once the call gives the
@@ -80,9 +83,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             if callEndedDuringInterruption { return .callEnded }
             return interruptedByCall ? nil : .otherAppHasMicrophone
         }
-        guard let failure = phase.failure, !retryScheduled else { return nil }
+        guard let failure = phase.failure, !retryScheduled else { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
         // Starts by itself as soon as the phone is on Wi-Fi.
-        if failure.engineUnavailability?.kind == .waitingForWiFi { return nil }
+        if failure.engineUnavailability?.kind == .waitingForWiFi { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
         return .failed(failure)
     }
 
@@ -122,15 +125,36 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     static func content(for cause: Cause) -> AlertNotificationContent {
         AlertNotificationContent(
             identifier: identifier,
-            title: cause == .otherAppHasMicrophone ? tr("הכתוביות מושהות", "Captions paused") : tr("הכתוביות נעצרו", "Captions stopped"),
+            title: title(for: cause),
             body: body(for: cause),
             threadIdentifier: "status",
             isUrgent: true
         )
     }
 
+    public static var soundAlertsNotWorkingTitle: String {
+        tr("ההתראות על צלילים לא פועלות", "Sound alerts aren’t working")
+    }
+
+    public static var soundAlertsNotWorkingDetail: String {
+        tr(
+            "הזיהוי של צלילים לא עובד כרגע, ולכן ייתכן שלא תקבלו התראה על צלצול בדלת, אזעקה או בכי של תינוק. אוזן ממשיכה לנסות.",
+            "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying."
+        )
+    }
+
+    private static func title(for cause: Cause) -> String {
+        switch cause {
+        case .soundAlertsNotWorking: return soundAlertsNotWorkingTitle
+        case .otherAppHasMicrophone: return tr("הכתוביות מושהות", "Captions paused")
+        default: return tr("הכתוביות נעצרו", "Captions stopped")
+        }
+    }
+
     private static func body(for cause: Cause) -> String {
         switch cause {
+        case .soundAlertsNotWorking:
+            return soundAlertsNotWorkingDetail
         case .otherAppHasMicrophone:
             return tr(
                 "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",

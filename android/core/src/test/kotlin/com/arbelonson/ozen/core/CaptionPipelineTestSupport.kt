@@ -558,7 +558,7 @@ fun TestScope.captionPipeline(
 fun TestScope.makePipeline(
     audio: FakeAudioCapturer = FakeAudioCapturer(),
     engines: Map<TranscriptionEngineKind, FakeEngine> = mapOf(TranscriptionEngineKind.WhisperKit to FakeEngine()),
-    soundDetector: FakeSoundDetector? = null,
+    soundDetector: SoundEventDetecting? = null,
     recovery: AutoRecoveryPolicy = AutoRecoveryPolicy.disabled(),
     audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
     now: () -> Double = { 1_000.0 },

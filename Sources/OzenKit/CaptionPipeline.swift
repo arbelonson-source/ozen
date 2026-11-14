@@ -326,6 +326,18 @@ public final class CaptionPipeline {
     private var streamTask: Task<Void, Never>?
     private var embeddingTask: Task<Void, Never>?
     private var soundTask: Task<Void, Never>?
+    private var soundClassifierUnavailable = false {
+        didSet {
+            guard oldValue != soundClassifierUnavailable else { return }
+            stats.soundDetectionRunning = !soundClassifierUnavailable && soundTask != nil
+            onSoundAlertsAvailabilityChange?()
+        }
+    }
+    /// Sound alerts are on, and the classifier can't be made to work: it
+    /// keeps being tried again, and this clears when one works.
+    public var soundAlertsNotWorking: Bool { soundClassifierUnavailable && soundPolicy.preferences.isEnabled }
+    /// Called when `soundAlertsNotWorking` may have changed.
+    public var onSoundAlertsAvailabilityChange: (() -> Void)?
     /// The microphone is on for sound alerts alone, while captions wait to
     /// come back (see `listenForSoundsMeanwhile`). The phone's battery runs
     /// down then too, so its warnings stay on.
@@ -714,7 +726,7 @@ public final class CaptionPipeline {
         let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
         let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]
-        let soundObservations = soundDetector.map { $0.observations(audio: whileSoundAlertsAreOn(fan.outputs[2])) }
+        let soundObservations = soundDetector.map { $0.observations(audio: whileSoundAlertsAreOn(fan.outputs[2]), availability: soundAvailabilityReporter(run: run)) }
 
         stats.sessionStartedAt = now()
         listeningStartedAt = stats.sessionStartedAt
@@ -1861,6 +1873,7 @@ public final class CaptionPipeline {
         soundPolicy.preferences = preferences
         activeSettings?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
+        onSoundAlertsAvailabilityChange?()
     }
 
     // MARK: - Tokens
@@ -3003,7 +3016,7 @@ public final class CaptionPipeline {
         fanOut = fan
         isListeningForSoundsOnly = true
         stats.soundDetectionRunning = true
-        let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0]))
+        let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0]), availability: soundAvailabilityReporter(run: run))
         soundTask = Task { [weak self] in
             for await observation in observations {
                 guard let self, self.runID == run else { return }
@@ -3111,11 +3124,21 @@ public final class CaptionPipeline {
         return kind == .waitingForWiFi || kind == .notEnoughStorage
     }
 
+    private func soundAvailabilityReporter(run: UUID) -> @Sendable (Bool) -> Void {
+        { [weak self] available in
+            Task { @MainActor [weak self] in
+                guard let self, self.runID == run, self.soundTask != nil else { return }
+                self.soundClassifierUnavailable = !available
+            }
+        }
+    }
+
     private func stopListeningForSounds() {
         guard isListeningForSoundsOnly else { return }
         isListeningForSoundsOnly = false
         soundTask?.cancel()
         soundTask = nil
+        soundClassifierUnavailable = false
         fanOut?.cancel()
         fanOut = nil
         audio.stopCapture()
@@ -3269,6 +3292,7 @@ public final class CaptionPipeline {
         embeddingTask = nil
         soundTask?.cancel()
         soundTask = nil
+        soundClassifierUnavailable = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
         staleCommitTask?.cancel()

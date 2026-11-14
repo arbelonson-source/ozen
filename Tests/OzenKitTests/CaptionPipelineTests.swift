@@ -350,13 +350,51 @@ final class FakeSoundDetector: SoundEventDetecting, @unchecked Sendable {
     }
 }
 
+/// A classifier the test can break and mend, run through the same
+/// supervisor the real detectors use. Every chunk is a hundred seconds
+/// on its clock, so restarts are never held up by their spacing.
+final class FlakySoundDetector: SoundEventDetecting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var broken: Bool
+    private(set) var restarts = 0
+
+    init(broken: Bool) { self.broken = broken }
+
+    func setBroken(_ value: Bool) { lock.withLock { broken = value } }
+
+    func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation> {
+        observations(audio: audio, availability: { _ in })
+    }
+
+    func observations(audio: AsyncStream<[Float]>, availability: @escaping @Sendable (Bool) -> Void) -> AsyncStream<SoundObservation> {
+        AsyncStream { continuation in
+            Task {
+                var supervisor = SoundClassifierSupervisor(budget: RestartBudget(limit: 5, windowSeconds: 600, minimumSpacingSeconds: 15))
+                var working = !self.lock.withLock { self.broken }
+                var clock = 0.0
+                for await _ in audio {
+                    clock += 100
+                    if working, self.lock.withLock({ self.broken }) { working = false }
+                    if supervisor.step(hasWorkingClassifier: working, at: clock) == .restart {
+                        self.lock.withLock { self.restarts += 1 }
+                        working = !self.lock.withLock { self.broken }
+                        if !working { supervisor.restartGaveNoClassifier() }
+                    }
+                    if let change = supervisor.takeChange() { availability(change) }
+                }
+                continuation.finish()
+            }
+        }
+    }
+}
+
 // MARK: - Helpers
 
 @MainActor
 private func makePipeline(
     audio: FakeAudioCapturer = FakeAudioCapturer(),
     engines: [TranscriptionEngineKind: FakeEngine] = [.whisperKit: FakeEngine()],
-    soundDetector: FakeSoundDetector? = nil,
+    soundDetector: (any SoundEventDetecting)? = nil,
     recovery: AutoRecoveryPolicy = .disabled,
     audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
     now: @escaping @Sendable () -> TimeInterval = { 1_000 }
@@ -2807,6 +2845,54 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.phase.isListening })
         engine.emit(token(UUID(), "דנה הגיעה"))
         #expect(await eventually { pipeline.keywordHits.count == 1 })
+    }
+
+    @Test("a classifier that keeps failing is reported by the pipeline, which stops saying sound detection runs")
+    func soundClassifierKeepsFailing() async {
+        let detector = FlakySoundDetector(broken: false)
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        #expect(pipeline.stats.soundDetectionRunning)
+        #expect(!pipeline.soundAlertsNotWorking)
+
+        detector.setBroken(true)
+        for _ in 0..<8 { audio.push([Float](repeating: 0.1, count: 1_024)) }
+        #expect(await eventually { pipeline.soundAlertsNotWorking })
+        #expect(!pipeline.stats.soundDetectionRunning)
+        #expect(pipeline.phase.isListening)
+    }
+
+    @Test("sound alerts are reported working again once the classifier works")
+    func soundClassifierComesBack() async {
+        let detector = FlakySoundDetector(broken: true)
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        for _ in 0..<8 { audio.push([Float](repeating: 0.1, count: 1_024)) }
+        #expect(await eventually { pipeline.soundAlertsNotWorking })
+
+        detector.setBroken(false)
+        for _ in 0..<10 { audio.push([Float](repeating: 0.1, count: 1_024)) }
+        #expect(await eventually { !pipeline.soundAlertsNotWorking })
+        #expect(pipeline.stats.soundDetectionRunning)
+    }
+
+    @Test("turning sound alerts off takes the not-working report away, and a healthy classifier never raises it")
+    func soundAlertsOffClearsTheReport() async {
+        let healthy = FlakySoundDetector(broken: false)
+        let (steady, steadyAudio, _) = makePipeline(soundDetector: healthy)
+        await steady.start(settings: .default)
+        for _ in 0..<8 { steadyAudio.push([Float](repeating: 0.1, count: 1_024)) }
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!steady.soundAlertsNotWorking)
+        #expect(steady.stats.soundDetectionRunning)
+
+        let detector = FlakySoundDetector(broken: true)
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { pipeline.soundAlertsNotWorking })
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!pipeline.soundAlertsNotWorking)
     }
 
     @Test("sound observations become alerts through the policy, and audio reaches the detector")
