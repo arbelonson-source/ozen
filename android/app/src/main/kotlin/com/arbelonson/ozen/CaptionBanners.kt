@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -180,7 +182,7 @@ internal fun MicrophoneDropBanner(title: String, detail: String, onChooseMicroph
         NoticeTone.Warning,
         title,
         detail,
-        Modifier
+        bodyModifier = Modifier
             .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), role = Role.Button, onClick = onChooseMicrophone)
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
@@ -240,7 +242,7 @@ internal fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: 
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").widthIn(min = OzenSpacing.MinTouch).heightIn(min = OzenSpacing.MinTouch).wrapContentSize(Alignment.Center),
             )
         }
         BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
@@ -285,7 +287,7 @@ internal fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByt
                 tr("נסו שוב", "Try again"),
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onRetry).testTag("model-load-crash-retry").widthIn(min = OzenSpacing.MinTouch).heightIn(min = OzenSpacing.MinTouch).wrapContentSize(Alignment.Center),
             )
             // While the lighter model downloads, or waits for a connection
             // it resumes on by itself, a second tap would do nothing.
@@ -293,7 +295,7 @@ internal fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByt
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onSwitch).testTag("model-load-crash-switch").widthIn(min = OzenSpacing.MinTouch).heightIn(min = OzenSpacing.MinTouch).wrapContentSize(Alignment.Center),
             )
         }
     }
@@ -351,7 +353,7 @@ internal fun ListeningCutCard(text: String, onDismiss: () -> Unit) {
             tr("אישור", "OK"),
             color = colors.primary,
             style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onDismiss).testTag("listening-cut-dismiss").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+            modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onDismiss).testTag("listening-cut-dismiss").widthIn(min = OzenSpacing.MinTouch).heightIn(min = OzenSpacing.MinTouch).wrapContentSize(Alignment.Center),
         )
     }
 }

@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -108,8 +109,15 @@ internal fun SayScreen(
     var confirmingRestore by rememberSaveable { mutableStateOf(false) }
     var bigLetters by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val addNew = { text: String ->
+        val trimmed = text.trim()
+        val isNew = trimmed.isNotEmpty() && trimmed !in phrases
+        onAddPhrase(text)
+        if (isNew) ScreenReader.saidAdded(context, trimmed)
+    }
     val addPhrase = {
-        onAddPhrase(newPhrase)
+        addNew(newPhrase)
         newPhrase = ""
     }
     // What the pad says becomes "Play again" here, as on the iPhone.
@@ -178,7 +186,7 @@ internal fun SayScreen(
                             Text(phrase, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         }
                         if (phrase !in phrases) {
-                            IconButton(onClick = { onAddPhrase(phrase) }, modifier = Modifier.semantics { contentDescription = tr("הוספה למשפטים המוכנים", "Add to quick phrases") }) {
+                            IconButton(onClick = { addNew(phrase) }, modifier = Modifier.semantics { contentDescription = tr("הוספה למשפטים המוכנים", "Add to quick phrases") }) {
                                 Icon(Icons.Rounded.Add, contentDescription = null)
                             }
                         }

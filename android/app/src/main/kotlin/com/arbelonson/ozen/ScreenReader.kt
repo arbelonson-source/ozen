@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
+import com.arbelonson.ozen.core.tr
 
 object ScreenReader {
     var isOn: (Context) -> Boolean = { context ->
@@ -22,6 +23,12 @@ object ScreenReader {
 
     fun pointsWithoutTouch(serviceIds: List<String>): Boolean =
         serviceIds.any { id -> pointerServices.any { id.contains(it, ignoreCase = true) } }
+
+    fun said(context: Context, text: String) {
+        if (isOn(context)) announce(context, text)
+    }
+
+    fun saidAdded(context: Context, word: String) = said(context, tr("נוסף: %1", "Added: %1", listOf(word)))
 
     var announce: (Context, String) -> Unit = { context, text ->
         val manager = context.getSystemService(AccessibilityManager::class.java)

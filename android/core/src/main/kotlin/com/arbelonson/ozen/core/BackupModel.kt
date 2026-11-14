@@ -40,6 +40,13 @@ object BackupModel {
         }
     }
 
+    fun announces(status: BackupModelStatus, previous: BackupModelStatus): Boolean = when {
+        status == BackupModelStatus.NotNeeded || status is BackupModelStatus.Missing || previous == BackupModelStatus.NotNeeded -> false
+        status is BackupModelStatus.Downloading && previous is BackupModelStatus.Downloading -> false
+        status is BackupModelStatus.NotEnoughRoom && previous is BackupModelStatus.NotEnoughRoom -> false
+        else -> status != previous
+    }
+
     fun shouldOffer(unreachable: EngineUnavailability.Kind?, status: BackupModelStatus): Boolean {
         if (unreachable != EngineUnavailability.Kind.HomeServerUnreachable) return false
         return status is BackupModelStatus.Missing || status == BackupModelStatus.Failed || status == BackupModelStatus.WaitingForWiFi

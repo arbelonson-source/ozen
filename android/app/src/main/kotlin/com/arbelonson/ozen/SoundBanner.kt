@@ -142,6 +142,7 @@ internal fun NoticeBanner(
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
+    bodyModifier: Modifier = Modifier,
     trailing: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -165,7 +166,7 @@ internal fun NoticeBanner(
     ) {
         if (tone == NoticeTone.Emergency) Box(Modifier.width(4.dp).fillMaxHeight().background(colors.error))
         Row(
-            Modifier.weight(1f).padding(start = OzenSpacing.Page - if (tone == NoticeTone.Emergency) 4.dp else 0.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            Modifier.weight(1f).then(bodyModifier).padding(start = OzenSpacing.Page - if (tone == NoticeTone.Emergency) 4.dp else 0.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

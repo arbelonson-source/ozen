@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
@@ -59,9 +60,11 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
     val listed = VocabularyHints.listedEntry(draft, words)
     val full = words.size >= VocabularyHints.maximumTerms
     val canAdd = draft.isNotBlank() && listed == null && !full
+    val context = LocalContext.current
     val add = {
         if (canAdd) {
             onChange(listOf(draft) + words)
+            ScreenReader.saidAdded(context, draft.trim())
             draft = ""
         }
     }

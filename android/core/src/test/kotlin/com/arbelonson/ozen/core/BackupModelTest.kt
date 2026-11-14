@@ -60,4 +60,20 @@ class BackupModelTest {
         assertFalse(BackupModel.shouldOffer(EngineUnavailability.Kind.HomeServerRejected, BackupModelStatus.Missing(626)))
         assertFalse(BackupModel.shouldOffer(null, BackupModelStatus.Missing(626)))
     }
+
+    @Test
+    fun `a change of the backup status is said aloud as on the iPhone, but not progress or the first look`() {
+        val missing = BackupModelStatus.Missing(626)
+        assertTrue(BackupModel.announces(BackupModelStatus.Downloading(0.1), missing))
+        assertFalse(BackupModel.announces(BackupModelStatus.Downloading(0.5), BackupModelStatus.Downloading(0.1)))
+        assertTrue(BackupModel.announces(BackupModelStatus.Ready, BackupModelStatus.Downloading(0.9)))
+        assertTrue(BackupModel.announces(BackupModelStatus.Failed, BackupModelStatus.Downloading(0.9)))
+        assertTrue(BackupModel.announces(BackupModelStatus.WaitingForWiFi, missing))
+        assertTrue(BackupModel.announces(BackupModelStatus.NotEnoughRoom(100), missing))
+        assertFalse(BackupModel.announces(BackupModelStatus.NotEnoughRoom(200), BackupModelStatus.NotEnoughRoom(100)))
+        assertFalse(BackupModel.announces(BackupModelStatus.Ready, BackupModelStatus.Ready))
+        assertFalse(BackupModel.announces(missing, BackupModelStatus.Failed))
+        assertFalse(BackupModel.announces(BackupModelStatus.NotNeeded, BackupModelStatus.Ready))
+        assertFalse(BackupModel.announces(BackupModelStatus.Ready, BackupModelStatus.NotNeeded))
+    }
 }
