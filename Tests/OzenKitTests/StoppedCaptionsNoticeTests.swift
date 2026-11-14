@@ -15,14 +15,16 @@ struct StoppedCaptionsNoticeTests {
         retryScheduled: Bool = false,
         interrupted: Bool = false,
         byCall: Bool = false,
-        callEnded: Bool = false
+        callEnded: Bool = false,
+        soundsOnly: Bool = false
     ) -> StoppedCaptionsNotice.Cause? {
         StoppedCaptionsNotice.cause(
             phase: phase,
             retryScheduled: retryScheduled,
             systemInterrupted: interrupted,
             interruptedByCall: byCall,
-            callEndedDuringInterruption: callEnded
+            callEndedDuringInterruption: callEnded,
+            soundsOnlyChosen: soundsOnly
         )
     }
 
@@ -64,6 +66,15 @@ struct StoppedCaptionsNoticeTests {
         #expect(cause(.idle, interrupted: true) == nil)
         #expect(cause(.listening, interrupted: true, byCall: true) == nil)
         #expect(cause(.listening, interrupted: false) == nil)
+    }
+
+    @Test("sound alerts alone, which leave the phase idle or paused, are told about when another app or a stuck call has the microphone")
+    func soundsOnlyInterrupted() {
+        #expect(cause(.idle, interrupted: true, soundsOnly: true) == .otherAppHasMicrophone)
+        #expect(cause(.paused, interrupted: true, soundsOnly: true) == .otherAppHasMicrophone)
+        #expect(cause(.idle, interrupted: true, byCall: true, soundsOnly: true) == nil)
+        #expect(cause(.idle, interrupted: true, byCall: true, callEnded: true, soundsOnly: true) == .callEnded)
+        #expect(cause(.idle, interrupted: true) == nil)
     }
 
     @Test("the other-app notice goes out after a minute, once, and is cancelled when the app opens or the microphone is back")

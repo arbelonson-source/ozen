@@ -870,6 +870,7 @@ class CaptionSession(
                 callEndedDuringInterruption = false,
                 soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself,
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
+                soundsOnlyChosen = pipeline.soundsOnlyChosen,
             )
         }
 

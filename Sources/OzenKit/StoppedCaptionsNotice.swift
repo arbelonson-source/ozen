@@ -61,19 +61,22 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// microphone is known to be over while iOS still hasn't said the
     /// interruption ended. Until then an interruption is someone on the
     /// phone, which is no news to her. `interruptedByCall` is true when a
-    /// call is, or was during this interruption, going on; an interruption
+    /// call is, or was during this interruption, going on; `soundsOnlyChosen`
+    /// is true while only sound alerts are listened for, which leaves the
+    /// phase idle or paused although something is running. An interruption
     /// without one is something else using the microphone.
     public static func cause(
         phase: PipelinePhase,
         retryScheduled: Bool,
         systemInterrupted: Bool,
         interruptedByCall: Bool,
-        callEndedDuringInterruption: Bool
+        callEndedDuringInterruption: Bool,
+        soundsOnlyChosen: Bool = false
     ) -> Cause? {
         if systemInterrupted {
             // A failure during the call is retried once the call gives the
             // microphone back, so what matters is only whether it did.
-            guard phase.isListening || phase.failure != nil else { return nil }
+            guard phase.isListening || phase.failure != nil || soundsOnlyChosen else { return nil }
             if callEndedDuringInterruption { return .callEnded }
             return interruptedByCall ? nil : .otherAppHasMicrophone
         }

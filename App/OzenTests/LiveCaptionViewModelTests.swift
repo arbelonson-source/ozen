@@ -2160,6 +2160,22 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         #expect(phone.cancelled == [StoppedCaptionsNotice.identifier])
     }
 
+    @Test("a call whose end is reported before the interruption it caused is still the call's: nothing scheduled, the microphone asked for back")
+    func lateInterruptionAfterCall() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.phoneCallsChanged(inProgress: true)
+        viewModel.phoneCallsChanged(inProgress: false)
+        viewModel.systemInterruptionChanged(began: true)
+        await viewModel.finishReclaimAfterCall()
+
+        #expect(phone.scheduled.isEmpty)
+        #expect(phone.reclaims == 1)
+        #expect(viewModel.isInterruptedBySystem == false)
+    }
+
     @Test("a call that takes the microphone schedules nothing, and one that shows up just after the interruption cancels what was scheduled")
     func callIsNotOtherApp() async {
         let phone = Phone(reclaimAnswer: true)

@@ -23,12 +23,14 @@ class StoppedCaptionsNoticeTest {
         interrupted: Boolean = false,
         byCall: Boolean = false,
         callEnded: Boolean = false,
+        soundsOnly: Boolean = false,
     ): StoppedCaptionsNotice.Cause? = StoppedCaptionsNotice.cause(
         phase = phase,
         retryScheduled = retryScheduled,
         systemInterrupted = interrupted,
         callEndedDuringInterruption = callEnded,
         interruptedByCall = byCall,
+        soundsOnlyChosen = soundsOnly,
     )
 
     private fun failed(failure: PipelineFailure) = StoppedCaptionsNotice.Cause.Failed(failure)
@@ -85,6 +87,15 @@ class StoppedCaptionsNoticeTest {
         assertNull(cause(PipelinePhase.Idle, interrupted = true))
         assertNull(cause(PipelinePhase.Listening, interrupted = true, byCall = true))
         assertNull(cause(PipelinePhase.Listening, interrupted = false))
+    }
+
+    @Test
+    fun `sound alerts alone, which leave the phase idle or paused, are told about when another app or a stuck call has the microphone`() {
+        assertEquals(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, cause(PipelinePhase.Idle, interrupted = true, soundsOnly = true))
+        assertEquals(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, cause(PipelinePhase.Paused, interrupted = true, soundsOnly = true))
+        assertNull(cause(PipelinePhase.Idle, interrupted = true, byCall = true, soundsOnly = true))
+        assertEquals(StoppedCaptionsNotice.Cause.CallEnded, cause(PipelinePhase.Idle, interrupted = true, byCall = true, callEnded = true, soundsOnly = true))
+        assertNull(cause(PipelinePhase.Idle, interrupted = true))
     }
 
     @Test

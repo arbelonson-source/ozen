@@ -138,6 +138,11 @@ public final class LiveCaptionViewModel {
     /// A call is, or was, part of the interruption going on; one that began
     /// with no call is another app holding the microphone.
     private var interruptedByCall = false
+    /// When the last call ended with no interruption going on. iOS may
+    /// report the interruption it caused a moment after the call's end.
+    private var callEndedWithoutInterruptionAt: ContinuousClock.Instant?
+    /// How long after a call ended an interruption is still the call's.
+    var lateInterruptionWindow: Duration = .seconds(10)
     private var reclaimAfterCallTask: Task<Void, Never>?
     /// How long after a call ends iOS gets to hand the microphone back by
     /// itself before the app asks for it.
@@ -575,7 +580,9 @@ public final class LiveCaptionViewModel {
     func systemInterruptionChanged(began: Bool) {
         isInterruptedBySystem = began
         callEndedDuringInterruption = false
-        interruptedByCall = began && (interruptedByCall || phoneCalls?.isCallInProgress == true)
+        let callJustEnded = began && callEndedWithoutInterruptionAt.map { $0.duration(to: .now) <= lateInterruptionWindow } == true
+        callEndedWithoutInterruptionAt = nil
+        interruptedByCall = began && (interruptedByCall || callJustEnded || phoneCalls?.isCallInProgress == true)
         // A call cuts the phone off mid-phrase, and the voice can be left
         // paused rather than finished: never saying it's done, it would
         // hold captions paused for good. The rest of a phrase said after
@@ -601,6 +608,7 @@ public final class LiveCaptionViewModel {
         }
         checkCaptionsStillRunning()
         refreshLockScreen()
+        if callJustEnded { phoneCallsChanged(inProgress: false) }
     }
 
     /// A phone call started (`true`) or the last one ended (`false`).
@@ -615,12 +623,14 @@ public final class LiveCaptionViewModel {
         reclaimAfterCallTask = nil
         if inProgress {
             callEndedDuringInterruption = false
+            callEndedWithoutInterruptionAt = nil
             interruptedByCall = true
             checkCaptionsStillRunning()
             return
         }
         guard isInterruptedBySystem else {
             interruptedByCall = false
+            callEndedWithoutInterruptionAt = .now
             return
         }
         reclaimAfterCallTask = Task { [weak self, callEndGrace, reclaimRetryDelays] in
@@ -688,7 +698,8 @@ public final class LiveCaptionViewModel {
             retryScheduled: pipeline.isRecoveringByItself,
             systemInterrupted: isInterruptedBySystem,
             interruptedByCall: interruptedByCall,
-            callEndedDuringInterruption: callEndedDuringInterruption
+            callEndedDuringInterruption: callEndedDuringInterruption,
+            soundsOnlyChosen: pipeline.soundsOnlyChosen
         )
         switch stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
         case .post(let content)?:

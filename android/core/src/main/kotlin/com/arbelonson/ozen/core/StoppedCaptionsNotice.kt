@@ -126,7 +126,9 @@ class StoppedCaptionsNotice {
          * interruption ended. Until then an interruption is someone on the
          * phone, which is no news to her. [interruptedByCall] is true when a
          * call is, or was during this interruption, going on; an interruption
-         * without one is something else using the microphone.
+         * without one is something else using the microphone. [soundsOnlyChosen]
+         * is true while only sound alerts are listened for, which leaves the
+         * phase idle or paused although something is running.
          */
         fun cause(
             phase: PipelinePhase,
@@ -135,11 +137,12 @@ class StoppedCaptionsNotice {
             callEndedDuringInterruption: Boolean,
             soundsOnlyStopped: Boolean = false,
             interruptedByCall: Boolean = false,
+            soundsOnlyChosen: Boolean = false,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
                 // microphone back, so what matters is only whether it did.
-                if (!(phase.isListening || phase.failure != null)) return null
+                if (!(phase.isListening || phase.failure != null || soundsOnlyChosen)) return null
                 if (callEndedDuringInterruption) return Cause.CallEnded
                 return if (interruptedByCall) null else Cause.OtherAppHasMicrophone
             }
