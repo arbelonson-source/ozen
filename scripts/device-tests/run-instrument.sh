@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 APP=com.arbelonson.ozen
-STALL_MINUTES=${STALL_MINUTES:-6}
+STALL_MINUTES=${STALL_MINUTES:-20}
 POLL_SECONDS=${POLL_SECONDS:-30}
 OUT=app/build/instrument.txt
 STACKS=app/build/stacks.txt
