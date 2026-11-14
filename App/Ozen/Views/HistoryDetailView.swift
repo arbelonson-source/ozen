@@ -331,8 +331,9 @@ struct HistoryDetailView: View {
         let store = viewModel.historyStore
         let id = sessionID
         let query = searchQuery
+        let language = viewModel.settings.languageCode
         let loaded = await Task.detached(priority: .utility) {
-            Loaded(store: store, id: id, query: query)
+            Loaded(store: store, id: id, query: query, languageCode: language)
         }.value
         record = loaded.record
         stats = loaded.stats
@@ -365,7 +366,7 @@ struct HistoryDetailView: View {
         let timeMarks: Set<UUID>
         let numberLineIDs: [UUID]
 
-        init(store: TranscriptHistoryStore, id: UUID, query: String) {
+        init(store: TranscriptHistoryStore, id: UUID, query: String, languageCode: String) {
             let loaded = store.load(id: id)
             record = loaded
             stats = loaded.map(ConversationStats.compute(from:))
@@ -382,7 +383,7 @@ struct HistoryDetailView: View {
                 matches = TranscriptHistoryStore.matchingSegmentIDs(in: loaded, query: query)
             }
             timeMarks = CaptionLayout.timeMarkedLineIDs(in: loaded.segments)
-            numberLineIDs = loaded.segments.filter { NumberEmphasis.hasListableNumber($0.text) }.map(\.id)
+            numberLineIDs = loaded.segments.filter { NumberEmphasis.hasListableNumber($0.text, languageCode: languageCode) }.map(\.id)
         }
     }
 
@@ -394,8 +395,9 @@ struct HistoryDetailView: View {
         let store = viewModel.historyStore
         let id = sessionID
         let query = searchQuery
+        let language = viewModel.settings.languageCode
         let loaded = await Task.detached(priority: .userInitiated) {
-            Loaded(store: store, id: id, query: query)
+            Loaded(store: store, id: id, query: query, languageCode: language)
         }.value
         record = loaded.record
         stats = loaded.stats
@@ -442,6 +444,7 @@ private struct NumberLineLabel: View {
                 Text(
                     caption: CaptionLayout.directed(segment.text, languageCode: languageCode),
                     emphasizingNumbers: true,
+                    languageCode: languageCode,
                     size: numberSize,
                     numberColor: nil
                 )
@@ -552,6 +555,7 @@ private struct SavedLineRow: View {
                 Text(
                     caption: CaptionLayout.displayText(segment.text, languageCode: languageCode),
                     emphasizingNumbers: emphasizeNumbers,
+                    languageCode: languageCode,
                     size: lineSize,
                     numberColor: nil,
                     linkingPhoneNumbers: true

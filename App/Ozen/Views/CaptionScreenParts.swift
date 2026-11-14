@@ -58,6 +58,7 @@ struct CaptionRow: View {
                 Text(
                     caption: CaptionLayout.displayText(segment.text, languageCode: languageCode),
                     emphasizingNumbers: display.emphasizeNumbers,
+                    languageCode: languageCode,
                     size: display.fontSize,
                     // A line still being written keeps its dimmer colour
                     // throughout, numbers included, so it reads as unfinished.

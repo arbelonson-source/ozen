@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class NumberEmphasisTest {
     private fun emphasized(text: String, decimalComma: Boolean = false): List<String> =
-        NumberEmphasis.ranges(text, decimalComma).map { text.substring(it.start, it.endExclusive) }
+        NumberEmphasis.ranges(text, "he", decimalComma).map { text.substring(it.start, it.endExclusive) }
 
     @Test
     fun decimalCommaKeepsDoseWhole() {
@@ -110,8 +110,8 @@ class NumberEmphasisTest {
         assertEquals(listOf("שלוש פעמים"), emphasized("שלוש פעמים ביום"))
         assertEquals(listOf("10:30"), emphasized("בשעה 10:30, דקות ספורות"))
         assertEquals(listOf("אחת"), emphasized("פעם אחת ביום"))
-        assertTrue(NumberEmphasis.hasListableNumber("חצי כדור בערב"))
-        assertTrue(NumberEmphasis.hasListableNumber("שני ימים"))
+        assertTrue(NumberEmphasis.hasListableNumber("חצי כדור בערב", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("שני ימים", "he"))
     }
 
     @Test
@@ -119,8 +119,8 @@ class NumberEmphasisTest {
         assertEquals(listOf("פעמיים"), emphasized("פעמיים ביום, אחרי האוכל"))
         assertEquals(listOf("שבועיים", "יומיים"), emphasized("נתראה בעוד שבועיים, ולפני זה יומיים בלי"))
         assertEquals(listOf("שעתיים", "לחודשיים", "ובשנתיים"), emphasized("תוך שעתיים, לחודשיים ובשנתיים האחרונות"))
-        assertTrue(NumberEmphasis.hasListableNumber("כדור פעמיים ביום"))
-        assertTrue(NumberEmphasis.hasListableNumber("ביקורת בעוד שבועיים"))
+        assertTrue(NumberEmphasis.hasListableNumber("כדור פעמיים ביום", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("ביקורת בעוד שבועיים", "he"))
         assertEquals(emptyList(), emphasized("בדיקה שבועית וכדור יומי, תשלום חודשי"))
     }
 
@@ -150,7 +150,7 @@ class NumberEmphasisTest {
     @Test
     fun `quarters count only after a number, and a unit with the article still joins its amount`() {
         assertEquals(emptyList(), emphasized("רבעי הירח משתנים כל שבוע"))
-        assertFalse(NumberEmphasis.hasListableNumber("הדוח יוצא בכל רבעי השנה"))
+        assertFalse(NumberEmphasis.hasListableNumber("הדוח יוצא בכל רבעי השנה", "he"))
         assertEquals(listOf("שלושת רבעי הכוס"), emphasized("שתיתי כבר שלושת רבעי הכוס"))
         assertEquals(listOf("חצי הכוס", "ורבע השעה"), emphasized("חצי הכוס, ורבע השעה הראשונה"))
         assertEquals(listOf("חצי הכף"), emphasized("ממיסים חצי הכף במים"))
@@ -165,8 +165,8 @@ class NumberEmphasisTest {
         assertEquals(listOf("פעם", "בשלושה ימים"), emphasized("זריקה פעם בשלושה ימים"))
         assertEquals(listOf("פעם", "בשש שעות"), emphasized("כדור פעם בשש שעות"))
         assertEquals(emptyList(), emphasized("אף פעם ביום כזה, עוד פעם בבוקר, פעם הייתי שם"))
-        assertTrue(NumberEmphasis.hasListableNumber("כדור פעם ביום"))
-        assertFalse(NumberEmphasis.hasListableNumber("פעם הייתי שם"))
+        assertTrue(NumberEmphasis.hasListableNumber("כדור פעם ביום", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("פעם הייתי שם", "he"))
     }
 
     @Test
@@ -228,29 +228,29 @@ class NumberEmphasisTest {
 
     @Test
     fun `lines listed under numbers said, digits and real amounts, not the idioms of one and two`() {
-        assertTrue(NumberEmphasis.hasListableNumber("ניפגש ב-10:30"))
-        assertTrue(NumberEmphasis.hasListableNumber("לקחת שלושה כדורים"))
-        assertTrue(NumberEmphasis.hasListableNumber("ובערב חצי כדור"))
-        assertFalse(NumberEmphasis.hasListableNumber("רק פעם אחת"))
-        assertFalse(NumberEmphasis.hasListableNumber("נתראה ביום שני"))
-        assertFalse(NumberEmphasis.hasListableNumber("כל אחד לבד"))
-        assertFalse(NumberEmphasis.hasListableNumber(""))
+        assertTrue(NumberEmphasis.hasListableNumber("ניפגש ב-10:30", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("לקחת שלושה כדורים", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("ובערב חצי כדור", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("רק פעם אחת", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("נתראה ביום שני", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("כל אחד לבד", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("", "he"))
     }
 
     @Test
     fun `one or two as part of a time or an amount is listed, eleven, half past one, two pills`() {
-        assertTrue(NumberEmphasis.hasListableNumber("נתראה באחת עשרה בלילה"))
-        assertTrue(NumberEmphasis.hasListableNumber("התור באחת וחצי בצהריים"))
-        assertTrue(NumberEmphasis.hasListableNumber("לקחת שני כדורים"))
-        assertTrue(NumberEmphasis.hasListableNumber("עד אחת-עשרה בלילה"))
-        assertFalse(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר"))
-        assertFalse(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת"))
+        assertTrue(NumberEmphasis.hasListableNumber("נתראה באחת עשרה בלילה", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("התור באחת וחצי בצהריים", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("לקחת שני כדורים", "he"))
+        assertTrue(NumberEmphasis.hasListableNumber("עד אחת-עשרה בלילה", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר", "he"))
+        assertFalse(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת", "he"))
     }
 
     @Test
     fun decimalCommaListsTheLineWithTheDose() {
-        assertTrue(NumberEmphasis.hasListableNumber("nimm 2,5 mg täglich", decimalComma = true))
-        assertTrue(NumberEmphasis.hasListableNumber("fièvre 37,5 hier", decimalComma = true))
-        assertFalse(NumberEmphasis.hasListableNumber("rien de special, merci", decimalComma = true))
+        assertTrue(NumberEmphasis.hasListableNumber("nimm 2,5 mg täglich", "he", decimalComma = true))
+        assertTrue(NumberEmphasis.hasListableNumber("fièvre 37,5 hier", "he", decimalComma = true))
+        assertFalse(NumberEmphasis.hasListableNumber("rien de special, merci", "he", decimalComma = true))
     }
 }

@@ -13,6 +13,7 @@ struct NumberEmphasisSharedCasesTests {
         let input: String
         let expected: Expected?
         let only: String?
+        let language: String?
         let knownDifference: String?
     }
 
@@ -46,10 +47,10 @@ struct NumberEmphasisSharedCasesTests {
             checked += 1
             switch (item.kind, item.expected) {
             case ("emphasized", .words(let words)?):
-                let actual = NumberEmphasis.ranges(in: item.input).map { String(item.input[$0]) }
+                let actual = NumberEmphasis.ranges(in: item.input, languageCode: item.language ?? "he").map { String(item.input[$0]) }
                 #expect(actual == words, "input: \(item.input)")
             case ("listable", .flag(let flag)?):
-                #expect(NumberEmphasis.hasListableNumber(item.input) == flag, "input: \(item.input)")
+                #expect(NumberEmphasis.hasListableNumber(item.input, languageCode: item.language ?? "he") == flag, "input: \(item.input)")
             default:
                 Issue.record("bad case: \(item.input)")
             }

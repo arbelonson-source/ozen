@@ -433,6 +433,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
                     display.emphasizeNumbers,
                     look.numberText,
                     decimalComma = LocalDecimalComma.current,
+                    languageCode = Localization.language.languageCode,
                 ),
                 color = look.text,
                 fontSize = size.sp,

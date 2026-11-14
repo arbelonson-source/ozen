@@ -32,15 +32,16 @@ class NumberEmphasisSharedCasesTest {
             if (only != null && only != "kotlin") continue
             checked++
             val decimalComma = item["decimalComma"]?.jsonPrimitive?.boolean ?: false
+            val language = item["language"]?.jsonPrimitive?.contentOrNull ?: "he"
             val expected = item.getValue("expected")
             when (item.getValue("kind").jsonPrimitive.content) {
                 "emphasized" -> {
-                    val actual = NumberEmphasis.ranges(input, decimalComma).map { input.substring(it.start, it.endExclusive) }
+                    val actual = NumberEmphasis.ranges(input, language, decimalComma).map { input.substring(it.start, it.endExclusive) }
                     assertEquals((expected as JsonArray).map { it.jsonPrimitive.content }, actual, "input: $input")
                 }
                 "listable" -> assertEquals(
                     (expected as JsonPrimitive).boolean,
-                    NumberEmphasis.hasListableNumber(input, decimalComma),
+                    NumberEmphasis.hasListableNumber(input, language, decimalComma),
                     "input: $input",
                 )
                 else -> error("bad case: $input")

@@ -826,6 +826,89 @@
     "2",
     "5 mg"
    ]
-  }
+  },
+   {
+    "kind": "emphasized",
+    "input": "Take three pills at ten thirty",
+    "language": "en",
+    "expected": [
+     "three pills",
+     "ten thirty"
+    ]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take one pill twice a day",
+    "language": "en",
+    "expected": [
+     "one pill",
+     "twice a day"
+    ]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Every eight hours, half a tablet",
+    "language": "en",
+    "expected": [
+     "eight hours",
+     "half a tablet"
+    ]
+   },
+   {
+    "kind": "emphasized",
+    "input": "The one I like is the red one",
+    "language": "en",
+    "expected": []
+   },
+   {
+    "kind": "emphasized",
+    "input": "Once I get there I will call",
+    "language": "en",
+    "expected": []
+   },
+   {
+    "kind": "emphasized",
+    "input": "It costs two hundred and fifty dollars",
+    "language": "en",
+    "expected": [
+     "two hundred and fifty dollars"
+    ]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take three pills at ten thirty",
+    "language": "he",
+    "expected": []
+   },
+   {
+    "kind": "listable",
+    "input": "Take half a tablet",
+    "language": "en",
+    "expected": true
+   },
+   {
+    "kind": "listable",
+    "input": "No one came",
+    "language": "en",
+    "expected": false
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take it once every two days",
+    "language": "en",
+    "expected": ["once every two days"]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Take one and a half tablets",
+    "language": "en",
+    "expected": ["one and a half tablets"]
+   },
+   {
+    "kind": "emphasized",
+    "input": "Meet at half past 3",
+    "language": "en",
+    "expected": ["half past 3"]
+   }
  ]
 }

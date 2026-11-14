@@ -451,6 +451,7 @@ private fun CaptionLineWords(
                 doubtfulWords = doubtful,
                 linkingPhoneNumbers = line.phones.isNotEmpty(),
                 decimalComma = LocalDecimalComma.current,
+                languageCode = LocalSpokenLanguage.current,
             ),
             style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
             color = colour,

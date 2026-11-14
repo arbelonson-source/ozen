@@ -90,7 +90,21 @@ object NumberEmphasis {
      * kadur" - "half a pill", "500 mg"), since the amount alone doesn't say
      * what of.
      */
-    fun ranges(text: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
+    fun ranges(text: String, languageCode: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
+        val profile = NumberWordProfile.profile(languageCode) ?: return hebrewRanges(text, decimalComma)
+        val merged = mutableListOf<OpenEndRange<Int>>()
+        for (range in (spelledRanges(text, decimalComma, profile) + hebrewRanges(text, decimalComma)).sortedBy { it.start }) {
+            val last = merged.lastOrNull()
+            if (last != null && range.start < last.endExclusive) {
+                merged[merged.size - 1] = last.start until maxOf(last.endExclusive, range.endExclusive)
+            } else {
+                merged.add(range)
+            }
+        }
+        return merged
+    }
+
+    private fun hebrewRanges(text: String, decimalComma: Boolean): List<OpenEndRange<Int>> {
         val line = NumberEmphasisLine(text)
         val words = emphasisWords(line, decimalComma)
         val result = mutableListOf<OpenEndRange<Int>>()
@@ -141,7 +155,13 @@ object NumberEmphasis {
      * Monday"); a list of every line with them in it would be most of the
      * conversation.
      */
-    fun hasListableNumber(text: String, decimalComma: Boolean = false): Boolean = ranges(text, decimalComma).any { range ->
+    fun hasListableNumber(text: String, languageCode: String, decimalComma: Boolean = false): Boolean {
+        val profile = NumberWordProfile.profile(languageCode)
+        if (profile != null && spelledListable(text, decimalComma, profile)) return true
+        return hasHebrewListableNumber(text, decimalComma)
+    }
+
+    private fun hasHebrewListableNumber(text: String, decimalComma: Boolean): Boolean = hebrewRanges(text, decimalComma).any { range ->
         val found = emphasisCharacters(text.substring(range.start, range.endExclusive))
         if (found.any { isEmphasisNumber(it) }) return@any true
         // The number is the first word; a unit may follow it.
@@ -475,3 +495,180 @@ private fun isDefinitePlural(word: String): Boolean =
 
 private fun isHour(word: String): Boolean =
     word == "שעה" || (emphasisCount(word) > 3 && emphasisDropFirst(word) == "שעה")
+
+private class SpelledTail(val last: Int, val end: Int, val joined: Boolean)
+
+/**
+ * The ranges for a language with a word list (see [NumberWordProfile]): counting words
+ * in runs ("ten thirty", "two hundred and fifty"), the unit after them ("three pills",
+ * "five o'clock", "10:30 pm"), "twice a day" and "half a tablet". "One" and "once" count
+ * only with a unit or a period after them, so "the one I like" stays plain.
+ */
+internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberWordProfile): List<OpenEndRange<Int>> {
+    val line = NumberEmphasisLine(text)
+    val words = emphasisWords(line, decimalComma)
+    val lowered = words.map { it.core?.lowercase(Locale.ROOT)?.replace('’', '\'') }
+    fun coreEnd(index: Int): Int = if (words[index].hasCore) words[index].coreEnd else words[index].end
+    fun joinsNext(index: Int, end: Int): Boolean =
+        index + 1 < words.size && end == words[index].end && !emphasisFollowedByComma(line, end, decimalComma)
+    fun isNumber(index: Int): Boolean = lowered[index]?.let { it in profile.numbers } ?: false
+    fun hasDigit(index: Int): Boolean = (words[index].start until words[index].end).any { isEmphasisNumber(line.graphemes[it]) }
+    fun digitEnd(index: Int): Int = (words[index].start until words[index].end).last { isEmphasisNumber(line.graphemes[it]) } + 1
+
+    fun runEnd(start: Int): Int {
+        var last = start
+        while (joinsNext(last, coreEnd(last))) {
+            val next = lowered[last + 1]
+            if (isNumber(last + 1)) {
+                last += 1
+            } else if (next != null && next in profile.connectors && lowered[last] in profile.scales &&
+                last + 2 < words.size && isNumber(last + 2) && joinsNext(last + 1, coreEnd(last + 1))
+            ) {
+                last += 2
+            } else {
+                break
+            }
+        }
+        return last
+    }
+
+    fun unitAfter(last: Int, end: Int, throughLinks: Boolean): Triple<Int, Int, String>? {
+        if (!joinsNext(last, end)) return null
+        var cursor = last
+        if (throughLinks) {
+            while (joinsNext(cursor, coreEnd(cursor)) && cursor + 1 < words.size && lowered[cursor + 1] in profile.fractionLinks) cursor += 1
+        }
+        if (cursor + 1 >= words.size || !joinsNext(cursor, if (cursor == last) end else coreEnd(cursor))) return null
+        val next = words[cursor + 1]
+        if (line.slice(next.start, next.end) == "₪") return Triple(cursor + 1, next.end, "₪")
+        val core = lowered[cursor + 1] ?: return null
+        return if (core in profile.units) Triple(cursor + 1, coreEnd(cursor + 1), core) else null
+    }
+
+    fun repeatedAfter(last: Int, end: Int): Pair<Int, Int>? {
+        if (!joinsNext(last, end) || last + 2 >= words.size) return null
+        if (lowered[last + 1] !in profile.repeatLinks || !joinsNext(last + 1, coreEnd(last + 1))) return null
+        var counted = last + 2
+        if (hasDigit(counted)) {
+            if (!joinsNext(counted, digitEnd(counted))) return null
+        } else if (isNumber(counted)) {
+            counted = runEnd(counted)
+            if (!joinsNext(counted, coreEnd(counted))) return null
+        } else {
+            counted -= 1
+        }
+        if (counted + 1 >= words.size || lowered[counted + 1] !in profile.periods) return null
+        return counted + 1 to coreEnd(counted + 1)
+    }
+
+    fun mixedFraction(last: Int, end: Int): Pair<Int, Int>? {
+        if (!joinsNext(last, end) || lowered[last + 1] !in profile.connectors) return null
+        var cursor = last + 1
+        while (joinsNext(cursor, coreEnd(cursor)) && cursor + 1 < words.size && lowered[cursor + 1] in profile.fractionLinks) cursor += 1
+        if (cursor + 1 >= words.size || !joinsNext(cursor, coreEnd(cursor)) || lowered[cursor + 1] !in profile.fractions) return null
+        return cursor + 1 to coreEnd(cursor + 1)
+    }
+
+    fun finish(last: Int, end: Int, core: String?, afterFraction: Boolean): SpelledTail {
+        var lastWord = last
+        var endAt = end
+        var tailCore = core
+        var joined = false
+        unitAfter(last, end, afterFraction)?.let {
+            lastWord = it.first
+            endAt = it.second
+            tailCore = it.third
+            joined = true
+        }
+        if (tailCore != null && tailCore in profile.repeatUnits) {
+            repeatedAfter(lastWord, endAt)?.let {
+                lastWord = it.first
+                endAt = it.second
+            }
+        }
+        return SpelledTail(lastWord, endAt, joined)
+    }
+
+    val result = mutableListOf<OpenEndRange<Int>>()
+    var lastJoined = -1
+    for ((position, word) in words.withIndex()) {
+        if (position <= lastJoined) continue
+        var start = -1
+        var last = -1
+        var end = -1
+        val indices = word.start until word.end
+        val firstDigit = indices.firstOrNull { isEmphasisNumber(line.graphemes[it]) }
+        val lastDigit = indices.lastOrNull { isEmphasisNumber(line.graphemes[it]) }
+        val core = lowered[position]
+        if (firstDigit != null && lastDigit != null) {
+            var digitsEnd = lastDigit + 1
+            if (digitsEnd < word.end && line.graphemes[digitsEnd] in emphasisGluedUnitSigns) digitsEnd += 1
+            val mixed = mixedFraction(position, digitsEnd)
+            val done = if (mixed != null) finish(mixed.first, mixed.second, null, true) else finish(position, digitsEnd, null, false)
+            start = firstDigit
+            last = done.last
+            end = done.end
+        } else if (core != null) {
+            val previous = if (position > 0) lowered[position - 1] else null
+            if (core in profile.onceWords) {
+                if (previous != null && previous in profile.notACountBefore) continue
+                val again = repeatedAfter(position, coreEnd(position)) ?: continue
+                start = word.coreStart
+                last = again.first
+                end = again.second
+            } else if (isNumber(position)) {
+                var runLast = runEnd(position)
+                var runStop = coreEnd(runLast)
+                var afterFraction = false
+                val mixed = mixedFraction(runLast, runStop)
+                if (mixed != null) {
+                    runLast = mixed.first
+                    runStop = mixed.second
+                    afterFraction = true
+                } else if (joinsNext(runLast, runStop) && lowered[runLast + 1] in profile.fractions) {
+                    runLast += 1
+                    runStop = coreEnd(runLast)
+                    afterFraction = true
+                }
+                val done = finish(runLast, runStop, lowered[runLast], afterFraction)
+                if (position == runLast && core in profile.ambiguous) {
+                    if (previous != null && previous in profile.notACountBefore) continue
+                    if (!done.joined) continue
+                }
+                start = word.coreStart
+                val keepTail = done.joined || !afterFraction
+                last = if (keepTail) done.last else runLast
+                end = if (keepTail) done.end else runStop
+            } else if (core in profile.fractions) {
+                val clock = joinsNext(position, coreEnd(position)) && lowered[position + 1] in profile.clockLinks &&
+                    joinsNext(position + 1, coreEnd(position + 1)) && position + 2 < words.size &&
+                    (isNumber(position + 2) || hasDigit(position + 2))
+                if (clock) {
+                    val runLast = if (hasDigit(position + 2)) position + 2 else runEnd(position + 2)
+                    val done = finish(runLast, if (hasDigit(runLast)) digitEnd(runLast) else coreEnd(runLast), null, false)
+                    start = word.coreStart
+                    last = done.last
+                    end = done.end
+                } else {
+                    val done = finish(position, coreEnd(position), null, true)
+                    if (!done.joined) continue
+                    start = word.coreStart
+                    last = done.last
+                    end = done.end
+                }
+            }
+        }
+        if (start < 0) continue
+        result.add(IntRange(line.offsets[start], line.offsets[end] - 1))
+        lastJoined = last
+    }
+    return result
+}
+
+internal fun spelledListable(text: String, decimalComma: Boolean, profile: NumberWordProfile): Boolean =
+    spelledRanges(text, decimalComma, profile).any { range ->
+        val found = emphasisCharacters(text.substring(range.start, range.endExclusive))
+        found.any { isEmphasisNumber(it) } ||
+            found.any { isEmphasisWhitespace(it) || it == "-" } ||
+            found.joinToString("").lowercase(Locale.ROOT) !in profile.idioms
+    }

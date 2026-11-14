@@ -58,6 +58,7 @@ struct StarredLinesView: View {
                                             Text(
                                                 caption: CaptionLayout.displayText(line.segment.text, languageCode: viewModel.settings.languageCode),
                                                 emphasizingNumbers: viewModel.display.emphasizeNumbers,
+                                                languageCode: viewModel.settings.languageCode,
                                                 size: lineSize,
                                                 numberColor: nil
                                             )

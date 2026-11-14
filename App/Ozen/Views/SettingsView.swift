@@ -1000,6 +1000,7 @@ struct SettingsView: View {
                 Text(
                     caption: tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello, Grandma, we’ll arrive at six with three kids."),
                     emphasizingNumbers: viewModel.display.emphasizeNumbers,
+                    languageCode: Localization.language.speechVoiceCode,
                     size: viewModel.display.fontSize,
                     numberColor: previewTheme.numberText
                 )

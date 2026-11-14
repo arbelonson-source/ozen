@@ -1168,7 +1168,7 @@ public struct TranscriptHistoryStore: Sendable {
         guard !formatted.isEmpty else { return heading }
         let transcript = formatted.joined(separator: "\n")
         let numbered = record.segments.count < numbersBlockMinimumLines ? [] : zip(record.segments, formatted)
-            .filter { NumberEmphasis.hasListableNumber($0.0.text) }
+            .filter { NumberEmphasis.hasListableNumber($0.0.text, languageCode: "he") }
             .prefix(numbersBlockLimit)
             .map(\.1)
         guard !numbered.isEmpty else { return "\(heading)\n\n\(transcript)" }

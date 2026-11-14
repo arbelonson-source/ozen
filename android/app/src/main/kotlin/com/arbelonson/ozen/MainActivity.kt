@@ -484,7 +484,7 @@ private fun OzenApp(
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), moreContrast)
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     OzenTheme(dark = !look.isLight, highContrast = moreContrast || current.display.theme == DisplayPreferences.Theme.HighContrast) {
-        CompositionLocalProvider(LocalLayoutDirection provides direction, LocalDecimalComma provides usesDecimalComma(current.spokenLanguage)) {
+        CompositionLocalProvider(LocalLayoutDirection provides direction, LocalDecimalComma provides usesDecimalComma(current.spokenLanguage), LocalSpokenLanguage provides current.spokenLanguage.languageCode) {
             val front = when {
                 !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
                 showingSettings.value -> FrontScreen(Front.Settings)
