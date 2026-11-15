@@ -344,6 +344,7 @@ public struct ConversationStats: Sendable, Equatable {
         if hours > 0 { parts.append(spokenHours(hours)) }
         if minutes > 0 { parts.append(spokenMinutes(minutes)) }
         if rest > 0 || parts.isEmpty { parts.append(secondsText(rest)) }
+        if Localization.language == .arabic { return parts.joined(separator: " و") }
         return parts.joined(separator: ", ")
     }
 

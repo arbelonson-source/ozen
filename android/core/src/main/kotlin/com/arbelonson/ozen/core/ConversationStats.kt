@@ -326,7 +326,7 @@ data class ConversationStats(
             if (hours > 0) parts += spokenHours(hours)
             if (minutes > 0) parts += spokenMinutes(minutes)
             if (rest > 0 || parts.isEmpty()) parts += secondsText(rest)
-            return parts.joinToString(", ")
+            return parts.joinToString(if (Localization.language == UILanguage.Arabic) " و" else ", ")
         }
 
         private fun spokenHours(count: Int): String = when (val language = Localization.language) {

@@ -66,7 +66,8 @@ struct SpokenDurationTests {
     @Test("Russian and Arabic keep their own counting forms")
     func others() {
         #expect(spoken(3_727, in: .russian) == "1 час, 2 минуты, 7 секунд")
-        #expect(spoken(62, in: .arabic) == "دقيقة, ثانيتان")
+        #expect(spoken(62, in: .arabic) == "دقيقة وثانيتان")
+        #expect(spoken(3_661, in: .arabic) == "ساعة ودقيقة وثانية")
     }
 
     @Test("a recording's line is read with its time as words, not as a clock")

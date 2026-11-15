@@ -65,7 +65,8 @@ class SpokenDurationTest {
     @Test
     fun `Russian and Arabic keep their own counting forms`() {
         assertEquals("1 час, 2 минуты, 7 секунд", spoken(3_727.0, UILanguage.Russian))
-        assertEquals("دقيقة, ثانيتان", spoken(62.0, UILanguage.Arabic))
+        assertEquals("دقيقة وثانيتان", spoken(62.0, UILanguage.Arabic))
+        assertEquals("ساعة ودقيقة وثانية", spoken(3_661.0, UILanguage.Arabic))
     }
 
     @Test
