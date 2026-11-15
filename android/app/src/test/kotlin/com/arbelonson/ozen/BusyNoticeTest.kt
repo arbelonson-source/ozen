@@ -60,6 +60,28 @@ class BusyNoticeTest {
     }
 
     @Test
+    fun theLineIsDueOncePerRefusalNotWhenThePageIsShownAgain() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        assertTrue(notice.announcementDue())
+        assertFalse(notice.announcementDue())
+        notice.accept(busy = true)
+        assertTrue(notice.announcementDue())
+        assertFalse(notice.announcementDue())
+    }
+
+    @Test
+    fun theLineIsDueAgainAfterTheNoteWasCleared() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        assertTrue(notice.announcementDue())
+        notice.clear()
+        assertFalse(notice.announcementDue())
+        notice.accept(busy = true)
+        assertTrue(notice.announcementDue())
+    }
+
+    @Test
     fun anIdleShareCountsNothing() {
         val notice = BusyNotice()
         notice.accept(busy = false)
