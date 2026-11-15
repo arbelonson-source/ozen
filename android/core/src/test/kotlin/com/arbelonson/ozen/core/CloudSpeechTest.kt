@@ -309,4 +309,19 @@ class CloudSpeechTest {
         assertNull(cloudBody(request)["reasoning"])
         assertEquals(CloudSpeech.keyURL, CloudSpeech.keyCheckRequest("k").url)
     }
+
+    @Test
+    fun `a rejected key is told apart from a missing one, and a slow service is not a lost internet`() {
+        assertTrue(CloudSpeechError.KeyRejected.unavailability.cloudKeyWasRejected)
+        assertFalse(CloudSpeechError.KeyMissing.unavailability.cloudKeyWasRejected)
+        assertFalse(CloudSpeechError.OutOfCredit.unavailability.cloudKeyWasRejected)
+        val slow = CloudSpeechError.TimedOut.unavailability
+        assertTrue(slow.cloudTimedOut)
+        assertEquals(EngineUnavailability.Kind.NoInternet, slow.kind)
+        assertFalse(CloudSpeechError.Offline.unavailability.cloudTimedOut)
+        val failure = PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", slow)
+        val chosen = AppSettings.default.copy().also { it.engine = TranscriptionEngineKind.Cloud }
+        assertEquals(TranscriptionEngineKind.WhisperKit, CloudCover.phoneSettings(chosen, failure)?.engine)
+        assertEquals(EngineUnavailability.Kind.NoInternet, CloudSpeechError.Offline.unavailability.kind)
+    }
 }

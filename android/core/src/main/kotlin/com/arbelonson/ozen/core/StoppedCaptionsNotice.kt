@@ -339,13 +339,18 @@ class StoppedCaptionsNotice {
                         "נגמר הקרדיט לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                         "Cloud transcription’s budget ran out. Open Ozen for details.",
                     )
+                    why == EngineUnavailability.Kind.NoInternet && failure.engineUnavailability?.cloudTimedOut == true -> tr(
+                        "התמלול בענן לא זמין כרגע. פתחו את אוזן כדי להמשיך.",
+                        "Cloud transcription isn’t available right now. Open Ozen to continue.",
+                    )
                     why == EngineUnavailability.Kind.NoInternet -> tr(
                         "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
                         "There’s no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone’s own speech recognition.",
                     )
-                    HomeServer.refusedPlainAddress(failure.engineUnavailability) -> tr(
-                        "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://",
-                        "Outside the home network, use the address that starts with wss://",
+                    HomeServer.refusedPlainAddress(failure.engineUnavailability) -> HomeServer.plainAddressRefusedText()
+                    HomeServer.missingAddress(failure.engineUnavailability) -> tr(
+                        "הכתובת או הקוד חסרים. פתחו את אוזן כדי להמשיך.",
+                        "The address or code is missing. Open Ozen to continue.",
                     )
                     why == EngineUnavailability.Kind.HomeServerUnreachable -> tr(
                         "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",

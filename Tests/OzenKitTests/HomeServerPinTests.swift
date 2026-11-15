@@ -171,4 +171,20 @@ struct HomeServerPinTests {
             #expect(HomeServer.rejectedCoverDetail(detail: "pairing code refused bad").contains("didn’t accept the pairing code"))
         }
     }
+
+    @Test("no saved address and a refused plain address each have their own words, never \"check that it is on\"")
+    func addressProblemsHaveTheirOwnWords() {
+        let none = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress)
+        let plain = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.needsEncryption)
+        let down = EngineUnavailability(kind: .homeServerUnreachable, detail: "no answer")
+        #expect(HomeServer.missingAddress(none))
+        #expect(!HomeServer.missingAddress(plain) && !HomeServer.missingAddress(down) && !HomeServer.missingAddress(nil))
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.rejectionTitle(detail: HomeServer.noAddress) == "The address or code is missing")
+            #expect(HomeServer.addressCoverDetail(detail: HomeServer.noAddress) == "The address or code is missing · Tap to pause")
+            #expect(HomeServer.addressCoverDetail(detail: HomeServer.needsEncryption) == "Outside the home network, use the address that starts with wss:// · Tap to pause")
+            #expect(HomeServer.addressCoverDetail(detail: "no answer") == nil)
+            #expect(HomeServer.addressCoverDetail(detail: nil) == nil)
+        }
+    }
 }

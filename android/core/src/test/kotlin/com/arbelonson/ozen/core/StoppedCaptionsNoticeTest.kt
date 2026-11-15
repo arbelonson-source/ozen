@@ -491,6 +491,27 @@ class StoppedCaptionsNoticeTest {
             )
         }
     }
+
+    @Test
+    fun `a cloud that did not answer in time is not called a lost internet`() {
+        fun body(why: EngineUnavailability) =
+            StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why))).body
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Cloud transcription isn’t available right now. Open Ozen to continue.", body(CloudSpeechError.TimedOut.unavailability))
+            assertTrue(body(CloudSpeechError.Offline.unavailability).startsWith("There’s no internet"))
+        }
+    }
+
+    @Test
+    fun `a phone with no saved address does not tell her to check that the computer is on`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "The address or code is missing. Open Ozen to continue.",
+                StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why))).body,
+            )
+        }
+    }
 }
 
 class CaptionPipelinePhaseChangeTest {

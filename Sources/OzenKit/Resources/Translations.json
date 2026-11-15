@@ -1176,7 +1176,9 @@
   "Replies will play on the phone’s speaker": "ምላሾቹ በስልኩ ድምጽ ማጉያ ይጫወታሉ",
   "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "ስልኩ Ozen እንዲያዳምጥ አልፈቀደም። እንደገና ለመሞከር «ካፕሽን ጀምር»ን ይንኩ።",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "ከሰረዙ አዲሱ ፋይል አይከፈትም። ይህን ጽሑፍ ካስቀመጡ ወይም ከዘጉ በኋላ እንደገና ያጋሩት።"
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "ከሰረዙ አዲሱ ፋይል አይከፈትም። ይህን ጽሑፍ ካስቀመጡ ወይም ከዘጉ በኋላ እንደገና ያጋሩት።",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "የደመና ንግግር መለያ አሁን አይገኝም። ለመቀጠል Ozenን ይክፈቱ።",
+  "The address or code is missing. Open Ozen to continue.": "አድራሻው ወይም ኮዱ ጠፍቷል። ለመቀጠል Ozenን ይክፈቱ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2355,7 +2357,9 @@
   "Replies will play on the phone’s speaker": "ستُشغَّل الردود عبر مكبّر صوت الهاتف",
   "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "لم يسمح الهاتف لـ Ozen بالاستماع. المسوا «بدء الترجمة النصية» للمحاولة مرة أخرى.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "إذا ألغيتم، لن يُفتح الملف الجديد. شاركوه مرة أخرى بعد حفظ هذا النص أو إغلاقه."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "إذا ألغيتم، لن يُفتح الملف الجديد. شاركوه مرة أخرى بعد حفظ هذا النص أو إغلاقه.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "النسخ السحابي غير متاح الآن. افتحوا Ozen للمتابعة.",
+  "The address or code is missing. Open Ozen to continue.": "العنوان أو الرمز مفقود. افتحوا Ozen للمتابعة."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3534,7 +3538,9 @@
   "Replies will play on the phone’s speaker": "回复将通过手机扬声器播放",
   "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "手机不允许 Ozen 收听。请点按“开始字幕”重试。",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "如果取消，新文件将不会打开。保存或关闭此文本后，请再次分享该文件。"
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "如果取消，新文件将不会打开。保存或关闭此文本后，请再次分享该文件。",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "云端语音识别目前不可用。打开 Ozen 以继续。",
+  "The address or code is missing. Open Ozen to continue.": "缺少地址或配对码。打开 Ozen 以继续。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4713,7 +4719,9 @@
   "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
   "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si vous annulez, le nouveau fichier ne s’ouvre pas. Partagez-le de nouveau après avoir enregistré ou fermé ce texte."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si vous annulez, le nouveau fichier ne s’ouvre pas. Partagez-le de nouveau après avoir enregistré ou fermé ce texte.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcription dans le cloud n’est pas disponible pour le moment. Ouvrez Ozen pour continuer.",
+  "The address or code is missing. Open Ozen to continue.": "L’adresse ou le code est manquant. Ouvrez Ozen pour continuer."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5892,7 +5900,9 @@
   "Replies will play on the phone’s speaker": "Antworten werden über den Lautsprecher des Telefons wiedergegeben",
   "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Das Telefon hat Ozen das Zuhören nicht erlaubt. Tippen Sie auf „Untertitel starten“, um es erneut zu versuchen.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Wenn Sie abbrechen, wird die neue Datei nicht geöffnet. Teilen Sie sie erneut, nachdem Sie diesen Text gespeichert oder geschlossen haben."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Wenn Sie abbrechen, wird die neue Datei nicht geöffnet. Teilen Sie sie erneut, nachdem Sie diesen Text gespeichert oder geschlossen haben.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Cloud‑Transkription ist gerade nicht verfügbar. Öffnen Sie Ozen, um fortzufahren.",
+  "The address or code is missing. Open Ozen to continue.": "Die Adresse oder der Code fehlt. Öffnen Sie Ozen, um fortzufahren."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7071,7 +7081,9 @@
   "Replies will play on the phone’s speaker": "जवाब फ़ोन के स्पीकर पर चलेंगे",
   "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "फ़ोन ने Ozen को सुनने नहीं दिया। दोबारा कोशिश करने के लिए “कैप्शन शुरू करें” पर टैप करें।",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "रद्द करने पर नई फ़ाइल नहीं खुलेगी। इस टेक्स्ट को सहेजने या बंद करने के बाद उसे फिर से शेयर करें।"
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "रद्द करने पर नई फ़ाइल नहीं खुलेगी। इस टेक्स्ट को सहेजने या बंद करने के बाद उसे फिर से शेयर करें।",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "क्लाउड ट्रांसक्रिप्शन अभी उपलब्ध नहीं है। जारी रखने के लिए Ozen खोलें।",
+  "The address or code is missing. Open Ozen to continue.": "पता या कोड ग़ायब है। जारी रखने के लिए Ozen खोलें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8250,7 +8262,9 @@
   "Replies will play on the phone’s speaker": "As respostas serão reproduzidas no altifalante do telemóvel",
   "To fix this, disconnect the headset or hearing aid.": "Para corrigir isto, desligue os auscultadores ou o aparelho auditivo.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "O telemóvel não deixou o Ozen ouvir. Toque em “Iniciar legendas” para tentar de novo.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Se cancelar, o novo ficheiro não será aberto. Partilhe-o novamente depois de guardar ou fechar este texto."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Se cancelar, o novo ficheiro não será aberto. Partilhe-o novamente depois de guardar ou fechar este texto.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "A transcrição na nuvem não está disponível neste momento. Abra o Ozen para continuar.",
+  "The address or code is missing. Open Ozen to continue.": "Falta o endereço ou o código. Abra o Ozen para continuar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9429,7 +9443,9 @@
   "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
   "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Если отменить, новый файл не откроется. Поделитесь им снова после сохранения или закрытия этого текста."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Если отменить, новый файл не откроется. Поделитесь им снова после сохранения или закрытия этого текста.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Облачное распознавание сейчас недоступно. Откройте Ozen, чтобы продолжить.",
+  "The address or code is missing. Open Ozen to continue.": "Отсутствует адрес или код. Откройте Ozen, чтобы продолжить."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10608,7 +10624,9 @@
   "Replies will play on the phone’s speaker": "Las respuestas sonarán en el altavoz del teléfono",
   "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecta los auriculares o el audífono.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "El teléfono no dejó que Ozen escuchara. Toca «Iniciar subtítulos» para intentarlo de nuevo.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si cancelas, el archivo nuevo no se abre. Compártelo de nuevo después de guardar o cerrar este texto."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si cancelas, el archivo nuevo no se abre. Compártelo de nuevo después de guardar o cerrar este texto.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcripción en la nube no está disponible en este momento. Abre Ozen para continuar.",
+  "The address or code is missing. Open Ozen to continue.": "Falta la dirección o el código. Abre Ozen para continuar."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11787,6 +11805,8 @@
   "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
   "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Натисніть «Увімкнути субтитри», щоб спробувати ще раз.",
-  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Якщо скасувати, новий файл не відкриється. Поділіться ним знову після збереження або закриття цього тексту."
+  "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Якщо скасувати, новий файл не відкриється. Поділіться ним знову після збереження або закриття цього тексту.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Хмарне розпізнавання зараз недоступне. Відкрийте Ozen, щоб продовжити.",
+  "The address or code is missing. Open Ozen to continue.": "Відсутня адреса або код. Відкрийте Ozen, щоб продовжити."
  }
 }
