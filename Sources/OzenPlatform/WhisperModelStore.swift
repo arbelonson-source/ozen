@@ -110,6 +110,49 @@ public struct WhisperModelStore: Sendable {
 
     public func markLoaded(variant: String) {
         ModelLoadMarker.markLoaded(folder(for: variant), system: ProcessInfo.processInfo.operatingSystemVersionString)
+        DamagedModelCheck.clearRepairedMarker(repairedMarker(for: variant))
+    }
+
+    /// After a model with a completion marker failed to load: compares its
+    /// files with what was published (sizes, then checksums, off the main
+    /// actor) and removes it if any differ, so the normal download fetches
+    /// it again. False when the files match, or when there is nothing to
+    /// compare against (offline for a hub model): the failure then stays
+    /// what it was.
+    public func removeIfDamaged(variant: String, allowCellular: Bool) async -> Bool {
+        let folder = folder(for: variant)
+        let partial = partialFolder(for: variant)
+        let marker = repairedMarker(for: variant)
+        guard let expected = await expectedFiles(variant: variant, folder: folder, allowCellular: allowCellular) else { return false }
+        return await Task.detached(priority: .utility) {
+            let fetcher = URLSessionReleaseFileFetcher()
+            return DamagedModelCheck.removeIfDamaged(folder: folder, partialFolder: partial, expected: expected, repairedMarker: marker, sha256: fetcher.sha256(of:))
+        }.value
+    }
+
+    /// Kept outside the model folder, which is what gets removed.
+    private func repairedMarker(for variant: String) -> URL {
+        modelsRoot.appendingPathComponent(WhisperModelCatalog.folderName(for: variant) + ".damaged-removed")
+    }
+
+    private func expectedFiles(variant: String, folder: URL, allowCellular: Bool) async -> [ExpectedModelFile]? {
+        switch WhisperModelCatalog.option(for: variant)?.source ?? .whisperKitHub {
+        case .ozenRelease:
+            let data = try? Data(contentsOf: folder.appendingPathComponent(ReleaseModelManifest.assetName))
+            return data.flatMap { try? ReleaseModelManifest.parse($0) }.map(DamagedModelCheck.expected(from:))
+        case .whisperKitHub:
+            let name = WhisperModelCatalog.folderName(for: variant)
+            guard let url = URL(string: "https://huggingface.co/api/models/\(Self.repository)/tree/main/\(name)?recursive=true") else { return nil }
+            var request = URLRequest(url: url, timeoutInterval: 20)
+            // Mobile data only when the person allows it for the model
+            // download itself; the listing is a few kilobytes.
+            request.allowsExpensiveNetworkAccess = allowCellular
+            request.allowsConstrainedNetworkAccess = allowCellular
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  (response as? HTTPURLResponse)?.statusCode == 200
+            else { return nil }
+            return DamagedModelCheck.expected(fromHubListing: data, folderName: name, presentIn: folder)
+        }
     }
 
     public func isInstalled(_ variant: String) -> Bool {
@@ -139,6 +182,7 @@ public struct WhisperModelStore: Sendable {
     public func delete(variant: String) async throws {
         await cancelDownload(variant: variant)
         try ModelDiskSpace.delete(folder(for: variant), partialFolder: partialFolder(for: variant))
+        DamagedModelCheck.clearRepairedMarker(repairedMarker(for: variant))
     }
 
     /// Stops a download of `variant` still running, if any, and returns

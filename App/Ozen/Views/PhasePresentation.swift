@@ -350,7 +350,7 @@ struct PhasePresentation {
             )
         case .modelDownloadFailed:
             self.init(
-                title: tr("הורדת המודל נכשלה", "Downloading the model failed"),
+                title: engineFailure?.modelWasRemoved == true ? Self.damagedModelRemoved : tr("הורדת המודל נכשלה", "Downloading the model failed"),
                 detail: tr("בדקו את החיבור לאינטרנט והקישו כדי לנסות שוב", "Check the internet connection and tap to try again"),
                 systemImage: "wifi.exclamationmark",
                 tint: .red,
@@ -359,7 +359,7 @@ struct PhasePresentation {
         case .waitingForWiFi:
             let size = engineFailure?.downloadMegabytes.flatMap { $0 > 0 ? ByteSize.megabytes($0) : nil }
             self.init(
-                title: tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
+                title: engineFailure?.modelWasRemoved == true ? Self.damagedModelRemoved : tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
                 detail: [size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו כדי להוריד עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")].compactMap { $0 }.joined(separator: " · "),
                 systemImage: "wifi",
                 tint: .orange,
@@ -458,6 +458,10 @@ struct PhasePresentation {
             return minutes == 2 ? tr("עוד כשתי דקות", "About 2 minutes left") : ConversationStats.aboutMinutesLeftText(minutes)
         default: return tr("עוד יותר משעה", "More than an hour left")
         }
+    }
+
+    private static var damagedModelRemoved: String {
+        tr("מודל הדיבור בטלפון הזה נפגם, ולכן אוזן הסירה אותו ותוריד אותו שוב.", "The speech model on this phone was damaged, so Ozen removed it and will download it again.")
     }
 
     /// "450 MB", or "1.3 GB" once it's that big, in the same decimal

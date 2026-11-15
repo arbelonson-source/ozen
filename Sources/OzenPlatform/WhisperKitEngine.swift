@@ -179,6 +179,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
         }
 
         let firstTime = !store.hasLoadedBefore(variant: variant)
+        var removedDamaged = false
         progress(EnginePreparationProgress(stage: .loadingModel, detail: modelVariant, isFirstTime: firstTime))
         do {
             let loaded: WhisperKit
@@ -188,15 +189,31 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 // A folder no download ever vouched for may be a cut-off
                 // download that happened to pass the file checks. Ask the
                 // hub for whatever is missing (it skips what's there) and
-                // try once more before calling the model broken.
-                guard !fetchedThisTime, store.state(of: variant) == .unverified else { throw error }
+                // try once more before calling the model broken. A folder
+                // with the marker that still fails to load is checked
+                // against the published files once: damaged means removed
+                // and fetched again under the usual Wi-Fi rule.
+                guard !fetchedThisTime else { throw error }
+                switch store.state(of: variant) {
+                case .unverified:
+                    break
+                case .verified:
+                    removedDamaged = await store.removeIfDamaged(variant: variant, allowCellular: allowCellular)
+                    guard removedDamaged else { throw error }
+                default:
+                    throw error
+                }
                 do {
                     folder = try await downloadAndReport()
                 } catch let downloadError {
                     if StorageSpaceGate.isOutOfSpace(downloadError) {
                         return Self.outOfSpace(variant: variant, error: downloadError)
                     }
-                    return .unavailable(.modelDownloadFailed, "\(variant): load failed (\(error)); repair download failed: \(downloadError)")
+                    return .unavailable(EngineUnavailability(
+                        kind: .modelDownloadFailed,
+                        detail: "\(variant): load failed (\(error)); repair download failed: \(downloadError)",
+                        modelWasRemoved: removedDamaged
+                    ))
                 }
                 progress(EnginePreparationProgress(stage: .loadingModel, detail: variant, isFirstTime: firstTime))
                 loaded = try await load(folder: folder)
