@@ -80,7 +80,11 @@ class FileTranscriber(
         interrupted.value = null
     }
 
+    private var textKept = false
+    private var leftForRecovery = false
+
     init {
+        scope.launch { shown.collect { busyNotice.follow(it) } }
         scope.launch(Dispatchers.IO) {
             captions.fileKeeper.recoverInterrupted()?.let { interrupted.value = it.name ?: tr("הקלטה", "Recording") }
         }
@@ -153,6 +157,8 @@ class FileTranscriber(
         val first = ready.model ?: ready.toDownload
         val opening = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
         work.start(opening, backTo = ::readyPage) {
+            textKept = false
+            leftForRecovery = false
             try {
                 captions.holdCaptionsForRecording()
                 captions.waitOutCaptionsLoad()
@@ -160,9 +166,9 @@ class FileTranscriber(
             } catch (stopped: CancellationException) {
                 throw stopped
             } catch (problem: Problem) {
-                shown.value = FileTranscription.Failed(name, problem.kind)
+                shown.value = FileTranscription.Failed(name, problem.kind, textKept)
             } catch (failure: Exception) {
-                shown.value = FileTranscription.Failed(name, FileTranscriptionProblem.Unexpected)
+                shown.value = FileTranscription.Failed(name, FileTranscriptionProblem.Unexpected, textKept)
             } finally {
                 captions.recordingTranscriptionDone()
             }
@@ -233,8 +239,16 @@ class FileTranscriber(
             kept = true
             if (history !is HistorySave.Failed) captions.fileKeeper.finished()
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
+        } catch (stopped: CancellationException) {
+            throw stopped
+        } catch (failure: Exception) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                textKept = captions.fileKeeper.keepCutShort()
+                leftForRecovery = !textKept && captions.fileKeeper.hasUnfinishedCopy()
+            }
+            throw failure
         } finally {
-            if (!kept) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
+            if (!kept && !leftForRecovery) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
             scorer?.close()
             loaded.release()
             passes.shutdown()

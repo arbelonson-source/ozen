@@ -33,6 +33,8 @@ class FileTranscriptKeeper(
     private var lastKept = 0.0
 
     fun begin(fileName: String?, recordingSeconds: Double?, modelVariant: String?, languageCode: String?) {
+        recoverInterrupted()
+        marker.delete()
         id = UUID.randomUUID()
         this.fileName = fileName
         this.recordingSeconds = recordingSeconds
@@ -84,6 +86,12 @@ class FileTranscriptKeeper(
         if (marker.exists()) runCatching { store.delete(id) }
         marker.delete()
     }
+
+    /** The run failed (not stopped) after lines were saved: they stay as a cut-short conversation. */
+    fun keepCutShort(): Boolean = recoverInterrupted() != null
+
+    /** Lines are saved but the run did not end cleanly: a copy is left for the next launch to recover. */
+    fun hasUnfinishedCopy(): Boolean = marker.exists()
 
     fun recoverInterrupted(): Interrupted? {
         val text = runCatching { marker.readText().trim() }.getOrNull() ?: return null

@@ -68,7 +68,7 @@ sealed interface FileTranscription {
         val recordId: UUID? get() = (history as? HistorySave.Saved)?.id
     }
 
-    data class Failed(val name: String, val problem: FileTranscriptionProblem) : FileTranscription
+    data class Failed(val name: String, val problem: FileTranscriptionProblem, val textKept: Boolean = false) : FileTranscription
 
     /**
      * Finished text that History doesn't hold (saving off, or the save

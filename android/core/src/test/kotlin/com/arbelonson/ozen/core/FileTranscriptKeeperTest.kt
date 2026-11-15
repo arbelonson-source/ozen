@@ -150,4 +150,59 @@ class FileTranscriptKeeperTest {
         assertTrue(saved().isEmpty())
         assertFalse(marker.exists())
     }
+
+    @Test
+    fun aRunThatFailsAfterLinesWereSavedKeepsThemAsACutShortConversation() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(6))
+        assertTrue(keeper.keepCutShort())
+        val record = store.load(keeper.id)!!
+        assertTrue(record.cutShort)
+        assertNotNull(record.endedAt)
+        assertEquals((1..6).map { "line $it" }, record.segments.map { it.text })
+        assertFalse(marker.exists())
+        keeper.discard()
+        assertEquals(1, saved().size)
+        assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
+    }
+
+    @Test
+    fun aFailureBeforeAnyBatchWasSavedKeepsNothing() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(2))
+        assertFalse(keeper.keepCutShort())
+        assertTrue(saved().isEmpty())
+    }
+
+    @Test
+    fun aFailureWithHistoryOffKeepsNothing() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(5))
+        saving = false
+        assertFalse(keeper.keepCutShort())
+        assertTrue(saved().isEmpty())
+        assertFalse(marker.exists())
+    }
+
+    @Test
+    fun anUnfinishedCopyIsReportedUntilItIsKeptDiscardedOrFinished() {
+        val keeper = keeper()
+        assertFalse(keeper.hasUnfinishedCopy())
+        keeper.linesSoFar(said(5))
+        assertTrue(keeper.hasUnfinishedCopy())
+        assertTrue(keeper.keepCutShort())
+        assertFalse(keeper.hasUnfinishedCopy())
+    }
+
+    @Test
+    fun beginningAnotherRunSettlesAnUnfinishedCopyLeftBehind() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(6))
+        val first = keeper.id
+        keeper.begin("Second.mp3", 60.0, "small", "en")
+        assertTrue(store.load(first)!!.cutShort)
+        assertFalse(marker.exists())
+        keeper.linesSoFar(said(5))
+        assertEquals(keeper.id.toString(), marker.readText().trim())
+    }
 }
