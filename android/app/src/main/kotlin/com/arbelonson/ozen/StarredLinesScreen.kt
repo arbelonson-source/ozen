@@ -156,6 +156,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                                         lines = lines?.filterNot { it.id == line.id }
                                         scope.launch {
                                             if (conversations.toggleStar(line.sessionID, line.id) == null) starRefused = true
+                                            else ScreenReader.said(context, tr("הסימון הוסר", "Star removed"))
                                             reload()
                                             removing.remove(line.id)
                                         }

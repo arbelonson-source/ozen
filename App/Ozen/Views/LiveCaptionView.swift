@@ -1082,19 +1082,24 @@ struct LiveCaptionView: View {
             // would otherwise never be told its model is the weak one.
             let fitOffer = modelFitOption
             let better = fitOffer == nil && viewModel.settings.offersBetterModel() ? betterModelOption : nil
+            // Each card is said once, as it appears, for a reader who can't see it.
             if let fitOffer {
                 modelFitOfferCard(fitOffer)
                     .padding(.top, 8)
+                    .announcing(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), whenTurningTrue: true, alsoWhenFirstShown: true)
             } else if let better {
                 betterModelOfferCard(better)
                     .padding(.top, 8)
+                    .announcing(betterModelTitle, whenTurningTrue: true, alsoWhenFirstShown: true)
             }
             if let recent = viewModel.recentConversation {
                 recentConversationCard(recent)
                     .padding(.top, 8)
+                    .announcing(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", args: ["\(Self.minutesAgoText(RecentConversation.minutesAgo(recent, now: Date().timeIntervalSince1970)))"]), whenTurningTrue: true, alsoWhenFirstShown: true)
             } else if better == nil, fitOffer == nil, viewModel.settings.offersNameAlert {
                 nameAlertOfferCard
                     .padding(.top, 8)
+                    .announcing(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"), whenTurningTrue: true, alsoWhenFirstShown: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1112,6 +1117,12 @@ struct LiveCaptionView: View {
 
     /// For a phone set up when Small was the default model: most Hebrew
     /// words came out wrong, and the fix is one download away.
+    private var betterModelTitle: String {
+        viewModel.settings.spokenLanguage == .hebrew
+            ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
+            : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model")
+    }
+
     private func betterModelOfferCard(_ option: WhisperModelOption) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
@@ -1123,9 +1134,7 @@ struct LiveCaptionView: View {
                     Image(systemName: "sparkles")
                         .font(.title2)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(viewModel.settings.spokenLanguage == .hebrew
-                             ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
-                             : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model"))
+                        Text(betterModelTitle)
                             .font(.headline)
                         Text(tr("הקישו כדי להוריד את המודל ״\u{2068}%1\u{2069}״, %2, פעם אחת ב־Wi‑Fi", "Tap to download %1, %2, once over Wi‑Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                             .font(.subheadline.weight(.semibold))

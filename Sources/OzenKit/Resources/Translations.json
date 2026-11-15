@@ -1145,7 +1145,8 @@
   "Unrestricted": "ያልተገደበ",
   "Override Do Not Disturb": "«አትረብሽ»ን ሻር",
   "Sound alerts aren’t working": "የድምፅ ማንቂያዎች አይሠሩም",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "ኦዘን አሁን ድምፆችን መለየት አልቻለም፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። መተግበሪያው መሞከሩን ይቀጥላል።"
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "ኦዘን አሁን ድምፆችን መለየት አልቻለም፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። መተግበሪያው መሞከሩን ይቀጥላል።",
+  "Star removed": "ኮከቡ ተወግዷል"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2293,7 +2294,8 @@
   "Unrestricted": "الاستخدام غير المحدّد بقيود",
   "Override Do Not Disturb": "تجاوز وضع “عدم الإزعاج”",
   "Sound alerts aren’t working": "التنبيهات الصوتية لا تعمل",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "تعذّر على أوزن التعرّف على الأصوات الآن، وقد يفوتك رنين جرس الباب أو جهاز إنذار أو بكاء طفل. يواصل التطبيق المحاولة."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "تعذّر على أوزن التعرّف على الأصوات الآن، وقد يفوتك رنين جرس الباب أو جهاز إنذار أو بكاء طفل. يواصل التطبيق المحاولة.",
+  "Star removed": "أُزيلت النجمة"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3441,7 +3443,8 @@
   "Unrestricted": "无限制",
   "Override Do Not Disturb": "覆盖‘勿扰’设置",
   "Sound alerts aren’t working": "声音提醒无法使用",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen 目前无法识别声音，因此您可能会错过门铃、警报或婴儿的哭声。应用会继续尝试。"
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen 目前无法识别声音，因此您可能会错过门铃、警报或婴儿的哭声。应用会继续尝试。",
+  "Star removed": "已取消星标"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4589,7 +4592,8 @@
   "Unrestricted": "Sans restriction",
   "Override Do Not Disturb": "Ignorer Ne pas déranger",
   "Sound alerts aren’t working": "Les alertes sonores ne fonctionnent pas",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer.",
+  "Star removed": "Étoile retirée"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5737,7 +5741,8 @@
   "Unrestricted": "Uneingeschränkt",
   "Override Do Not Disturb": "„Bitte nicht stören“ ignorieren",
   "Sound alerts aren’t working": "Die Tonwarnungen funktionieren nicht",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen kann gerade keine Geräusche erkennen, deshalb könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Die App versucht es weiter."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen kann gerade keine Geräusche erkennen, deshalb könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Die App versucht es weiter.",
+  "Star removed": "Stern entfernt"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6885,7 +6890,8 @@
   "Unrestricted": "बैटरी के इस्तेमाल पर कोई पाबंदी नहीं",
   "Override Do Not Disturb": "‘परेशान न करें’ मोड को बायपास करें",
   "Sound alerts aren’t working": "ध्वनि अलर्ट काम नहीं कर रहे",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen अभी आवाज़ें पहचान नहीं पा रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की आवाज़ का पता न चले। ऐप कोशिश करता रहेगा।"
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen अभी आवाज़ें पहचान नहीं पा रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की आवाज़ का पता न चले। ऐप कोशिश करता रहेगा।",
+  "Star removed": "तारा हटाया गया"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -8033,7 +8039,8 @@
   "Unrestricted": "Sem restrições",
   "Override Do Not Disturb": "Ignorar o modo Não incomodar",
   "Sound alerts aren’t working": "Os alertas sonoros não estão a funcionar",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "O Ozen não consegue reconhecer sons neste momento, por isso pode perder uma campainha, um alarme ou o choro de um bebé. A aplicação continua a tentar."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "O Ozen não consegue reconhecer sons neste momento, por isso pode perder uma campainha, um alarme ou o choro de um bebé. A aplicação continua a tentar.",
+  "Star removed": "Estrela removida"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -9181,7 +9188,8 @@
   "Unrestricted": "Без ограничений",
   "Override Do Not Disturb": "Уведомления в режиме „Не беспокоить“",
   "Sound alerts aren’t working": "Звуковые оповещения не работают",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Сейчас Ozen не может распознавать звуки, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Приложение продолжает попытки."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Сейчас Ozen не может распознавать звуки, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Приложение продолжает попытки.",
+  "Star removed": "Звёздочка убрана"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10329,7 +10337,8 @@
   "Unrestricted": "Sin restricciones",
   "Override Do Not Disturb": "Ignorar modo No molestar",
   "Sound alerts aren’t working": "Las alertas de sonido no funcionan",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen no puede reconocer sonidos en este momento, así que podrías perderte un timbre, una alarma o el llanto de un bebé. La aplicación sigue intentándolo."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen no puede reconocer sonidos en este momento, así que podrías perderte un timbre, una alarma o el llanto de un bebé. La aplicación sigue intentándolo.",
+  "Star removed": "Estrella quitada"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11477,6 +11486,7 @@
   "Unrestricted": "Без обмежень",
   "Override Do Not Disturb": "Дозволити в режимі „Не турбувати“",
   "Sound alerts aren’t working": "Звукові сповіщення не працюють",
-  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Зараз Ozen не може розпізнавати звуки, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Застосунок продовжує спроби."
+  "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Зараз Ozen не може розпізнавати звуки, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Застосунок продовжує спроби.",
+  "Star removed": "Зірочку прибрано"
  }
 }

@@ -205,6 +205,10 @@ internal fun MicrophoneDropBanner(title: String, detail: String, onChooseMicroph
 @Composable
 internal fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val question = tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?")
+    val hint = tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name")
+    LaunchedEffect(Unit) { ScreenReader.saidOnce(context, "name-alert-offer", "$question $hint") }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh),
@@ -212,10 +216,10 @@ internal fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: (
         Column(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                Text(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(question, color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
             }
             Text(
-                tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name"),
+                hint,
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.align(Alignment.End).heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
@@ -229,6 +233,9 @@ internal fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: (
 @Composable
 internal fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: Long?, onSwitch: () -> Unit, onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val title = tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone")
+    LaunchedEffect(model.file) { ScreenReader.saidOnce(context, "lighter-model-offer-" + model.file, title) }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).testTag("model-fit-offer"),
@@ -237,7 +244,7 @@ internal fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                    Text(title, color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
                     Text(
                         tr("המודל ״\u2068%1\u2069״ (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
                         color = colors.onSurfaceVariant,
@@ -387,6 +394,9 @@ private fun ReplacedModelLine(bytes: Long?) {
 @Composable
 internal fun RecentConversationCard(recent: TranscriptSessionSummary, look: CaptionTheme, languageCode: String, onOpen: () -> Unit, onDismiss: () -> Unit) {
     val minutes = RecentConversation.minutesAgo(recent, now = secondsNow())
+    val context = LocalContext.current
+    val title = tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes)))
+    LaunchedEffect(recent.id) { ScreenReader.saidOnce(context, "recent-conversation-" + recent.id, title) }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -397,7 +407,7 @@ internal fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capt
         ) {
             IconBadge(Icons.Rounded.ChatBubble)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
                 Text(CaptionLayout.directed(recent.title ?: recent.preview, languageCode), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
             }
