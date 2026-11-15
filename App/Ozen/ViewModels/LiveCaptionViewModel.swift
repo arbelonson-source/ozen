@@ -2409,11 +2409,17 @@ public final class LiveCaptionViewModel {
         pipeline.isCoveringForCloud ? (pipeline.activeSettings ?? settings) : settings
     }
 
-    /// The language the captions on screen were started in. A change of the
-    /// setting lands before the captions restart, and a save in between
-    /// must not label the old words with the new language.
+    /// The language the captions on screen were started in, read when the
+    /// conversation is first looked at (its listening starts) and then kept
+    /// for it. A change of the setting lands before the captions restart,
+    /// and a save in between must not label the old words with the new one.
+    @ObservationIgnored private var historyLanguage: (id: UUID, code: String)?
+
     private var spokenLanguageCode: String {
-        pipeline.activeSettings?.languageCode ?? settings.languageCode
+        if let kept = historyLanguage, kept.id == historySessionID { return kept.code }
+        let code = pipeline.activeSettings?.languageCode ?? settings.languageCode
+        historyLanguage = (historySessionID, code)
+        return code
     }
 
     private var historyConversationStart: TimeInterval? {

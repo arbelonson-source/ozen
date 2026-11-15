@@ -71,7 +71,7 @@ struct SavedConversationLanguageTests {
 
     @Test("an empty or garbled language reads as missing and the conversation stays")
     func garbledValueLoads() throws {
-        for bad in ["", "e n!", "english-language-code"] {
+        for bad in ["", "e n!", "english-language-code", "--", "en-", "-en"] {
             var object = try jsonObject(of: record(language: "en"))
             object["languageCode"] = bad
             let loaded = try decode(object)

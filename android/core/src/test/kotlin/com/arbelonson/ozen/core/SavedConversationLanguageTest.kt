@@ -60,7 +60,7 @@ class SavedConversationLanguageTest {
 
     @Test
     fun `an empty or garbled language reads as missing and the conversation stays`() {
-        for (bad in listOf("", "e n!", "english-language-code")) {
+        for (bad in listOf("", "e n!", "english-language-code", "--", "en-", "-en")) {
             val loaded = TranscriptSessionRecord.fromJson(jsonWith(record(language = "en")) { it["languageCode"] = JsonPrimitive(bad) })
             assertNull(loaded.languageCode, bad)
             assertEquals(1, loaded.segments.size)
@@ -90,6 +90,19 @@ class SavedConversationLanguageTest {
         val fresh = TranscriptHistoryStore(dir)
         fresh.save(record(id, "he"))
         assertEquals("en", assertNotNull(fresh.load(id)).languageCode, "file path")
+    }
+
+    @Test
+    fun `a damaged model field in the file does not cost the conversation its language`() = withDirectory { dir ->
+        val id = UUID.randomUUID()
+        TranscriptHistoryStore(dir).save(record(id, "en"))
+        val file = File(dir, dir.list()!!.first { it.endsWith(".json") })
+        val fields = (Json.parseToJsonElement(file.readText()) as JsonObject).toMutableMap()
+        fields["modelVariant"] = JsonArray(listOf(JsonPrimitive("x")))
+        file.writeText(JsonObject(fields).toString())
+        val fresh = TranscriptHistoryStore(dir)
+        fresh.save(record(id, "he"))
+        assertEquals("en", assertNotNull(fresh.load(id)).languageCode)
     }
 
     @Test

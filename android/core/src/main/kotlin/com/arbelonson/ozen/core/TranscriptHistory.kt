@@ -282,11 +282,14 @@ data class TranscriptSessionRecord(
 
         /**
          * A language tag as the settings write it ("he", "en", "pt-BR"):
-         * letters and hyphens only, of a believable length. Anything else
+         * letters in non-empty parts joined by hyphens, of a believable length. Anything else
          * is damage.
          */
         internal fun plausibleLanguageCode(code: String): String? =
-            code.takeIf { it.length in 2..12 && it.all { c -> c.isLetter() || c == '-' } }
+            code.takeIf { text ->
+                val parts = text.split('-')
+                text.length in 2..12 && parts.size <= 4 && parts.all { part -> part.isNotEmpty() && part.all { it.isLetter() } }
+            }
     }
 }
 
@@ -728,8 +731,8 @@ class TranscriptHistoryStore(
         val container = parseHistoryBytes(data).asHistoryObject()
         return SavedSource(
             engine = lenientHistory { container.optional("engine")?.asHistoryEngine() },
-            modelVariant = container.optional("modelVariant")?.asHistoryString(),
-            inputName = container.optional("inputName")?.asHistoryString(),
+            modelVariant = lenientHistory { container.optional("modelVariant")?.asHistoryString() },
+            inputName = lenientHistory { container.optional("inputName")?.asHistoryString() },
             languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(TranscriptSessionRecord.Companion::plausibleLanguageCode),
         )
     }

@@ -190,9 +190,13 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     }
 
     /// A language tag as the settings write it ("he", "en", "pt-BR"): letters
-    /// and hyphens only, of a believable length. Anything else is damage.
+    /// in non-empty parts joined by hyphens, of a believable length. Anything
+    /// else is damage.
     static func plausibleLanguageCode(_ code: String) -> String? {
-        (2...12).contains(code.count) && code.allSatisfy { $0.isLetter || $0 == "-" } ? code : nil
+        let parts = code.split(separator: "-", omittingEmptySubsequences: false)
+        let wellFormed = (2...12).contains(code.count) && parts.count <= 4
+            && parts.allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isLetter) }
+        return wellFormed ? code : nil
     }
 }
 
