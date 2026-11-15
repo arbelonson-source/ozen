@@ -183,4 +183,14 @@ class FileTranscriptKeeperTest {
         assertTrue(saved().isEmpty())
         assertFalse(marker.exists())
     }
+
+    @Test
+    fun anUnfinishedCopyIsReportedUntilItIsKeptDiscardedOrFinished() {
+        val keeper = keeper()
+        assertFalse(keeper.hasUnfinishedCopy())
+        keeper.linesSoFar(said(5))
+        assertTrue(keeper.hasUnfinishedCopy())
+        assertTrue(keeper.keepCutShort())
+        assertFalse(keeper.hasUnfinishedCopy())
+    }
 }

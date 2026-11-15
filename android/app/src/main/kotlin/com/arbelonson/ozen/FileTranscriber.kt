@@ -81,6 +81,7 @@ class FileTranscriber(
     }
 
     private var textKept = false
+    private var leftForRecovery = false
 
     init {
         scope.launch { shown.collect { busyNotice.follow(it) } }
@@ -156,6 +157,8 @@ class FileTranscriber(
         val first = ready.model ?: ready.toDownload
         val opening = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
         work.start(opening, backTo = ::readyPage) {
+            textKept = false
+            leftForRecovery = false
             try {
                 captions.holdCaptionsForRecording()
                 captions.waitOutCaptionsLoad()
@@ -198,7 +201,6 @@ class FileTranscriber(
         FileTranscription.Working(name, language, model, stage, fraction, left, lines)
 
     private suspend fun run(uri: Uri, ready: FileTranscription.Ready) {
-        textKept = false
         val model = ready.model ?: ready.toDownload
         val file = File(captions.modelDirectory, model.file)
         val current = settings.current.value
@@ -240,10 +242,13 @@ class FileTranscriber(
         } catch (stopped: CancellationException) {
             throw stopped
         } catch (failure: Exception) {
-            textKept = withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.keepCutShort() }
+            withContext(NonCancellable + Dispatchers.IO) {
+                textKept = captions.fileKeeper.keepCutShort()
+                leftForRecovery = !textKept && captions.fileKeeper.hasUnfinishedCopy()
+            }
             throw failure
         } finally {
-            if (!kept) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
+            if (!kept && !leftForRecovery) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
             scorer?.close()
             loaded.release()
             passes.shutdown()
