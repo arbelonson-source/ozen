@@ -17,6 +17,12 @@ class PhoneModelDeletion(
 
     fun delete(name: String): Result {
         if (name !in PhoneModelCatalog.managedFiles || name == activeFileName) return Result.Refused
+        var result: Result = Result.Refused
+        val ran = PhoneModelDownloader.ifNotDownloading(File(modelsRoot, name)) { result = removeBoth(name) }
+        return if (ran) result else Result.Refused
+    }
+
+    private fun removeBoth(name: String): Result {
         var freed = 0L
         for (file in listOf(File(modelsRoot, "$name.part"), File(modelsRoot, name))) {
             if (!file.isFile) continue
