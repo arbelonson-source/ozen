@@ -133,4 +133,41 @@ struct ReplayHalfLineTests {
         #expect(await eventually { pipeline.segments.last?.text == "everything again" })
         #expect(pipeline.segments.map(\.text) == ["everything again"])
     }
+
+    private func liveAfterReplay(_ pipeline: CaptionPipeline, _ audio: FakeAudioCapturer, _ phone: FakeEngine, seconds: Double) async {
+        let heard = phone.samplesSeen.count
+        await said(pipeline, audio, seconds: seconds, level: 0.2)
+        #expect(await eventually { phone.samplesSeen.count >= heard + Int(seconds * 16_000) })
+    }
+
+    @Test("a replay that yields no words keeps the half line when live words follow")
+    func silentReplayKeepsTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 5, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "half line", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+        await liveAfterReplay(pipeline, audio, phone, seconds: 10)
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        #expect(pipeline.segments.first?.text.hasPrefix("half line") == true)
+        #expect(pipeline.segments.last?.text == "live words")
+    }
+
+    @Test("words from the replay that arrive after a little live audio still replace the half line")
+    func lateReplayWordsStillReplace() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 5, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "half line", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+        await liveAfterReplay(pipeline, audio, phone, seconds: 2)
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "half line and the rest", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.last?.text == "half line and the rest" })
+        #expect(pipeline.segments.map(\.text) == ["half line and the rest"])
+    }
 }

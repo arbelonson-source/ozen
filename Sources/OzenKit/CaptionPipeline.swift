@@ -218,6 +218,9 @@ public final class CaptionPipeline {
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
     static let replayMaxSeconds = 20.0
+    /// How much live audio the phone's model may hear after the replay
+    /// before words it shows can no longer be the replay's.
+    static let replayWordsGraceSeconds = 8.0
     private var homeServerRecheck: Task<Void, Never>?
     private var cloudRecheck: Task<Void, Never>?
     /// The room the last download refused for want of space needed, so a
@@ -2547,7 +2550,9 @@ public final class CaptionPipeline {
     /// and the replay hears the same speech again: once the replay shows
     /// words, those lines go, so nothing is on screen or saved twice. Only
     /// lines that began inside the replayed audio go; one that began before
-    /// it keeps its earlier words.
+    /// it keeps its earlier words. A replay that shows no words before
+    /// `replayWordsGraceSeconds` of live audio has passed (see `replaying`)
+    /// keeps the lines for good: words after that are the live speech's.
     private func dropLinesTheReplayRewrites() {
         guard !replayedLines.isEmpty else { return }
         let gone = replayedLines
@@ -2573,9 +2578,13 @@ public final class CaptionPipeline {
                 continuation.yield(Array(replay[index..<end]))
                 index = end
             }
+            var liveFed = 0
+            let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
             for await chunk in live {
                 if Task.isCancelled { break }
                 continuation.yield(chunk)
+                liveFed += chunk.count
+                if liveFed >= grace, !self.replayedLines.isEmpty { self.replayedLines = [] }
             }
             continuation.finish()
         }
