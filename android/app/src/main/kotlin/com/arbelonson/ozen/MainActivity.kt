@@ -1154,6 +1154,10 @@ private fun CaptionScreen(
                             onDismissMissedSound()
                         }
                     }
+                    // The one warning that a smoke alarm may go unheard: first
+                    // after the sounds heard just now (which last seconds), so
+                    // at the largest text it is never below the scrolled-off part.
+                    ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
                     ArrivingBanner(shownWord) { word ->
                         // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(
@@ -1197,7 +1201,6 @@ private fun CaptionScreen(
                         )
                     }
                     ArrivingBanner(Unit.takeIf { state.phoneSoundStopped }) { PhoneSoundStoppedBanner(onDismissPhoneSoundStopped) }
-                    ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
                     ArrivingBanner(state.battery) { BatteryBanner(it, onDismissBattery) }
                 }
                 Box(

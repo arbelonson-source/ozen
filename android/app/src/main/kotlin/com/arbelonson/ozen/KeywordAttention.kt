@@ -11,8 +11,11 @@ import com.arbelonson.ozen.core.AlertSuggestions
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.KeywordAttentionPolicy
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.KeywordPill
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.UILanguage
 import java.util.UUID
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -67,5 +70,15 @@ object Buzz {
                 vibrator.vibrate(effect, AudioAttributes.Builder().setUsage(kind).build())
             }
         }
+    }
+}
+
+/** What TalkBack says when a word alert fires: the pill's own text, as the iPhone's VoiceOver says it. */
+object HeardWordAnnouncement {
+    fun text(word: HeardWord, segments: List<TranscriptSegment>, showSpeakerNames: Boolean, nameOf: (TranscriptSegment) -> String, language: UILanguage = Localization.language): String {
+        val speaker = segments.firstOrNull { it.id == word.line }
+            ?.takeIf { showSpeakerNames && it.speakerClusterID != null }
+            ?.let(nameOf)
+        return KeywordPill.text(word.said, speaker, language)
     }
 }

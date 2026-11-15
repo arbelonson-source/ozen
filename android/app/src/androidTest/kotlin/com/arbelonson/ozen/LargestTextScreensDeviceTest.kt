@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.SavedSegment
@@ -218,6 +219,41 @@ class LargestTextScreensDeviceTest {
                 assertTrue("$choice is only partly on screen", wholly(node.fetchSemanticsNode()))
             }
         } finally {
+            shell("wm size reset")
+            shell("wm density reset")
+            shell("settings put system font_scale $scale")
+        }
+    }
+
+    @Test
+    fun theSoundAlertsWarningIsWhollyOnScreenWithoutScrollingBesideOtherBannersAtTheLargestText() {
+        val scale = shell("settings get system font_scale").trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
+        try {
+            shell("settings put system font_scale 2.0")
+            shell("wm size 720x1280")
+            shell("wm density 320")
+            compose.waitUntil(10_000) {
+                val configuration = compose.activity.resources.configuration
+                configuration.fontScale == 2f && configuration.screenWidthDp == 360
+            }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.savingTrouble(true)
+                CaptionState.phoneSoundStopped(true)
+                CaptionState.battery(BatteryWarning.Critical(9))
+                CaptionState.soundAlertsNotWorking(true)
+            }
+            // The banner itself is taller than the half the banners may take at this
+            // size, so it scrolls; what must show without scrolling is its heading.
+            val heading = hasText("Sound alerts aren’t working")
+            compose.waitUntil(5_000) { compose.onAllNodes(heading, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitForIdle()
+            val title = compose.onNode(heading, useUnmergedTree = true)
+            title.assertIsDisplayed()
+            val shown = title.fetchSemanticsNode()
+            assertTrue("the sound alerts warning heading is only partly on screen without scrolling: size ${shown.size}, bounds ${shown.boundsInRoot}", wholly(shown))
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
             shell("wm size reset")
             shell("wm density reset")
             shell("settings put system font_scale $scale")
