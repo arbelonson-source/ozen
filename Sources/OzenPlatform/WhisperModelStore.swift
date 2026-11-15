@@ -123,16 +123,22 @@ public struct WhisperModelStore: Sendable {
         let folder = folder(for: variant)
         let partial = partialFolder(for: variant)
         let marker = repairedMarker(for: variant)
+        let memo = checkedMemo(for: variant)
         guard let expected = await expectedFiles(variant: variant, folder: folder, allowCellular: allowCellular) else { return false }
         return await Task.detached(priority: .utility) {
             let fetcher = URLSessionReleaseFileFetcher()
-            return DamagedModelCheck.removeIfDamaged(folder: folder, partialFolder: partial, expected: expected, repairedMarker: marker, sha256: fetcher.sha256(of:))
+            return DamagedModelCheck.removeIfDamaged(folder: folder, partialFolder: partial, expected: expected, repairedMarker: marker, checkedMemo: memo, sha256: fetcher.sha256(of:))
         }.value
     }
 
     /// Kept outside the model folder, which is what gets removed.
     private func repairedMarker(for variant: String) -> URL {
         modelsRoot.appendingPathComponent(WhisperModelCatalog.folderName(for: variant) + ".damaged-removed")
+    }
+
+    /// Beside the model folder, so it is outside what gets removed.
+    private func checkedMemo(for variant: String) -> URL {
+        modelsRoot.appendingPathComponent(WhisperModelCatalog.folderName(for: variant) + ".checked-good")
     }
 
     private func expectedFiles(variant: String, folder: URL, allowCellular: Bool) async -> [ExpectedModelFile]? {

@@ -64,19 +64,45 @@ public enum DamagedModelCheck {
         partialFolder: URL,
         expected: [ExpectedModelFile],
         repairedMarker: URL? = nil,
+        checkedMemo: URL? = nil,
         fileManager: FileManager = .default,
         sha256: (URL) throws -> String
     ) -> Bool {
         if let repairedMarker, fileManager.fileExists(atPath: repairedMarker.path) { return false }
-        guard !expected.isEmpty,
-              !damagedPaths(in: folder, expected: expected, fileManager: fileManager, sha256: sha256).isEmpty
-        else { return false }
+        guard !expected.isEmpty else { return false }
+        let stamp = checkedMemo.flatMap { _ in checkedStamp(folder: folder, expected: expected, fileManager: fileManager) }
+        if let checkedMemo, let stamp, (try? String(contentsOf: checkedMemo, encoding: .utf8)) == stamp { return false }
+        var hashFailed = false
+        let counted: (URL) throws -> String = { url in
+            do { return try sha256(url) } catch { hashFailed = true; throw error }
+        }
+        guard !damagedPaths(in: folder, expected: expected, fileManager: fileManager, sha256: counted).isEmpty else {
+            // Remembered only when every file was really read and matched.
+            if let checkedMemo, let stamp, !hashFailed { try? stamp.write(to: checkedMemo, atomically: true, encoding: .utf8) }
+            return false
+        }
+        if let checkedMemo { try? fileManager.removeItem(at: checkedMemo) }
         guard (try? ModelDiskSpace.delete(folder, partialFolder: partialFolder, fileManager: fileManager)) != nil else { return false }
         if let repairedMarker {
             try? fileManager.createDirectory(at: repairedMarker.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? Data(ISO8601DateFormatter().string(from: Date()).utf8).write(to: repairedMarker)
         }
         return true
+    }
+
+    /// What a "checked and found fine" memo holds: every expected file's
+    /// name, size, modification time and published checksum. Any change to
+    /// a file, or to what was published, makes the memo stop matching.
+    /// Nil when a file's attributes can't be read.
+    static func checkedStamp(folder: URL, expected: [ExpectedModelFile], fileManager: FileManager) -> String? {
+        var lines = [String]()
+        for file in expected.sorted(by: { $0.path < $1.path }) {
+            guard let attributes = try? fileManager.attributesOfItem(atPath: folder.appendingPathComponent(file.path).path),
+                  let size = (attributes[.size] as? NSNumber)?.int64Value,
+                  let modified = attributes[.modificationDate] as? Date else { return nil }
+            lines.append("\(file.path)|\(size)|\(modified.timeIntervalSince1970)|\(file.sha256?.lowercased() ?? "")")
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// A release model's files, minus the Core ML packages: those are

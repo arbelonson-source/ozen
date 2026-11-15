@@ -36,12 +36,19 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         }
     }
 
-    /** Removes a model file that is not the file published (wrong size, then wrong checksum, or unreadable); false when it is fine, not there, or could not be removed. */
+    /** Removes a model file that is not the file published (wrong size, then wrong checksum, or unreadable); false when it is fine (a file already found fine is not read again while its size and modification time are unchanged), not there, or could not be removed. */
     fun removeIfDamaged(): Boolean {
         val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
         lock.lock()
         try {
-            if (!file.isFile || !damaged()) return false
+            if (!file.isFile) return false
+            val memo = CheckedModelMemo(file, source.sha256)
+            if (memo.isKnownGood()) return false
+            if (!damaged()) {
+                memo.rememberGood()
+                return false
+            }
+            memo.forget()
             return file.delete()
         } finally {
             lock.unlock()
