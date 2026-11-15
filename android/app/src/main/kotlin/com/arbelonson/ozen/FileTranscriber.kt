@@ -198,6 +198,7 @@ class FileTranscriber(
         FileTranscription.Working(name, language, model, stage, fraction, left, lines)
 
     private suspend fun run(uri: Uri, ready: FileTranscription.Ready) {
+        textKept = false
         val model = ready.model ?: ready.toDownload
         val file = File(captions.modelDirectory, model.file)
         val current = settings.current.value
@@ -223,7 +224,6 @@ class FileTranscriber(
         }
         var scorer: SileroVoiceScorer? = null
         var kept = false
-        textKept = false
         captions.fileKeeper.begin(name, ready.durationSeconds, model.variant, ready.language.languageCode)
         val passes = Executors.newSingleThreadExecutor { Thread(it, "ozen-recording-pass") }
         try {
