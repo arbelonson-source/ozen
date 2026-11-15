@@ -757,7 +757,7 @@ private fun HomeComputerSection(
     val saveAddressAndSay = {
         saveAddress()
         addressFocus.requestFocus()
-        ScreenReader.said(context, HomeServer.addressSavedText())
+        ScreenReader.said(context, HomeServer.addressSavedText(address))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false

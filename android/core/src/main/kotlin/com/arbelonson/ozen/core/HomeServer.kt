@@ -122,7 +122,8 @@ object HomeServer {
     }
 
     /** Said to a screen reader when Save address is pressed: the button vanishes under focus, so nothing else says the address was kept. */
-    fun addressSavedText(): String = tr("כתובת המחשב נשמרה", "Computer address saved")
+    fun addressSavedText(address: String): String =
+        if (address.isBlank()) tr("כתובת המחשב הוסרה", "Computer address removed") else tr("כתובת המחשב נשמרה", "Computer address saved")
 
     /** Said to a screen reader when Save code is pressed, as the green line that appears is not announced by itself. */
     fun codeSavedText(): String = tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone")

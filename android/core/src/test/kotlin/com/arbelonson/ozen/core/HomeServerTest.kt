@@ -334,7 +334,9 @@ class HomeServerTest {
     @Test
     fun `saving the address or the pairing code has words to announce`() {
         Localization.withLanguage(UILanguage.English) {
-            assertEquals("Computer address saved", HomeServer.addressSavedText())
+            assertEquals("Computer address saved", HomeServer.addressSavedText("wss://home.example"))
+            assertEquals("Computer address removed", HomeServer.addressSavedText("  "))
+            assertEquals("Computer address removed", HomeServer.addressSavedText(""))
             assertEquals("Pairing code saved on the phone", HomeServer.codeSavedText())
         }
     }

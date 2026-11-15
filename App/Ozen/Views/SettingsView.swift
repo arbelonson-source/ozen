@@ -790,7 +790,7 @@ struct SettingsView: View {
     private func saveHomeServerAddressAndSay() {
         saveHomeServerAddress()
         savedFieldFocus = .address
-        AccessibilityNotification.Announcement(HomeServer.addressSavedText()).post()
+        AccessibilityNotification.Announcement(HomeServer.addressSavedText(address: homeServerAddressDraft)).post()
     }
 
     private func saveHomeServerCodeAndSay() {

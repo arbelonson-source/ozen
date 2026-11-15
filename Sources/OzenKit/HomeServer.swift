@@ -92,8 +92,10 @@ public enum HomeServer {
 
     /// Said to a screen reader when Save address is pressed: the button
     /// vanishes under focus, so nothing else says the address was kept.
-    public static func addressSavedText() -> String {
-        tr("כתובת המחשב נשמרה", "Computer address saved")
+    public static func addressSavedText(address: String) -> String {
+        address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? tr("כתובת המחשב הוסרה", "Computer address removed")
+            : tr("כתובת המחשב נשמרה", "Computer address saved")
     }
 
     /// Said to a screen reader when Save code is pressed, as the green line
