@@ -238,6 +238,36 @@ struct SoundsOnlyTests {
         #expect(!pipeline.isListeningForSoundsOnly)
     }
 
+    @Test("sound alerts turned back on after the retry found them off start listening again", .timeLimit(.minutes(1)))
+    func reenabledAlertsListenAgain() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in }
+        await pipeline.listenForSoundsOnly()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        audio.onCaptureLost?()
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(pipeline.soundsOnlyChosen)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("starting captions after sound alerts gave up clears the stopped flag", .timeLimit(.minutes(1)))
+    func startingClearsStoppedFlag() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in }
+        await pipeline.listenForSoundsOnly()
+        for _ in 0...CaptionPipeline.soundsOnlyRetrySeconds.count {
+            #expect(await eventually { pipeline.isListeningForSoundsOnly || pipeline.soundsOnlyStoppedByItself })
+            audio.onCaptureLost?()
+        }
+        #expect(await eventually { pipeline.soundsOnlyStoppedByItself })
+        await pipeline.start(settings: .default)
+        #expect(!pipeline.soundsOnlyStoppedByItself)
+    }
+
     @Test("a microphone that stalls again and again is retried after the shared waits, then ends with the away-notice cause", .timeLimit(.minutes(1)))
     func stallsBackOffThenSayAlertsStopped() async throws {
         let table = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Fixtures/logic/sounds-only-retry.json"))) as! [String: Any]

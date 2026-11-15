@@ -536,6 +536,9 @@ public final class CaptionPipeline {
         cancelScheduledRetry()
         stopListeningForSounds()
         soundsOnlyChosen = false
+        soundsOnlyStoppedByItself = false
+        soundsOnlyRetryTask?.cancel()
+        soundsOnlyRetryTask = nil
         let run = UUID()
         runID = run
         sessionAudioStart = recentAudio.totalAppended
@@ -1900,6 +1903,9 @@ public final class CaptionPipeline {
         activeSettings?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
         onSoundAlertsAvailabilityChange?()
+        if preferences.isEnabled, soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil {
+            Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
+        }
     }
 
     // MARK: - Tokens
@@ -3184,7 +3190,7 @@ public final class CaptionPipeline {
             logEvent(.note("sounds only: the microphone did not come back, sound alerts stopped"))
             soundsOnlyChosen = false
             soundsOnlyStoppedByItself = true
-            releaseSessionOfStoppedStart()
+            if phase == .paused { releaseAudioSession() } else { releaseSessionOfStoppedStart() }
             onPhaseChange?(phase)
             return
         }
