@@ -5,6 +5,10 @@ import UIKit
 @MainActor
 enum RecordingScreenPresenter {
     static func open(_ url: URL, viewModel: LiveCaptionViewModel) async {
+        if let busy = FileTranscriptionProblem.forNewShare(isTranscribing: viewModel.pipeline.isTranscribingRecording) {
+            alert(busy.message)
+            return
+        }
         do {
             let file = try await RecordingFiles.open(url)
             let model = TranscribeRecordingModel(file: file, host: LiveRecordingHost(viewModel: viewModel))
@@ -15,7 +19,7 @@ enum RecordingScreenPresenter {
     }
 
     private static func present(_ model: TranscribeRecordingModel, language: UILanguage) {
-        guard let top = topController() else {
+        guard let top = topController(), !(top is UIAlertController) else {
             Task { await model.close() }
             return
         }
@@ -30,7 +34,8 @@ enum RecordingScreenPresenter {
     }
 
     private static func alert(_ message: String) {
-        guard let top = topController() else { return }
+        UIAccessibility.post(notification: .announcement, argument: message)
+        guard let top = topController(), !(top is UIAlertController) else { return }
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: tr("סגירה", "Close"), style: .cancel))
         top.present(alert, animated: true)
