@@ -37,6 +37,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     private let filter: WhisperResultFilter
     private var vocabulary: [String] = []
     private var echo: PromptEchoDetector?
+    private var phoneModelReady = false
     /// The key the last check approved, so a restart doesn't ask again.
     /// Trusted for `approvalSeconds` after the check or the last answered
     /// request: the checks for whether the cloud can be reached again use
@@ -77,6 +78,10 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         vocabulary = terms
         let detector = PromptEchoDetector(terms: terms)
         echo = detector.isEmpty ? nil : detector
+    }
+
+    public func setPhoneModelReady(_ ready: Bool) async {
+        phoneModelReady = ready
     }
 
     public func prepare(
@@ -243,6 +248,12 @@ public actor CloudSpeechEngine: TranscriptionEngine {
                         throw error
                     }
                     lastFailure = error
+                    // No answer at all: the connection leads nowhere, and
+                    // every further try costs the request's whole timeout
+                    // while the screen sits empty. With the phone's model
+                    // ready, hand over now; the pipeline keeps asking the
+                    // cloud and takes captions back when it answers.
+                    if error == .timedOut && phoneModelReady { break }
                     if attempt == 1 && isFinal {
                         try await Task.sleep(for: .milliseconds(400))
                     }
@@ -253,7 +264,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             // second try isn't a second, unrelated failure.
             if let lastFailure {
                 failuresInARow += 1
-                if failuresInARow >= Self.failuresBeforeStopping {
+                if failuresInARow >= Self.failuresBeforeStopping || (lastFailure == .timedOut && phoneModelReady) {
                     // Giving up takes several seconds of retries, and by then
                     // the screen has settled the shown words as a finished
                     // line (the stabilizer's quiet-line safety net), which
@@ -341,7 +352,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             response = try await http.send(request)
         } catch {
             if error is CancellationError || Task.isCancelled { throw CancellationError() }
-            throw CloudSpeechError.offline
+            throw (error as? URLError)?.code == .timedOut ? CloudSpeechError.timedOut : CloudSpeechError.offline
         }
         let echo = self.echo
         return CloudSpeech.turns(in: try provider.transcript(from: response), filter: filter)

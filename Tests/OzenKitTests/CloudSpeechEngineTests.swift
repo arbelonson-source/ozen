@@ -7,6 +7,7 @@ final class FakeCloudHTTP: CloudHTTP, @unchecked Sendable {
         case text(String)
         case status(Int, String)
         case offline
+        case timeout
     }
 
     private let lock = NSLock()
@@ -14,6 +15,14 @@ final class FakeCloudHTTP: CloudHTTP, @unchecked Sendable {
     private var keyChecks: [Answer]
     private var sent: [CloudHTTPRequest] = []
     private var transcriptionTimes: [ContinuousClock.Instant] = []
+    private var silent = false
+
+    /// While true every request, key checks included, runs out of time
+    /// without an answer, as on a network that accepts and passes nothing.
+    var blackHole: Bool {
+        get { lock.withLock { silent } }
+        set { lock.withLock { silent = newValue } }
+    }
 
     init(answers: [Answer] = [], keyChecks: [Answer] = []) {
         self.answers = answers
@@ -27,6 +36,10 @@ final class FakeCloudHTTP: CloudHTTP, @unchecked Sendable {
     func send(_ request: CloudHTTPRequest) async throws -> CloudHTTPResponse {
         let answer: Answer = lock.withLock {
             sent.append(request)
+            if silent {
+                if request.method == "POST" { transcriptionTimes.append(.now) }
+                return .timeout
+            }
             if request.method == "POST" { transcriptionTimes.append(.now) }
             if request.method == "GET" {
                 return keyChecks.isEmpty ? .status(200, #"{"data":{"limit_remaining":null}}"#) : keyChecks.removeFirst()
@@ -41,6 +54,8 @@ final class FakeCloudHTTP: CloudHTTP, @unchecked Sendable {
             return CloudHTTPResponse(status: status, body: Data(body.utf8))
         case .offline:
             throw URLError(.notConnectedToInternet)
+        case .timeout:
+            throw URLError(.timedOut)
         }
     }
 }

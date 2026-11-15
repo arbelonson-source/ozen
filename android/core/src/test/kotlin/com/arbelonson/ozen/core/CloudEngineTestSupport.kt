@@ -31,6 +31,8 @@ internal class FakeCloudHTTP(
         class Status(val status: Int, val body: String) : Answer()
 
         data object Offline : Answer()
+
+        data object Timeout : Answer()
     }
 
     private val lock = Any()
@@ -38,6 +40,13 @@ internal class FakeCloudHTTP(
     private val keyChecks = keyChecks.toMutableList()
     private val sent = ArrayList<CloudHTTPRequest>()
     private val transcriptionTimes = ArrayList<ComparableTimeMark>()
+
+    /**
+     * While true every request, key checks included, runs out of time
+     * without an answer, as on a network that accepts and passes nothing.
+     */
+    @Volatile
+    var blackHole = false
 
     val requests: List<CloudHTTPRequest> get() = synchronized(lock) { sent.toList() }
     val transcriptionRequests: List<CloudHTTPRequest> get() = requests.filter { it.method == "POST" }
@@ -47,7 +56,9 @@ internal class FakeCloudHTTP(
         val answer: Answer = synchronized(lock) {
             sent.add(request)
             if (request.method == "POST") transcriptionTimes.add(timeSource.markNow())
-            if (request.method == "GET") {
+            if (blackHole) {
+                Answer.Timeout
+            } else if (request.method == "GET") {
                 if (keyChecks.isEmpty()) Answer.Status(200, """{"data":{"limit_remaining":null}}""") else keyChecks.removeAt(0)
             } else if (answers.size > 1) {
                 answers.removeAt(0)
@@ -63,6 +74,7 @@ internal class FakeCloudHTTP(
             }
             is Answer.Status -> CloudHTTPResponse(answer.status, answer.body.toByteArray(Charsets.UTF_8))
             Answer.Offline -> throw IOException("not connected to the internet")
+            Answer.Timeout -> throw java.net.SocketTimeoutException("timed out")
         }
     }
 }

@@ -68,6 +68,13 @@ class CloudSpeechEngine(
     private var approvedKey: String? = null
     private var approvedAt: TimeMark? = null
 
+    @Volatile
+    private var phoneModelReady = false
+
+    override suspend fun setPhoneModelReady(ready: Boolean) {
+        phoneModelReady = ready
+    }
+
     override suspend fun setVocabulary(terms: List<String>) {
         val detector = PromptEchoDetector(terms)
         synchronized(lock) {
@@ -234,6 +241,12 @@ class CloudSpeechEngine(
                             throw error
                         }
                         lastFailure = error
+                        // No answer at all: the connection leads nowhere, and
+                        // every further try costs the request's whole timeout
+                        // while the screen sits empty. With the phone's model
+                        // ready, hand over now; the pipeline keeps asking the
+                        // cloud and takes captions back when it answers.
+                        if (error == CloudSpeechError.TimedOut && phoneModelReady) break
                         if (attempt == 1 && isFinal) {
                             delay(400)
                         }
@@ -244,7 +257,7 @@ class CloudSpeechEngine(
                 // second try isn't a second, unrelated failure.
                 if (lastFailure != null) {
                     failuresInARow += 1
-                    if (failuresInARow >= FAILURES_BEFORE_STOPPING) {
+                    if (failuresInARow >= FAILURES_BEFORE_STOPPING || (lastFailure == CloudSpeechError.TimedOut && phoneModelReady)) {
                         // Giving up takes several seconds of retries, and by then
                         // the screen has settled the shown words as a finished
                         // line (the stabilizer's quiet-line safety net), which
@@ -341,7 +354,7 @@ class CloudSpeechEngine(
             throw error
         } catch (error: Exception) {
             if (!currentCoroutineContext().isActive) throw CancellationException("cancelled")
-            throw CloudSpeechError.Offline
+            throw if (error is java.net.SocketTimeoutException) CloudSpeechError.TimedOut else CloudSpeechError.Offline
         }
         val echo = synchronized(lock) { echo }
         return CloudSpeech.turns(provider.transcript(response), filter)
