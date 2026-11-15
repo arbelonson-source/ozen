@@ -28,7 +28,32 @@ public enum PhoneNumbers {
             guard (9...10).contains(digits.count) else { return nil }
             return Match(range: range, dialable: String(digits))
         }
-        return (services + phones).sorted { $0.range.lowerBound < $1.range.lowerBound }
+        var all = services + phones
+        for found in abroad(in: read, text: text) where !all.contains(where: { $0.range.overlaps(found.range) }) {
+            all.append(found)
+        }
+        return all.sorted { $0.range.lowerBound < $1.range.lowerBound }
+    }
+
+    /// Numbers written for other countries: "+" and a country code (8 to 15
+    /// digits in all; +972 stays with the Israeli rules above), and North
+    /// American numbers in the 3-3-4 grouping with separators. Short local
+    /// numbers, dates, times, amounts and card numbers are not matched.
+    private static func abroad(in read: String, text: String) -> [Match] {
+        guard let internationalPattern, let northAmericanPattern else { return [] }
+        let whole = NSRange(read.startIndex..., in: read)
+        var found: [Match] = []
+        for item in internationalPattern.matches(in: read, range: whole) {
+            guard let range = Range(item.range, in: text) else { continue }
+            let digits = digitsOf(text[range])
+            guard (8...15).contains(digits.count), !digits.hasPrefix("972") else { continue }
+            found.append(Match(range: range, dialable: "+" + digits))
+        }
+        for item in northAmericanPattern.matches(in: read, range: whole) {
+            guard let range = Range(item.range, in: text) else { continue }
+            found.append(Match(range: range, dialable: digitsOf(text[range])))
+        }
+        return found
     }
 
     /// `text` with every digit of another script (Arabic-Indic, Persian,
@@ -47,6 +72,16 @@ public enum PhoneNumbers {
 
     private static let pattern = try? NSRegularExpression(
         pattern: #"(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[-\x{2011}\x{00A0}\x{202F} ]?|0)(?:[2-489](?:[-\x{2011}\x{00A0}\x{202F} ]?\d){7}|[57](?:[-\x{2011}\x{00A0}\x{202F} ]?\d){8})(?![-\x{2011}\x{00A0}\x{202F}]?\d)"#
+    )
+
+    private static let separator = #"[-\x{2011}\x{00A0}\x{202F} .]"#
+
+    private static let internationalPattern = try? NSRegularExpression(
+        pattern: #"(?<![\d+])\+[1-9](?:\#(separator)?\d)*(?:\#(separator)?\(\d{2,5}\)(?:\#(separator)?\d)*)?(?!\#(separator)?\d)"#
+    )
+
+    private static let northAmericanPattern = try? NSRegularExpression(
+        pattern: #"(?<![\d+*])(?<!\d\#(separator))(?:1\#(separator))?(?:\([2-9]\d\d\)\#(separator)?|[2-9]\d\d\#(separator))[2-9]\d\d\#(separator)\d{4}(?!\#(separator)?\d)"#
     )
 
     private static let servicePattern = try? NSRegularExpression(
