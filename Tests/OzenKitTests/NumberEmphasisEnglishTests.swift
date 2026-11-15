@@ -63,8 +63,8 @@ struct NumberEmphasisEnglishTests {
     @Test("each language has its own word list; Hebrew and languages with no list are unchanged, Hebrew words still count in an English line")
     func perLanguage() {
         #expect(emphasized("Take three pills", "he") == [])
-        #expect(emphasized("tome tres pastillas", "es") == [])
-        #expect(emphasized("Take 3 pills", "es") == ["3"])
+        #expect(emphasized("prenez trois comprimés", "fr") == [])
+        #expect(emphasized("Take 3 pills", "fr") == ["3"])
         #expect(emphasized("שלושה כדורים בעשר", "he") == ["שלושה כדורים", "בעשר"])
         #expect(emphasized("Take 3 pills, שלושה כדורים", "en") == ["3 pills", "שלושה כדורים"])
         #expect(emphasized("Take 3 pills", "en-US") == ["3 pills"])
