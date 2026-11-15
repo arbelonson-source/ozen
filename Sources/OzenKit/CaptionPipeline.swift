@@ -2624,18 +2624,17 @@ public final class CaptionPipeline {
         let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
         return AsyncStream(unfolding: { [weak self] in
             guard let chunk = await reader.next() else { return nil }
-            if chunk.isLive { await self?.engineTookLive(chunk.samples.count, grace: grace, reader: reader) }
+            if chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
+                await self?.endReplayOverlap()
+            }
             return chunk.samples
         })
     }
 
-    private func engineTookLive(_ count: Int, grace: Int, reader: ReplayReader) {
-        let before = reader.liveTaken
-        reader.liveTaken += count
-        if before < grace, reader.liveTaken >= grace, replayUtterance == nil {
-            replayedLines = []
-            replayDedupe = []
-        }
+    private func endReplayOverlap() {
+        guard replayUtterance == nil else { return }
+        replayedLines = []
+        replayDedupe = []
     }
 
     /// The replay starts before the home computer's last line, so the
@@ -3601,9 +3600,16 @@ private struct ReplayChunk: Sendable {
 /// the stream from a single task, one chunk at a time, so nothing races.
 private final class ReplayReader: @unchecked Sendable {
     private var iterator: AsyncStream<ReplayChunk>.Iterator
-    var liveTaken = 0
+    private var liveTaken = 0
 
     init(_ iterator: AsyncStream<ReplayChunk>.Iterator) { self.iterator = iterator }
+
+    /// True once, on the pull that takes the live audio past the grace.
+    func takeLive(_ count: Int, grace: Int) -> Bool {
+        let before = liveTaken
+        liveTaken += count
+        return before < grace && liveTaken >= grace
+    }
 
     func next() async -> ReplayChunk? { await iterator.next() }
 }
