@@ -29,7 +29,9 @@ public final class AVAudioInputManager: AudioCapturing {
         case converterUnavailable
     }
 
-    private let session = AVAudioSession.sharedInstance()
+    /// Fetched each time: after the audio system starts over, objects held
+    /// from before it are dead, and the shared instance is the one to ask.
+    private var session: AVAudioSession { AVAudioSession.sharedInstance() }
     private var engine = AVAudioEngine()
     private var preferredInputUID: String?
     private let observers = NotificationObserverBag()
@@ -44,8 +46,53 @@ public final class AVAudioInputManager: AudioCapturing {
     /// is never switched off again by a deactivation that ran late.
     private var deactivation: Task<Void, Never>?
     private var activeTap: TapState?
+    /// The wait for the session after an interruption ended, and the
+    /// rebuild after the audio system started over. Kept apart: a reset
+    /// during the wait must not drop the report that the interruption is
+    /// over. A newer one of the same kind replaces the older.
+    private var interruptionRecovery: Task<Void, Never>?
+    private var resetRecovery: Task<Void, Never>?
+    private let activateBeforeRecording: @Sendable () throws -> Void
+    private let retry: AudioReactivationRetry
+    private let wait: @Sendable (Double) async -> Void
+    /// How many times the engine was built again after the audio system
+    /// started over; read by the tests.
+    private(set) var rebuildsAfterReset = 0
 
-    public init() {}
+    public convenience init() {
+        self.init(retry: .standard, wait: { _ = try? await Task.sleep(for: .seconds($0)) }, activate: Self.activateForRecording)
+    }
+
+    init(
+        retry: AudioReactivationRetry,
+        wait: @escaping @Sendable (Double) async -> Void,
+        activate: @escaping @Sendable () throws -> Void
+    ) {
+        self.retry = retry
+        self.wait = wait
+        self.activateBeforeRecording = activate
+    }
+
+    /// The category the whole app records with, then the session itself.
+    nonisolated private static func activateForRecording() throws {
+        let session = AVAudioSession.sharedInstance()
+        // `.playAndRecord` rather than `.record` so the type-to-speak
+        // feature can play synthesized speech without tearing the session
+        // down; `.measurement` turns off the system's voice processing so
+        // Whisper gets the raw signal it was trained on; `.allowBluetooth`
+        // is what makes an AirPods *microphone* (HFP) selectable at all.
+        try session.setCategory(
+            .playAndRecord,
+            mode: .measurement,
+            options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker]
+        )
+        // iOS silences vibration while an app records, and captions are
+        // recording whenever an alert can happen: without this the buzz for
+        // a doorbell, her name, or someone starting to talk never comes.
+        // Not fatal if refused; the banners and flashes still show.
+        try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+        try session.setActive(true)
+    }
 
     // MARK: - AudioCapturing
 
@@ -73,25 +120,8 @@ public final class AVAudioInputManager: AudioCapturing {
         // server, which can take seconds while AirPods reconnect or another
         // app lets go of the microphone, and captions start right at launch,
         // when a blocked main thread gets the app killed by the watchdog.
-        try await Task.detached(priority: .userInitiated) {
-            let session = AVAudioSession.sharedInstance()
-            // `.playAndRecord` rather than `.record` so the type-to-speak
-            // feature can play synthesized speech without tearing the session
-            // down; `.measurement` turns off the system's voice processing so
-            // Whisper gets the raw signal it was trained on; `.allowBluetooth`
-            // is what makes an AirPods *microphone* (HFP) selectable at all.
-            try session.setCategory(
-                .playAndRecord,
-                mode: .measurement,
-                options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker]
-            )
-            // iOS silences vibration while an app records, and captions are
-            // recording whenever an alert can happen: without this the buzz for
-            // a doorbell, her name, or someone starting to talk never comes.
-            // Not fatal if refused; the banners and flashes still show.
-            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
-            try session.setActive(true)
-        }.value
+        let activate = activateBeforeRecording
+        try await Task.detached(priority: .userInitiated) { try activate() }.value
         // Set after the wait, not before: another caller (a voice recording
         // started from Settings) can prepare the session meanwhile, and the
         // input chosen below must be this caller's own.
@@ -239,6 +269,64 @@ public final class AVAudioInputManager: AudioCapturing {
     }
 
     private static let configurationRetryLimit = 5
+
+    /// The audio system started over. Sets the category and the chosen
+    /// microphone up again, builds a new engine and puts the tap back on the
+    /// same output stream, so the pipeline above never notices. The audio
+    /// system can still be starting while this runs, so the session is asked
+    /// for a few times; if it never comes back, the capture is reported lost
+    /// and the pipeline starts it again from scratch (or says it stopped).
+    /// The sound classifier reads the stream and holds no audio objects, so
+    /// it needs nothing.
+    func rebuildAfterMediaServicesReset() {
+        guard sessionPrepared, !released else { return }
+        resetRecovery?.cancel()
+        let wanted = preferredInputUID
+        resetRecovery = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let back = await self.retry.run(sleep: self.wait) { [weak self] in
+                guard let self else { return true }
+                return (try? await self.prepareSession(preferredInputUID: wanted)) != nil
+            }
+            guard !Task.isCancelled, self.sessionPrepared, !self.released else { return }
+            guard back else {
+                if self.activeTap != nil { self.onCaptureLost?() }
+                return
+            }
+            self.rebuildsAfterReset += 1
+            guard self.activeTap != nil else { return }
+            self.engine.stop()
+            self.engine = AVAudioEngine()
+            self.recoverFromConfigurationChange()
+        }
+    }
+
+    /// The system said the interruption is over. Taking the session back
+    /// can fail for a moment (a call still winding down, a headset
+    /// reconnecting): it is asked for a few times first, and until it works
+    /// the app is not told the interruption is over. If it never works the
+    /// interruption is reported over and the capture lost, which restarts it
+    /// from scratch.
+    private func interruptionEnded(shouldResume: Bool) {
+        interruptionRecovery?.cancel()
+        // A session handed back stays that way: taking it again here would
+        // silence the music that just carried on.
+        guard !released, shouldResume || activeTap != nil else {
+            onInterruption?(false)
+            return
+        }
+        interruptionRecovery = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let back = await self.retry.run(sleep: self.wait) { [weak self] in
+                guard let self else { return true }
+                return (try? await self.activateSession()) != nil
+            }
+            guard !Task.isCancelled else { return }
+            if back, !self.released { self.resumeCaptureAfterInterruption() }
+            self.onInterruption?(false)
+            if !back, !self.released { self.onCaptureLost?() }
+        }
+    }
 
     /// iOS does not promise to announce the end of an interruption: after
     /// a phone call the "ended" notice can simply never come. Called when
@@ -449,20 +537,24 @@ public final class AVAudioInputManager: AudioCapturing {
                 guard let self else { return }
                 switch AVAudioSession.InterruptionType(rawValue: typeValue) {
                 case .began:
+                    self.interruptionRecovery?.cancel()
                     self.onInterruption?(true)
                 case .ended:
                     let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                    // A session handed back stays that way: taking it again
-                    // here would silence the music that just carried on.
-                    if !self.released, options.contains(.shouldResume) || self.activeTap != nil {
-                        try? await self.activateSession()
-                        if !self.released { self.resumeCaptureAfterInterruption() }
-                    }
-                    self.onInterruption?(false)
+                    self.interruptionEnded(shouldResume: options.contains(.shouldResume))
                 default:
                     break
                 }
             }
+        })
+
+        // Every audio object is dead after this: the engine, its input node
+        // and tap, and the session's category. Nothing else in the app hears
+        // of it, and a night of sound alerts went on "listening" to nothing.
+        observers.add(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.rebuildAfterMediaServicesReset() }
         })
 
         observers.add(center.addObserver(
