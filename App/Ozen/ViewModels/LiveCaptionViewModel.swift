@@ -120,6 +120,8 @@ public final class LiveCaptionViewModel {
     /// back and on leaving the screen): a word's notification then reaches
     /// nobody, and the caption screen says so.
     public private(set) var notificationsBlocked = false
+    /// Only the newest look at the permission may set the answer.
+    @ObservationIgnored private var notificationsRefreshGeneration = 0
 
     /// Away alerts are on, yet the phone's notifications for Ozen are off.
     public var awayAlertsBlocked: Bool {
@@ -129,7 +131,13 @@ public final class LiveCaptionViewModel {
     /// Looks again at whether iOS shows Ozen's notifications.
     public func refreshNotificationsAllowed() {
         guard let notificationsAllowed else { return }
-        Task { notificationsBlocked = await notificationsAllowed() != true }
+        notificationsRefreshGeneration += 1
+        let generation = notificationsRefreshGeneration
+        Task {
+            let blocked = await notificationsAllowed() != true
+            guard generation == notificationsRefreshGeneration else { return }
+            notificationsBlocked = blocked
+        }
     }
     /// Tells her when captions stop while the phone is put away.
     private var stoppedCaptions = StoppedCaptionsNotice()
