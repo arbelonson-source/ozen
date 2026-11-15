@@ -374,6 +374,8 @@ class CaptionPipeline(
     private var pendingReplayDedupe: List<String> = emptyList()
     private var replayDedupe: List<String> = emptyList()
     private var replayUtterance: UUID? = null
+    private var pendingReplayedLines: Set<UUID> = emptySet()
+    private var replayedLines: Set<UUID> = emptySet()
 
     private class HeardLine(val position: Long, val text: String)
     private var homeServerRecheck: Job? = null
@@ -744,8 +746,10 @@ class CaptionPipeline(
         val replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = null
+        replayedLines = if (replay.isEmpty()) emptySet() else pendingReplayedLines
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
+        pendingReplayedLines = emptySet()
         settingsInUse = settings.copy()
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -1031,6 +1035,8 @@ class CaptionPipeline(
         recentAudio.clear()
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
+        pendingReplayedLines = emptySet()
+        replayedLines = emptySet()
         homeServerRecheck?.cancel()
         homeServerRecheck = null
         cloudRecheck?.cancel()
@@ -2216,6 +2222,7 @@ class CaptionPipeline(
         if (!isKnown && isBlank(token.text)) {
             return
         }
+        dropLinesTheReplayRewrites()
         // "toda. toda. toda." ("thanks") invented window after window on a
         // quiet room: see `SilencePhraseGuard`. Suppressing this token
         // still must not swallow a true final: the words already shown
@@ -3772,6 +3779,7 @@ class CaptionPipeline(
     private fun prepareReplay() {
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
+        pendingReplayedLines = emptySet()
         var begin = sessionAudioStart
         lastFinalHeard?.let { heard ->
             begin = maxOf(begin, heard.position - (REPLAY_MARGIN_SECONDS * SAMPLE_RATE).toLong())
@@ -3786,6 +3794,27 @@ class CaptionPipeline(
             return
         }
         pendingReplay = tail
+        val windowStart = recentAudio.totalAppended - tail.size
+        val slack = if (windowStart > begin) (REPLAY_MARGIN_SECONDS * SAMPLE_RATE).toLong() else 0L
+        pendingReplayedLines = segments.takeLast(8).filter { segment ->
+            val heardAt = utteranceFirstHeard[segment.id]
+            segment.isCommitted && heardAt != null && heardAt >= windowStart + slack
+        }.map { it.id }.toSet()
+    }
+
+    /**
+     * The lines the engine that failed never finished were kept, cut off,
+     * and the replay hears the same speech again: once the replay shows
+     * words, those lines go, so nothing is on screen or saved twice. Only
+     * lines that began inside the replayed audio go; one that began before
+     * it keeps its earlier words.
+     */
+    private fun dropLinesTheReplayRewrites() {
+        if (replayedLines.isEmpty()) return
+        val gone = replayedLines
+        replayedLines = emptySet()
+        segments = segments.filter { it.id !in gone }
+        onCaptionsChanged?.invoke()
     }
 
     /**

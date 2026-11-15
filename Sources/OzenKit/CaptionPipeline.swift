@@ -210,6 +210,8 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var pendingReplayedLines: Set<UUID> = []
+    private var replayedLines: Set<UUID> = []
     private var utteranceFirstHeard: [UUID: Int] = [:]
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
@@ -556,8 +558,10 @@ public final class CaptionPipeline {
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
+        replayedLines = replay.isEmpty ? [] : pendingReplayedLines
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -837,6 +841,8 @@ public final class CaptionPipeline {
         recentAudio.clear()
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
+        replayedLines = []
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
         cloudRecheck?.cancel()
@@ -2069,6 +2075,7 @@ public final class CaptionPipeline {
         if !isKnown && token.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return
         }
+        dropLinesTheReplayRewrites()
         // "toda. toda. toda." ("thanks") invented window after window on a
         // quiet room: see `SilencePhraseGuard`. Suppressing this token
         // still must not swallow a true final: the words already shown
@@ -2496,6 +2503,7 @@ public final class CaptionPipeline {
     private func prepareReplay() {
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         let rate = Self.sampleRate
         var begin = sessionAudioStart
         if let heard = lastFinalHeard {
@@ -2517,6 +2525,26 @@ public final class CaptionPipeline {
             return
         }
         pendingReplay = tail
+        let windowStart = recentAudio.totalAppended - tail.count
+        let slack = windowStart > begin ? Int(Self.replayMarginSeconds * rate) : 0
+        pendingReplayedLines = Set(segments.suffix(8).compactMap { segment in
+            guard segment.isCommitted, let heardAt = utteranceFirstHeard[segment.id],
+                  heardAt >= windowStart + slack else { return nil }
+            return segment.id
+        })
+    }
+
+    /// The lines the engine that failed never finished were kept, cut off,
+    /// and the replay hears the same speech again: once the replay shows
+    /// words, those lines go, so nothing is on screen or saved twice. Only
+    /// lines that began inside the replayed audio go; one that began before
+    /// it keeps its earlier words.
+    private func dropLinesTheReplayRewrites() {
+        guard !replayedLines.isEmpty else { return }
+        let gone = replayedLines
+        replayedLines = []
+        segments.removeAll { gone.contains($0.id) }
+        onCaptionsChanged?()
     }
 
     static func replayBufferLimit(replaySamples: Int) -> Int {
