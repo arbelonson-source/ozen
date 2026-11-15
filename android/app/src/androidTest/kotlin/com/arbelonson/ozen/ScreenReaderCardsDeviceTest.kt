@@ -9,12 +9,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.DisplayPreferences.Theme
@@ -104,6 +109,51 @@ class ScreenReaderCardsDeviceTest {
         compose.runOnUiThread { shown = true }
         compose.waitForIdle()
         assertEquals(announced.toString(), 1, announced.size)
+    }
+
+    @Test
+    fun aLighterModelOfferTheUserPutAwayIsSaidAgainWhenItReturns() {
+        val model = PhoneModelCatalog.all.first()
+        var shown by mutableStateOf(true)
+        show { if (shown) LighterModelOffer(model, waiting = false, inUseBytes = null, onSwitch = {}, onDismiss = { shown = false }) }
+        compose.waitUntil(5_000) { announced.size == 1 }
+        compose.onNodeWithContentDescription("Not now").performClick()
+        compose.waitForIdle()
+        compose.runOnUiThread { shown = true }
+        compose.waitUntil(5_000) { announced.size == 2 }
+        assertEquals(announced.toString(), announced[0], announced[1])
+    }
+
+    @Test
+    fun theNameOfferTheUserPutAwayIsSaidAgainWhenItReturns() {
+        var shown by mutableStateOf(true)
+        show { if (shown) NameAlertOffer(look, onOpen = {}, onDismiss = { shown = false }) }
+        compose.waitUntil(5_000) { announced.size == 1 }
+        compose.onNodeWithContentDescription("Not now").performClick()
+        compose.waitForIdle()
+        compose.runOnUiThread { shown = true }
+        compose.waitUntil(5_000) { announced.size == 2 }
+        assertEquals(announced.toString(), announced[0], announced[1])
+    }
+
+    @Test
+    fun theRecentConversationCardTheUserClosedIsSaidAgainWhenItReturns() {
+        val recent = summary()
+        var shown by mutableStateOf(true)
+        show { if (shown) RecentConversationCard(recent, look, "en", onOpen = {}, onDismiss = { shown = false }) }
+        compose.waitUntil(5_000) { announced.size == 1 }
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+        compose.runOnUiThread { shown = true }
+        compose.waitUntil(5_000) { announced.size == 2 }
+        assertEquals(announced.toString(), announced[0], announced[1])
+    }
+
+    @Test
+    fun theSoundAlertsNotWorkingBannerWaitsForTheSoundBeingReadInsteadOfCuttingItOff() {
+        show { SoundAlertsNotWorkingBanner() }
+        compose.onNodeWithText("Sound alerts aren’t working")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
     }
 
     @Test

@@ -431,6 +431,8 @@ struct KeywordHitPill: View {
                 .padding(.vertical, 10)
                 .background(Color.yellow.opacity(0.9), in: Capsule())
                 .foregroundStyle(.black)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
