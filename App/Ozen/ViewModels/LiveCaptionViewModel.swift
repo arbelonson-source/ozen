@@ -707,19 +707,26 @@ public final class LiveCaptionViewModel {
             soundsOnlyChosen: pipeline.soundsOnlyChosen,
             soundAlertsNotWorking: pipeline.soundAlertsNotWorking
         )
-        switch stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
-        case .post(let content)?:
-            postNotification?(content)
-        case .schedule(let content, let delay)?:
-            scheduleNotification?(content, delay)
-        case .cancelScheduled(let identifier)?:
-            cancelScheduledNotification?(identifier)
-        case .withdraw(let identifier)?:
-            withdrawNotification?(identifier)
-        case nil:
-            break
+        if let update = stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
+            apply(update)
         }
         updateListeningRecord(stopped: cause)
+    }
+
+    private func apply(_ update: StoppedCaptionsNotice.Update) {
+        switch update {
+        case .post(let content):
+            postNotification?(content)
+        case .schedule(let content, let delay):
+            scheduleNotification?(content, delay)
+        case .cancelScheduled(let identifier):
+            cancelScheduledNotification?(identifier)
+        case .withdraw(let identifier):
+            withdrawNotification?(identifier)
+        case .replace(let old, let new):
+            apply(old)
+            apply(new)
+        }
     }
 
     /// Feeds the record of listening what the pipeline is doing now. A

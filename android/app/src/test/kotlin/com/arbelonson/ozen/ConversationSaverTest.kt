@@ -101,6 +101,29 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a conversation keeps the language it was first saved with when the spoken language changes later`() {
+        var language = "en"
+        val pinned = ConversationSaver(
+            writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+            speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = {}, scope = scope,
+            now = { clock }, io = EmptyCoroutineContext, spokenLanguage = { language },
+        )
+        listening = true
+        pinned.listeningChanged()
+        say("Take three pills")
+        scope.advanceTimeBy(20_001)
+        scope.runCurrent()
+        language = "fr"
+        say("And rest")
+        listening = false
+        pinned.listeningChanged()
+        writer.waitUntilIdle()
+        val record = assertNotNull(store.load(store.listSummaries().single().id))
+        assertEquals("en", record.languageCode)
+        assertEquals(2, record.segments.size)
+    }
+
+    @Test
     fun `a saved conversation has the setting's language when nothing says otherwise`() {
         start()
         say("Good morning")

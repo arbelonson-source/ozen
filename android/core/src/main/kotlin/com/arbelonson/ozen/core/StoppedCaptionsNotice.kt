@@ -53,6 +53,9 @@ class StoppedCaptionsNotice {
 
         /** Drop the scheduled notice, and the delivered one if it went out. */
         data class Cancel(val identifier: String) : Update()
+
+        /** The cause changed: do [old] (drop what was told for the previous cause), then [new]. */
+        data class Replace(val old: Update, val new: Update) : Update()
     }
 
     /** A notice is sitting in the notification shade. */
@@ -62,10 +65,11 @@ class StoppedCaptionsNotice {
     private var postedAsSchedule = false
 
     /**
-     * She has been told about this stop: by the notice, or by opening the
-     * app and seeing the status. Not told again until captions run.
+     * The stop she has been told about: by the notice, or by opening the
+     * app and seeing the status. Not told again until captions run, but a
+     * different cause is told by itself.
      */
-    private var told = false
+    private var toldCause: Cause? = null
 
     /** A fresh instance may follow a process Android killed after it posted. */
     private var firstUpdate = true
@@ -84,28 +88,46 @@ class StoppedCaptionsNotice {
         val first = firstUpdate
         firstUpdate = false
         if (cause == null) {
-            told = false
+            toldCause = null
             return withdrawIfPosted(sweep = first)
         }
+        val changed = toldCause?.let { !sameStop(it, cause) } ?: false
         if (appIsActive) {
+            if (changed) toldCause = null
             return withdrawIfPosted(sweep = first)
         }
-        if (!isEnabled || told) return null
+        if (changed) {
+            toldCause = null
+            if (!isEnabled) return withdrawIfPosted(sweep = false)
+        }
+        if (!isEnabled || toldCause != null) return null
+        val old = withdrawIfPosted(sweep = false)
         posted = true
-        told = true
-        if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
+        toldCause = cause
+        val new = if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
             postedAsSchedule = true
             val delay = if (cause == Cause.SoundAlertsNotWorking) SOUND_ALERTS_DELAY_SECONDS else OTHER_APP_DELAY_SECONDS
-            return Update.Schedule(content(cause), delay)
+            Update.Schedule(content(cause), delay)
+        } else {
+            postedAsSchedule = false
+            Update.Post(content(cause))
         }
-        postedAsSchedule = false
-        return Update.Post(content(cause))
+        return if (old == null) new else Update.Replace(old, new)
+    }
+
+    /**
+     * The causes that post at once are one stop, so a failure turning into a
+     * call that didn't end well is not told twice; each delayed cause is its own.
+     */
+    private fun sameStop(a: Cause, b: Cause): Boolean {
+        fun delayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking
+        return if (delayed(a) || delayed(b)) a == b else true
     }
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
     fun postFailed() {
         posted = false
-        told = false
+        toldCause = null
     }
 
     private fun withdrawIfPosted(sweep: Boolean): Update? {

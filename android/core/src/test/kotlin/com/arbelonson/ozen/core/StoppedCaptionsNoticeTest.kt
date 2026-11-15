@@ -127,6 +127,61 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `a scheduled sound-alerts notice is dropped and the failure is posted at once with its own wording`() {
+        val notice = StoppedCaptionsNotice()
+        val id = StoppedCaptionsNotice.IDENTIFIER
+        assertIs<StoppedCaptionsNotice.Update.Schedule>(
+            notice.update(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking, appIsActive = false, isEnabled = true),
+        )
+        val replaced = notice.update(failed(glitch), appIsActive = false, isEnabled = true)
+        if (replaced !is StoppedCaptionsNotice.Update.Replace) fail("expected a cancel plus a post")
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(id), replaced.old)
+        val post = replaced.new
+        if (post !is StoppedCaptionsNotice.Update.Post) fail("expected a post")
+        assertEquals("הכתוביות נעצרו", post.content.title)
+        assertNull(notice.update(failed(engineFailure(EngineUnavailability.Kind.NoInternet)), appIsActive = false, isEnabled = true))
+        assertEquals(StoppedCaptionsNotice.Update.Withdraw(id), notice.update(null, appIsActive = false, isEnabled = true))
+    }
+
+    @Test
+    fun `a scheduled other-app notice is dropped and sound alerts are scheduled in its place`() {
+        val notice = StoppedCaptionsNotice()
+        val soundAlerts = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        notice.update(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, appIsActive = false, isEnabled = true)
+        val replaced = notice.update(soundAlerts, appIsActive = false, isEnabled = true)
+        if (replaced !is StoppedCaptionsNotice.Update.Replace) fail("expected a cancel plus a schedule")
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER), replaced.old)
+        val schedule = replaced.new
+        if (schedule !is StoppedCaptionsNotice.Update.Schedule) fail("expected a schedule")
+        assertEquals(StoppedCaptionsNotice.SOUND_ALERTS_DELAY_SECONDS, schedule.afterSeconds)
+        assertEquals(StoppedCaptionsNotice.soundAlertsNotWorkingTitle(), schedule.content.title)
+        assertNull(notice.update(soundAlerts, appIsActive = false, isEnabled = true))
+    }
+
+    @Test
+    fun `a posted failure is withdrawn when the cause becomes another app, which is then scheduled`() {
+        val notice = StoppedCaptionsNotice()
+        notice.update(failed(glitch), appIsActive = false, isEnabled = true)
+        val replaced = notice.update(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone, appIsActive = false, isEnabled = true)
+        if (replaced !is StoppedCaptionsNotice.Update.Replace) fail("expected a withdraw plus a schedule")
+        assertEquals(StoppedCaptionsNotice.Update.Withdraw(StoppedCaptionsNotice.IDENTIFIER), replaced.old)
+        val schedule = replaced.new
+        if (schedule !is StoppedCaptionsNotice.Update.Schedule) fail("expected a schedule")
+        assertEquals(StoppedCaptionsNotice.OTHER_APP_DELAY_SECONDS, schedule.afterSeconds)
+    }
+
+    @Test
+    fun `a new cause seen while the app is open is told once the phone is put away`() {
+        val notice = StoppedCaptionsNotice()
+        val soundAlerts = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        notice.update(soundAlerts, appIsActive = false, isEnabled = true)
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER), notice.update(soundAlerts, appIsActive = true, isEnabled = true))
+        assertNull(notice.update(soundAlerts, appIsActive = false, isEnabled = true))
+        assertNull(notice.update(failed(glitch), appIsActive = true, isEnabled = true))
+        assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
+    }
+
+    @Test
     fun `the other-app notice says another app is using the microphone and what to do`() {
         val body = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone).body
         assertTrue(body.contains("אפליקציה אחרת"))

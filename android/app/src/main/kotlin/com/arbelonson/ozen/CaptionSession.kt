@@ -840,8 +840,15 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        when (val update = stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground)) {
-            is StoppedCaptionsNotice.Update.Post -> if (!notifier.post(update.content)) stoppedCaptions.postFailed()
+        stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground)?.let(::applyNoticeUpdate)
+    }
+
+    private fun applyNoticeUpdate(update: StoppedCaptionsNotice.Update) {
+        when (update) {
+            is StoppedCaptionsNotice.Update.Post -> {
+                otherAppNotice?.cancel()
+                if (!notifier.post(update.content)) stoppedCaptions.postFailed()
+            }
             is StoppedCaptionsNotice.Update.Withdraw -> {
                 otherAppNotice?.cancel()
                 notifier.withdraw(update.identifier)
@@ -857,7 +864,10 @@ class CaptionSession(
                 otherAppNotice?.cancel()
                 notifier.withdraw(update.identifier)
             }
-            null -> Unit
+            is StoppedCaptionsNotice.Update.Replace -> {
+                applyNoticeUpdate(update.old)
+                applyNoticeUpdate(update.new)
+            }
         }
     }
 

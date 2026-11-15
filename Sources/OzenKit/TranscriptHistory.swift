@@ -1071,10 +1071,18 @@ public struct TranscriptHistoryStore: Sendable {
     /// does not know, is written back with its values instead of being
     /// dropped by a decode and re-encode (key order and spacing are not kept). `patch` returns false to leave the
     /// file untouched. Returns whether the file was rewritten.
-    private func patchRecordFile(at url: URL, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
+    /// `throwIfUnreadable`: a file that is there but cannot be read now throws
+    /// (a fix then stays queued) instead of being taken for gone.
+    private func patchRecordFile(at url: URL, throwIfUnreadable: Bool = false, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = try? Data(contentsOf: url),
+        let read: Data?
+        if throwIfUnreadable, FileManager.default.fileExists(atPath: url.path) {
+            read = try Data(contentsOf: url)
+        } else {
+            read = try? Data(contentsOf: url)
+        }
+        guard let data = read,
               var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               patch(&object)
         else { return false }
@@ -1127,7 +1135,7 @@ public struct TranscriptHistoryStore: Sendable {
 
     /// Replaces the text of one saved line (a word fixed by hand).
     public func replaceText(segmentID: UUID, inSession id: UUID, with text: String) throws {
-        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+        _ = try patchRecordFile(at: fileURL(for: id), throwIfUnreadable: true) { object in
             guard var entries = object["segments"] as? [Any],
                   let index = entries.firstIndex(where: { (($0 as? [String: Any])?["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID }),
                   var line = entries[index] as? [String: Any]

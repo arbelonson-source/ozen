@@ -32,7 +32,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         case soundAlertsNotWorking
     }
 
-    public enum Update: Sendable, Equatable {
+    public indirect enum Update: Sendable, Equatable {
         case post(AlertNotificationContent)
         case withdraw(identifier: String)
         /// Deliver `content` after `after` seconds unless cancelled first. The
@@ -40,6 +40,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         case schedule(AlertNotificationContent, after: TimeInterval)
         /// Drop the scheduled notice, and the delivered one if it went out.
         case cancelScheduled(identifier: String)
+        /// The cause changed: do `old` (drop what was told for the previous
+        /// cause), then `new` (tell the new one by its own rule).
+        case replace(old: Update, new: Update)
     }
 
     /// How long another app has to keep the microphone before she is told.
@@ -53,9 +56,10 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     private var posted = false
     /// What is sitting there was scheduled for later, not delivered now.
     private var postedAsSchedule = false
-    /// She has been told about this stop: by the notice, or by opening the
-    /// app and seeing the status. Not told again until captions run.
-    private var told = false
+    /// The stop she has been told about: by the notice, or by opening the
+    /// app and seeing the status. Not told again until captions run, but a
+    /// different cause is told by itself.
+    private var toldCause: Cause?
 
     public init() {}
 
@@ -101,23 +105,41 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// in Notification Center for as long as the problem lasted. Putting
     /// the phone away again doesn't post it a second time.
     public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool) -> Update? {
-        guard cause != nil else {
-            told = false
+        guard let cause else {
+            toldCause = nil
             return withdrawIfPosted()
         }
+        let changed = toldCause.map { !Self.sameStop($0, cause) } ?? false
         if appIsActive {
+            if changed { toldCause = nil }
             return withdrawIfPosted()
         }
-        guard isEnabled, !told, let cause else { return nil }
+        if changed {
+            toldCause = nil
+            if !isEnabled { return withdrawIfPosted() }
+        }
+        guard isEnabled, toldCause == nil else { return nil }
+        let old = withdrawIfPosted()
         posted = true
-        told = true
+        toldCause = cause
+        let new: Update
         if cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking {
             postedAsSchedule = true
             let delay = cause == .soundAlertsNotWorking ? Self.soundAlertsDelay : Self.otherAppDelay
-            return .schedule(Self.content(for: cause), after: delay)
+            new = .schedule(Self.content(for: cause), after: delay)
+        } else {
+            postedAsSchedule = false
+            new = .post(Self.content(for: cause))
         }
-        postedAsSchedule = false
-        return .post(Self.content(for: cause))
+        guard let old else { return new }
+        return .replace(old: old, new: new)
+    }
+
+    /// The causes that post at once are one stop, so a failure turning into a
+    /// call that didn't end well is not told twice; each delayed cause is its own.
+    private static func sameStop(_ a: Cause, _ b: Cause) -> Bool {
+        func delayed(_ cause: Cause) -> Bool { cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking }
+        return delayed(a) || delayed(b) ? a == b : true
     }
 
     private mutating func withdrawIfPosted() -> Update? {

@@ -105,6 +105,66 @@ struct StoppedCaptionsNoticeTests {
         #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
     }
 
+    @Test("a scheduled sound-alerts notice is dropped and the failure is posted at once with its own wording")
+    func scheduledThenFailed() {
+        var notice = StoppedCaptionsNotice()
+        let id = StoppedCaptionsNotice.identifier
+        guard case .schedule = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a schedule")
+            return
+        }
+        let failed = StoppedCaptionsNotice.Cause.failed(glitch)
+        guard case .replace(let old, .post(let content))? = notice.update(for: failed, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a cancel plus a post")
+            return
+        }
+        #expect(old == .cancelScheduled(identifier: id))
+        #expect(content.title == "הכתוביות נעצרו")
+        #expect(notice.update(for: .failed(engineFailure(.noInternet)), appIsActive: false, isEnabled: true) == nil)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .withdraw(identifier: id))
+    }
+
+    @Test("a scheduled other-app notice is dropped and sound alerts are scheduled in its place")
+    func otherAppThenSoundAlerts() {
+        var notice = StoppedCaptionsNotice()
+        let id = StoppedCaptionsNotice.identifier
+        _ = notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true)
+        guard case .replace(let old, .schedule(let content, let delay))? = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a cancel plus a schedule")
+            return
+        }
+        #expect(old == .cancelScheduled(identifier: id))
+        #expect(delay == StoppedCaptionsNotice.soundAlertsDelay)
+        #expect(content.title == StoppedCaptionsNotice.soundAlertsNotWorkingTitle)
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) == nil)
+    }
+
+    @Test("a posted failure is withdrawn when the cause becomes another app, which is then scheduled")
+    func failedThenOtherApp() {
+        var notice = StoppedCaptionsNotice()
+        let id = StoppedCaptionsNotice.identifier
+        _ = notice.update(for: .failed(glitch), appIsActive: false, isEnabled: true)
+        guard case .replace(let old, .schedule(_, let delay))? = notice.update(for: .otherAppHasMicrophone, appIsActive: false, isEnabled: true) else {
+            Issue.record("expected a withdraw plus a schedule")
+            return
+        }
+        #expect(old == .withdraw(identifier: id))
+        #expect(delay == StoppedCaptionsNotice.otherAppDelay)
+    }
+
+    @Test("a new cause seen while the app is open is told once the phone is put away")
+    func changedWhileOpen() {
+        var notice = StoppedCaptionsNotice()
+        _ = notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true)
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true) == nil)
+        #expect(notice.update(for: .failed(glitch), appIsActive: true, isEnabled: true) == nil)
+        guard case .post? = notice.update(for: .failed(glitch), appIsActive: false, isEnabled: true) else {
+            Issue.record("the worse cause should be posted")
+            return
+        }
+    }
+
     @Test("the other-app notice says another app is using the microphone and what to do")
     func otherAppWording() {
         let body = StoppedCaptionsNotice.content(for: .otherAppHasMicrophone).body
