@@ -105,7 +105,7 @@ struct LiveCaptionView: View {
     }
 
     private var watchesBattery: Bool {
-        BatteryAdvisor.watches(viewModel.phase, soundsOnly: viewModel.pipeline.soundsOnlyChosen)
+        BatteryAdvisor.watches(viewModel.phase, soundsOnly: viewModel.pipeline.soundsOnlyShown)
     }
 
     private var keepsScreenAwake: Bool {

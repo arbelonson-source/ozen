@@ -253,6 +253,124 @@ struct SoundsOnlyTests {
         #expect(await eventually { pipeline.isListeningForSoundsOnly })
     }
 
+    @Test("sound alerts switched off while the microphone is still being opened never open it", .timeLimit(.minutes(1)))
+    func offWhileOpeningNeverOpens() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        let opening = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        audio.releasePrepare()
+        await opening.value
+        #expect(audio.calls.filter { $0 == "startCapture" }.count == 1)
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(!pipeline.soundsOnlyShown)
+    }
+
+    @Test("sound alerts switched on while the microphone is still being opened do not open it a second time", .timeLimit(.minutes(1)))
+    func onWhileOpeningDoesNotOpenTwice() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        let opening = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        audio.holdPrepare = false
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        try? await Task.sleep(for: .milliseconds(300))
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        await opening.value
+        #expect(audio.calls.filter { $0 == "prepareSession" }.count == 1)
+        #expect(pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("with alerts off between two tries the screen does not say sounds are listened for", .timeLimit(.minutes(1)))
+    func shownFollowsTheAlerts() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in try? await Task.sleep(for: .seconds(3_600)) }
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.soundsOnlyShown)
+        audio.startError = NSError(domain: "FakeAudio", code: 5)
+        audio.onCaptureLost?()
+        var told = 0
+        pipeline.onPhaseChange = { _ in told += 1 }
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!pipeline.soundsOnlyShown)
+        #expect(told >= 1)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(pipeline.soundsOnlyShown)
+    }
+
+    @Test("sound alerts switched off and on again during a retry wait listen again at once", .timeLimit(.minutes(1)))
+    func backOnDuringTheWaitResumesAtOnce() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in try? await Task.sleep(for: .seconds(3_600)) }
+        await pipeline.listenForSoundsOnly()
+        audio.onCaptureLost?()
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("sound alerts switched off while sounds are listened for close the microphone, and on again opens it", .timeLimit(.minutes(1)))
+    func offClosesTheMicrophone() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(audio.calls.last == "stopCapture")
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("an opening left behind by Stop does not keep the next choice from resuming after a lost microphone", .timeLimit(.minutes(1)))
+    func staleOpeningDoesNotBlock() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in try? await Task.sleep(for: .seconds(3_600)) }
+        let stale = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        pipeline.stop()
+        audio.holdPrepare = false
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        audio.onCaptureLost?()
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+        audio.releasePrepare()
+        await stale.value
+    }
+
+    @Test("a second tap while the microphone is still being opened waits for the first and ends nothing", .timeLimit(.minutes(1)))
+    func secondTapWhileOpeningIsIgnored() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        let first = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        audio.holdPrepare = false
+        await pipeline.listenForSoundsOnly()
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        await first.value
+        #expect(audio.calls.filter { $0 == "prepareSession" }.count == 1)
+        #expect(audio.endSessionCalls == 0)
+        #expect(pipeline.isListeningForSoundsOnly)
+    }
+
     @Test("starting captions after sound alerts gave up clears the stopped flag", .timeLimit(.minutes(1)))
     func startingClearsStoppedFlag() async {
         let audio = FakeAudioCapturer()
