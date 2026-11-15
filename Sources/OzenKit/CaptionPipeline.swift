@@ -713,7 +713,7 @@ public final class CaptionPipeline {
                 guard runID == run else { return }
                 let allowCellularNow = (activeSettings?.allowCellularModelDownload ?? allowCellular) || cellularDownloadApproved
                 if let megabytes, ModelDownloadGate.decide(network: network?.current, allowCellular: allowCellularNow) == .waitForWiFi {
-                    why = EngineUnavailability(kind: .waitingForWiFi, detail: "cellular or Low Data Mode after: \(why.detail)", downloadMegabytes: megabytes)
+                    why = EngineUnavailability(kind: .waitingForWiFi, detail: "cellular or Low Data Mode after: \(why.detail)", downloadMegabytes: megabytes, modelWasRemoved: why.modelWasRemoved)
                 }
             }
             fail(.engineUnavailable, detail: why.detail, engineUnavailability: why)

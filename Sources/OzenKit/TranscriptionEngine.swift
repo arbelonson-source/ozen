@@ -176,12 +176,16 @@ public struct EngineUnavailability: Sendable, Equatable, Error {
     public var downloadMegabytes: Int?
     /// For `notEnoughStorage`: how much more room has to be freed, when known.
     public var missingMegabytes: Int?
+    /// The model on the phone was found damaged and removed, so the
+    /// screen can say why it is downloading again.
+    public var modelWasRemoved: Bool
 
-    public init(kind: Kind, detail: String, downloadMegabytes: Int? = nil, missingMegabytes: Int? = nil) {
+    public init(kind: Kind, detail: String, downloadMegabytes: Int? = nil, missingMegabytes: Int? = nil, modelWasRemoved: Bool = false) {
         self.kind = kind
         self.detail = detail
         self.downloadMegabytes = downloadMegabytes
         self.missingMegabytes = missingMegabytes
+        self.modelWasRemoved = modelWasRemoved
     }
 }
 
