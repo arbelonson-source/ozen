@@ -64,7 +64,7 @@ class ScreenReaderRecentScreensDeviceTest {
         show {
             SayScreen(
                 draft = "", onDraft = {}, speaking = false, phrases = phrases.value, canSay = { true }, onSpeak = { true }, onStop = {},
-                onAddPhrase = { phrases.value = phrases.value + it }, onRemovePhrase = {}, onMovePhrase = { _, _ -> }, onRestorePhrases = {},
+                onAddPhrase = { phrases.value = phrases.value + it }, onRemovePhrase = {}, onRestorePhrase = { _, _ -> }, onMovePhrase = { _, _ -> }, onRestorePhrases = {},
                 phrasesAreDefault = false, look = look, captionSize = 30.0, onClose = {},
             )
         }

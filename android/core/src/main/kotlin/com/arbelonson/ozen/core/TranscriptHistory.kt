@@ -150,6 +150,8 @@ data class TranscriptSessionRecord(
      * have none.
      */
     val languageCode: String? = null,
+    /** A recording that was being turned into text when Ozen was closed: it ends where the text had got to. */
+    val cutShort: Boolean = false,
 ) {
     /**
      * The language to show and export this conversation in: its own, or
@@ -202,6 +204,7 @@ data class TranscriptSessionRecord(
         put("segments", JsonArray(segments.map { it.toJsonObject() }))
         title?.let { put("title", it) }
         languageCode?.let { put("languageCode", it) }
+        if (cutShort) put("cutShort", true)
     }.toString()
 
     companion object {
@@ -277,6 +280,7 @@ data class TranscriptSessionRecord(
                 title = lenientHistory { container.optional("title")?.asHistoryString() },
                 // A value the reader cannot make sense of reads as none.
                 languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(::plausibleLanguageCode),
+                cutShort = lenientHistory { container.optional("cutShort")?.asHistoryBoolean() } ?: false,
             )
         }
 

@@ -9,6 +9,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Ozen እያዳመጠ እያለ ስልኩ ሲቆለፍ ወይም Ozen በስክሪኑ ላይ ሳይሆን፣ የአደጋ ወይም አስፈላጊ ድምፅ ማንቂያ ሲኖር የካሜራው መብራት ለ10 ሰከንድ ያህል ብልጭ ብልጭ ይላል፦ ለአደጋ ረጅም ብልጭታዎች፣ ለበር ሁለት አጭር። በጸጥታ ሰዓቶች ውስጥ ብልጭ የሚለው ለአደጋ ብቻ ነው። ስልኩ በስክሪኑ ተደፍቶ ሲቀመጥ በተሻለ ይሠራል። መብራቱ በክፍሉ ያሉ ሌሎች ሰዎችንም ሊቀሰቅስ ይችላል።",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "አንዳንድ ስልኮች ለእያንዳንዱ ማሳወቂያም ብልጭ ማለት ይችላሉ፦ በስልኩ የተደራሽነት ቅንብሮች ውስጥ የብልጭታ ቅንብር ይፈልጉ። ሁለቱም ከበሩ ብልጭታዎቹ ሊቀላቀሉ ይችላሉ፣ ስለዚህ አንዱ በቂ ነው።",
   "Added: %1": "ተጨምሯል፦ %1",
+  "Undo": "ይቀልብሱ",
+  "Deleted: %1": "ተሰርዟል፦ %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "ካፕሽን የቋንቋ ሞዴሉን ይፈልጋል። አንድ ጊዜ ብቻ ይወርዳል፣ መጠኑም ገደማ %1 ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል። የዳታ ገደብ በሌለው Wi‑Fi (የስልክ ሆትስፖት ባልሆነ) ውርዱ ራሱን ችሎ ይጀምራል።",
   "Download the language model over mobile data?": "የቋንቋ ሞዴሉ በሞባይል ዳታ ይውረድ?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "የዳታ ገደብ በሌለው Wi‑Fi ራሱን ችሎ ያወርዳል · አሁን ለማውረድ ይንኩ",
@@ -1090,6 +1092,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "ያለ ማይክሮፎን ካፕሽን የለም። በስልኩ ቅንብሮች ውስጥ ሊፈቀድ ይችላል።",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "ለመጀመሪያ ጊዜ ሲሠራ Ozen የቋንቋ ሞዴሉን ያወርዳል፦ %1፣ %2። ጥቂት ደቂቃዎች ይወስዳል፣ በስክሪኑ ላይም ይታያል። ከዚያ በኋላ ወዲያውኑ ይሠራል።",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "ለማውረድ Wi‑Fi በመጠበቅ ላይ። በሞባይል ዳታ ማውረድ በቅንብሮች ውስጥ ሊፈቀድ ይችላል።",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "ማውረዱ Wi‑Fi ያስፈልገዋል። በሞባይል ዳታ ማውረድ በቅንብሮች ውስጥ ሊፈቀድ ይችላል።",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "ለመጀመሪያ ጊዜ ሲሠራ፣ Ozen የንግግር ሞዴሉን (%1) ያወርዳል። ይህ ጥቂት ደቂቃዎችን ይወስዳል እና በስክሪኑ ላይ ይታያል። ከዚያ በኋላ ወዲያውኑ ይሠራል።",
   "For Hebrew only, so it can’t be chosen in this language.": "ለዕብራይስጥ ብቻ ነው፣ ስለዚህ በዚህ ቋንቋ መምረጥ አይቻልም።",
   "The model in use now (%1) is then removed from the phone to free up space.": "አሁን ጥቅም ላይ ያለው ሞዴል (%1) ቦታ ለማስለቀቅ ከዚያ በኋላ ከስልኩ ይወገዳል።",
@@ -1162,7 +1165,9 @@
   "Star removed": "ኮከቡ ተወግዷል",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል፤ እንደገና ያወርደዋል።",
-  "Tap to download it again": "እንደገና ለማውረድ ይንኩ"
+  "Tap to download it again": "እንደገና ለማውረድ ይንኩ",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen “%1” ከመጨረሱ በፊት ተዘግቷል። እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።",
+  "This recording was cut short: Ozen was closed before it finished.": "ይህ ቅጂ ተቋርጧል፤ Ozen ከመጨረሱ በፊት ተዘግቷል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -1174,6 +1179,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "بينما يستمع Ozen ويكون الهاتف مقفلًا أو لا يكون Ozen على الشاشة، يومض ضوء الكاميرا نحو 10 ثوانٍ عند التنبيه لصوت طارئ أو مهم: ومضات طويلة للطوارئ، وومضتان قصيرتان للباب. في ساعات الهدوء، لا يومض إلا للطوارئ. يعمل بشكل أفضل عندما يكون الهاتف مقلوبًا على وجهه. قد يوقظ الضوء أيضًا أشخاصًا آخرين في الغرفة.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "يمكن لبعض الهواتف أيضًا أن تومض لكل إشعار: ابحثوا عن إعداد للوميض في إعدادات تسهيل الاستخدام في الهاتف. إذا كان الاثنان مفعّلين، فقد تختلط الومضات، لذا يكفي واحد منهما.",
   "Added: %1": "أُضيف: %1",
+  "Undo": "تراجع",
+  "Deleted: %1": "حُذف: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "الترجمة النصية تحتاج إلى نموذج اللغة. يُنزَّل مرة واحدة فقط وحجمه نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات. عبر Wi‑Fi بلا حد للبيانات (لا نقطة اتصال من هاتف) سيبدأ التنزيل من تلقاء نفسه.",
   "Download the language model over mobile data?": "تنزيل نموذج اللغة عبر بيانات الجوال؟",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "يُنزَّل من تلقاء نفسه عبر Wi‑Fi بلا حد للبيانات · المسوا للتنزيل الآن",
@@ -2255,6 +2262,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "بدون ميكروفون لا توجد ترجمة نصية. يمكن السماح بالوصول إليه في إعدادات الهاتف.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "في أول تشغيل سينزّل Ozen نموذج اللغة: %1، %2. يستغرق ذلك بضع دقائق ويظهر على الشاشة. بعد ذلك يعمل فورًا.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "بانتظار Wi‑Fi للتنزيل. يمكن السماح بالتنزيل عبر بيانات الجوال من الإعدادات.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "يحتاج التنزيل إلى Wi‑Fi. يمكن السماح بالتنزيل عبر بيانات الجوال من الإعدادات.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "عند أول تشغيل، سيُنزّل Ozen نموذج الكلام (%1). يستغرق ذلك بضع دقائق ويظهر على الشاشة. بعدها — فورًا.",
   "For Hebrew only, so it can’t be chosen in this language.": "للعبرية فقط، لذا لا يمكن اختياره بهذه اللغة.",
   "The model in use now (%1) is then removed from the phone to free up space.": "سيُحذف حينها من الهاتف النموذج المستخدم الآن (%1) لتوفير مساحة.",
@@ -2327,7 +2335,9 @@
   "Star removed": "أُزيلت النجمة",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen وستنزّله من جديد.",
-  "Tap to download it again": "المسوا لتنزيله مجددًا"
+  "Tap to download it again": "المسوا لتنزيله مجددًا",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "أُغلق Ozen قبل أن ينتهي تحويل «%1». النص الذي كُتب حتى ذلك الحين محفوظ في السجل.",
+  "This recording was cut short: Ozen was closed before it finished.": "توقف تحويل هذا التسجيل قبل اكتماله، لأن Ozen أُغلق قبل أن ينتهي."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -2339,6 +2349,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "当 Ozen 正在聆听，并且手机已锁定或 Ozen 不在屏幕上时，如果有紧急或重要声音的提醒，相机手电筒会闪烁约 10 秒：紧急情况是长闪，门口是两下短闪。在免打扰时段内，只有紧急情况才会闪烁。手机屏幕朝下放置时效果最好。灯光也可能吵醒房间里的其他人。",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "有些手机也可以在每条通知时闪烁：你可以在手机的无障碍设置中找一找闪烁相关的设置。如果两者都打开，闪烁可能会混在一起，所以开一个就够了。",
   "Added: %1": "已添加：%1",
+  "Undo": "撤销",
+  "Deleted: %1": "已删除：%1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "字幕需要语言模型。它只需下载一次，大约 %1。使用移动数据下载可能会花钱或消耗流量套餐。连接没有流量限制的 Wi‑Fi（不是手机热点）时，下载会自动开始。",
   "Download the language model over mobile data?": "要用移动数据下载语言模型吗？",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "连接没有流量限制的 Wi‑Fi 时会自动下载 · 点一下立即下载",
@@ -3420,6 +3432,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "没有麦克风就没有字幕。可以在手机的设置中允许使用麦克风。",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "首次运行时，Ozen 会下载语言模型：%1（%2）。这需要几分钟，并会显示在屏幕上。之后即可立即使用。",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "正在等待连接 Wi‑Fi 后下载。可在设置中允许使用移动数据下载。",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "下载需要连接 Wi‑Fi。可在设置中允许使用移动数据下载。",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "第一次运行时，Ozen 会下载语音模型（%1）。这需要几分钟，屏幕上会显示进度。之后即可立即使用。",
   "For Hebrew only, so it can’t be chosen in this language.": "仅支持希伯来语，当前语言下无法选择。",
   "The model in use now (%1) is then removed from the phone to free up space.": "届时将从手机中删除当前使用的模型（%1），以腾出空间。",
@@ -3492,7 +3505,9 @@
   "Star removed": "已取消星标",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "这部手机上的语音模型已损坏，Ozen 已将其删除，并会重新下载。",
-  "Tap to download it again": "点按重新下载"
+  "Tap to download it again": "点按重新下载",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "在“%1”转写完成之前，Ozen 已被关闭。到那时为止写下的文字已保存在历史记录中。",
+  "This recording was cut short: Ozen was closed before it finished.": "这段录音的转写中途中断：Ozen 在转写完成之前已被关闭。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -3504,6 +3519,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Pendant qu’Ozen écoute et que le téléphone est verrouillé ou qu’Ozen n’est pas à l’écran, la lampe de l’appareil photo clignote pendant environ 10 secondes lors d’une alerte pour un son d’urgence ou important : de longs éclairs pour une urgence, deux courts pour la porte. Pendant les heures calmes, seules les urgences font clignoter la lampe. Fonctionne mieux avec le téléphone posé écran vers le bas. La lumière peut aussi réveiller d’autres personnes dans la pièce.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Certains téléphones peuvent aussi clignoter pour chaque notification : cherchez un réglage de clignotement dans les paramètres d’accessibilité du téléphone. Si les deux sont activés, les clignotements peuvent se mélanger : un seul suffit donc.",
   "Added: %1": "Ajouté : %1",
+  "Undo": "Annuler",
+  "Deleted: %1": "Supprimé : %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Les sous-titres ont besoin du modèle de langue. Il se télécharge une seule fois et pèse environ %1. Via les données mobiles, cela peut coûter de l’argent ou utiliser votre forfait. Sur un Wi‑Fi sans limite de données (pas le partage de connexion d’un téléphone), le téléchargement démarrera tout seul.",
   "Download the language model over mobile data?": "Télécharger le modèle de langue via les données mobiles ?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Se télécharge seul sur un Wi‑Fi sans limite de données · Touchez pour télécharger maintenant",
@@ -4585,6 +4602,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Sans microphone, il n’y a pas de sous-titres. L’accès au microphone peut être autorisé dans les Réglages du téléphone.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "Au premier lancement, Ozen téléchargera le modèle de langue : %1, %2. Cela prend quelques minutes et s’affiche à l’écran. Ensuite, c’est instantané.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "En attente du Wi‑Fi pour le télécharger. Les téléchargements en données mobiles peuvent être autorisés dans les Réglages.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "Le téléchargement nécessite le Wi‑Fi. Les téléchargements en données mobiles peuvent être autorisés dans les Réglages.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "La première fois, Ozen téléchargera le modèle vocal (%1). Cela prend quelques minutes et s’affiche à l’écran. Ensuite, c’est instantané.",
   "For Hebrew only, so it can’t be chosen in this language.": "Réservé à l’hébreu, il ne peut donc pas être choisi dans cette langue.",
   "The model in use now (%1) is then removed from the phone to free up space.": "Le modèle utilisé actuellement (%1) sera alors supprimé du téléphone pour libérer de la place.",
@@ -4657,7 +4675,9 @@
   "Star removed": "Étoile retirée",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau.",
-  "Tap to download it again": "Touchez pour le télécharger de nouveau"
+  "Tap to download it again": "Touchez pour le télécharger de nouveau",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen a été fermé avant la fin de « %1 ». Le texte écrit jusque-là est enregistré dans l’historique.",
+  "This recording was cut short: Ozen was closed before it finished.": "Cet enregistrement a été interrompu : Ozen a été fermé avant la fin."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -4669,6 +4689,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Während Ozen zuhört und das Telefon gesperrt ist oder Ozen nicht auf dem Bildschirm ist, blinkt das Kameralicht etwa 10 Sekunden lang, wenn ein Notfallton oder ein wichtiger Ton einen Hinweis auslöst: lang bei einem Notfall, zweimal kurz für die Tür. Während der Ruhezeiten blinkt es nur bei Notfällen. Am besten liegt das Telefon mit dem Bildschirm nach unten. Das Licht kann auch andere im Raum wecken.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Manche Telefone können auch bei jeder Benachrichtigung blinken: Suchen Sie in den Bedienungshilfen des Telefons nach einer Einstellung zum Blinken. Sind beide an, kann sich das Blinken vermischen, eine genügt also.",
   "Added: %1": "Hinzugefügt: %1",
+  "Undo": "Rückgängig",
+  "Deleted: %1": "Gelöscht: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Für Untertitel wird das Sprachmodell gebraucht. Es wird einmal heruntergeladen und ist etwa %1 groß. Über mobile Daten kann das Geld kosten oder Ihr Datenvolumen aufbrauchen. Über WLAN ohne Datenlimit (kein Hotspot eines Handys) startet der Download von allein.",
   "Download the language model over mobile data?": "Das Sprachmodell über mobile Daten herunterladen?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Lädt über WLAN ohne Datenlimit von allein herunter · Zum sofortigen Download tippen",
@@ -5750,6 +5772,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Ohne Mikrofon gibt es keine Untertitel. Der Zugriff auf das Mikrofon kann in den Telefoneinstellungen erlaubt werden.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "Beim ersten Start lädt Ozen das Sprachmodell herunter: %1, %2. Das dauert ein paar Minuten und wird auf dem Bildschirm angezeigt. Danach geht es sofort.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "Wartet auf WLAN für den Download. Downloads über mobile Daten können Sie in den Einstellungen erlauben.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "Der Download braucht WLAN. Downloads über mobile Daten können Sie in den Einstellungen erlauben.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "Beim ersten Start lädt Ozen das Sprachmodell (%1) herunter. Das dauert ein paar Minuten und wird auf dem Bildschirm angezeigt. Danach geht es sofort.",
   "For Hebrew only, so it can’t be chosen in this language.": "Nur für Hebräisch, daher in dieser Sprache nicht wählbar.",
   "The model in use now (%1) is then removed from the phone to free up space.": "Das jetzt verwendete Modell (%1) wird dann vom Telefon gelöscht, um Platz zu schaffen.",
@@ -5822,7 +5845,9 @@
   "Star removed": "Stern entfernt",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt und lädt es erneut herunter.",
-  "Tap to download it again": "Zum erneuten Laden tippen"
+  "Tap to download it again": "Zum erneuten Laden tippen",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen wurde beendet, bevor „%1“ fertig war. Der bis dahin geschriebene Text ist im Verlauf gespeichert.",
+  "This recording was cut short: Ozen was closed before it finished.": "Diese Aufnahme wurde abgebrochen: Ozen wurde beendet, bevor sie fertig war."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -5834,6 +5859,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "जब Ozen सुन रहा हो और फ़ोन लॉक हो या Ozen स्क्रीन पर न हो, तब किसी आपातकालीन या ज़रूरी आवाज़ का अलर्ट आने पर कैमरे की लाइट लगभग 10 सेकंड तक फ़्लैश होती है: आपातकाल के लिए लंबी चमक, दरवाज़े के लिए दो छोटी। शांत घंटों में सिर्फ़ आपातकाल के लिए फ़्लैश होती है। फ़ोन को स्क्रीन नीचे की ओर करके रखने पर यह सबसे अच्छा काम करती है। रोशनी कमरे में मौजूद दूसरे लोगों को भी जगा सकती है।",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "कुछ फ़ोन हर सूचना के लिए भी फ़्लैश कर सकते हैं: फ़ोन की ऐक्सेसिबिलिटी सेटिंग्स में फ़्लैश की सेटिंग देखें। अगर दोनों चालू हों, तो फ़्लैश आपस में मिल सकते हैं, इसलिए एक ही काफ़ी है।",
   "Added: %1": "जोड़ा गया: %1",
+  "Undo": "पूर्ववत करें",
+  "Deleted: %1": "हटाया गया: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "कैप्शन के लिए भाषा का मॉडल ज़रूरी है। यह एक बार डाउनलोड होता है और लगभग %1 का है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है। बिना डेटा सीमा वाले Wi‑Fi पर (फ़ोन का हॉटस्पॉट नहीं) डाउनलोड खुद शुरू हो जाएगा।",
   "Download the language model over mobile data?": "भाषा का मॉडल मोबाइल डेटा पर डाउनलोड करें?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "बिना डेटा सीमा वाले Wi‑Fi पर खुद डाउनलोड होता है · अभी डाउनलोड करने के लिए टैप करें",
@@ -6915,6 +6942,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "बिना माइक्रोफ़ोन के कोई कैप्शन नहीं। फ़ोन की सेटिंग्स में इसकी अनुमति दी जा सकती है।",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "पहली बार चलने पर Ozen भाषा का मॉडल डाउनलोड करेगा: %1, %2। इसमें कुछ मिनट लगते हैं और यह स्क्रीन पर दिखता है। इसके बाद तुरंत चलता है।",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "डाउनलोड के लिए Wi‑Fi का इंतज़ार है। मोबाइल डेटा से डाउनलोड सेटिंग्स में चालू किए जा सकते हैं।",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "डाउनलोड के लिए Wi‑Fi चाहिए। मोबाइल डेटा से डाउनलोड सेटिंग्स में चालू किए जा सकते हैं।",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "पहली बार चलने पर, Ozen स्पीच मॉडल (%1) डाउनलोड करेगा। इसमें कुछ मिनट लगते हैं और यह स्क्रीन पर दिखता है। उसके बाद यह तुरंत चलता है।",
   "For Hebrew only, so it can’t be chosen in this language.": "यह सिर्फ़ हिब्रू के लिए है, इसलिए इस भाषा में इसे चुना नहीं जा सकता।",
   "The model in use now (%1) is then removed from the phone to free up space.": "अभी उपयोग में आ रहा मॉडल (%1) तब जगह खाली करने के लिए फ़ोन से हटा दिया जाएगा।",
@@ -6987,7 +7015,9 @@
   "Star removed": "तारा हटाया गया",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया और फिर से डाउनलोड करेगा।",
-  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें"
+  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "“%1” पूरा होने से पहले Ozen बंद हो गया। तब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।",
+  "This recording was cut short: Ozen was closed before it finished.": "यह रिकॉर्डिंग अधूरी रह गई: पूरी होने से पहले Ozen बंद हो गया।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -6999,6 +7029,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Enquanto o Ozen está a ouvir e o telemóvel está bloqueado ou o Ozen não está no ecrã, a luz da câmara pisca durante cerca de 10 segundos quando há um aviso de um som de emergência ou importante: piscadelas longas para uma emergência, duas curtas para a porta. Nas horas de silêncio, só pisca para emergências. Funciona melhor com o telemóvel virado para baixo. A luz também pode acordar outras pessoas no quarto.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Alguns telemóveis também podem piscar para cada notificação: procure uma definição de piscar nas definições de Acessibilidade do telemóvel. Se ambas estiverem ativas, as piscadelas podem misturar-se, por isso basta uma.",
   "Added: %1": "Adicionado: %1",
+  "Undo": "Desfazer",
+  "Deleted: %1": "Eliminado: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "As legendas precisam do modelo de idioma. É transferido uma só vez e tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados. Numa rede Wi‑Fi sem limite de dados (que não seja o hotspot de um telemóvel) a transferência começa sozinha.",
   "Download the language model over mobile data?": "Transferir o modelo de idioma com dados móveis?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "É transferido sozinho numa rede Wi‑Fi sem limite de dados · Toque para transferir agora",
@@ -8080,6 +8112,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Sem microfone não há legendas. O acesso ao microfone pode ser autorizado nas Definições do telemóvel.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "Na primeira vez que corre, o Ozen vai transferir o modelo de idioma: %1, %2. Isto demora alguns minutos e aparece no ecrã. Depois, é instantâneo.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "À espera de Wi‑Fi para o transferir. As transferências com dados móveis podem ser permitidas nas Definições.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "A transferência precisa de Wi‑Fi. As transferências com dados móveis podem ser permitidas nas Definições.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "Na primeira vez que corre, o Ozen vai transferir o modelo de fala (%1). Isto demora alguns minutos e aparece no ecrã. Depois, é instantâneo.",
   "For Hebrew only, so it can’t be chosen in this language.": "Apenas para hebraico, por isso não pode ser escolhido neste idioma.",
   "The model in use now (%1) is then removed from the phone to free up space.": "O modelo atualmente em uso (%1) será então removido do telemóvel para libertar espaço.",
@@ -8152,7 +8185,9 @@
   "Star removed": "Estrela removida",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o e vai transferi-lo de novo.",
-  "Tap to download it again": "Toque para o transferir novamente"
+  "Tap to download it again": "Toque para o transferir novamente",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "O Ozen foi fechado antes de “%1” terminar. O texto escrito até então está guardado no histórico.",
+  "This recording was cut short: Ozen was closed before it finished.": "Esta gravação foi interrompida: o Ozen foi fechado antes de terminar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -8164,6 +8199,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Пока Ozen слушает, а телефон заблокирован или Ozen не на экране, фонарик камеры мигает около 10 секунд при оповещении об экстренном или важном звуке: длинные вспышки при экстренной ситуации, две короткие — для двери. В тихие часы он мигает только при экстренных ситуациях. Лучше всего работает, когда телефон лежит экраном вниз. Свет может разбудить и других людей в комнате.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Некоторые телефоны могут мигать и при каждом уведомлении: поищите настройку вспышки в разделе «Специальные возможности» телефона. Если включены обе, вспышки могут смешиваться, поэтому достаточно одной.",
   "Added: %1": "Добавлено: %1",
+  "Undo": "Отменить",
+  "Deleted: %1": "Удалено: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитров нужна языковая модель. Она загружается один раз, её размер около %1. Через мобильный интернет это может стоить денег или израсходовать ваш пакет данных. По Wi‑Fi без ограничения трафика (не точка доступа с телефона) загрузка начнётся сама.",
   "Download the language model over mobile data?": "Загрузить языковую модель через мобильный интернет?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Загрузится сама по Wi‑Fi без ограничения трафика · Нажмите, чтобы загрузить сейчас",
@@ -9245,6 +9282,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Без микрофона нет субтитров. Доступ к нему можно разрешить в настройках телефона.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "При первом запуске Ozen загрузит языковую модель: %1, %2. Это займёт несколько минут и будет показано на экране. Потом всё работает мгновенно.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "Ждёт Wi‑Fi для загрузки. Загрузку по мобильной сети можно разрешить в настройках.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "Для загрузки нужен Wi‑Fi. Загрузку по мобильной сети можно разрешить в настройках.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "При первом запуске Ozen загрузит речевую модель (%1). Это займёт несколько минут и отобразится на экране. После этого — мгновенно.",
   "For Hebrew only, so it can’t be chosen in this language.": "Только для иврита, поэтому для этого языка её нельзя выбрать.",
   "The model in use now (%1) is then removed from the phone to free up space.": "Используемая сейчас модель (%1) после этого будет удалена с телефона, чтобы освободить место.",
@@ -9317,7 +9355,9 @@
   "Star removed": "Звёздочка убрана",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Речевая модель на этом телефоне была повреждена, поэтому Ozen удалил её и загрузит заново.",
-  "Tap to download it again": "Нажмите, чтобы загрузить её снова"
+  "Tap to download it again": "Нажмите, чтобы загрузить её снова",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрылся, не дождавшись конца расшифровки «%1». Текст, написанный к этому моменту, сохранён в истории.",
+  "This recording was cut short: Ozen was closed before it finished.": "Расшифровка этой записи оборвалась: Ozen закрылся до её завершения."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -9329,6 +9369,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Mientras Ozen escucha y el teléfono está bloqueado o Ozen no está en pantalla, la linterna de la cámara parpadea unos 10 segundos cuando hay una alerta de un sonido de emergencia o importante: destellos largos para una emergencia, dos cortos para la puerta. En las horas tranquilas, solo parpadea con las emergencias. Funciona mejor con el teléfono boca abajo. La luz también puede despertar a otras personas de la habitación.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Algunos teléfonos también pueden parpadear con cada notificación: busca un ajuste de parpadeo en los ajustes de accesibilidad del teléfono. Si los dos están activados, los destellos pueden mezclarse, así que basta con uno.",
   "Added: %1": "Añadido: %1",
+  "Undo": "Deshacer",
+  "Deleted: %1": "Eliminado: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Los subtítulos necesitan el modelo de idioma. Se descarga una sola vez y pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos. Con un Wi‑Fi sin límite de datos (no el punto de acceso de un móvil), la descarga empezará sola.",
   "Download the language model over mobile data?": "¿Descargar el modelo de idioma con datos móviles?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Se descarga solo con un Wi‑Fi sin límite de datos · Toca para descargar ahora",
@@ -10410,6 +10452,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Sin micrófono no hay subtítulos. El acceso al micrófono se puede permitir en los Ajustes del teléfono.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "La primera vez que se use, Ozen descargará el modelo de idioma: %1, %2. Tarda unos minutos y se muestra en la pantalla. Después, al instante.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "Esperando una red Wi‑Fi para descargarlo. Las descargas con datos móviles se pueden permitir en Ajustes.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "La descarga necesita una red Wi‑Fi. Las descargas con datos móviles se pueden permitir en Ajustes.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "La primera vez, Ozen descargará el modelo de voz (%1). Esto tarda unos minutos y se muestra en pantalla. Después, al instante.",
   "For Hebrew only, so it can’t be chosen in this language.": "Solo para hebreo, así que no se puede elegir en este idioma.",
   "The model in use now (%1) is then removed from the phone to free up space.": "El modelo que se usa ahora (%1) se eliminará entonces del teléfono para liberar espacio.",
@@ -10482,7 +10525,9 @@
   "Star removed": "Estrella quitada",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó y lo descargará de nuevo.",
-  "Tap to download it again": "Toca para descargarlo de nuevo"
+  "Tap to download it again": "Toca para descargarlo de nuevo",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen se cerró antes de que terminara «%1». El texto escrito hasta entonces está guardado en el historial.",
+  "This recording was cut short: Ozen was closed before it finished.": "Esta grabación quedó cortada: Ozen se cerró antes de que terminara."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -10494,6 +10539,8 @@
   "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Поки Ozen слухає, а телефон заблоковано або Ozen не на екрані, ліхтарик камери блимає близько 10 секунд під час сповіщення про екстрений або важливий звук: довгі спалахи для екстреної ситуації, два короткі — для дверей. У тихі години він блимає лише для екстрених ситуацій. Найкраще працює, коли телефон лежить екраном донизу. Світло може розбудити й інших людей у кімнаті.",
   "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Деякі телефони можуть блимати й для кожного сповіщення: пошукайте налаштування спалаху в розділі «Спеціальні можливості» телефона. Якщо ввімкнено обидва, спалахи можуть змішуватися, тож досить одного.",
   "Added: %1": "Додано: %1",
+  "Undo": "Скасувати",
+  "Deleted: %1": "Видалено: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитрів потрібна мовна модель. Вона завантажується один раз і важить близько %1. Через мобільний інтернет це може коштувати грошей або витратити ваш пакет даних. Через Wi‑Fi без обмеження трафіку (не точка доступу з телефона) завантаження почнеться само.",
   "Download the language model over mobile data?": "Завантажити мовну модель через мобільний інтернет?",
   "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Завантажиться сама через Wi‑Fi без обмеження трафіку · Натисніть, щоб завантажити зараз",
@@ -11575,6 +11622,7 @@
   "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings.": "Без мікрофона немає субтитрів. Доступ до нього можна дозволити в налаштуваннях телефону.",
   "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.": "Під час першого запуску Ozen завантажить мовну модель: %1, %2. Це займе кілька хвилин і буде показано на екрані. Далі все працює миттєво.",
   "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.": "Чекає на Wi‑Fi для завантаження. Завантаження через мобільні дані можна дозволити в налаштуваннях.",
+  "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings.": "Для завантаження потрібен Wi‑Fi. Завантаження через мобільні дані можна дозволити в налаштуваннях.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.": "Під час першого запуску Ozen завантажить мовну модель (%1). Це триватиме кілька хвилин і відображатиметься на екрані. Після цього — миттєво.",
   "For Hebrew only, so it can’t be chosen in this language.": "Лише для івриту, тож для цієї мови її не можна вибрати.",
   "The model in use now (%1) is then removed from the phone to free up space.": "Модель, яка зараз використовується (%1), після цього буде видалено з телефону, щоб звільнити місце.",
@@ -11647,6 +11695,8 @@
   "Star removed": "Зірочку прибрано",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Мовну модель на цьому телефоні було пошкоджено, тому Ozen видалив її й завантажить знову.",
-  "Tap to download it again": "Натисніть, щоб завантажити її знову"
+  "Tap to download it again": "Натисніть, щоб завантажити її знову",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрився, не дочекавшись кінця розшифрування «%1». Текст, написаний до цього моменту, збережено в історії.",
+  "This recording was cut short: Ozen was closed before it finished.": "Розшифрування цього запису обірвалося: Ozen закрився до його завершення."
  }
 }

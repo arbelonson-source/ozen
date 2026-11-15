@@ -14,6 +14,7 @@ import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.FileTranscription.Working.Stage
 import com.arbelonson.ozen.core.FileTranscriptionJob
 import com.arbelonson.ozen.core.FileTranscriptionProblem
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.ModelDownloadGate
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
@@ -69,6 +70,21 @@ class FileTranscriber(
     private val work = FileTranscriptionJob(shown, scope, Dispatchers.Default)
 
     internal val busyNotice = BusyNotice()
+
+    private val interrupted = MutableStateFlow<String?>(null)
+
+    /** Set once at launch when a recording was cut short by the app being ended; the screen says so and clears it. */
+    val interruptedNote: StateFlow<String?> = interrupted
+
+    fun interruptedNoteShown() {
+        interrupted.value = null
+    }
+
+    init {
+        scope.launch(Dispatchers.IO) {
+            captions.fileKeeper.recoverInterrupted()?.let { interrupted.value = it.name ?: tr("הקלטה", "Recording") }
+        }
+    }
 
     val busy: Boolean get() = shown.value is FileTranscription.Working
 
@@ -203,6 +219,8 @@ class FileTranscriber(
             throw Problem(FileTranscriptionProblem.of(failure))
         }
         var scorer: SileroVoiceScorer? = null
+        var kept = false
+        captions.fileKeeper.begin(name, ready.durationSeconds, model.variant, ready.language.languageCode)
         val passes = Executors.newSingleThreadExecutor { Thread(it, "ozen-recording-pass") }
         try {
             scorer = SileroVoiceScorer.fromAssets(context) ?: throw Problem(FileTranscriptionProblem.ModelFailed)
@@ -210,10 +228,13 @@ class FileTranscriber(
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
             val transcript = transcribe(uri, model, scorer, linePass)
             val lines = transcript.lines.map { it.copy(text = WordFixes.apply(current.wordFixes, it.text)) }
-            val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, languageCode = ready.language.languageCode)
+            val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, id = captions.fileKeeper.id, languageCode = ready.language.languageCode)
             val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
+            kept = true
+            if (history !is HistorySave.Failed) captions.fileKeeper.finished()
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
         } finally {
+            if (!kept) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
             scorer?.close()
             loaded.release()
             passes.shutdown()
@@ -237,7 +258,12 @@ class FileTranscriber(
         var heard = 0L
         val take: suspend (SpeechStretch, FloatArray) -> Unit = { stretch, window ->
             val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
-            if (text.isNotEmpty()) lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
+            if (text.isNotEmpty()) {
+                lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
+                val fixes = settings.current.value.wordFixes
+                val soFar = lines.map { it.copy(text = WordFixes.apply(fixes, it.text)) }
+                withContext(Dispatchers.IO) { captions.fileKeeper.linesSoFar(soFar) }
+            }
         }
         fun report() {
             val done = heard.toDouble() / SAMPLE_RATE

@@ -79,4 +79,33 @@ class PhoneModelDeletionTest {
         assertTrue(model.exists())
         assertFalse(part.exists())
     }
+
+    @Test
+    fun `a model whose download is running is refused and its part file stays`() {
+        val dir = root()
+        val target = File(dir, general)
+        val started = java.util.concurrent.CountDownLatch(1)
+        val hold = java.util.concurrent.CountDownLatch(1)
+        val fetcher = object : ReleaseFileFetching {
+            override fun fetch(url: java.net.URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                appendingTo.writeBytes(ByteArray(7))
+                started.countDown()
+                hold.await(10, java.util.concurrent.TimeUnit.SECONDS)
+                throw java.io.IOException("test download stopped")
+            }
+
+            override fun sha256(file: File): String = ""
+        }
+        val source = PhoneModelSource(java.net.URI("https://example.invalid/m.bin"), 100, "00")
+        val downloading = kotlin.concurrent.thread { runCatching { PhoneModelDownloader(target, source, fetcher).download {} } }
+        try {
+            assertTrue(started.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            val result = PhoneModelDeletion(dir, hebrew).delete(general)
+            assertEquals(PhoneModelDeletion.Result.Refused, result)
+            assertTrue(File(dir, "$general.part").exists())
+        } finally {
+            hold.countDown()
+            downloading.join(10_000)
+        }
+    }
 }

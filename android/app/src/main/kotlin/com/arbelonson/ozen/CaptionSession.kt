@@ -71,6 +71,7 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerProfile
+import com.arbelonson.ozen.core.FileTranscriptKeeper
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -198,6 +199,11 @@ class CaptionSession(
         retryWait = RetryWait(SystemClock::elapsedRealtime, retryAwake::keepAwake),
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
+    internal val fileKeeper = FileTranscriptKeeper(
+        historyStore,
+        File(historyFolder.absoluteFile.parentFile, "file-transcription-in-progress.txt"),
+        historyOn = { settings.current.value.saveHistory },
+    )
     private val attention = KeywordAttention()
     private val announcer = CaptionAnnouncer()
     private val awayAlerts = AwayAlerts()
@@ -822,6 +828,10 @@ class CaptionSession(
 
     fun removeQuickPhrase(phrase: String) {
         settings.change { it.quickPhrases = QuickPhrases.removing(phrase, it.quickPhrases, Localization.language) }
+    }
+
+    fun restoreQuickPhrase(phrase: String, at: Int) {
+        settings.change { it.quickPhrases = QuickPhrases.restoring(phrase, at, it.quickPhrases, Localization.language) }
     }
 
     fun moveQuickPhrase(phrase: String, by: Int) {
