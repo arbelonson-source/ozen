@@ -258,18 +258,19 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
             ) {
                 TonalButton(tr("ביטול", "Cancel"), onClick = onCancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
             }
-            if (another) {
-                Text(
-                    BUSY_LINE,
-                    modifier = Modifier.testTag("transcribe-busy").semantics { liveRegion = LiveRegionMode.Polite },
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
             Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     OzenScreen(working.name, closeLabel = "", scrolls = false) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Outside the caption list, so it stays composed (and announced) while the lines scroll.
+        if (another) {
+            Text(
+                BUSY_LINE,
+                modifier = Modifier.testTag("transcribe-busy").semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             // The progress stays put above the newest lines while they leave
             // room for two lines. At the largest text on a small phone the
             // progress alone fills the page (and squeezed Cancel), so there

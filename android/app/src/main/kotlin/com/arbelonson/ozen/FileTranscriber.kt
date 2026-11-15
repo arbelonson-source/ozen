@@ -230,7 +230,7 @@ class FileTranscriber(
     private class Transcript(val lines: List<TranscribedLine>, val endMissing: Boolean)
 
     private suspend fun transcribe(uri: Uri, model: PhoneModel, scorer: SileroVoiceScorer, linePass: FileLinePass): Transcript {
-        var endMissing = false
+        var end = DecodeEnd.Whole
         val clock = TimeSource.Monotonic.markNow()
         val cutter = FileSpeechCutter(linePass.longestStretchSeconds) { chunk -> scorer.frames(chunk) ?: throw Problem(FileTranscriptionProblem.ModelFailed) }
         val lines = ArrayList<TranscribedLine>()
@@ -249,7 +249,7 @@ class FileTranscriber(
         coroutineScope {
             val pieces = Channel<FloatArray>(PIECES_AHEAD)
             launch(Dispatchers.IO) {
-                endMissing = DecodeFeed.run(pieces) { onPiece -> AudioFileDecoder.decode(context, uri, onPiece = onPiece) }
+                end = DecodeFeed.run(pieces) { onPiece -> AudioFileDecoder.decode(context, uri, onPiece = onPiece) }
             }
             try {
                 for (piece in pieces) {
@@ -262,8 +262,8 @@ class FileTranscriber(
             }
         }
         cutter.finish(take)
-        if (lines.isEmpty()) throw Problem(FileTranscriptionProblem.NoSpeech)
-        return Transcript(lines, endMissing)
+        if (lines.isEmpty()) throw Problem(DecodeFeed.problemWithoutText(end))
+        return Transcript(lines, end != DecodeEnd.Whole)
     }
 
     private companion object {
