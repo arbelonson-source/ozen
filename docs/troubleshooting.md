@@ -67,7 +67,7 @@ leaves the rest of the journal.
 | "Paused" (mushhe) | Paused by a tap. | Tap it to continue. |
 | "The phone is talking" (ha-telefon medaber) | The phone is saying a typed reply aloud; captions pause so they don't caption it. | Nothing. They continue by themselves when it finishes. Tapping it stops the phone talking. |
 | "Captions are off" (ha-ktuviyot kvuyot) | Stopped (for example by Siri). | Tap it to start. |
-| "Captions paused for a call or another app" (ha-ktuviyot mushhot biglal sicha o aplikatzia acheret) | A phone call or another app has the microphone (an app recording a voice message, for example). | Nothing. They come back once the call ends or the other app lets go of the microphone; tapping it tries right away. If they don't, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
+| "Captions paused for a call or another app" (ha-ktuviyot mushhot biglal sicha o aplikatzia acheret) | A phone call or another app has the microphone (an app recording a voice message, for example). | Nothing. They come back once the call ends or the other app lets go of the microphone; tapping it tries right away. If the other app (not a phone call) keeps the microphone for a minute while the phone is away from Ozen, a notification "Captions paused" (ha-ktuviyot mushhot) says that captions and sound alerts are paused; Ozen does not take the microphone back by itself, so open Ozen. If they don't come back after a call, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
 | "Downloading the language model · N%" (moridim et model ha-dibur · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
 | "Waiting for Wi-Fi to download the language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular data. On Android the button adds “Downloads on its own on Wi-Fi without a data limit” (a phone hotspot does not count) and the tap offers the download over mobile data. Where the phone's built-in recognition works on the phone for your language, the tap also offers captions with it until the model is ready (see the "built-in recognition" lines above). |
 | "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (iPhone: Settings → General → iPhone Storage; on an iPad it is iPad Storage; Android: the phone's Settings → Storage, or Delete a model you don't use in Settings → Speech model on the phone), then open Ozen again and it starts by itself. Or tap to pick a smaller model. On an iPhone you can also switch to Apple's engine, which needs no download. |
@@ -85,6 +85,28 @@ leaves the rest of the journal.
 | "Cloud transcription's budget ran out" (nigmar ha-kredit le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
 | "No internet connection" (ein chibur la-internet) | Cloud captions can't reach the internet, and no Whisper model is on the phone to take over. | Check Wi-Fi or cellular data. It retries by itself; or switch to Whisper, which works offline. |
 | "Trying again on its own · Tap to try now" (menasim shuv otomatit · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
+
+## Sound alerts aren’t working
+
+If sound alerts are on and the part of Ozen that recognizes sounds keeps
+failing, a red banner at the top of the caption screen says "Sound alerts
+aren’t working". It says the phone may miss a doorbell, an alarm or a baby
+crying. It has no Close button: it goes away by itself once sound alerts
+work again. Ozen keeps trying meanwhile. Both phones do this.
+
+If the phone is away from Ozen (locked, or another app open) and this lasts
+a minute, a notification with the same words arrives. What to do:
+
+- Open Ozen and leave it open for a little while.
+- If the banner stays, restart the phone, then open Ozen.
+- Check whether another app is using the microphone (a recorder, a call
+  app, a voice assistant). Close it, and open Ozen.
+- Until the banner is gone, do not count on sound alerts: a doorbell or a
+  smoke alarm may not be announced.
+
+Captions are not affected by this banner. A different notice,
+"Captions paused" (a minute after another app took the microphone), is
+described in the status button table above.
 
 ## The home computer (Settings → Home computer → Test connection)
 
@@ -229,7 +251,8 @@ says where to look on the common ones.
   Android the place is Settings → Speech model on the phone, where each model
   has a Delete button and an accuracy score.
 - **Some words are in a different color.** Numbers (a time, how many pills,
-  a phone number) stand out so they aren't missed: yellow among white text,
+  a phone number), written in digits or spoken as words (when the captions are
+  in Hebrew or English: "three pills at ten thirty"), stand out so they aren't missed: yellow among white text,
   white among yellow text, dark blue on a white background. Settings → Display (tetzuga) →
   "Bold numbers" (hadgashat misparim) turns it off.
 - **One person gets two speaker numbers, or two people share one.** Voices
