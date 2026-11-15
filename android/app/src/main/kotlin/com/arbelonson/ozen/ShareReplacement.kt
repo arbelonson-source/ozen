@@ -26,9 +26,15 @@ internal class ShareReplacement<T : Any> {
         held.value = null
     }
 
-    fun follow(shown: FileTranscription) {
-        if (shown.leavingLosesText) return
+    fun declined() {
         opening = false
+    }
+
+    fun follow(shown: FileTranscription): T? {
+        if (shown.leavingLosesText) return null
+        val file = held.value
         held.value = null
+        opening = file != null
+        return file
     }
 }
