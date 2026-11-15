@@ -181,7 +181,7 @@ internal fun AwayAlertsBlockedBanner(onOpenSettings: () -> Unit) {
         AwayAlertsNotice.detail(),
         Modifier
             .clickable(role = Role.Button, onClick = onOpenSettings)
-            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
 

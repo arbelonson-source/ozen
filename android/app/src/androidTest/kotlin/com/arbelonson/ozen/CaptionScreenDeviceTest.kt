@@ -2452,6 +2452,7 @@ class CaptionScreenDeviceTest {
             comeBackToTheScreen()
             compose.onNodeWithText(title).assertExists()
             compose.onNodeWithText("Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.").assertExists()
+            compose.onNodeWithText(title).assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
             compose.onNode(hasContentDescription("Close") and hasAnyAncestor(hasText(title))).assertDoesNotExist()
 
             compose.runOnUiThread { app.settings.change { it.notifyWhenInBackground = false } }
