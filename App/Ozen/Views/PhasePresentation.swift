@@ -154,6 +154,9 @@ struct PhasePresentation {
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerRejected:
             self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.rejectedCoverDetail(detail: coverDetail), systemImage: "waveform", tint: .green, action: .pause)
 
+        case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerUnreachable && HomeServer.addressCoverDetail(detail: coverDetail) != nil:
+            self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.addressCoverDetail(detail: coverDetail), systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud && coveredEngine == .homeServer:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
@@ -164,6 +167,9 @@ struct PhasePresentation {
         // cases, which can last days until someone fixes them, and nothing
         // else on the caption screen pauses, so she couldn't turn captions
         // off for a private moment. Settings is one tap away on its button.
+        case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudKeyNeeded && coverDetail == CloudSpeechError.keyRejectedDetail:
+            self.init(title: tr("מאזינה", "Listening"), detail: CloudKeyCheck.rejected.message + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudKeyNeeded:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
@@ -374,6 +380,14 @@ struct PhasePresentation {
                 tint: .red,
                 action: .retry
             )
+        case .cloudKeyNeeded where engineFailure?.cloudKeyWasRejected == true:
+            self.init(
+                title: CloudKeyCheck.rejected.message,
+                detail: tr("בקשו ממי שהגדיר את הטלפון לתקן את זה · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to fix it · Tap for Settings"),
+                systemImage: "key",
+                tint: .orange,
+                action: .openEngineSettings
+            )
         case .cloudKeyNeeded:
             self.init(
                 title: tr("התמלול בענן לא מוגדר", "Cloud transcription isn’t set up"),
@@ -398,6 +412,8 @@ struct PhasePresentation {
                 tint: .orange,
                 action: .openEngineSettings
             )
+        case .noInternet where engineFailure?.cloudTimedOut == true:
+            self.init(title: CaptionProblemText.temporarilyUnavailable(engine: engine), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "clock", tint: .orange, action: .retry)
         case .noInternet:
             self.init(
                 title: tr("אין חיבור לאינטרנט", "No internet connection"),
@@ -405,6 +421,14 @@ struct PhasePresentation {
                 systemImage: "wifi.slash",
                 tint: .orange,
                 action: .retry
+            )
+        case .homeServerUnreachable where HomeServer.missingAddress(engineFailure):
+            self.init(
+                title: HomeServer.rejectionTitle(detail: engineFailure?.detail),
+                detail: tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
+                systemImage: "key",
+                tint: .orange,
+                action: .openEngineSettings
             )
         case .homeServerUnreachable where HomeServer.refusedPlainAddress(engineFailure):
             // The phone itself refuses a plain ws:// address out on the

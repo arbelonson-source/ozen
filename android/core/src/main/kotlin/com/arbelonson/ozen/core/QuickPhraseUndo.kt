@@ -6,5 +6,5 @@ object QuickPhraseUndo {
     fun keepMillis(screenReaderOn: Boolean): Long? = if (screenReaderOn) null else SIGHTED_MILLIS
 
     fun deletedMessage(removed: String, screenReaderOn: Boolean): String =
-        if (screenReaderOn) tr("נמחק: %1. אפשר להחזיר.", "Deleted: %1. Undo is available.", listOf(removed)) else tr("נמחק: %1", "Deleted: %1", listOf(removed))
+        if (screenReaderOn) tr("נמחק: %1. אפשר להחזיר עד היציאה מהמסך.", "Deleted: %1. Undo is available until you leave this screen.", listOf(removed)) else tr("נמחק: %1", "Deleted: %1", listOf(removed))
 }

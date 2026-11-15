@@ -95,9 +95,9 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         }
     }
     BackHandler(onBack = close)
-    // A recording shared in meanwhile replaces the finished text: the
-    // question was about text no longer on screen, and its Close would
-    // have closed the new recording instead.
+    // A recording shared in meanwhile replaces the finished text only after
+    // the person agreed: otherwise the question would be about text no
+    // longer on screen, and its Close would close the new recording.
     LaunchedEffect(state.leavingLosesText) { if (!state.leavingLosesText) confirmingLeave = false }
     when (state) {
         FileTranscription.Idle -> Unit
@@ -121,6 +121,22 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
             text = { DialogText(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved.")) },
             confirmButton = { TextButton(onClick = { confirmingStop = false; transcriber.cancel() }) { Text(tr("עצירה", "Stop")) } },
             dismissButton = { TextButton(onClick = { confirmingStop = false }) { Text(tr("להמשיך", "Keep going")) } },
+        )
+    }
+    val shared by transcriber.replacement.waiting.collectAsStateWithLifecycle()
+    LaunchedEffect(shared) { if (shared != null) confirmingLeave = false }
+    if (shared != null) {
+        AlertDialog(
+            onDismissRequest = transcriber.replacement::keep,
+            title = { Text(tr("לסגור בלי לשתף את הטקסט?", "Close without sharing the text?")) },
+            text = {
+                DialogText(
+                    tr("הטקסט לא נשמר בשום מקום אחר, ולכן הוא יאבד.", "The text isn’t saved anywhere else, so it will be lost.") + "\n\n" +
+                        tr("אם תבטלו, הקובץ החדש לא ייפתח. אפשר לשתף אותו שוב אחרי ששומרים או סוגרים את הטקסט הזה.", "If you cancel, the new file is not opened. Share it again after saving or closing this text."),
+                )
+            },
+            confirmButton = { TextButton(onClick = transcriber::replaceWithShared) { Text(tr("סגירה", "Close"), color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = transcriber.replacement::keep) { Text(tr("ביטול", "Cancel")) } },
         )
     }
     if (confirmingLeave) {
@@ -264,7 +280,7 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
     val another by busyNotice.shown.collectAsStateWithLifecycle()
     val refusals by busyNotice.refusals.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    LaunchedEffect(refusals) { if (refusals > 0) ScreenReader.said(context, BUSY_LINE) }
+    LaunchedEffect(refusals) { if (busyNotice.announcementDue()) ScreenReader.said(context, BUSY_LINE) }
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")

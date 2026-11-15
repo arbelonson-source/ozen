@@ -212,6 +212,8 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var pendingReplayedLines: Set<UUID> = []
+    private var replayedLines: Set<UUID> = []
     private var utteranceFirstHeard: [UUID: Int] = [:]
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
@@ -365,10 +367,6 @@ public final class CaptionPipeline {
     /// between two tries.
     public var soundsOnlyShown: Bool { soundsOnlyChosen && soundPolicy.preferences.isEnabled }
     private var soundsOnlyOpening: [UUID] = []
-    /// The fallback's microphone was closed by switching sound alerts off
-    /// while captions waited; switching them on again reopens it for the
-    /// same wait, and for no other.
-    private var fallbackSwitchedOff: (run: UUID, failure: PipelineFailure)?
     /// Sounds-only ended by itself: the microphone stopped and did not come
     /// back through every retry (`soundsOnlyRetrySeconds`). The screen and
     /// the away notice say so; cleared when anything starts again or stops.
@@ -562,8 +560,10 @@ public final class CaptionPipeline {
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
+        replayedLines = replay.isEmpty ? [] : pendingReplayedLines
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -844,6 +844,8 @@ public final class CaptionPipeline {
         recentAudio.clear()
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
+        replayedLines = []
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
         cloudRecheck?.cancel()
@@ -1929,21 +1931,14 @@ public final class CaptionPipeline {
                 onPhaseChange?(phase)
             } else if isListeningForSoundsOnly, case .failed(let failure) = phase {
                 stopListeningForSounds()
-                fallbackSwitchedOff = (runID, failure)
                 onPhaseChange?(phase)
             }
         } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, !soundsOnlyOpening.contains(runID) {
             Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
-        } else if let off = fallbackSwitchedOff {
-            guard off.run == runID, case .failed(let failure) = phase, failure == off.failure else {
-                fallbackSwitchedOff = nil
-                return
-            }
-            if !isListeningForSoundsOnly { listenForSoundsMeanwhile(after: failure) }
-            if isListeningForSoundsOnly {
-                fallbackSwitchedOff = nil
-                onPhaseChange?(phase)
-            }
+        } else if case .failed(let failure) = phase, !isListeningForSoundsOnly,
+                  retryToken != nil || homeServerRecheck != nil || cloudRecheck != nil || comesBackWithoutTimer(failure) {
+            listenForSoundsMeanwhile(after: failure)
+            if isListeningForSoundsOnly { onPhaseChange?(phase) }
         }
     }
 
@@ -2102,6 +2097,7 @@ public final class CaptionPipeline {
             if token.isFinal { commitWithoutNewWords(token.utteranceID) }
             return
         }
+        dropLinesTheReplayRewrites()
         var enriched = token
         if enriched.speakerClusterID == nil {
             if let assigned = utteranceClusterAssignments[token.utteranceID] {
@@ -2519,13 +2515,14 @@ public final class CaptionPipeline {
     private func prepareReplay() {
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         let rate = Self.sampleRate
         var begin = sessionAudioStart
         if let heard = lastFinalHeard {
             begin = max(begin, heard.position - Int(Self.replayMarginSeconds * rate))
             pendingReplayDedupe = Self.comparableWords(heard.text)
         }
-        let tail = recentAudio.tail(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
+        let (tail, tailEnd) = recentAudio.tailAndEnd(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
         var detector = EnergyVoiceDetector()
         var heardSpeech = false
         var index = 0
@@ -2540,6 +2537,23 @@ public final class CaptionPipeline {
             return
         }
         pendingReplay = tail
+        let windowStart = tailEnd - tail.count
+        let slack = windowStart > begin ? Int(Self.replayMarginSeconds * rate) : 0
+        let inside = Set(utteranceFirstHeard.filter { $0.value >= windowStart + slack }.keys)
+        pendingReplayedLines = Set(segments.filter { $0.isCommitted && inside.contains($0.id) }.map(\.id))
+    }
+
+    /// The lines the engine that failed never finished were kept, cut off,
+    /// and the replay hears the same speech again: once the replay shows
+    /// words, those lines go, so nothing is on screen or saved twice. Only
+    /// lines that began inside the replayed audio go; one that began before
+    /// it keeps its earlier words.
+    private func dropLinesTheReplayRewrites() {
+        guard !replayedLines.isEmpty else { return }
+        let gone = replayedLines
+        replayedLines = []
+        segments.removeAll { gone.contains($0.id) }
+        onCaptionsChanged?()
     }
 
     static func replayBufferLimit(replaySamples: Int) -> Int {
@@ -3430,7 +3444,6 @@ public final class CaptionPipeline {
 
     private func tearDownSession() {
         runID = UUID()
-        fallbackSwitchedOff = nil
         stats.soundDetectionRunning = false
         currentEngine = nil
         recentSpeechCluster = nil

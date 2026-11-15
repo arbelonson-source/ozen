@@ -442,6 +442,25 @@ struct CaptionPipelinePhaseChangeTests {
         }
     }
 
+    @Test("a phone with no saved address does not tell her to check that the computer is on")
+    func missingAddressHasItsOwnWords() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress)
+        let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: why)
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(failure)).body == "The address or code is missing. Open Ozen to continue.")
+        }
+    }
+
+    @Test("a cloud that did not answer in time is not called a lost internet")
+    func slowCloudIsNotNoInternet() {
+        let slow = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.timedOut.unavailability)
+        let offline = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.offline.unavailability)
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(slow)).body == "Cloud transcription isn’t available right now. Open Ozen to continue.")
+            #expect(StoppedCaptionsNotice.content(for: .failed(offline)).body.hasPrefix("There’s no internet"))
+        }
+    }
+
     @Test("a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped")
     func deliveredNoticeIsWithdrawnWhenSoundAlertsAreNoLongerMeantToRun() {
         var kept = StoppedCaptionsNotice()

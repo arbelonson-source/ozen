@@ -53,7 +53,7 @@ struct QuickPhraseUndoScreenReaderTests {
     @Test("the announcement says that Undo is available")
     func announcementMentionsUndo() {
         Localization.$override.withValue(.english) {
-            #expect(QuickPhraseUndo.deletedAnnouncement("Thanks") == "Deleted: Thanks. Undo is available.")
+            #expect(QuickPhraseUndo.deletedAnnouncement("Thanks") == "Deleted: Thanks. Undo is available until you leave this screen.")
         }
     }
 }

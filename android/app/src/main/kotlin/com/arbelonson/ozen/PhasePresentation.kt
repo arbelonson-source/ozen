@@ -31,6 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.CloudKeyCheck
+import com.arbelonson.ozen.core.CloudSpeechError
+import com.arbelonson.ozen.core.cloudKeyWasRejected
+import com.arbelonson.ozen.core.cloudTimedOut
 import com.arbelonson.ozen.core.DamagedModelNotice
 import com.arbelonson.ozen.core.CaptionProblemText
 import com.arbelonson.ozen.core.EnginePreparationProgress
@@ -311,6 +315,11 @@ class PhasePresentation private constructor(
                     coverReason == EngineUnavailability.Kind.HomeServerRejected ->
                     listening(HomeServer.rejectedCoverDetail(coverDetail), Action.Pause)
 
+                coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer &&
+                    coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&
+                    HomeServer.addressCoverDetail(coverDetail) != null ->
+                    listening(HomeServer.addressCoverDetail(coverDetail)!!, Action.Pause)
+
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
                     listening(
                         tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"),
@@ -324,6 +333,11 @@ class PhasePresentation private constructor(
                 // Settings in these four cases, which can last days until
                 // someone fixes them, and nothing else on the caption screen
                 // pauses. Settings is one tap away on its own button.
+                coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
+                    coverReason == EngineUnavailability.Kind.CloudKeyNeeded &&
+                    coverDetail == CloudSpeechError.KEY_REJECTED_DETAIL ->
+                    listening(CloudKeyCheck.Rejected.message + " · " + tr("הקישו כדי להשהות", "Tap to pause"), Action.Pause)
+
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudKeyNeeded ->
                     listening(
@@ -561,7 +575,6 @@ class PhasePresentation private constructor(
             }
 
         private fun engineFailure(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage): PhasePresentation {
-            val engineName = CaptionProblemText.engineName(engine)
             return when (engineFailure?.kind) {
                 EngineUnavailability.Kind.PermissionDenied -> PhasePresentation(
                     title = tr("אין אישור לזיהוי דיבור", "No speech recognition permission"),
@@ -636,7 +649,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.CloudKeyNeeded -> PhasePresentation(
-                    title = tr("התמלול בענן לא מוגדר", "Cloud transcription isn’t set up"),
+                    title = if (engineFailure.cloudKeyWasRejected) CloudKeyCheck.Rejected.message else tr("התמלול בענן לא מוגדר", "Cloud transcription isn’t set up"),
                     detail = tr("בקשו ממי שהגדיר את הטלפון לתקן את זה · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to fix it · Tap for Settings"),
                     systemImage = "key",
                     tint = PhaseTint.Attention,
@@ -659,7 +672,15 @@ class PhasePresentation private constructor(
                     action = Action.OpenEngineSettings,
                 )
 
-                EngineUnavailability.Kind.NoInternet -> PhasePresentation(
+                EngineUnavailability.Kind.NoInternet -> if (engineFailure.cloudTimedOut) {
+                    PhasePresentation(
+                        title = CaptionProblemText.temporarilyUnavailable(engine),
+                        detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                        systemImage = "clock",
+                        tint = PhaseTint.Attention,
+                        action = Action.Retry,
+                    )
+                } else PhasePresentation(
                     title = tr("אין חיבור לאינטרנט", "No internet connection"),
                     detail = tr("התמלול בענן צריך חיבור לאינטרנט · הקישו כדי לנסות שוב", "Cloud transcription needs the internet · Tap to try again"),
                     systemImage = "wifi.slash",
@@ -670,7 +691,15 @@ class PhasePresentation private constructor(
                 // The phone itself refuses a plain ws:// address out on the
                 // internet, before asking: the computer may well be on, and
                 // only the address in Settings can change that.
-                EngineUnavailability.Kind.HomeServerUnreachable -> if (HomeServer.refusedPlainAddress(engineFailure)) {
+                EngineUnavailability.Kind.HomeServerUnreachable -> if (HomeServer.missingAddress(engineFailure)) {
+                    PhasePresentation(
+                        title = HomeServer.rejectionTitle(engineFailure.detail),
+                        detail = tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
+                        systemImage = "key",
+                        tint = PhaseTint.Attention,
+                        action = Action.OpenEngineSettings,
+                    )
+                } else if (HomeServer.refusedPlainAddress(engineFailure)) {
                     PhasePresentation(
                         title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
                         detail = tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss:// · הקישו כדי לפתוח את ההגדרות", "Outside the home network, use the address that starts with wss:// · Tap for Settings"),

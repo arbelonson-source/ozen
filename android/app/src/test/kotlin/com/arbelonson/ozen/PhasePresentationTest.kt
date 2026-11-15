@@ -11,6 +11,8 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.TranslationTable
+import com.arbelonson.ozen.core.CloudKeyCheck
+import com.arbelonson.ozen.core.CloudSpeechError
 import com.arbelonson.ozen.core.tr
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -672,5 +674,35 @@ class PhasePresentationTest {
         assertEquals("Can’t reach the home computer, so the phone carries on by itself", covering.stateDetail)
         val settings = present(failure(unavailable(EngineUnavailability.Kind.CloudLanguageNotCovered)), TranscriptionEngineKind.Cloud)
         assertEquals(settings.detail, settings.stateDetail)
+    }
+
+    @Test
+    fun `no saved address, a refused key and a slow cloud each say what is wrong, on the screen and in the cover line`() {
+        fun shown(why: EngineUnavailability, engine: TranscriptionEngineKind) = present(failure(why), engine)
+        fun covering(reason: EngineUnavailability.Kind, detail: String, covered: TranscriptionEngineKind) = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = covered, coverReason = reason, coverDetail = detail,
+        )
+        val home = TranscriptionEngineKind.HomeServer
+        val noAddressDetail = "no valid server address"
+        val noAddress = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, noAddressDetail)
+        assertEquals(HomeServer.rejectionTitle(noAddressDetail), shown(noAddress, home).title)
+        assertEquals(Action.OpenEngineSettings, shown(noAddress, home).action)
+        val unreachable = EngineUnavailability.Kind.HomeServerUnreachable
+        assertEquals(HomeServer.addressCoverDetail(noAddressDetail), covering(unreachable, noAddressDetail, home).detail)
+        assertEquals(HomeServer.addressCoverDetail(HomeServer.NEEDS_ENCRYPTION), covering(unreachable, HomeServer.NEEDS_ENCRYPTION, home).detail)
+        assertNotEquals(HomeServer.addressCoverDetail(noAddressDetail), covering(unreachable, "no answer", home).detail)
+        val cloud = TranscriptionEngineKind.Cloud
+        val rejected = CloudSpeechError.KeyRejected.unavailability
+        val missing = CloudSpeechError.KeyMissing.unavailability
+        assertEquals(CloudKeyCheck.Rejected.message, shown(rejected, cloud).title)
+        assertNotEquals(CloudKeyCheck.Rejected.message, shown(missing, cloud).title)
+        val keyNeeded = EngineUnavailability.Kind.CloudKeyNeeded
+        assertTrue(covering(keyNeeded, rejected.detail, cloud).detail!!.startsWith(CloudKeyCheck.Rejected.message))
+        assertFalse(covering(keyNeeded, missing.detail, cloud).detail!!.startsWith(CloudKeyCheck.Rejected.message))
+        val slow = shown(CloudSpeechError.TimedOut.unavailability, cloud)
+        assertEquals(shown(CloudSpeechError.RateLimited.unavailability, cloud).title, slow.title)
+        assertNotEquals(shown(CloudSpeechError.Offline.unavailability, cloud).title, slow.title)
+        assertEquals(Action.Retry, slow.action)
     }
 }
