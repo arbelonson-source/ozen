@@ -1358,6 +1358,12 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Slower, please").performScrollTo().performTouchInput { longClick() }
             compose.onNodeWithText("Delete").performClick()
             compose.waitUntil(5_000) { stored() == english - "Slower, please" + "Please write it down for me" }
+            compose.onNodeWithText("Deleted: Slower, please").assertExists()
+            compose.onNodeWithText("Undo").performClick()
+            compose.waitUntil(5_000) { stored() == english + "Please write it down for me" }
+            compose.onNodeWithText("Slower, please").performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Delete").performClick()
+            compose.waitUntil(5_000) { stored() == english - "Slower, please" + "Please write it down for me" }
             val waiting = compose.onNodeWithText("Wait, I didn't catch that").fetchSemanticsNode()
             val delete = waiting.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
             compose.runOnUiThread { delete.action() }
@@ -1370,6 +1376,7 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
             compose.onNode(hasText("Restore") and hasAnyAncestor(isDialog())).performClick()
             compose.waitUntil(5_000) { stored() == english }
+            compose.onNodeWithText("Undo").assertDoesNotExist()
             compose.onNodeWithText("Restore defaults").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("Done").performScrollTo().performClick()
             compose.onNodeWithText("New phrase").assertDoesNotExist()

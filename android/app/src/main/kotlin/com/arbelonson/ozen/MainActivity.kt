@@ -594,6 +594,7 @@ private fun OzenApp(
                             onStop = app.captions::stopSpeaking,
                             onAddPhrase = app.captions::addQuickPhrase,
                             onRemovePhrase = app.captions::removeQuickPhrase,
+                            onRestorePhrase = app.captions::restoreQuickPhrase,
                             onMovePhrase = app.captions::moveQuickPhrase,
                             onRestorePhrases = app.captions::restoreQuickPhrases,
                             phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),

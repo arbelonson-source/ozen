@@ -32,6 +32,18 @@ class QuickPhrasesTest {
     }
 
     @Test
+    fun `a deleted phrase goes back in the place it had, once, and never past the ends`() {
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        val stored = AppSettings.defaultQuickPhrases(UILanguage.Hebrew)
+        val fewer = QuickPhrases.removing(english[1], stored, UILanguage.English)
+        assertEquals(english, QuickPhrases.restoring(english[1], 1, fewer, UILanguage.English))
+        assertEquals(english, QuickPhrases.restoring(english[1], 1, english, UILanguage.English))
+        assertEquals(fewer + english[1], QuickPhrases.restoring(english[1], 99, fewer, UILanguage.English))
+        assertEquals(listOf(english[1]) + fewer, QuickPhrases.restoring(english[1], -3, fewer, UILanguage.English))
+        assertEquals(fewer, QuickPhrases.restoring("  ", 0, fewer, UILanguage.English))
+    }
+
+    @Test
     fun `a phrase moves one place up or down in the list as she sees it, and no further than its ends`() {
         val english = AppSettings.defaultQuickPhrases(UILanguage.English)
         val stored = AppSettings.defaultQuickPhrases(UILanguage.Hebrew)

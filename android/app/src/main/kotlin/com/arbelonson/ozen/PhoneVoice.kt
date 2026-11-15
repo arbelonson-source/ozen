@@ -180,23 +180,23 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         }
     }
 
-    // False when the engine wouldn't take the reply's first piece.
+    // False when the engine wouldn't take every piece of the reply: what it
+    // had taken is dropped, so it is said again whole or not at all.
     private fun say(text: String, rate: Float): Boolean {
         val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
         engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
         engine.setSpeechRate(rate / NORMAL_RATE)
         // The engine refuses a longer text outright, and nothing was said:
         // it goes in pieces, one after another, as one reply.
-        SpeechChunks.of(text, pieceLimit).forEachIndexed { at, piece ->
-            val id = UUID.randomUUID().toString()
-            val queue = if (at == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            if (engine.speak(piece, queue, null, id) == TextToSpeech.SUCCESS) {
-                pending += id
-            } else if (at == 0) {
-                return false
-            }
+        val queued = SpeechChunks.queue(SpeechChunks.of(text, pieceLimit)) { piece, id, flush ->
+            engine.speak(piece, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, id) == TextToSpeech.SUCCESS
         }
-        return true
+        if (queued.complete) {
+            pending += queued.ids
+            return true
+        }
+        if (queued.ids.isNotEmpty()) engine.stop()
+        return false
     }
 
     // A piece of a longer reply, or a reply replaced by the next one, ends
