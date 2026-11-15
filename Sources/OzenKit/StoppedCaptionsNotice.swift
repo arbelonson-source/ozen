@@ -320,7 +320,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                 )
             case (_, .homeServerRejected?) where failure.engineUnavailability?.detail == HomeServer.noCode:
                 return tr(
-                    "אין בטלפון קוד צימוד למחשב הביתי. פתחו את אוזן וסרקו את קוד ה־QR שלו.",
+                    "אין בטלפון קוד צימוד למחשב בבית. פתחו את אוזן וסרקו את קוד ה־QR שלו.",
                     "No pairing code for the home computer is saved on this phone. Open Ozen and scan its QR code."
                 )
             case (_, .homeServerRejected?):

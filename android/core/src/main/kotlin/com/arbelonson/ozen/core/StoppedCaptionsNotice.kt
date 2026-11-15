@@ -356,7 +356,7 @@ class StoppedCaptionsNotice {
                         "The computer’s pairing changed. Open Ozen and scan its QR code again.",
                     )
                     why == EngineUnavailability.Kind.HomeServerRejected && failure.engineUnavailability?.detail == HomeServer.NO_CODE -> tr(
-                        "אין בטלפון קוד צימוד למחשב הביתי. פתחו את אוזן וסרקו את קוד ה־QR שלו.",
+                        "אין בטלפון קוד צימוד למחשב בבית. פתחו את אוזן וסרקו את קוד ה־QR שלו.",
                         "No pairing code for the home computer is saved on this phone. Open Ozen and scan its QR code.",
                     )
                     why == EngineUnavailability.Kind.HomeServerRejected -> tr(
