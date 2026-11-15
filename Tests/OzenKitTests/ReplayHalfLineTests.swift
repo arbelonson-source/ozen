@@ -190,4 +190,28 @@ struct ReplayHalfLineTests {
         #expect(await eventually { pipeline.segments.last?.text == "and the rest" })
         #expect(pipeline.segments.map(\.text) == ["line A is done", "and the rest"])
     }
+
+    @Test("a model that reads the replay late, after more than the grace of live audio was captured, still replaces the half line")
+    func slowModelStillReplaces() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        let gate = PrepareGate()
+        phone.streamGate = gate
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line A is done", isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await said(pipeline, audio, seconds: 6, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts", isFinal: false, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "gone"))
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase.isListening })
+        await said(pipeline, audio, seconds: 10, level: 0.2)
+        #expect(phone.samplesSeen.isEmpty)
+
+        await gate.open()
+        #expect(await eventually { phone.samplesSeen.count >= 10 * 16_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.last?.text == "line B starts and ends" })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+    }
 }

@@ -2596,35 +2596,46 @@ public final class CaptionPipeline {
         return (replaySamples + step - 1) / step + AudioFanOut.defaultBufferLimit
     }
 
+    /// The grace counts live audio the engine has taken, not audio that was
+    /// queued for it: a slow or still loading model reads the replay late,
+    /// and its words must still replace the cut-off lines then. The count
+    /// runs when the engine pulls a chunk from the stream returned here.
     private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
         let step = Int(Self.sampleRate / 5)
-        let (stream, continuation) = AsyncStream<[Float]>.makeStream(
+        let (queue, continuation) = AsyncStream<ReplayChunk>.makeStream(
             bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
         replayTask?.cancel()
         let task = Task {
             var index = 0
             while index < replay.count, !Task.isCancelled {
                 let end = min(index + step, replay.count)
-                continuation.yield(Array(replay[index..<end]))
+                continuation.yield(ReplayChunk(samples: Array(replay[index..<end]), isLive: false))
                 index = end
             }
-            var liveFed = 0
-            let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
             for await chunk in live {
                 if Task.isCancelled { break }
-                continuation.yield(chunk)
-                let before = liveFed
-                liveFed += chunk.count
-                if before < grace, liveFed >= grace, self.replayUtterance == nil {
-                    self.replayedLines = []
-                    self.replayDedupe = []
-                }
+                continuation.yield(ReplayChunk(samples: chunk, isLive: true))
             }
             continuation.finish()
         }
         replayTask = task
         continuation.onTermination = { _ in task.cancel() }
-        return stream
+        let reader = ReplayReader(queue.makeAsyncIterator())
+        let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
+        return AsyncStream(unfolding: { [weak self] in
+            guard let chunk = await reader.next() else { return nil }
+            if chunk.isLive { await self?.engineTookLive(chunk.samples.count, grace: grace, reader: reader) }
+            return chunk.samples
+        })
+    }
+
+    private func engineTookLive(_ count: Int, grace: Int, reader: ReplayReader) {
+        let before = reader.liveTaken
+        reader.liveTaken += count
+        if before < grace, reader.liveTaken >= grace, replayUtterance == nil {
+            replayedLines = []
+            replayDedupe = []
+        }
     }
 
     /// The replay starts before the home computer's last line, so the
@@ -3579,4 +3590,20 @@ final class ArrivalCounter: @unchecked Sendable {
     private var count = 0
     var value: Int { lock.withLock { count } }
     func increment() { lock.withLock { count += 1 } }
+}
+
+private struct ReplayChunk: Sendable {
+    let samples: [Float]
+    let isLive: Bool
+}
+
+/// Holds the one iterator the engine's pulls go through. The engine reads
+/// the stream from a single task, one chunk at a time, so nothing races.
+private final class ReplayReader: @unchecked Sendable {
+    private var iterator: AsyncStream<ReplayChunk>.Iterator
+    var liveTaken = 0
+
+    init(_ iterator: AsyncStream<ReplayChunk>.Iterator) { self.iterator = iterator }
+
+    func next() async -> ReplayChunk? { await iterator.next() }
 }

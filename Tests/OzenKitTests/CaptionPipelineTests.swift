@@ -163,6 +163,9 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// the pipeline from outside.
     var prepareGate: PrepareGate?
     var afterProgressGate: PrepareGate?
+    /// Parks `stream` before it reads any audio, like a model that is
+    /// still loading or running behind: chunks pile up unread.
+    var streamGate: PrepareGate?
     /// Waits this long between progress reports, as a real download does.
     var progressSpacing: Duration?
     /// Megabytes `prepare` would still download; nil when the model is there.
@@ -258,6 +261,7 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
         AsyncThrowingStream { continuation in
             lock.withLock { tokenContinuation = continuation }
             Task {
+                await self.streamGate?.wait()
                 for await chunk in audio {
                     self.lock.withLock {
                         self.chunksSeen += 1
