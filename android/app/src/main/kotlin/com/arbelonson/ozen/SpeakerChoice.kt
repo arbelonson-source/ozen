@@ -6,20 +6,10 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.speech.tts.TextToSpeech
+import androidx.annotation.RequiresApi
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.SpeakingOutput
 
-/**
- * Where spoken replies come out, and the one choice the Say screen offers:
- * say them on the phone's own speaker although a headset or hearing aid is
- * connected. Not the default, since some people use a Bluetooth speaker on
- * purpose. The choice is for a session: a device coming or going ends it.
- *
- * The speech engine has no output device of its own, so the choice plays
- * replies as a call's audio and points that at the speaker; the volume is
- * then the call volume, not the media volume. Before Android 12 there is
- * no such control and only the notice is shown.
- */
 internal object SpeakerChoice {
     @Volatile var chosen = false
         private set
@@ -33,8 +23,7 @@ internal object SpeakerChoice {
         chosen = canChoose
     }
 
-    /** Read once a second by the Say screen; also ends the choice when the set of devices changes. */
-    fun outputs(audio: AudioManager): List<SpeakingOutput> {
+        fun outputs(audio: AudioManager): List<SpeakingOutput> {
         val devices = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY }
         val ids = devices.map { it.id }.toSet()
         if (devicesSeen != null && devicesSeen != ids) chosen = false
@@ -45,8 +34,7 @@ internal object SpeakerChoice {
 
     internal data class Device(val type: Int, val name: String)
 
-    /** Media goes to an external device when one is connected, else to the speaker. */
-    internal fun outputsFor(devices: List<Device>): List<SpeakingOutput> {
+        internal fun outputsFor(devices: List<Device>): List<SpeakingOutput> {
         val external = devices.mapNotNull { device -> kindOf(device)?.let { SpeakingOutput(it, device.name) } }
         return external.ifEmpty { listOf(SpeakingOutput(SpeakingOutput.Kind.PhoneSpeaker, "")) }
     }
@@ -63,21 +51,30 @@ internal object SpeakerChoice {
 
     fun beforeSpeaking(context: Context, engine: TextToSpeech) {
         val audio = context.getSystemService(AudioManager::class.java)
-        val speaker = if (chosen && canChoose) audio?.availableCommunicationDevices?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER } else null
-        if (speaker != null && audio != null) {
+        val routedNow = if (chosen && audio != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             engine.setAudioAttributes(attributes(AudioAttributes.USAGE_VOICE_COMMUNICATION))
             callAttributes = true
-            routed = audio.setCommunicationDevice(speaker)
-        } else if (callAttributes) {
+            toSpeaker(audio)
+        } else {
+            false
+        }
+        routed = routedNow
+        if (!routedNow && callAttributes) {
             engine.setAudioAttributes(attributes(AudioAttributes.USAGE_MEDIA))
             callAttributes = false
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun toSpeaker(audio: AudioManager): Boolean {
+        val speaker = audio.availableCommunicationDevices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER } ?: return false
+        return audio.setCommunicationDevice(speaker)
+    }
+
     fun afterSpeaking(context: Context) {
         if (!routed) return
         routed = false
-        if (canChoose) context.getSystemService(AudioManager::class.java)?.clearCommunicationDevice()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) context.getSystemService(AudioManager::class.java)?.clearCommunicationDevice()
     }
 
     private fun attributes(usage: Int) = AudioAttributes.Builder().setUsage(usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()

@@ -14,9 +14,6 @@ public struct SpeakingOutput: Equatable, Sendable {
     }
 }
 
-/// Spoken replies go wherever the phone's sound is going. A deaf person
-/// with streaming hearing aids hears them there; the hearing person they
-/// are talking with hears nothing, and Play looks as if it worked.
 public enum SpeakingRoute {
     public static func notice(outputs: [SpeakingOutput]) -> String? {
         guard !outputs.isEmpty else { return nil }
