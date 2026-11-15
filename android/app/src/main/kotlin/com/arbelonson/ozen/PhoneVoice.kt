@@ -186,6 +186,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
         engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
         engine.setSpeechRate(rate / NORMAL_RATE)
+        SpeakerChoice.beforeSpeaking(appContext, engine)
         // The engine refuses a longer text outright, and nothing was said:
         // it goes in pieces, one after another, as one reply.
         val queued = SpeechChunks.queue(SpeechChunks.of(text, pieceLimit)) { piece, id, flush ->
@@ -207,6 +208,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     }
 
     private fun quiet() {
+        SpeakerChoice.afterSpeaking(appContext)
         isSpeaking = false
         onSpeakingChanged?.invoke(false)
     }

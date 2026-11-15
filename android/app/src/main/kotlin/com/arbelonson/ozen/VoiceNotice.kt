@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -17,6 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import com.arbelonson.ozen.core.SpeakingOutput
+import com.arbelonson.ozen.core.SpeakingRoute
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.delay
@@ -69,16 +72,36 @@ internal fun MediaVolumeNotice() {
     var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
     LaunchedEffect(audio) {
         while (true) {
-            volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
             delay(1_000)
         }
     }
     val notice = VoiceNotice.silentMedia(volume) ?: return
     Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     TextButton(onClick = {
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
-        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        audio.adjustStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+        volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
     }) { Text(VoiceNotice.turnUp()) }
+}
+
+@Composable
+internal fun SpeakingRouteNotice() {
+    val audio = LocalContext.current.getSystemService(AudioManager::class.java) ?: return
+    var outputs by remember { mutableStateOf(emptyList<SpeakingOutput>()) }
+    LaunchedEffect(audio) {
+        while (true) {
+            outputs = SpeakerChoice.outputs(audio)
+            delay(1_000)
+        }
+    }
+    val notice = SpeakingRoute.notice(outputs) ?: return
+    Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    if (SpeakerChoice.canChoose) {
+        TextButton(onClick = {
+            SpeakerChoice.choose()
+            outputs = SpeakerChoice.outputs(audio)
+        }) { Text(SpeakingRoute.speakerButton()) }
+    }
 }
 
 internal fun openVoiceSettings(context: Context) {

@@ -104,6 +104,7 @@ public final class SpeechSynthesizer: SpeechSynthesizing {
         }
         utterance.rate = min(max(rate, AVSpeechUtteranceMinimumSpeechRate), AVSpeechUtteranceMaximumSpeechRate)
         utterance.prefersAssistiveTechnologySettings = false
+        SpeakingOutputRoute.prepareToSpeak()
         synthesizer.speak(utterance)
     }
 
