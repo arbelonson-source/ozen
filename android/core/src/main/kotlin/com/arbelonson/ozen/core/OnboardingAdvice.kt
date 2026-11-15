@@ -3,6 +3,8 @@ package com.arbelonson.ozen.core
 object OnboardingNotificationAdvice {
     fun showsSettingsButton(allowed: Boolean?): Boolean = allowed == false
 
+    fun afterAsking(granted: Boolean, allowedNow: Boolean): Boolean = granted && allowedNow
+
     fun keptAcrossRebuild(allowedNow: Boolean, remembered: Boolean?): Boolean? = when {
         allowedNow -> true
         remembered == false -> false

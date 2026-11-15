@@ -170,7 +170,7 @@ class MainActivity : ComponentActivity() {
     internal var canAskMicrophoneAgain: () -> Boolean = { shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) }
 
     private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
-    private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = it }
+    private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = OnboardingNotificationAdvice.afterAsking(it, AlertNotifier.allowed(this)) }
 
     // Two requests rather than one with a remembered flag: the system hands a
     // result back to the request that asked, even to an activity rebuilt while

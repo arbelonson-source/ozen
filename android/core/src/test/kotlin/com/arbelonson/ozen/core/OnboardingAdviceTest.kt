@@ -14,6 +14,13 @@ class OnboardingAdviceTest {
     }
 
     @Test
+    fun `a granted permission with the app's notifications switched off in Settings is not shown as approved`() {
+        assertFalse(OnboardingNotificationAdvice.afterAsking(granted = true, allowedNow = false))
+        assertTrue(OnboardingNotificationAdvice.afterAsking(granted = true, allowedNow = true))
+        assertFalse(OnboardingNotificationAdvice.afterAsking(granted = false, allowedNow = false))
+    }
+
+    @Test
     fun `a refused answer survives a rebuild until the phone says yes`() {
         assertEquals(false, OnboardingNotificationAdvice.keptAcrossRebuild(allowedNow = false, remembered = false))
         assertEquals(true, OnboardingNotificationAdvice.keptAcrossRebuild(allowedNow = true, remembered = false))
