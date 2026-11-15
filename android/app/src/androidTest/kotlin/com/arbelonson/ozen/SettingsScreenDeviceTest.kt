@@ -1373,12 +1373,12 @@ class SettingsScreenDeviceTest {
         hour("Ends", "07:00").assertExists()
         compose.onNodeWithText("Urgent sounds like a siren still alert.").assertExists()
 
-        val laterStart = compose.onNode(hasText("+") and hasAnyAncestor(hasText("Starts")))
+        val laterStart = compose.onNode(hasContentDescription("Starts, One hour later"))
         laterStart.performScrollTo().performClick()
         compose.waitUntil(5_000) { app.settings.current.value.quietHours.startHour == 23 }
         hour("Starts", "23:00").assertExists()
         laterStart.assertIsNotEnabled()
-        compose.onNode(hasText("−") and hasAnyAncestor(hasText("Ends"))).performScrollTo().performClick()
+        compose.onNode(hasContentDescription("Ends, One hour earlier")).performScrollTo().performClick()
         compose.waitUntil(5_000) { app.settings.current.value.quietHours.endHour == 6 }
         assertEquals(23, app.settings.current.value.quietHours.startHour)
 

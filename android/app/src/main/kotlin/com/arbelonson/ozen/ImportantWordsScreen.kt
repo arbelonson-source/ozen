@@ -90,7 +90,7 @@ internal fun ImportantWordsScreen(
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
-                placeholder = { Text(tr("מילה או שם, למשל: סבתא", "A word or name, e.g., grandma")) },
+                label = { Text(tr("מילה או שם, למשל: סבתא", "A word or name, e.g., grandma")) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { add() }),
