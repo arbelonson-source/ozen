@@ -534,6 +534,11 @@ class CaptionPipeline(
     var soundsOnlyChosen = false
         private set
 
+    /** What the screen says: chosen, and not switched off between two tries. */
+    val soundsOnlyShown: Boolean get() = soundsOnlyChosen && soundPolicy.preferences.isEnabled
+
+    private var soundsOnlyOpens = 0
+
     /**
      * Sounds alone were chosen, and the microphone stopped and would not
      * open again however often it was tried: the status no longer says it
@@ -2102,7 +2107,7 @@ class CaptionPipeline(
             // to end: the choice stays, so turning the alerts on again opens
             // the microphone, and no timer opens it meanwhile.
             if (isListeningForSoundsOnly) stop() else cancelSoundsOnlyRetry()
-        } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null) {
+        } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null && soundsOnlyOpens == 0) {
             scope.launch { resumeSoundsOnly() }
         }
     }
@@ -3338,7 +3343,7 @@ class CaptionPipeline(
      */
     private suspend fun resumeSoundsOnly() {
         if (!soundsOnlyChosen || isListeningForSoundsOnly || systemInterrupted || isRecordingVoice) return
-        if (!soundPolicy.preferences.isEnabled) return
+        if (!soundPolicy.preferences.isEnabled || soundsOnlyOpens > 0) return
         openSoundsOnly(retrying = true)
     }
 
@@ -3348,10 +3353,19 @@ class CaptionPipeline(
      * can hold the microphone a moment after a call.
      */
     private suspend fun openSoundsOnly(retrying: Boolean) {
+        soundsOnlyOpens += 1
+        try {
+            openSoundsOnlyOnce(retrying)
+        } finally {
+            soundsOnlyOpens -= 1
+        }
+    }
+
+    private suspend fun openSoundsOnlyOnce(retrying: Boolean) {
         val run = runID
         audio.onInputsChanged = { inputsChanged() }
         val permission = audio.requestPermission()
-        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly) return
+        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly || !soundPolicy.preferences.isEnabled) return
         val opened = permission == AudioPermission.Granted && try {
             audio.prepareSession(settingsInUse?.preferredInputUID ?: audio.selectedInputUID)
             true
@@ -3360,7 +3374,7 @@ class CaptionPipeline(
         } catch (error: Exception) {
             false
         }
-        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly) return
+        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly || !soundPolicy.preferences.isEnabled) return
         if (systemInterrupted || isRecordingVoice) return
         val source = if (opened) startCaptureOrNull() else null
         if (source == null) {

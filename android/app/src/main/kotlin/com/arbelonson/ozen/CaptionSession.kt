@@ -874,7 +874,7 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
+        stoppedCaptions.update(stoppedCause(), ServiceRestart.screenSaysCaptionsAreOff(appIsActive, restartRefused, microphoneGranted()), settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
     }
 
     private fun applyNoticeUpdate(update: StoppedCaptionsNotice.Update) {
@@ -983,17 +983,16 @@ class CaptionSession(
     private fun tellRestartRefused() {
         restartRefused = true
         microphoneGoneAtRestart = !microphoneGranted()
-        // On screen already, the screen says it: nothing is left to tell her on leaving.
-        if (appIsActive) {
-            if (microphoneGoneAtRestart) showMicrophoneGone() else restartRefused = false
-        }
+        // With the microphone gone the red screen says it. Otherwise nothing on
+        // screen does: the refusal stays, and the notice comes at once.
+        if (appIsActive && microphoneGoneAtRestart) showMicrophoneGone()
         checkCaptionsStillRunning()
     }
 
     private fun publish() {
         // Kept through whatever comes back by itself (a retry, waiting for
         // Wi-Fi), ended by what the stopped-captions notice reports.
-        listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause(), soundsOnly = pipeline.soundsOnlyChosen)
+        listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause(), soundsOnly = pipeline.soundsOnlyShown)
         checkCaptionsStillRunning()
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: chosenSettings()
         askBuiltInLanguagesWhenWaiting()
@@ -1030,7 +1029,7 @@ class CaptionSession(
             coverReason = pipeline.coverReason,
             offerBackup = offersBackup(),
             network = pipeline.networkConditions,
-            soundsOnly = pipeline.soundsOnlyChosen,
+            soundsOnly = pipeline.soundsOnlyShown,
             builtInOffered = builtInWhileWaitingOffer == BuiltInWhileWaiting.Offer.BuiltInOrCellularDownload,
             modelGettingReady = pipeline.waitingModelGettingReady,
             modelJustReady = SystemClock.elapsedRealtime() < modelReadyShownUntil,

@@ -209,16 +209,12 @@ class ServiceRestartDeviceTest {
     }
 
     @Test
-    fun aRefusalThatArrivesWhileTheAppIsOnScreenLeavesNoNoticeWhenSheLeaves() {
+    fun aRefusalThatArrivesWhileTheAppIsOnScreenWithTheMicrophoneAllowedIsToldAtOnce() {
         withMicrophoneOffSession(granted = true) { captions ->
             instrumentation.runOnMainSync { captions.appIsActive = true }
             instrumentation.runOnMainSync { captions.foregroundRefused(SecurityException("the phone refused the service")) }
-            Thread.sleep(1_000)
-            assertNull(stoppedNotice())
-
-            instrumentation.runOnMainSync { captions.appIsActive = false }
-            Thread.sleep(2_000)
-            assertNull(stoppedNotice())
+            waitUntil { stoppedNotice() != null }
+            assertTrue(stoppedNotice() != null)
         }
     }
 }
