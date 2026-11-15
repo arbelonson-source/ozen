@@ -8,7 +8,6 @@ internal class BusyNotice {
     private val raised = MutableStateFlow(false)
     val shown: StateFlow<Boolean> = raised
 
-    /** Counts every refusal while the note is up, so each one can be announced again. */
     private val count = MutableStateFlow(0)
     val refusals: StateFlow<Int> = count
 
