@@ -1211,8 +1211,62 @@
     }
    ],
    "text": "王老师你好",
-   "note": "surname 王 before a phrase that does not start with a surname: read as a person's name; accepted trade-off",
-   "matches": []
+   "note": "a title word after a surname is how people are called",
+   "matches": [
+    {
+     "phrase": "老师",
+     "matchedText": "老师",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "医生"
+    }
+   ],
+   "text": "李医生来了",
+   "note": "a title word after a surname is how people are called",
+   "matches": [
+    {
+     "phrase": "医生",
+     "matchedText": "医生",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "阿姨"
+    }
+   ],
+   "text": "张阿姨好",
+   "note": "a title word after a surname is how people are called",
+   "matches": [
+    {
+     "phrase": "阿姨",
+     "matchedText": "阿姨",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "先生"
+    }
+   ],
+   "text": "陈先生请坐",
+   "note": "a title word after a surname is how people are called",
+   "matches": [
+    {
+     "phrase": "先生",
+     "matchedText": "先生",
+     "wordIndex": 0
+    }
+   ]
   },
   {
    "alerts": [

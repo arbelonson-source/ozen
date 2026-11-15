@@ -783,6 +783,7 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     }
 
     private static let commonSurnames = Set("王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤")
+    private static let titleWords: Set<String> = ["老师", "医生", "大夫", "先生", "女士", "小姐", "阿姨", "叔叔", "同学", "师傅", "老板", "经理", "主任", "护士", "爷爷", "奶奶", "姐", "哥"]
     private static let longerWordPairs: Set<String> = ["明星"]
 
     // A name inside a longer Chinese word or a different person's name is not
@@ -791,7 +792,7 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     private static func containsHan(_ character: Character) -> Bool { HebrewText.containsHan(String(character)) }
 
     private static func isWholeChineseName(_ target: [Character], in line: [Character], at position: Int) -> Bool {
-        if position > 0, let first = target.first, !commonSurnames.contains(first), commonSurnames.contains(line[position - 1]),
+        if position > 0, let first = target.first, !titleWords.contains(String(target)), !commonSurnames.contains(first), commonSurnames.contains(line[position - 1]),
            position == 1 || !containsHan(line[position - 2]) {
             return false
         }
