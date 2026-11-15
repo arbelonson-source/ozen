@@ -928,8 +928,7 @@ class CaptionPipeline(
         }
         engine.setVocabulary(primedVocabulary(settings.vocabulary))
         if (runID != run) return abandon(earlyFan)
-        engine.setPhoneModelReady(phoneModelCanCover(settings))
-        if (runID != run) return abandon(earlyFan)
+        engine.setPhoneModelCheck { phoneModelCanCover() }
         currentEngine = engine
 
         phase = PipelinePhase.StartingAudio
@@ -2503,23 +2502,24 @@ class CaptionPipeline(
     }
 
     /**
+     * Whether the phone's own model is already installed to take over from
+     * the cloud (see [CloudCover]); never while it is the one covering.
+     */
+    private suspend fun phoneModelCanCover(): Boolean {
+        val settings = settingsInUse ?: return false
+        if (settings.engine != TranscriptionEngineKind.Cloud || isCoveringForCloud) return false
+        val onPhone = settings.copy()
+        onPhone.engine = TranscriptionEngineKind.WhisperKit
+        return probeEngine(onPhone).hasModelOnPhone()
+    }
+
+    /**
      * For asking the home computer or the cloud whether it answers again
      * while the phone covers for it. Their engines are light, so one is
      * kept beside the phone's loaded model: going through [cachedEngine]
      * threw that model out at every check, and the next pause or resume
      * loaded it all over again.
      */
-    /**
-     * Whether the phone's own model is already installed to take over from
-     * the cloud (see [CloudCover]); never while it is the one covering.
-     */
-    private suspend fun phoneModelCanCover(settings: AppSettings): Boolean {
-        if (settings.engine != TranscriptionEngineKind.Cloud) return false
-        val onPhone = settings.copy()
-        onPhone.engine = TranscriptionEngineKind.WhisperKit
-        return probeEngine(onPhone).hasModelOnPhone()
-    }
-
     private fun probeEngine(settings: AppSettings): TranscriptionEngine {
         val key = engineCacheKey(settings)
         engineCache[key]?.let { return it }

@@ -69,10 +69,10 @@ class CloudSpeechEngine(
     private var approvedAt: TimeMark? = null
 
     @Volatile
-    private var phoneModelReady = false
+    private var phoneModelCheck: (suspend () -> Boolean)? = null
 
-    override suspend fun setPhoneModelReady(ready: Boolean) {
-        phoneModelReady = ready
+    override suspend fun setPhoneModelCheck(check: suspend () -> Boolean) {
+        phoneModelCheck = check
     }
 
     override suspend fun setVocabulary(terms: List<String>) {
@@ -228,6 +228,7 @@ class CloudSpeechEngine(
 
                 var turns: List<String>? = null
                 var lastFailure: CloudSpeechError? = null
+                var handsOver = false
                 val started = timeSource.markNow()
                 for (attempt in 1..(if (isFinal) 2 else 1)) {
                     try {
@@ -246,7 +247,10 @@ class CloudSpeechEngine(
                         // while the screen sits empty. With the phone's model
                         // ready, hand over now; the pipeline keeps asking the
                         // cloud and takes captions back when it answers.
-                        if (error == CloudSpeechError.TimedOut && phoneModelReady) break
+                        if (error == CloudSpeechError.TimedOut && phoneModelCheck?.invoke() == true) {
+                            handsOver = true
+                            break
+                        }
                         if (attempt == 1 && isFinal) {
                             delay(400)
                         }
@@ -257,7 +261,7 @@ class CloudSpeechEngine(
                 // second try isn't a second, unrelated failure.
                 if (lastFailure != null) {
                     failuresInARow += 1
-                    if (failuresInARow >= FAILURES_BEFORE_STOPPING || (lastFailure == CloudSpeechError.TimedOut && phoneModelReady)) {
+                    if (failuresInARow >= FAILURES_BEFORE_STOPPING || handsOver) {
                         // Giving up takes several seconds of retries, and by then
                         // the screen has settled the shown words as a finished
                         // line (the stabilizer's quiet-line safety net), which

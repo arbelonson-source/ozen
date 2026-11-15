@@ -37,7 +37,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     private let filter: WhisperResultFilter
     private var vocabulary: [String] = []
     private var echo: PromptEchoDetector?
-    private var phoneModelReady = false
+    private var phoneModelCheck: (@Sendable () async -> Bool)?
     /// The key the last check approved, so a restart doesn't ask again.
     /// Trusted for `approvalSeconds` after the check or the last answered
     /// request: the checks for whether the cloud can be reached again use
@@ -80,8 +80,8 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         echo = detector.isEmpty ? nil : detector
     }
 
-    public func setPhoneModelReady(_ ready: Bool) async {
-        phoneModelReady = ready
+    public func setPhoneModelCheck(_ check: @escaping @Sendable () async -> Bool) async {
+        phoneModelCheck = check
     }
 
     public func prepare(
@@ -235,6 +235,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
 
             var turns: [String]?
             var lastFailure: CloudSpeechError?
+            var handsOver = false
             let started = ContinuousClock.now
             for attempt in 1...(isFinal ? 2 : 1) {
                 do {
@@ -253,7 +254,10 @@ public actor CloudSpeechEngine: TranscriptionEngine {
                     // while the screen sits empty. With the phone's model
                     // ready, hand over now; the pipeline keeps asking the
                     // cloud and takes captions back when it answers.
-                    if error == .timedOut && phoneModelReady { break }
+                    if error == .timedOut, let check = phoneModelCheck, await check() {
+                        handsOver = true
+                        break
+                    }
                     if attempt == 1 && isFinal {
                         try await Task.sleep(for: .milliseconds(400))
                     }
@@ -264,7 +268,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             // second try isn't a second, unrelated failure.
             if let lastFailure {
                 failuresInARow += 1
-                if failuresInARow >= Self.failuresBeforeStopping || (lastFailure == .timedOut && phoneModelReady) {
+                if failuresInARow >= Self.failuresBeforeStopping || handsOver {
                     // Giving up takes several seconds of retries, and by then
                     // the screen has settled the shown words as a finished
                     // line (the stabilizer's quiet-line safety net), which

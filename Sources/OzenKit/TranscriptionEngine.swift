@@ -261,11 +261,13 @@ public protocol TranscriptionEngine: Sendable {
     /// list mid-conversation; engines that can't use hints ignore it.
     func setVocabulary(_ terms: [String]) async
 
-    /// Whether the phone's own model is installed and could take over if
-    /// this engine's service stops answering. Set before every `stream`.
-    /// A cloud engine that hears nothing back then hands over at once
-    /// instead of retrying for minutes; others ignore it.
-    func setPhoneModelReady(_ ready: Bool) async
+    /// How to ask whether the phone's own model is installed and could take
+    /// over if this engine's service stops answering. Set before every
+    /// `stream`, and asked only when a request gets no answer, so the
+    /// answer is never older than the failure. A cloud engine that hears
+    /// nothing back and is told yes hands over at once instead of
+    /// retrying for minutes; others ignore it.
+    func setPhoneModelCheck(_ check: @escaping @Sendable () async -> Bool) async
 
     /// What the engine knows about how its work has gone (how long passes
     /// take, how much it threw away), for the journal when a problem is
@@ -290,7 +292,7 @@ public protocol TranscriptionEngine: Sendable {
 public extension TranscriptionEngine {
     func setVocabulary(_ terms: [String]) async {}
 
-    func setPhoneModelReady(_ ready: Bool) async {}
+    func setPhoneModelCheck(_ check: @escaping @Sendable () async -> Bool) async {}
 
     func diagnosticsSummary() async -> String? { nil }
 
