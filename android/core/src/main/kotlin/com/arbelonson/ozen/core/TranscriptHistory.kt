@@ -819,17 +819,18 @@ class TranscriptHistoryStore(
     }
 
     private fun writeSearchText(text: String, recordFile: File, recordModifiedAt: FileTime?) {
+        var written = false
         try {
             summariesDirectory.mkdirs()
             PrivateFileWrites.write(searchTextFile(recordFile), text.toByteArray(Charsets.UTF_8))
+            written = true
         } catch (_: IOException) {
-            return
         }
         removeCacheIfConversationChanged(searchTextFile(recordFile), recordFile, recordModifiedAt)
         // Only now that the new file is on disk: a failed or interrupted
         // rebuild keeps the old file, so search never loses a conversation.
         // Done per conversation as it is rebuilt, so no folder scan is needed.
-        if (searchTextFile(recordFile).exists()) {
+        if (written && searchTextFile(recordFile).exists()) {
             for (older in olderSearchTextFiles(recordFile)) older.delete()
         }
     }
