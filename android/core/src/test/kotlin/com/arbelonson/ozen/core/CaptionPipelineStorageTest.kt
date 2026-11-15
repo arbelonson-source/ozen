@@ -62,6 +62,37 @@ class CaptionPipelineStorageTest {
     }
 
     @Test
+    fun `sound alerts switched off while sounds are the fallback of a failure close the microphone, and on again reopen it`() = runTest {
+        val (pipeline, _, audio) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        assertTrue(pipeline.isListeningForSoundsOnly)
+        assertFalse(pipeline.soundsOnlyChosen)
+        var phaseChanges = 0
+        pipeline.onPhaseChange = { phaseChanges += 1 }
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertFalse(pipeline.soundsOnlyShown)
+        assertEquals("stopCapture", audio.calls.last())
+        assertEquals(1, phaseChanges)
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+        assertEquals(EngineUnavailability.Kind.NotEnoughStorage, pipeline.phase.failure?.engineUnavailability?.kind)
+    }
+
+    @Test
+    fun `alerts switched off in the fallback, then Stop, do not reopen the microphone when they come back`() = runTest {
+        val (pipeline, _, _) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        pipeline.stop()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        delay(100.milliseconds)
+        assertFalse(pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test
     fun `sound alerts switched off while only sounds are listened for give the classifier no more sound`() = runTest {
         val detector = FakeSoundDetector()
         val (pipeline, _, audio) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = detector)
@@ -78,9 +109,8 @@ class CaptionPipelineStorageTest {
 
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
         audio.push(FloatArray(1_024) { 0.1f })
-        assertTrue(eventually { detector.chunksSeen == 3 })
-        assertEquals(0, detector.heard[1].size)
-        assertEquals(List(1_024) { 0.1f }, detector.heard[2].toList())
+        assertTrue(eventually { detector.chunksSeen == 2 })
+        assertEquals(List(1_024) { 0.1f }, detector.heard[1].toList())
     }
 
     @Test

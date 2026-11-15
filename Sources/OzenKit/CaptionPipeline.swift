@@ -363,6 +363,10 @@ public final class CaptionPipeline {
     /// between two tries.
     public var soundsOnlyShown: Bool { soundsOnlyChosen && soundPolicy.preferences.isEnabled }
     private var soundsOnlyOpening: [UUID] = []
+    /// The fallback's microphone was closed by switching sound alerts off
+    /// while captions waited; switching them on again reopens it for the
+    /// same wait, and for no other.
+    private var fallbackSwitchedOff: (run: UUID, failure: PipelineFailure)?
     /// Sounds-only ended by itself: the microphone stopped and did not come
     /// back through every retry (`soundsOnlyRetrySeconds`). The screen and
     /// the away notice say so; cleared when anything starts again or stops.
@@ -1919,9 +1923,19 @@ public final class CaptionPipeline {
             if soundsOnlyChosen {
                 stopListeningForSounds()
                 onPhaseChange?(phase)
+            } else if isListeningForSoundsOnly, case .failed(let failure) = phase {
+                stopListeningForSounds()
+                fallbackSwitchedOff = (runID, failure)
+                onPhaseChange?(phase)
             }
         } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, !soundsOnlyOpening.contains(runID) {
             Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
+        } else if let off = fallbackSwitchedOff {
+            fallbackSwitchedOff = nil
+            if off.run == runID, case .failed(let failure) = phase, failure == off.failure, !isListeningForSoundsOnly {
+                listenForSoundsMeanwhile(after: failure)
+                onPhaseChange?(phase)
+            }
         }
     }
 
@@ -3407,6 +3421,7 @@ public final class CaptionPipeline {
 
     private func tearDownSession() {
         runID = UUID()
+        fallbackSwitchedOff = nil
         stats.soundDetectionRunning = false
         currentEngine = nil
         recentSpeechCluster = nil
