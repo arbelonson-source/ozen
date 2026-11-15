@@ -115,6 +115,9 @@ struct TypeToSpeakView: View {
                 }
             }
             .onAppear { isTyping = true }
+            .onDisappear {
+                if !showingBigText { viewModel.forgetRemovedQuickPhrases() }
+            }
             // Left to the big-letters view while it is up, so the warning
             // isn't announced twice.
             .watchingMediaVolume(while: !showingBigText) { mediaVolume = $0 }
@@ -185,9 +188,9 @@ struct TypeToSpeakView: View {
 
             if let routeNotice {
                 SpeakingRouteNotice(notice: routeNotice) {
-                    SpeakingOutputRoute.useSpeaker()
+                    let chosen = SpeakingOutputRoute.useSpeaker()
                     outputs = SpeakingOutputRoute.outputs()
-                    Announcement.post(SpeakingRoute.speakerChosenAnnouncement)
+                    if chosen { Announcement.post(SpeakingRoute.speakerChosenAnnouncement) }
                 }
             }
 
@@ -332,7 +335,6 @@ private struct QuickPhrasesEditor: View {
             try? await Task.sleep(for: .seconds(seconds))
             if !Task.isCancelled { viewModel.forgetRemovedQuickPhrases() }
         }
-        .onDisappear { viewModel.forgetRemovedQuickPhrases() }
     }
 
     private func add() {
