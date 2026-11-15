@@ -395,7 +395,7 @@ class PhasePresentation private constructor(
             builtInOffered: Boolean,
         ): PhasePresentation {
             var result = presentingFailure(failure, engine)
-            if (scheduledRetry != null) {
+            if (scheduledRetry != null && !HomeServer.missingAddress(failure.engineUnavailability)) {
                 // The pipeline is already on it. Say so, calmly, and keep the
                 // tap as "try right now" rather than the only way out.
                 result = PhasePresentation(
@@ -426,7 +426,8 @@ class PhasePresentation private constructor(
                 )
             }
             if (offerBackup && failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable &&
-                !HomeServer.refusedPlainAddress(failure.engineUnavailability)
+                !HomeServer.refusedPlainAddress(failure.engineUnavailability) &&
+                !HomeServer.missingAddress(failure.engineUnavailability)
             ) {
                 // Without the phone's own model nothing can cover for the
                 // computer, so the way out is a backup, not another retry.

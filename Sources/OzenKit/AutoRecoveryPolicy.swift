@@ -87,7 +87,7 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
             case .modelLoadFailed:
                 return .loadFailure
             case .homeServerUnreachable:
-                return HomeServer.refusedPlainAddress(failure.engineUnavailability) ? .never : .glitch
+                return HomeServer.refusedPlainAddress(failure.engineUnavailability) || HomeServer.missingAddress(failure.engineUnavailability) ? .never : .glitch
             case .noInternet, .temporarilyUnavailable, .other, .none:
                 return .glitch
             }

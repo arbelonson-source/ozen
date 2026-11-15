@@ -439,6 +439,22 @@ struct PhasePresentationTests {
         }
     }
 
+    @Test("no saved address keeps its advice and Settings button with a backup offered or a retry scheduled")
+    func missingAddressKeepsItsAdvice() {
+        let phase = failure(EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress))
+        let bare = PhasePresentation(phase: phase, engine: .homeServer, interruptedBySystem: false)
+        #expect(bare.action == .openEngineSettings)
+        for (backup, retry) in [(true, false), (false, true), (true, true)] {
+            let shown = PhasePresentation(
+                phase: phase, engine: .homeServer, interruptedBySystem: false,
+                scheduledRetry: retry ? ScheduledRetry(at: 0, attempt: 1) : nil, offerBackup: backup
+            )
+            #expect(shown.detail == bare.detail, "backup \(backup) retry \(retry)")
+            #expect(shown.action == .openEngineSettings, "backup \(backup) retry \(retry)")
+            #expect(!shown.isBusy)
+        }
+    }
+
     @Test("a home computer that can't be reached, with no backup on the phone, points to the backup instead of only retrying")
     func homeServerUnreachableOffersBackup() {
         let phase = failure(EngineUnavailability(kind: .homeServerUnreachable, detail: ""))
