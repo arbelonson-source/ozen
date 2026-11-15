@@ -3555,8 +3555,9 @@ struct CaptionPipelineNamingLineTests {
     @Test("a new name on a line that opened after its voice was heard still gets that voice")
     func newNameOnLineHeardBeforeItOpenedKeepsTheVoice() async {
         let (pipeline, engine, audio) = await listening()
+        let heardBefore = pipeline.speakerClusters.first { $0.name == "Dana" }?.sampleCount ?? 0
         audio.push([Float](repeating: 0.5, count: 24_000))
-        try? await Task.sleep(for: .milliseconds(400))
+        #expect(await eventually { (pipeline.speakerClusters.first { $0.name == "Dana" }?.sampleCount ?? 0) > heardBefore })
         engine.emit(token(UUID(), "שלום", final: true))
         #expect(await eventually { pipeline.segments.count == 1 })
         #expect(await eventually { pipeline.segments[0].speakerClusterID != nil })
@@ -3565,6 +3566,48 @@ struct CaptionPipelineNamingLineTests {
 
         #expect(print == [1, 0, 0])
         #expect(pipeline.speakerClusters.contains { $0.name == "Moshe" })
+    }
+
+    @Test("a short line that opened and finished while its voice was still being read gets that voice and can be named", .timeLimit(.minutes(1)))
+    func lineOpenedWhileTheVoiceWasBeingReadGetsTheVoice() async {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: embedder, recovery: .disabled, now: { 1_000 })
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { embedder.callsStarted == 1 })
+        engine.emit(token(UUID(), "שלום", final: true))
+        #expect(await eventually { pipeline.segments.count == 1 && pipeline.segments[0].isCommitted })
+        #expect(pipeline.segments[0].speakerClusterID == nil)
+
+        embedder.release()
+        #expect(await eventually { pipeline.segments[0].speakerClusterID != nil })
+        let print = pipeline.nameSpeaker(of: pipeline.segments[0], name: "Moshe")
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.displayName(for: pipeline.segments[0]) == "Moshe")
+    }
+
+    @Test("a voice an open line claimed is not passed on to the next line")
+    func openLineKeepsItsOwnVoice() async {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: embedder, recovery: .disabled, now: { 1_000 })
+        await pipeline.start(settings: .default)
+        engine.emit(token(UUID(), "שלום"))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        audio.push([Float](repeating: -0.5, count: 24_000))
+        #expect(await eventually { embedder.callsStarted == 1 })
+        embedder.release()
+        #expect(await eventually { pipeline.segments[0].speakerClusterID != nil })
+        let first = pipeline.segments[0].speakerClusterID
+
+        engine.emit(token(UUID(), "מה נשמע"))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        #expect(first != nil)
+        #expect(pipeline.segments[1].speakerClusterID == nil)
     }
 
     @Test("a line from before a quiet break can still be named")
