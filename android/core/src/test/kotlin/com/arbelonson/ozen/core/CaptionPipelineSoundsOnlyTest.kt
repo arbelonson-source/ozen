@@ -423,6 +423,36 @@ class CaptionPipelineSoundsOnlyTest {
     }
 
     @Test
+    fun `sound alerts turned back on after the retry wait start listening again`() = runTest {
+        val (pipeline, audio, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        audio.startError = FakeAudioError("FakeAudio", 5)
+        audio.onCaptureLost?.invoke()
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        delay(10.seconds)
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertTrue(pipeline.soundsOnlyChosen)
+        audio.startError = null
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually(within = 30.seconds) { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
+    fun `sound alerts turned off during the retry wait are not listened for, and no stopped notice is raised`() = runTest {
+        val (pipeline, audio, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        audio.startError = FakeAudioError("FakeAudio", 5)
+        audio.onCaptureLost?.invoke()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        val before = audio.captures()
+        delay(20.minutes)
+        assertEquals(before, audio.captures())
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertFalse(pipeline.soundsOnlyStoppedByItself)
+    }
+
+    @Test
     fun `the retry waits are the ones the iPhone uses`() {
         val table = kotlinx.serialization.json.Json.parseToJsonElement(
             java.io.File(System.getProperty("ozen.fixtures"), "logic/sounds-only-retry.json").readText(Charsets.UTF_8),
