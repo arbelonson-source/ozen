@@ -193,4 +193,16 @@ class FileTranscriptKeeperTest {
         assertTrue(keeper.keepCutShort())
         assertFalse(keeper.hasUnfinishedCopy())
     }
+
+    @Test
+    fun beginningAnotherRunSettlesAnUnfinishedCopyLeftBehind() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(6))
+        val first = keeper.id
+        keeper.begin("Second.mp3", 60.0, "small", "en")
+        assertTrue(store.load(first)!!.cutShort)
+        assertFalse(marker.exists())
+        keeper.linesSoFar(said(5))
+        assertEquals(keeper.id.toString(), marker.readText().trim())
+    }
 }

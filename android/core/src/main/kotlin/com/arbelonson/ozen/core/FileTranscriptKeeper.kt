@@ -33,6 +33,8 @@ class FileTranscriptKeeper(
     private var lastKept = 0.0
 
     fun begin(fileName: String?, recordingSeconds: Double?, modelVariant: String?, languageCode: String?) {
+        recoverInterrupted()
+        marker.delete()
         id = UUID.randomUUID()
         this.fileName = fileName
         this.recordingSeconds = recordingSeconds
