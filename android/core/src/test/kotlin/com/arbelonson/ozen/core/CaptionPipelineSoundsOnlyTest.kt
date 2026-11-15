@@ -396,12 +396,63 @@ class CaptionPipelineSoundsOnlyTest {
         var told = 0
         pipeline.onPhaseChange = { told += 1 }
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
-        assertFalse(pipeline.soundsOnlyChosen)
+        assertTrue(pipeline.soundsOnlyChosen)
+        assertFalse(pipeline.soundsOnlyShown)
         assertFalse(pipeline.isListeningForSoundsOnly)
         assertFalse(pipeline.stats.soundDetectionRunning)
         assertEquals("stopCapture", audio.calls.last())
         assertTrue(told >= 1)
         assertEquals(PipelinePhase.Idle, pipeline.phase)
+    }
+
+    @Test
+    fun `sound alerts switched off while sounds alone are listened for close the microphone, and on again opens it`() = runTest {
+        val (pipeline, audio, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        assertTrue(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertEquals("stopCapture", audio.calls.last())
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+        assertTrue(pipeline.soundsOnlyShown)
+    }
+
+    @Test
+    fun `an opening left behind by Stop does not keep the next choice from resuming after a lost microphone`() = runTest {
+        val audio = FakeAudioCapturer().apply { holdPrepare = true }
+        val (pipeline, _, _) = makePipeline(audio = audio, soundDetector = FakeSoundDetector())
+        val stale = launch { pipeline.listenForSoundsOnly(AppSettings.default) }
+        assertTrue(eventually { audio.isHoldingPrepare })
+        pipeline.stop()
+        audio.holdPrepare = false
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        assertTrue(pipeline.isListeningForSoundsOnly)
+        audio.startError = FakeAudioError("FakeAudio", 5)
+        audio.onCaptureLost?.invoke()
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        audio.startError = null
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually(within = 100.milliseconds) { pipeline.isListeningForSoundsOnly })
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        stale.join()
+    }
+
+    @Test
+    fun `a second tap while the microphone is still being opened waits for the first`() = runTest {
+        val audio = FakeAudioCapturer().apply { holdPrepare = true }
+        val (pipeline, _, _) = makePipeline(audio = audio, soundDetector = FakeSoundDetector())
+        val first = launch { pipeline.listenForSoundsOnly(AppSettings.default) }
+        assertTrue(eventually { audio.isHoldingPrepare })
+        audio.holdPrepare = false
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        first.join()
+        assertEquals(1, audio.calls.count { it == "prepareSession" })
+        assertTrue(pipeline.isListeningForSoundsOnly)
     }
 
     @Test
