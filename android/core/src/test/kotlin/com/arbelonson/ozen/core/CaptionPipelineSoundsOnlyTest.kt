@@ -517,9 +517,12 @@ class CaptionPipelineSoundsOnlyTest {
         assertTrue(pipeline.soundsOnlyShown)
         audio.startError = FakeAudioError("FakeAudio", 5)
         audio.onCaptureLost?.invoke()
+        var told = 0
+        pipeline.onPhaseChange = { told += 1 }
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
 
         assertFalse(pipeline.soundsOnlyShown)
+        assertTrue(told >= 1)
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
         assertTrue(pipeline.soundsOnlyShown)
     }

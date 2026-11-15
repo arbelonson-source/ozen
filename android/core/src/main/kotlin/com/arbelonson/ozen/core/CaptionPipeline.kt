@@ -2107,6 +2107,7 @@ class CaptionPipeline(
             // to end: the choice stays, so turning the alerts on again opens
             // the microphone, and no timer opens it meanwhile.
             if (isListeningForSoundsOnly) stop() else cancelSoundsOnlyRetry()
+            onPhaseChange?.invoke(phase)
         } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null && soundsOnlyOpens == 0) {
             scope.launch { resumeSoundsOnly() }
         }
