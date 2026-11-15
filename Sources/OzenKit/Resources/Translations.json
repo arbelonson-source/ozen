@@ -1174,7 +1174,8 @@
   "The text written so far is saved in History.": "እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።",
   "Deleted: %1. Undo is available.": "ተሰርዟል፦ %1። መመለስ ይቻላል።",
   "Replies will play on the phone’s speaker": "ምላሾቹ በስልኩ ድምጽ ማጉያ ይጫወታሉ",
-  "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።"
+  "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "ስልኩ ኦዜን እንዲያዳምጥ አልፈቀደም። እንደገና ለመሞከር «ካፕሽን ጀምር»ን ይንኩ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2351,7 +2352,8 @@
   "The text written so far is saved in History.": "النص الذي كُتب حتى الآن محفوظ في السجل.",
   "Deleted: %1. Undo is available.": "حُذف: %1. يمكنكم التراجع.",
   "Replies will play on the phone’s speaker": "ستُشغَّل الردود عبر مكبّر صوت الهاتف",
-  "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية."
+  "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "لم يسمح الهاتف لـ Ozen بالاستماع. اضغطوا على «بدء الترجمة النصية» للمحاولة مرة أخرى."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3528,7 +3530,8 @@
   "The text written so far is saved in History.": "到目前为止写下的文字已保存在历史记录中。",
   "Deleted: %1. Undo is available.": "已删除：%1。可以撤销。",
   "Replies will play on the phone’s speaker": "回复将通过手机扬声器播放",
-  "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。"
+  "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "手机不允许 Ozen 收听。请点按“开始字幕”重试。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4705,7 +4708,8 @@
   "The text written so far is saved in History.": "Le texte écrit jusque-là est enregistré dans l’historique.",
   "Deleted: %1. Undo is available.": "Supprimé : %1. Vous pouvez annuler.",
   "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
-  "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif."
+  "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5882,7 +5886,8 @@
   "The text written so far is saved in History.": "Der bisher geschriebene Text ist im Verlauf gespeichert.",
   "Deleted: %1. Undo is available.": "Gelöscht: %1. Rückgängig ist möglich.",
   "Replies will play on the phone’s speaker": "Antworten werden über den Lautsprecher des Telefons wiedergegeben",
-  "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät."
+  "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Das Telefon hat Ozen das Zuhören nicht erlaubt. Tippen Sie auf „Untertitel starten“, um es erneut zu versuchen."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7059,7 +7064,8 @@
   "The text written so far is saved in History.": "अब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।",
   "Deleted: %1. Undo is available.": "हटाया गया: %1। वापस लाया जा सकता है।",
   "Replies will play on the phone’s speaker": "जवाब फ़ोन के स्पीकर पर चलेंगे",
-  "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।"
+  "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "फ़ोन ने Ozen को सुनने नहीं दिया। दोबारा कोशिश करने के लिए “कैप्शन शुरू करें” पर टैप करें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8236,7 +8242,8 @@
   "The text written so far is saved in History.": "O texto escrito até agora está guardado no histórico.",
   "Deleted: %1. Undo is available.": "Eliminado: %1. É possível desfazer.",
   "Replies will play on the phone’s speaker": "As respostas serão reproduzidas no altifalante do telemóvel",
-  "To fix this, disconnect the headset or hearing aid.": "Para corrigir isto, desligue os auscultadores ou o aparelho auditivo."
+  "To fix this, disconnect the headset or hearing aid.": "Para corrigir isto, desligue os auscultadores ou o aparelho auditivo.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "O telefone não deixou o Ozen ouvir. Toque em “Iniciar legendas” para tentar de novo."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9413,7 +9420,8 @@
   "The text written so far is saved in History.": "Текст, написанный к этому моменту, сохранён в истории.",
   "Deleted: %1. Undo is available.": "Удалено: %1. Можно отменить.",
   "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
-  "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат."
+  "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10590,7 +10598,8 @@
   "The text written so far is saved in History.": "El texto escrito hasta ahora está guardado en el historial.",
   "Deleted: %1. Undo is available.": "Eliminado: %1. Se puede deshacer.",
   "Replies will play on the phone’s speaker": "Las respuestas sonarán en el altavoz del teléfono",
-  "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecten los auriculares o el audífono."
+  "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecten los auriculares o el audífono.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "El teléfono no dejó que Ozen escuchara. Toque «Iniciar subtítulos» para intentarlo de nuevo."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11767,6 +11776,7 @@
   "The text written so far is saved in History.": "Текст, написаний до цього моменту, збережено в історії.",
   "Deleted: %1. Undo is available.": "Видалено: %1. Можна скасувати.",
   "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
-  "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат."
+  "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат.",
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Торкніться «Увімкнути субтитри», щоб спробувати ще раз."
  }
 }

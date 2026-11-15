@@ -8,4 +8,7 @@ object ServiceRestart {
 
     fun screenSaysCaptionsAreOff(appIsActive: Boolean, restartRefused: Boolean, microphoneGranted: Boolean): Boolean =
         appIsActive && !(restartRefused && microphoneGranted)
+
+    fun refusalShownOnScreen(appIsActive: Boolean, restartRefused: Boolean, microphoneGranted: Boolean): Boolean =
+        appIsActive && restartRefused && microphoneGranted
 }
