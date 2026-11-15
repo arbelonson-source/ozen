@@ -236,20 +236,15 @@ struct HistoryDetailView: View {
         }
         if let record {
             ToolbarItem(placement: .primaryAction) {
-                if let exportedText {
-                    ShareLink(
-                        item: exportedText,
-                        subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
-                        message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
-                    ) {
-                        Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
-                    }
-                } else {
-                    Button {} label: {
-                        Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
-                    }
-                    .disabled(true)
+                // One control for both states, so VoiceOver focus stays put when the text is ready.
+                ShareLink(
+                    item: exportedText ?? "",
+                    subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
+                    message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
+                ) {
+                    Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
                 }
+                .disabled(exportedText == nil)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button {

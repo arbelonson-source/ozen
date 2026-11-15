@@ -8,16 +8,21 @@ internal class BusyNotice {
     private val raised = MutableStateFlow(false)
     val shown: StateFlow<Boolean> = raised
 
+    private val count = MutableStateFlow(0)
+    val refusals: StateFlow<Int> = count
+
     fun accept(busy: Boolean): Boolean {
         raised.value = busy
+        if (busy) count.value += 1 else count.value = 0
         return !busy
     }
 
     fun follow(state: FileTranscription) {
-        if (state !is FileTranscription.Working) raised.value = false
+        if (state !is FileTranscription.Working) clear()
     }
 
     fun clear() {
         raised.value = false
+        count.value = 0
     }
 }
