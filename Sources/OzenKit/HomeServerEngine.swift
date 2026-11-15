@@ -36,6 +36,9 @@ public actor HomeServerEngine: TranscriptionEngine {
     /// Which run `liveSocket` belongs to, so only that run unhooks it.
     private var liveSocketRun: UUID?
     private var verified: (url: URL, token: String)?
+    /// The pin `verified` was checked with: a computer paired again with a
+    /// new certificate is asked for real, not trusted from the old pairing.
+    private var verifiedPin: String?
     /// The last time the computer answered anything. An approval older
     /// than `approvalSeconds` is checked again: trusted the next morning,
     /// a computer that went to sleep overnight showed "Listening" for the
@@ -94,7 +97,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         case .success(let found): target = found
         case .failure(let why): return .unavailable(why)
         }
-        if let verified, verified.url == target.url, verified.token == target.token,
+        if let verified, verified.url == target.url, verified.token == target.token, verifiedPin == certificatePin,
            let lastHeardAt, ContinuousClock.now - lastHeardAt < .seconds(approvalSeconds) {
             return .available
         }
@@ -102,6 +105,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             let socket = try await handshake(target, languageCode: languageCode, purpose: "check", vocabulary: vocabulary)
             await socket.close()
             verified = target
+            verifiedPin = certificatePin
             lastHeardAt = .now
             return .available
         } catch let why as EngineUnavailability {
@@ -402,7 +406,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         do {
             socket = try await connector.open(target.url, pinnedTo: certificatePin)
         } catch {
-            if error is CertificateMismatch { throw EngineUnavailability.homeServerUnreachable("\(CertificateMismatch())") }
+            if error is CertificateMismatch { throw EngineUnavailability.homeServerRejected(HomeServer.pairingChanged) }
             throw EngineUnavailability.homeServerUnreachable("could not connect: \(error)")
         }
         do {
@@ -425,7 +429,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             }
         } catch {
             await socket.close()
-            if error is CertificateMismatch { throw EngineUnavailability.homeServerUnreachable("\(CertificateMismatch())") }
+            if error is CertificateMismatch { throw EngineUnavailability.homeServerRejected(HomeServer.pairingChanged) }
             throw error as? EngineUnavailability ?? .homeServerUnreachable("\(error)")
         }
     }

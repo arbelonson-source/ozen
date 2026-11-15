@@ -470,6 +470,7 @@ class HomeServerEngine(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            if (error.isCertificateMismatch()) throw EngineUnavailability.homeServerRejected(HomeServer.PAIRING_CHANGED)
             throw EngineUnavailability.homeServerUnreachable("could not connect: $error")
         }
         try {
@@ -493,9 +494,13 @@ class HomeServerEngine(
             throw error
         } catch (error: Exception) {
             withContext(NonCancellable) { socket.close() }
+            if (error.isCertificateMismatch()) throw EngineUnavailability.homeServerRejected(HomeServer.PAIRING_CHANGED)
             throw (error as? EngineUnavailability) ?: EngineUnavailability.homeServerUnreachable("$error")
         }
     }
+
+    private fun Throwable.isCertificateMismatch(): Boolean =
+        generateSequence(this) { it.cause }.any { it.message == PinnedTrustManager.MISMATCH }
 
     private suspend fun firstReply(socket: HomeServerSocket, seconds: Double, after: String? = null): String = supervisorScope {
         val reply = async {

@@ -43,6 +43,12 @@ object HomeServer {
     val setupDownload: URI = URI("https://github.com/arbelonson-source/ozen/releases/latest/download/$SETUP_FILE_NAME")
     internal const val NO_ADDRESS = "no valid server address"
     internal const val NO_CODE = "no pairing code"
+
+    /**
+     * The computer's certificate is no longer the one in the QR code: only
+     * scanning the code again helps, so it is a rejection, not a lost link.
+     */
+    internal const val PAIRING_CHANGED = "certificate did not match"
     const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
     const val END = """{"type":"end"}"""
 

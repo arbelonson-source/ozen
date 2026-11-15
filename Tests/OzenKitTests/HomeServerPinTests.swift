@@ -137,14 +137,14 @@ struct HomeServerPinTests {
         #expect(unpinned.seen == [nil])
     }
 
-    @Test("a certificate that does not match is reported as such and the computer counts as unreachable")
+    @Test("a certificate that does not match is reported as such and needs the QR code scanned again, not a retry")
     func mismatchIsNamed() async {
         let connector = PinConnector()
         connector.error = CertificateMismatch()
         let engine = HomeServerEngine(address: "wss://192.168.1.20:8766", token: { "1234" }, connector: connector, handshakeSeconds: 1, certificatePin: testCertificatePin)
         let availability = await engine.checkAvailability(languageCode: "he")
-        #expect(availability.unavailability?.kind == .homeServerUnreachable)
+        #expect(availability.unavailability?.kind == .homeServerRejected)
         #expect(availability.unavailability?.detail == "certificate did not match")
-        #expect(HomeServerCheck(availability: availability, seconds: 0) == .unreachable)
+        #expect(HomeServerCheck(availability: availability, seconds: 0) == .codeRefused)
     }
 }
