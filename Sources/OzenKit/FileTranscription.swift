@@ -10,6 +10,7 @@ public enum FileTranscriptionProblem: Sendable, Equatable, CaseIterable {
     case modelFailed
     case modelDownloadFailed
     case unexpected
+    case anotherRunning
 
     public init(_ failure: EngineUnavailability) {
         switch failure.kind {
@@ -33,7 +34,16 @@ public enum FileTranscriptionProblem: Sendable, Equatable, CaseIterable {
         case .modelFailed: return tr("המודל לא נטען. אפשר לנסות שוב או לבחור מודל אחר.", "The model didn’t load. Try again, or choose another model.")
         case .modelDownloadFailed: return tr("הורדת המודל נכשלה. כדאי לבדוק את החיבור ולנסות שוב.", "The model download failed. Check the connection and try again.")
         case .unexpected: return tr("משהו השתבש בהמרת ההקלטה לטקסט. אפשר לנסות שוב.", "Something went wrong while turning the recording into text. Try again.")
+        case .anotherRunning: return tr("הקובץ האחר עדיין בהמרה לטקסט. כשההמרה תסתיים, אפשר לשתף את הקובץ הזה שוב.", "Ozen is still transcribing the other file. Share this one again when it's done.")
         }
+    }
+}
+
+public extension FileTranscriptionProblem {
+    /// What a file shared while another is being turned into text must be
+    /// told: the running one is left alone and no second model is loaded.
+    static func forNewShare(isTranscribing: Bool) -> FileTranscriptionProblem? {
+        isTranscribing ? .anotherRunning : nil
     }
 }
 

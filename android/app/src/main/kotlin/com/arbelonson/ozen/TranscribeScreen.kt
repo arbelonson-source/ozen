@@ -80,7 +80,7 @@ const val TRANSCRIBE_SUBTITLES = "transcribe-subtitles"
 
 private val PRIVACY_LINE get() = tr("ההקלטה נשארת בטלפון. שום דבר לא נשלח לשום מקום.", "The recording stays on this phone. Nothing is sent anywhere.")
 
-private val BUSY_LINE get() = tr("ההקלטה האחרת עדיין בהמרה לטקסט. שתפו את זו שוב כשההמרה תסתיים.", "Ozen is still transcribing the other file. Share this one again when it's done.")
+private val BUSY_LINE get() = tr("הקובץ האחר עדיין בהמרה לטקסט. כשההמרה תסתיים, אפשר לשתף את הקובץ הזה שוב.", "Ozen is still transcribing the other file. Share this one again when it's done.")
 
 @Composable
 internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscription, onClose: () -> Unit) {

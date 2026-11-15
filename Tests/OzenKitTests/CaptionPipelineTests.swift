@@ -4188,6 +4188,26 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(engine.prepareCount == 1)
     }
 
+    @Test("two recordings overlapping: the first one ending does not let captions load a model", .timeLimit(.minutes(1)))
+    func overlappingTranscriptionsStayHeld() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network)
+        await pipeline.start(settings: settings())
+        pipeline.beginRecordingTranscription()
+        pipeline.beginRecordingTranscription()
+        network.change(to: .wifi)
+        pipeline.endRecordingTranscription()
+        #expect(pipeline.isTranscribingRecording, "one recording is still being transcribed")
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0, "a model loaded beside the second recording's")
+
+        pipeline.endRecordingTranscription()
+        #expect(!pipeline.isTranscribingRecording)
+        #expect(await eventually { pipeline.phase == .listening })
+        pipeline.endRecordingTranscription()
+        #expect(!pipeline.isTranscribingRecording)
+    }
+
     @Test("captions stopped by hand while a recording is transcribed stay stopped when it is done", .timeLimit(.minutes(1)))
     func stoppedDuringRecordingStaysStopped() async {
         let network = FakeNetworkMonitor(.cellular)
