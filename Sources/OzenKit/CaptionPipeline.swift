@@ -2186,6 +2186,7 @@ public final class CaptionPipeline {
                 // the person asking.
                 if let opened = lineOpenedAfter(lastBefore) {
                     give(embedding, clusterID: clusterID, toLine: opened.id)
+                    recentSpeechCluster = nil
                 } else {
                     recentSpeechCluster = (clusterID, now())
                 }

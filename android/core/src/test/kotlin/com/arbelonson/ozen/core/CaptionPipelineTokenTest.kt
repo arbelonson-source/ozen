@@ -611,6 +611,42 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a voice given to a line that opened while it was being read is not also kept for the next line`() = runTest {
+        val engine = FakeEngine()
+        val audio = FakeAudioCapturer()
+        val embedder = GatedEmbedder()
+        val pipeline = captionPipeline(
+            audio = audio,
+            engineFactory = { engine },
+            embedder = embedder,
+            recovery = AutoRecoveryPolicy.disabled(),
+            now = { 1_000.0 },
+            embedderContext = Dispatchers.Default,
+        )
+        pipeline.start(AppSettings.default)
+        try {
+            audio.push(FloatArray(24_000) { 0.5f })
+            assertTrue(eventuallyInRealTime { embedder.callsStarted == 1 })
+            embedder.release()
+            assertTrue(eventuallyInRealTime { pipeline.speakerClusters.size == 1 })
+
+            audio.push(FloatArray(24_000) { -0.5f })
+            assertTrue(eventuallyInRealTime { embedder.callsStarted == 2 })
+            engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "hello", isFinal = true, timestamp = 1_000.0, startsNewSpeakerTurn = true))
+            assertTrue(eventually { pipeline.segments.size == 1 && pipeline.segments[0].isCommitted })
+            embedder.release()
+            assertTrue(eventuallyInRealTime { pipeline.segments[0].speakerClusterID != null })
+            assertEquals(2, pipeline.speakerClusters.size)
+
+            engine.emit(token(UUID.randomUUID(), "again"))
+            assertTrue(eventually { pipeline.segments.size == 2 })
+            assertNull(pipeline.segments[1].speakerClusterID)
+        } finally {
+            pipeline.stop()
+        }
+    }
+
+    @Test
     fun `a speaker corrected on a line still being spoken stays corrected as it grows`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

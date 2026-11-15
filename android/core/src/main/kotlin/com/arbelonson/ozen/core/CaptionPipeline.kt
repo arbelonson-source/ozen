@@ -2356,6 +2356,7 @@ class CaptionPipeline(
                     val opened = lineOpenedAfter(lastBefore)
                     if (opened != null) {
                         giveVoice(computed, clusterID, opened.id)
+                        recentSpeechCluster = null
                     } else {
                         recentSpeechCluster = RecentSpeechCluster(clusterID, now())
                     }
