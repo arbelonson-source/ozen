@@ -1078,6 +1078,14 @@ struct LiveCaptionView: View {
                 .font(.system(size: max(17, liveDisplay.fontSize * 0.6)))
                 .foregroundStyle(theme.pendingText)
                 .fixedSize(horizontal: false, vertical: true)
+            // Set up weeks ago, or by a helper, Amharic is otherwise never warned about.
+            if let note = SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage) {
+                Text(note)
+                    .font(.system(size: max(17, liveDisplay.fontSize * 0.6)))
+                    .foregroundStyle(theme.pendingText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("spokenLanguageNote")
+            }
             // Ahead of the recent conversation: a phone that always has one
             // would otherwise never be told its model is the weak one.
             let fitOffer = modelFitOption

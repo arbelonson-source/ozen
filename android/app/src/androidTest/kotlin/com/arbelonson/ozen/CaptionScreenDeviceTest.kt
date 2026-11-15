@@ -106,6 +106,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.io.File
@@ -441,6 +442,34 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("2 new lines").assertExists()
         assertFalse(displayed("Line 52 here"))
         assertFalse(displayed("Line 50 here"))
+    }
+
+    private fun emptyScreenWithSpokenLanguage(language: UILanguage, check: () -> Unit) {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.spokenLanguage
+        try {
+            app.settings.change { it.spokenLanguage = language }
+            compose.runOnUiThread { CaptionState.show(PipelinePhase.Idle, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.waitForIdle()
+            compose.onNodeWithText("Captions will appear here.").assertExists()
+            check()
+        } finally {
+            app.settings.change { it.spokenLanguage = before }
+        }
+    }
+
+    @Test
+    fun withAmharicSetTheEmptyCaptionScreenShowsTheNoteThatAmharicIsOftenWrong() {
+        emptyScreenWithSpokenLanguage(UILanguage.Amharic) {
+            compose.onNodeWithText(SpokenLanguageNote.text(UILanguage.Amharic)!!).assertExists()
+        }
+    }
+
+    @Test
+    fun withHebrewSetTheEmptyCaptionScreenShowsNoLanguageNote() {
+        emptyScreenWithSpokenLanguage(UILanguage.Hebrew) {
+            compose.onAllNodesWithText("Captions in Amharic", substring = true).assertCountEquals(0)
+        }
     }
 
     @Test
