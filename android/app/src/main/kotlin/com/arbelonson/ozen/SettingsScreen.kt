@@ -143,8 +143,6 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -621,9 +619,8 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     }
 
     SectionHeader(tr("תמלול בענן", "Cloud transcription"))
-    val serviceLabel = tr("שירות", "Service")
-    GroupLabel(serviceLabel)
-    SettingsGroup(modifier = Modifier.selectableGroup().semantics { contentDescription = serviceLabel }) {
+    GroupLabel(tr("שירות", "Service"))
+    SettingsGroup(modifier = Modifier.selectableGroup()) {
         for (provider in CloudProvider.entries) {
             item { ChoiceRow(provider.displayName, null, selected = provider == service) { engineSettings.chooseCloudService(provider) } }
         }
@@ -709,9 +706,8 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
         )
     }
     if (service == CloudProvider.OpenRouter) {
-        val modelLabel = tr("מודל", "Model")
-        GroupLabel(modelLabel)
-        SettingsGroup(modifier = Modifier.selectableGroup().semantics { contentDescription = modelLabel }) {
+        GroupLabel(tr("מודל", "Model"))
+        SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (model in CloudSpeech.models) {
                 item { ChoiceRow(EngineSettings.cloudModelName(model), null, selected = model == current.chosenCloudModel) { engineSettings.chooseCloudModel(model) } }
             }
@@ -1292,26 +1288,23 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(start = 16.dp, end = 8.dp)
-            .semantics(mergeDescendants = true) {
-                stateDescription = shown
-                progressBarRangeInfo = ProgressBarRangeInfo(hour.toFloat(), 0f..23f, steps = 22)
-                setProgress { target -> onChange(target.roundToInt().coerceIn(0, 23)); true }
-                customActions = listOf(
-                    CustomAccessibilityAction(earlier) { if (hour > 0) { onChange(hour - 1); true } else false },
-                    CustomAccessibilityAction(later) { if (hour < 23) { onChange(hour + 1); true } else false },
-                )
-            },
+            .padding(start = 16.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) {
+                    stateDescription = shown
+                    progressBarRangeInfo = ProgressBarRangeInfo(hour.toFloat(), 0f..23f, steps = 22)
+                    setProgress { target -> onChange(target.roundToInt().coerceIn(0, 23)); true }
+                },
+        ) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(shown, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics { })
         }
-        // Reached by touch only; a screen reader uses the row's own adjust and actions, so the
-        // merged row has one control and no stray click on the first button.
-        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0, modifier = Modifier.clearAndSetSemantics { }) { Text("−", fontSize = 24.sp) }
-        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23, modifier = Modifier.clearAndSetSemantics { }) { Text("+", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0, modifier = Modifier.semantics { contentDescription = "$title, $earlier" }) { Text("−", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23, modifier = Modifier.semantics { contentDescription = "$title, $later" }) { Text("+", fontSize = 24.sp) }
     }
 }
 
