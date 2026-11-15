@@ -2585,9 +2585,9 @@ public final class CaptionPipeline {
                 continuation.yield(chunk)
                 let before = liveFed
                 liveFed += chunk.count
-                if before < grace, liveFed >= grace {
+                if before < grace, liveFed >= grace, self.replayUtterance == nil {
                     self.replayedLines = []
-                    if self.replayUtterance == nil { self.replayDedupe = [] }
+                    self.replayDedupe = []
                 }
             }
             continuation.finish()

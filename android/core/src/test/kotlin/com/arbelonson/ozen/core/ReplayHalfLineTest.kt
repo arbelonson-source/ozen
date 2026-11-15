@@ -173,4 +173,24 @@ class ReplayHalfLineTest {
         assertTrue(eventually { rig.captions.segments.last().text == "half line and the rest" })
         assertEquals(listOf("half line and the rest"), rig.captions.segments.map { it.text })
     }
+
+    @Test
+    fun `a replay line that is only overlap when the grace passes still removes the half line when it adds words`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(3.0, 0.1f)
+        rig.cloud.emit(token("line A is done", true))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.said(6.0, 0.2f)
+        rig.cloud.emit(token("line B starts", false))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+        rig.dropAndReplay()
+
+        val replayLine = UUID.randomUUID()
+        rig.phone.emit(TranscriptToken(utteranceID = replayLine, text = "line A is done", isFinal = false, timestamp = virtualNow()))
+        rig.liveAfterReplay(10.0)
+        rig.phone.emit(TranscriptToken(utteranceID = replayLine, text = "line A is done and the rest", isFinal = true, timestamp = virtualNow()))
+        assertTrue(eventually { rig.captions.segments.last().text == "and the rest" })
+        assertEquals(listOf("line A is done", "and the rest"), rig.captions.segments.map { it.text })
+    }
 }

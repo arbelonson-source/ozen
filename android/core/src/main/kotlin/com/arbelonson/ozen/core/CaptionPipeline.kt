@@ -3869,9 +3869,9 @@ class CaptionPipeline(
             liveFed += chunk.size
             if (before < grace && liveFed >= grace) {
                 scope.launch {
-                    if (runID != run) return@launch
+                    if (runID != run || replayUtterance != null) return@launch
                     replayedLines = emptySet()
-                    if (replayUtterance == null) replayDedupe = emptyList()
+                    replayDedupe = emptyList()
                 }
             }
         }
