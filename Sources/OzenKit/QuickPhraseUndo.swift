@@ -22,4 +22,14 @@ public enum QuickPhraseUndo {
         }
         return result
     }
+
+    public static let sightedSeconds: Double = 8
+
+    public static func keepSeconds(screenReaderOn: Bool) -> Double? {
+        screenReaderOn ? nil : sightedSeconds
+    }
+
+    public static func deletedAnnouncement(_ removed: String) -> String {
+        tr("נמחק: %1. אפשר להחזיר.", "Deleted: %1. Undo is available.", args: ["\(removed)"])
+    }
 }

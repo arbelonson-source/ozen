@@ -1171,7 +1171,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "ምላሾቹ በ%1 በኩል እየተጫወቱ ነው፤ ስለዚህ ከፊት ያለው ሰው ላይሰማቸው ይችላል።",
   "Use the phone’s speaker": "የስልኩን ድምጽ ማጉያ ይጠቀሙ",
   "headphones": "የጆሮ ማዳመጫ",
-  "The text written so far is saved in History.": "እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።"
+  "The text written so far is saved in History.": "እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።",
+  "Deleted: %1. Undo is available.": "ተሰርዟል፦ %1። መመለስ ይቻላል።",
+  "Replies will play on the phone’s speaker": "ምላሾቹ በስልኩ ድምጽ ማጉያ ይጫወታሉ",
+  "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2345,7 +2348,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "يتم تشغيل الردود عبر %1، لذا قد لا يسمعها الشخص المقابل.",
   "Use the phone’s speaker": "استخدام مكبّر صوت الهاتف",
   "headphones": "سماعات الرأس",
-  "The text written so far is saved in History.": "النص الذي كُتب حتى الآن محفوظ في السجل."
+  "The text written so far is saved in History.": "النص الذي كُتب حتى الآن محفوظ في السجل.",
+  "Deleted: %1. Undo is available.": "حُذف: %1. يمكنكم التراجع.",
+  "Replies will play on the phone’s speaker": "ستُشغَّل الردود عبر مكبّر صوت الهاتف",
+  "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3519,7 +3525,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "回复正通过%1播放，对方可能听不到。",
   "Use the phone’s speaker": "使用手机扬声器",
   "headphones": "耳机",
-  "The text written so far is saved in History.": "到目前为止写下的文字已保存在历史记录中。"
+  "The text written so far is saved in History.": "到目前为止写下的文字已保存在历史记录中。",
+  "Deleted: %1. Undo is available.": "已删除：%1。可以撤销。",
+  "Replies will play on the phone’s speaker": "回复将通过手机扬声器播放",
+  "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4693,7 +4702,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "Les réponses sont lues sur %1 : la personne en face risque de ne pas les entendre.",
   "Use the phone’s speaker": "Utiliser le haut-parleur du téléphone",
   "headphones": "un casque",
-  "The text written so far is saved in History.": "Le texte écrit jusque-là est enregistré dans l’historique."
+  "The text written so far is saved in History.": "Le texte écrit jusque-là est enregistré dans l’historique.",
+  "Deleted: %1. Undo is available.": "Supprimé : %1. Vous pouvez annuler.",
+  "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
+  "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5867,7 +5879,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "Antworten werden über %1 abgespielt, daher hört die andere Person sie möglicherweise nicht.",
   "Use the phone’s speaker": "Lautsprecher des Telefons verwenden",
   "headphones": "Kopfhörer",
-  "The text written so far is saved in History.": "Der bisher geschriebene Text ist im Verlauf gespeichert."
+  "The text written so far is saved in History.": "Der bisher geschriebene Text ist im Verlauf gespeichert.",
+  "Deleted: %1. Undo is available.": "Gelöscht: %1. Rückgängig ist möglich.",
+  "Replies will play on the phone’s speaker": "Antworten werden über den Lautsprecher des Telefons wiedergegeben",
+  "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7041,7 +7056,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "जवाब %1 पर सुनाए जा रहे हैं, इसलिए सामने वाले को शायद सुनाई न दें।",
   "Use the phone’s speaker": "फ़ोन के स्पीकर का उपयोग करें",
   "headphones": "हेडफ़ोन",
-  "The text written so far is saved in History.": "अब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।"
+  "The text written so far is saved in History.": "अब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।",
+  "Deleted: %1. Undo is available.": "हटाया गया: %1। वापस लाया जा सकता है।",
+  "Replies will play on the phone’s speaker": "जवाब फ़ोन के स्पीकर पर चलेंगे",
+  "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8215,7 +8233,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "As respostas estão a ser reproduzidas em %1, por isso a outra pessoa pode não as ouvir.",
   "Use the phone’s speaker": "Usar o altifalante do telemóvel",
   "headphones": "auscultadores",
-  "The text written so far is saved in History.": "O texto escrito até agora está guardado no histórico."
+  "The text written so far is saved in History.": "O texto escrito até agora está guardado no histórico.",
+  "Deleted: %1. Undo is available.": "Eliminado: %1. É possível desfazer.",
+  "Replies will play on the phone’s speaker": "As respostas serão reproduzidas no altifalante do telemóvel",
+  "To fix this, disconnect the headset or hearing aid.": "Para corrigir isto, desligue os auscultadores ou o aparelho auditivo."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9389,7 +9410,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "Ответы воспроизводятся через %1, поэтому собеседник может их не услышать.",
   "Use the phone’s speaker": "Использовать динамик телефона",
   "headphones": "наушники",
-  "The text written so far is saved in History.": "Текст, написанный к этому моменту, сохранён в истории."
+  "The text written so far is saved in History.": "Текст, написанный к этому моменту, сохранён в истории.",
+  "Deleted: %1. Undo is available.": "Удалено: %1. Можно отменить.",
+  "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
+  "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10563,7 +10587,10 @@
   "Replies are playing through %1, so the other person may not hear them.": "Las respuestas se están reproduciendo por %1, así que la otra persona puede no oírlas.",
   "Use the phone’s speaker": "Usar el altavoz del teléfono",
   "headphones": "los auriculares",
-  "The text written so far is saved in History.": "El texto escrito hasta ahora está guardado en el historial."
+  "The text written so far is saved in History.": "El texto escrito hasta ahora está guardado en el historial.",
+  "Deleted: %1. Undo is available.": "Eliminado: %1. Se puede deshacer.",
+  "Replies will play on the phone’s speaker": "Las respuestas sonarán en el altavoz del teléfono",
+  "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecten los auriculares o el audífono."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11737,6 +11764,9 @@
   "Replies are playing through %1, so the other person may not hear them.": "Відповіді відтворюються через %1, тож співрозмовник може їх не почути.",
   "Use the phone’s speaker": "Використовувати динамік телефона",
   "headphones": "навушники",
-  "The text written so far is saved in History.": "Текст, написаний до цього моменту, збережено в історії."
+  "The text written so far is saved in History.": "Текст, написаний до цього моменту, збережено в історії.",
+  "Deleted: %1. Undo is available.": "Видалено: %1. Можна скасувати.",
+  "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
+  "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат."
  }
 }

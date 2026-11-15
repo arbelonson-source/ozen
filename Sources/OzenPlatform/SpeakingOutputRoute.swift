@@ -14,11 +14,13 @@ public enum SpeakingOutputRoute {
         }
     }
 
-    public static func useSpeaker() {
+    @discardableResult
+    public static func useSpeaker() -> Bool {
         startWatchingDevices()
         let session = AVAudioSession.sharedInstance()
         setPlayingCategory(session)
         chosenSpeaker = (try? session.overrideOutputAudioPort(.speaker)) != nil
+        return chosenSpeaker
     }
 
     private static func setPlayingCategory(_ session: AVAudioSession) {

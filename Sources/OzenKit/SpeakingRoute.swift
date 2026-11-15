@@ -27,4 +27,12 @@ public enum SpeakingRoute {
     public static var speakerButton: String {
         tr("שימוש ברמקול של הטלפון", "Use the phone’s speaker")
     }
+
+    public static var speakerChosenAnnouncement: String {
+        tr("התשובות יושמעו ברמקול של הטלפון", "Replies will play on the phone’s speaker")
+    }
+
+    public static var cannotChooseHint: String {
+        tr("כדי לתקן, נתקו את האוזניות או מכשיר השמיעה.", "To fix this, disconnect the headset or hearing aid.")
+    }
 }

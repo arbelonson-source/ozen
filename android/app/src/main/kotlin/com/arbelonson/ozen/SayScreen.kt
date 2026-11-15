@@ -68,12 +68,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.QuickPhraseUndo
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenTopBar
@@ -117,9 +120,14 @@ internal fun SayScreen(
     var bigLetters by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
+    // A deleted phrase is offered back for a while; the snackbar is read out by screen readers.
+    val undo = remember { SnackbarHostState() }
+    // Both before the big letters return below, so opening them does not cancel a waiting Undo.
+    val scope = rememberCoroutineScope()
     val addNew = { text: String ->
         val trimmed = text.trim()
         val isNew = trimmed.isNotEmpty() && trimmed !in phrases
+        if (isNew) undo.currentSnackbarData?.dismiss()
         onAddPhrase(text)
         if (isNew) ScreenReader.saidAdded(context, trimmed)
     }
@@ -147,17 +155,17 @@ internal fun SayScreen(
         return
     }
     val play = tr("השמעה", "Play")
-    // A deleted phrase is offered back for a while; the snackbar is read out by screen readers.
-    val undo = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val deletePhrase = { phrase: String ->
         val at = phrases.indexOf(phrase)
         onRemovePhrase(phrase)
-        val message = tr("נמחק: %1", "Deleted: %1", listOf(phrase))
+        val screenReaderOn = ScreenReader.isOn(context)
+        val message = QuickPhraseUndo.deletedMessage(phrase, screenReaderOn)
         val action = tr("החזרה", "Undo")
+        // With a screen reader on, Undo stays until the next edit or until the screen closes.
+        val duration = if (QuickPhraseUndo.keepMillis(screenReaderOn) == null) SnackbarDuration.Indefinite else SnackbarDuration.Long
         scope.launch {
             undo.currentSnackbarData?.dismiss()
-            if (undo.showSnackbar(message, action, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) onRestorePhrase(phrase, at)
+            if (undo.showSnackbar(message, action, duration = duration) == SnackbarResult.ActionPerformed) onRestorePhrase(phrase, at)
         }
         Unit
     }
@@ -266,8 +274,8 @@ internal fun SayScreen(
                                 item {
                                     EditablePhraseRow(
                                         phrase,
-                                        onMoveUp = { onMovePhrase(phrase, -1) }.takeIf { at > 0 },
-                                        onMoveDown = { onMovePhrase(phrase, 1) }.takeIf { at < phrases.lastIndex },
+                                        onMoveUp = { undo.currentSnackbarData?.dismiss(); onMovePhrase(phrase, -1) }.takeIf { at > 0 },
+                                        onMoveDown = { undo.currentSnackbarData?.dismiss(); onMovePhrase(phrase, 1) }.takeIf { at < phrases.lastIndex },
                                         onDelete = { deletePhrase(phrase) },
                                     )
                                 }
@@ -306,7 +314,8 @@ internal fun SayScreen(
                 }
             }
         }
-        SnackbarHost(undo, modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(16.dp))
+        // Read before the page, so a screen reader finds Undo at once.
+        SnackbarHost(undo, modifier = Modifier.align(Alignment.BottomCenter).semantics { isTraversalGroup = true; traversalIndex = -1f }.navigationBarsPadding().imePadding().padding(16.dp))
     }
     if (confirmingRestore) {
         AlertDialog(

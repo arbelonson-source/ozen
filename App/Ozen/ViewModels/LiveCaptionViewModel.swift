@@ -2224,6 +2224,7 @@ public final class LiveCaptionViewModel {
 
     public func moveQuickPhrases(from source: IndexSet, to destination: Int) {
         adoptDisplayedQuickPhrases()
+        removedQuickPhrases = []
         settings.quickPhrases.move(fromOffsets: source, toOffset: destination)
         persist()
     }

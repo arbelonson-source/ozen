@@ -18,4 +18,8 @@ object SpeakingRoute {
     }
 
     fun speakerButton(): String = tr("שימוש ברמקול של הטלפון", "Use the phone’s speaker")
+
+    fun speakerChosenAnnouncement(): String = tr("התשובות יושמעו ברמקול של הטלפון", "Replies will play on the phone’s speaker")
+
+    fun cannotChooseHint(): String = tr("כדי לתקן, נתקו את האוזניות או מכשיר השמיעה.", "To fix this, disconnect the headset or hearing aid.")
 }
