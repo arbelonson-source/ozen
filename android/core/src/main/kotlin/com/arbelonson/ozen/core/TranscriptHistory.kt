@@ -1550,7 +1550,7 @@ class TranscriptHistoryStore(
          */
         fun sharedFileName(kind: SharedKind, title: String?, at: Double, utcOffsetSeconds: Int): String {
             val fallback = if (kind == SharedKind.Starred) tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen") else tr("שיחה מתוך אוזן", "Conversation from Ozen")
-            val clean = title.orEmpty().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().take(SHARED_TITLE_LIMIT).trim()
+            val clean = title.orEmpty().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trim()
             val local = Math.floor(at).toLong() + utcOffsetSeconds
             val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(at, utcOffsetSeconds))
             val rest = Math.floorMod(local, 86_400L).toInt()
@@ -1559,7 +1559,22 @@ class TranscriptHistoryStore(
             return "${clean.ifEmpty { fallback }} $day $time.txt"
         }
 
-        private const val SHARED_TITLE_LIMIT = 80
+        private const val SHARED_TITLE_BYTES = 80
+
+        private fun cutToBytes(text: String, limit: Int): String {
+            var bytes = 0
+            val out = StringBuilder()
+            var index = 0
+            while (index < text.length) {
+                val point = text.codePointAt(index)
+                val size = String(Character.toChars(point)).toByteArray(Charsets.UTF_8).size
+                if (bytes + size > limit) break
+                bytes += size
+                out.appendCodePoint(point)
+                index += Character.charCount(point)
+            }
+            return out.toString()
+        }
 
         /**
          * A long conversation shared as text opens with the lines that had a

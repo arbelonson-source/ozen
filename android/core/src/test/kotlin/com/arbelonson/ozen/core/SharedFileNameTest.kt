@@ -56,6 +56,13 @@ class SharedFileNameTest {
     }
 
     @Test
+    fun `a title of three-byte characters stays under the file system's byte limit`() {
+        val made = name("语".repeat(200))
+        assertTrue(made.toByteArray(Charsets.UTF_8).size <= 200, made)
+        assertTrue(made.endsWith(" 2023-11-14 22-13-20.txt"), made)
+    }
+
+    @Test
     fun `starred lines have their own name`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Starred lines from Ozen 2023-11-14 22-13-20.txt", name(null, kind = SharedKind.Starred))
