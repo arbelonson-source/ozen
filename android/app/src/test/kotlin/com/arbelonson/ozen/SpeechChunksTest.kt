@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SpeechChunksTest {
@@ -44,5 +45,34 @@ class SpeechChunksTest {
         assertTrue(chunks.size > 1)
         assertTrue(chunks.all { it.length <= 4_000 })
         assertEquals(text.split(" "), chunks.joinToString(" ").split(" "))
+    }
+
+    @Test
+    fun `Chinese and Japanese text with no spaces breaks after a full stop mark`() {
+        val text = "谢谢你来。请说慢一点。我在手机上读所有内容。"
+        assertEquals(listOf("谢谢你来。请说慢一点。", "我在手机上读所有内容。"), SpeechChunks.of(text, 13))
+        assertEquals(listOf("ありがとう！ゆっくり話して？", "お願いします。"), SpeechChunks.of("ありがとう！ゆっくり話して？お願いします。", 15))
+    }
+
+    @Test
+    fun `a piece the engine refuses stops the rest and is reported`() {
+        val asked = mutableListOf<String>()
+        val flushes = mutableListOf<Boolean>()
+        val queued = SpeechChunks.queue(listOf("one", "two", "three")) { piece, _, flush ->
+            asked += piece
+            flushes += flush
+            piece != "two"
+        }
+        assertFalse(queued.complete)
+        assertEquals(listOf("one", "two"), asked)
+        assertEquals(listOf(true, false), flushes)
+        assertEquals(1, queued.ids.size)
+    }
+
+    @Test
+    fun `pieces the engine takes are all reported as taken`() {
+        val queued = SpeechChunks.queue(listOf("one", "two", "three")) { _, _, _ -> true }
+        assertTrue(queued.complete)
+        assertEquals(3, queued.ids.distinct().size)
     }
 }

@@ -1358,6 +1358,12 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Slower, please").performScrollTo().performTouchInput { longClick() }
             compose.onNodeWithText("Delete").performClick()
             compose.waitUntil(5_000) { stored() == english - "Slower, please" + "Please write it down for me" }
+            compose.onNodeWithText("Deleted: Slower, please").assertExists()
+            compose.onNodeWithText("Undo").performClick()
+            compose.waitUntil(5_000) { stored() == english + "Please write it down for me" }
+            compose.onNodeWithText("Slower, please").performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Delete").performClick()
+            compose.waitUntil(5_000) { stored() == english - "Slower, please" + "Please write it down for me" }
             val waiting = compose.onNodeWithText("Wait, I didn't catch that").fetchSemanticsNode()
             val delete = waiting.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
             compose.runOnUiThread { delete.action() }

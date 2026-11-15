@@ -3574,4 +3574,20 @@ struct LiveCaptionViewModelLockScreenTests {
         #expect(await eventually { lockScreen.shown.last?.status != nil })
         #expect(lockScreen.ends == 0)
     }
+
+    @Test("a quick phrase that was deleted comes back in its place with Undo, and adding another one forgets the chance")
+    func deletedQuickPhraseComesBack() {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.addQuickPhrase("Please write it down")
+        let before = viewModel.quickPhrases
+        viewModel.removeQuickPhrases(at: [1])
+        #expect(viewModel.quickPhrases == before.enumerated().filter { $0.offset != 1 }.map(\.element))
+        viewModel.undoRemovedQuickPhrases()
+        #expect(viewModel.quickPhrases == before)
+        #expect(viewModel.removedQuickPhrases.isEmpty)
+
+        viewModel.removeQuickPhrases(at: [0])
+        viewModel.addQuickPhrase("Another one")
+        #expect(viewModel.removedQuickPhrases.isEmpty)
+    }
 }

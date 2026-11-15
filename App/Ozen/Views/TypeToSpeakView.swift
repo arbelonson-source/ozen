@@ -262,11 +262,18 @@ private struct QuickPhrasesEditor: View {
                 .accessibilityLabel(tr("הוספה", "Add"))
                 .disabled(newPhrase.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            if !viewModel.removedQuickPhrases.isEmpty {
+                undoRow
+            }
             ForEach(viewModel.quickPhrases, id: \.self) { phrase in
                 Text(phrase)
             }
             .onDelete { offsets in
                 viewModel.removeQuickPhrases(at: offsets)
+                let removed = viewModel.removedQuickPhrases.map(\.phrase).joined(separator: ", ")
+                if !removed.isEmpty {
+                    Announcement.post(tr("נמחק: %1", "Deleted: %1", args: ["\(removed)"]))
+                }
             }
             .onMove { from, to in
                 viewModel.moveQuickPhrases(from: from, to: to)
@@ -283,6 +290,27 @@ private struct QuickPhrasesEditor: View {
             } message: {
                 Text(tr("המשפטים שנוספו או שונו יימחקו.", "Phrases that were added or changed will be deleted."))
             }
+        }
+    }
+
+    private var removedList: String {
+        viewModel.removedQuickPhrases.map(\.phrase).joined(separator: ", ")
+    }
+
+    private var undoRow: some View {
+        HStack {
+            Text(tr("נמחק: %1", "Deleted: %1", args: ["\(removedList)"]))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(tr("החזרה", "Undo")) {
+                viewModel.undoRemovedQuickPhrases()
+            }
+            .fontWeight(.semibold)
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityIdentifier("undoDeletedPhrase")
+        }
+        .task(id: viewModel.removedQuickPhrases) {
+            try? await Task.sleep(for: .seconds(8))
+            if !Task.isCancelled { viewModel.forgetRemovedQuickPhrases() }
         }
     }
 

@@ -15,6 +15,12 @@ object QuickPhrases {
 
     fun removing(phrase: String, stored: List<String>, language: UILanguage): List<String> = shown(stored, language) - phrase
 
+    fun restoring(phrase: String, at: Int, stored: List<String>, language: UILanguage): List<String> {
+        val shown = shown(stored, language)
+        if (phrase.isBlank() || phrase in shown) return stored
+        return shown.toMutableList().apply { add(at.coerceIn(0, size), phrase) }
+    }
+
     fun moving(phrase: String, by: Int, stored: List<String>, language: UILanguage): List<String> {
         val shown = shown(stored, language)
         val from = shown.indexOf(phrase)

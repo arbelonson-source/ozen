@@ -2195,13 +2195,29 @@ public final class LiveCaptionViewModel {
         guard !trimmed.isEmpty, !quickPhrases.contains(trimmed) else { return }
         adoptDisplayedQuickPhrases()
         settings.quickPhrases.append(trimmed)
+        removedQuickPhrases = []
         persist()
     }
 
+    /// The phrases the last delete took off the list, offered back by
+    /// "Undo" for a few seconds.
+    public private(set) var removedQuickPhrases: [RemovedQuickPhrase] = []
+
     public func removeQuickPhrases(at offsets: IndexSet) {
         adoptDisplayedQuickPhrases()
+        removedQuickPhrases = QuickPhraseUndo.removed(at: offsets, from: settings.quickPhrases)
         settings.quickPhrases.remove(atOffsets: offsets)
         persist()
+    }
+
+    public func undoRemovedQuickPhrases() {
+        settings.quickPhrases = QuickPhraseUndo.restoring(removedQuickPhrases, into: quickPhrases)
+        removedQuickPhrases = []
+        persist()
+    }
+
+    public func forgetRemovedQuickPhrases() {
+        removedQuickPhrases = []
     }
 
     public func moveQuickPhrases(from source: IndexSet, to destination: Int) {
@@ -2212,6 +2228,7 @@ public final class LiveCaptionViewModel {
 
     public func resetQuickPhrases() {
         settings.quickPhrases = AppSettings.defaultQuickPhrases(for: uiLanguage)
+        removedQuickPhrases = []
         persist()
     }
 

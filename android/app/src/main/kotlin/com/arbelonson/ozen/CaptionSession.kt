@@ -795,6 +795,10 @@ class CaptionSession(
         settings.change { it.quickPhrases = QuickPhrases.removing(phrase, it.quickPhrases, Localization.language) }
     }
 
+    fun restoreQuickPhrase(phrase: String, at: Int) {
+        settings.change { it.quickPhrases = QuickPhrases.restoring(phrase, at, it.quickPhrases, Localization.language) }
+    }
+
     fun moveQuickPhrase(phrase: String, by: Int) {
         settings.change { it.quickPhrases = QuickPhrases.moving(phrase, by, it.quickPhrases, Localization.language) }
     }
