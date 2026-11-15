@@ -288,6 +288,40 @@ struct LockScreenCaptionsCoordinatorTests {
         #expect(reports == 1)
     }
 
+    @Test("captions that start or come back while the app is away, where iOS won't start the lock screen, are reported once")
+    func neverShownWhileAwayIsReported() async {
+        let (coordinator, display, captions) = make(keepAliveSeconds: 0.05)
+        var reports = 0
+        coordinator.onEndedWhileAway = { reports += 1 }
+        coordinator.appActivityChanged(isActive: false)
+        captions.texts = ["good morning"]
+        coordinator.refresh()
+        coordinator.refresh()
+        #expect(!coordinator.isShowing)
+        #expect(reports == 1)
+
+        coordinator.appActivityChanged(isActive: true)
+        #expect(coordinator.isShowing)
+        #expect(display.isRunning)
+    }
+
+    @Test("nothing is reported for a lock screen that is off in iOS Settings, or for captions that stopped for good")
+    func neverShownWhileAwayNotReportedWhenPointless() async {
+        let (coordinator, display, captions) = make(keepAliveSeconds: 0.05)
+        var reports = 0
+        coordinator.onEndedWhileAway = { reports += 1 }
+        display.isAllowedBySystem = false
+        coordinator.appActivityChanged(isActive: false)
+        captions.texts = ["good morning"]
+        coordinator.refresh()
+        #expect(reports == 0)
+
+        display.isAllowedBySystem = true
+        captions.situation.phase = .failed(PipelineFailure(kind: .transcriptionStopped, detail: ""))
+        coordinator.refresh()
+        #expect(reports == 0)
+    }
+
     @Test("a lock screen that said captions had stopped, ended while away, isn't reported: they don't carry on in the app")
     func endedWhileAwayAfterFailure() async {
         let (coordinator, display, captions) = make(keepAliveSeconds: 0.05)

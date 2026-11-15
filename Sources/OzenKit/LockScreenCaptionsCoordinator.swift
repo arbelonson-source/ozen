@@ -212,7 +212,10 @@ public final class LockScreenCaptionsCoordinator {
             keepAlive = nil
             // The notice says captions carry on in the app, which isn't so
             // once they have stopped for good; that has its own notice.
-            if wasShowing, !isAppActive, !captionsStopped {
+            // Captions that start or come back while the app is away can't
+            // start the lock screen either: she is told the same way, unless
+            // iOS Settings has Live Activities off, which she chose.
+            if !isAppActive, !captionsStopped, !endedWhileAway, wasShowing || display.isAllowedBySystem {
                 endedWhileAway = true
                 onEndedWhileAway?()
             }
