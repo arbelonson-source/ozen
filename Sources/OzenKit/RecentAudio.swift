@@ -99,6 +99,12 @@ public final class SharedRecentAudio: @unchecked Sendable {
         lock.withLock { audio.tail(since: position, maxSamples: maxSamples) }
     }
 
+    /// `tail`, with the position just after its last sample, both read under
+    /// one hold of the lock so a chunk arriving between them cannot shift it.
+    public func tailAndEnd(since position: Int, maxSamples: Int) -> (samples: [Float], end: Int) {
+        lock.withLock { (audio.tail(since: position, maxSamples: maxSamples), audio.totalAppended) }
+    }
+
     public func clear() {
         lock.withLock {
             audio.clear()

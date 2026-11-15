@@ -212,6 +212,8 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var pendingReplayedLines: Set<UUID> = []
+    private var replayedLines: Set<UUID> = []
     private var utteranceFirstHeard: [UUID: Int] = [:]
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
@@ -558,8 +560,10 @@ public final class CaptionPipeline {
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
+        replayedLines = replay.isEmpty ? [] : pendingReplayedLines
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -840,6 +844,8 @@ public final class CaptionPipeline {
         recentAudio.clear()
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
+        replayedLines = []
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
         cloudRecheck?.cancel()
@@ -2091,6 +2097,7 @@ public final class CaptionPipeline {
             if token.isFinal { commitWithoutNewWords(token.utteranceID) }
             return
         }
+        dropLinesTheReplayRewrites()
         var enriched = token
         if enriched.speakerClusterID == nil {
             if let assigned = utteranceClusterAssignments[token.utteranceID] {
@@ -2508,13 +2515,14 @@ public final class CaptionPipeline {
     private func prepareReplay() {
         pendingReplay = []
         pendingReplayDedupe = []
+        pendingReplayedLines = []
         let rate = Self.sampleRate
         var begin = sessionAudioStart
         if let heard = lastFinalHeard {
             begin = max(begin, heard.position - Int(Self.replayMarginSeconds * rate))
             pendingReplayDedupe = Self.comparableWords(heard.text)
         }
-        let tail = recentAudio.tail(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
+        let (tail, tailEnd) = recentAudio.tailAndEnd(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
         var detector = EnergyVoiceDetector()
         var heardSpeech = false
         var index = 0
@@ -2529,6 +2537,23 @@ public final class CaptionPipeline {
             return
         }
         pendingReplay = tail
+        let windowStart = tailEnd - tail.count
+        let slack = windowStart > begin ? Int(Self.replayMarginSeconds * rate) : 0
+        let inside = Set(utteranceFirstHeard.filter { $0.value >= windowStart + slack }.keys)
+        pendingReplayedLines = Set(segments.filter { $0.isCommitted && inside.contains($0.id) }.map(\.id))
+    }
+
+    /// The lines the engine that failed never finished were kept, cut off,
+    /// and the replay hears the same speech again: once the replay shows
+    /// words, those lines go, so nothing is on screen or saved twice. Only
+    /// lines that began inside the replayed audio go; one that began before
+    /// it keeps its earlier words.
+    private func dropLinesTheReplayRewrites() {
+        guard !replayedLines.isEmpty else { return }
+        let gone = replayedLines
+        replayedLines = []
+        segments.removeAll { gone.contains($0.id) }
+        onCaptionsChanged?()
     }
 
     static func replayBufferLimit(replaySamples: Int) -> Int {
