@@ -333,6 +333,37 @@ public struct ConversationStats: Sendable, Equatable {
         }
     }
 
+    /// A position in a recording as words, for a screen reader: "5 seconds",
+    /// "1 minute, 2 seconds", "1 hour, 2 minutes, 7 seconds".
+    public static func spokenDuration(_ seconds: Double) -> String {
+        let whole = seconds.isFinite ? Int(min(max(seconds, 0), 1e9).rounded(.down)) : 0
+        let hours = whole / 3_600
+        let minutes = whole % 3_600 / 60
+        let rest = whole % 60
+        var parts: [String] = []
+        if hours > 0 { parts.append(spokenHours(hours)) }
+        if minutes > 0 { parts.append(spokenMinutes(minutes)) }
+        if rest > 0 || parts.isEmpty { parts.append(secondsText(rest)) }
+        if Localization.language == .arabic { return parts.joined(separator: " و") }
+        return parts.joined(separator: ", ")
+    }
+
+    private static func spokenHours(_ count: Int) -> String {
+        switch Localization.language {
+        case .english: return count == 1 ? "1 hour" : "\(count) hours"
+        case .hebrew: return count == 1 ? "שעה אחת" : count == 2 ? "שעתיים" : "\(count) שעות"
+        default: return countedTime(count, unit: .hour, in: Localization.language)
+        }
+    }
+
+    private static func spokenMinutes(_ count: Int) -> String {
+        switch Localization.language {
+        case .english: return count == 1 ? "1 minute" : "\(count) minutes"
+        case .hebrew: return count == 1 ? "דקה אחת" : count == 2 ? "שתי דקות" : "\(count) דקות"
+        default: return countedTime(count, unit: .minute, in: Localization.language)
+        }
+    }
+
     public static func paceText(_ wordsPerMinute: Double) -> String {
         tr("%1 לדקה", "%1 per minute", args: ["\(wordsText(Int(wordsPerMinute.rounded())))"])
     }

@@ -336,4 +336,17 @@ class HistoryRowsTest {
         val text = resumedTime(QuietGap(lastWordsAt = morning, resumedAt = tomorrow), jerusalem)
         assertTrue(text.contains("Jan") && text.contains("16") && text.contains(clockTime(tomorrow, jerusalem)), text)
     }
+
+    @Test
+    fun `a transcribed recording's line shows 1_02 but is read as a spoken position, and a live line keeps its clock time`() = Localization.withLanguage(UILanguage.English) {
+        fun record(fromRecording: Boolean) = TranscriptSessionRecord(
+            startedAt = morning, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
+            segments = listOf(line("Hello", morning + 62)), fromRecording = fromRecording,
+        )
+        val recorded = SavedLine.of(record(true), jerusalem, languageCode = "en").single()
+        assertEquals("1:02", recorded.time)
+        assertEquals("1 minute, 2 seconds. Hello", recorded.spoken)
+        val live = SavedLine.of(record(false), jerusalem, languageCode = "en").single()
+        assertEquals("${live.time}. Hello", live.spoken)
+    }
 }

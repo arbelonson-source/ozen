@@ -840,14 +840,6 @@ internal fun ConversationScreen(
                                     Footnote(tr("לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה, להעתיק אותה או לתקן מילה.", "Press and hold a line to mark it as important, copy it or fix a word."))
                                 }
                             }
-                            items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
-                                    scope.launch {
-                                        if (conversations.toggleStar(id, line.id) == null) starRefused = true
-                                        show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
-                                    }
-                                }
-                            }
                             if (shown.record.cutShort) {
                                 item(key = "cut-short") {
                                     Text(
@@ -855,6 +847,14 @@ internal fun ConversationScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.padding(horizontal = 16.dp).testTag("history-cut-short"),
                                     )
+                                }
+                            }
+                            items(shown.lines, key = { it.id.toString() }) { line ->
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
+                                    scope.launch {
+                                        if (conversations.toggleStar(id, line.id) == null) starRefused = true
+                                        show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
+                                    }
                                 }
                             }
                             item(key = "source") {

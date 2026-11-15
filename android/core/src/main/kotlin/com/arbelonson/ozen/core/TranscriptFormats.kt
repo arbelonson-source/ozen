@@ -17,6 +17,8 @@ object TranscriptFormats {
         return if (hours > 0) "%d:%02d:%02d".format(Locale.ROOT, hours, minutes, rest) else "%d:%02d".format(Locale.ROOT, minutes, rest)
     }
 
+    fun spokenLine(line: TranscribedLine): String = "${ConversationStats.spokenDuration(line.startSeconds)}. ${line.text}"
+
     fun text(lines: List<TranscribedLine>, languageCode: String): String = lines.joinToString("\n") { line ->
         directed("${clock(line.startSeconds)}  ${paragraph(line.text)}", line.text, languageCode)
     }
