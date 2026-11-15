@@ -157,6 +157,7 @@
   {"text": "call the front desk at 415 555 2671", "found": [[23, 35, "4155552671"]]},
   {"text": "call \u00c9lodie 415 555 2671", "found": [[12, 24, "4155552671"]]},
   {"text": "call \u00e9lodie 415 555 2671", "found": []},
+  {"text": "call administrative headquarters reception at 415 555 2671", "found": [[46, 58, "4155552671"]]},
   {"text": "Bill 250 300 1999", "found": []},
   {"text": "call the front desk now 415 555 2671", "found": []},
   {"text": "call the doctor at 415 555 2671", "found": [[19, 31, "4155552671"]]},
