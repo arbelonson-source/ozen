@@ -4716,7 +4716,7 @@
   "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
   "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer.",
-  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Transcription dans le cloud n’est pas disponible pour le moment. Ouvrez Ozen pour continuer.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcription dans le cloud n’est pas disponible pour le moment. Ouvrez Ozen pour continuer.",
   "The address or code is missing. Open Ozen to continue.": "L’adresse ou le code est manquant. Ouvrez Ozen pour continuer."
  },
  "german": {
@@ -9436,7 +9436,7 @@
   "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
   "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку.",
-  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Облачное распознавание: сейчас недоступно. Откройте Ozen, чтобы продолжить.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Облачное распознавание сейчас недоступно. Откройте Ozen, чтобы продолжить.",
   "The address or code is missing. Open Ozen to continue.": "Отсутствует адрес или код. Откройте Ozen, чтобы продолжить."
  },
  "spanish": {
@@ -11796,7 +11796,7 @@
   "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
   "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат.",
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Торкніться «Увімкнути субтитри», щоб спробувати ще раз.",
-  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Хмарне розпізнавання: зараз недоступно. Відкрийте Ozen, щоб продовжити.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Хмарне розпізнавання зараз недоступне. Відкрийте Ozen, щоб продовжити.",
   "The address or code is missing. Open Ozen to continue.": "Відсутня адреса або код. Відкрийте Ozen, щоб продовжити."
  }
 }
