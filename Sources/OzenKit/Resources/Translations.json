@@ -4625,7 +4625,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer.",
   "Star removed": "Étoile retirée",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
-  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé, donc Ozen l’a supprimé et va le télécharger de nouveau."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
