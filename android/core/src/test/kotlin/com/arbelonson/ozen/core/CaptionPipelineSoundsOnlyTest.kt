@@ -421,4 +421,14 @@ class CaptionPipelineSoundsOnlyTest {
         assertTrue(pipeline.soundsOnlyChosen)
         assertEquals(PipelinePhase.Paused, pipeline.phase)
     }
+
+    @Test
+    fun `the retry waits are the ones the iPhone uses`() {
+        val table = kotlinx.serialization.json.Json.parseToJsonElement(
+            java.io.File(System.getProperty("ozen.fixtures"), "logic/sounds-only-retry.json").readText(Charsets.UTF_8),
+        ).let { it as kotlinx.serialization.json.JsonObject }
+        val waits = (table.getValue("retrySeconds") as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content.toDouble() }
+        assertEquals(waits, CaptionPipeline.SOUNDS_ONLY_RETRY_SECONDS)
+        assertEquals((table.getValue("healthySeconds") as kotlinx.serialization.json.JsonPrimitive).content.toDouble(), CaptionPipeline.SOUNDS_ONLY_HEALTHY_SECONDS)
+    }
 }

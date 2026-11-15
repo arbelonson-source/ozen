@@ -508,6 +508,14 @@ class CaptionPipeline(
      */
     val soundAlertsNotWorking: Boolean get() = soundClassifierUnavailable && soundPolicy.preferences.isEnabled
 
+    /**
+     * Sound alerts are on and something is meant to be listening: captions
+     * are running or on their way back, or sounds alone were chosen. False
+     * once she turned them off or paused or stopped on purpose.
+     */
+    val soundAlertsMeantToRun: Boolean
+        get() = soundPolicy.preferences.isEnabled && (soundsOnlyChosen || (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused))
+
     /** Called when [soundAlertsNotWorking] may have changed. */
     var onSoundAlertsAvailabilityChange: (() -> Unit)? = null
 

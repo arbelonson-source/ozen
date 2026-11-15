@@ -319,6 +319,55 @@ struct StoppedCaptionsNoticeTests {
         #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
     }
 
+    private func scheduledDelay(_ update: StoppedCaptionsNotice.Update?) -> TimeInterval? {
+        guard case .schedule(_, let delay)? = update else { return nil }
+        return delay
+    }
+
+    @Test("sound alerts that fail 50 seconds, work 20, and fail again are still told: the minute counts across the gaps")
+    func soundAlertsFlappingIsStillTold() {
+        var notice = StoppedCaptionsNotice()
+        let down = StoppedCaptionsNotice.Cause.soundAlertsNotWorking
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 0)) == 60)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: 50) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 70)) == 10)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 75)
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 95)) == StoppedCaptionsNotice.soundAlertsMinimumDelay)
+    }
+
+    @Test("an hour of sound alerts failing 50 seconds and working 20 delivers one notice, not one per cycle")
+    func soundAlertsFlappingForAnHourIsOneNotice() {
+        var notice = StoppedCaptionsNotice()
+        var schedules = 0
+        var withdrawals = 0
+        var now: TimeInterval = 0
+        while now < 3600 {
+            for (cause, length) in [(StoppedCaptionsNotice.Cause.soundAlertsNotWorking, 50.0), (nil, 20.0)] {
+                switch notice.update(for: cause, appIsActive: false, isEnabled: true, now: now) {
+                case .schedule?, .post?, .replace?: schedules += 1
+                case .cancelScheduled?, .withdraw?: withdrawals += 1
+                case nil: break
+                }
+                now += length
+            }
+        }
+        #expect(schedules == 2)  // the first 50 s stretch is under a minute and is dropped; the second one delivers
+        #expect(withdrawals == 1)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: now + StoppedCaptionsNotice.soundAlertsWindow + 1) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+    }
+
+    @Test("one short blip of sound alerts failing does not bring the notice forward, and a long gap forgets old failures")
+    func soundAlertsBlipAndWindow() {
+        var notice = StoppedCaptionsNotice()
+        let down = StoppedCaptionsNotice.Cause.soundAlertsNotWorking
+        _ = notice.update(for: down, appIsActive: false, isEnabled: true, now: 0)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 5)
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 30)) == 55)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 35)
+        let later = 35 + StoppedCaptionsNotice.soundAlertsWindow + 1
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: later)) == 60)
+    }
+
     @Test("the not-working notice says sounds may be missed and that Ozen keeps trying")
     func soundAlertsNotWorkingWording() {
         Localization.$override.withValue(.english) {
@@ -391,5 +440,32 @@ struct CaptionPipelinePhaseChangeTests {
         Localization.$override.withValue(.english) {
             #expect(StoppedCaptionsNotice.content(for: .failed(failure)).body == "No pairing code for the home computer is saved on this phone. Open Ozen and scan its QR code.")
         }
+    }
+
+    @Test("a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped")
+    func deliveredNoticeIsWithdrawnWhenSoundAlertsAreNoLongerMeantToRun() {
+        var kept = StoppedCaptionsNotice()
+        _ = kept.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true, now: 0)
+        #expect(kept.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: true, now: 70) == nil)
+
+        var off = StoppedCaptionsNotice()
+        _ = off.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true, now: 0)
+        #expect(off.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: false, now: 70) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(off.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: false, now: 80) == nil)
+    }
+
+    @Test("sound alerts that stopped by themselves are posted at once, with the text the other phone uses")
+    func soundAlertsStoppedNotice() {
+        var notice = StoppedCaptionsNotice()
+        guard case .post(let content)? = notice.update(for: .soundAlertsStopped, appIsActive: false, isEnabled: true, now: 0) else {
+            Issue.record("expected a notification at once")
+            return
+        }
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .soundAlertsStopped).title == "Sound alerts stopped")
+            #expect(StoppedCaptionsNotice.content(for: .soundAlertsStopped).body == "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.")
+        }
+        #expect(content.isUrgent)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: 5) == .withdraw(identifier: StoppedCaptionsNotice.identifier))
     }
 }

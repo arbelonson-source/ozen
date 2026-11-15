@@ -1928,6 +1928,38 @@ class TranscriptHistoryLenientReadTest {
     }
 
     @Test
+    fun `a search file of the format before is removed once the new one is written`() {
+        withHistoryDirectory("ozen-history-older-search") { dir ->
+            val saved = savedConversation(dir)
+            val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
+            val current = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
+            val previous = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            assertTrue(current.delete())
+            previous.writeText("alpha one")
+
+            assertEquals(listOf(saved.id), saved.store.search("alpha").map { it.id })
+            assertTrue(current.exists())
+            assertFalse(previous.exists())
+        }
+    }
+
+    @Test
+    fun `a search file of the format before stays when the new one cannot be written`() {
+        withHistoryDirectory("ozen-history-older-search") { dir ->
+            val saved = savedConversation(dir)
+            val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
+            val current = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
+            val previous = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            assertTrue(current.delete())
+            assertTrue(current.mkdir())
+            previous.writeText("alpha one")
+
+            saved.store.search("alpha")
+            assertTrue(previous.exists())
+        }
+    }
+
+    @Test
     fun `caches written before damaged optional values were tolerated are not trusted`() {
         withHistoryDirectory("ozen-history-lenient") { dir ->
             val saved = savedConversation(dir)

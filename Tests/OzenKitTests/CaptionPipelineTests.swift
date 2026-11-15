@@ -18,6 +18,7 @@ final class FakeAudioCapturer: AudioCapturing {
     var inputLevel: Float = 0
     var onInputsChanged: (@MainActor () -> Void)?
     var onCaptureLost: (@MainActor () -> Void)?
+    var isRecoveringSession = false
 
     var permissionAnswer: AudioPermission = .granted
     var prepareError: Error?

@@ -18,6 +18,14 @@ class WalkthroughAnswersTest {
     }
 
     @Test
+    fun `the microphone page says which of the system's answers keeps the night's sound alerts going`() = english {
+        assertEquals(
+            "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.",
+            WalkthroughAnswers.microphoneChoice(),
+        )
+    }
+
+    @Test
     fun `a refusal is said as the page shows it, blocked only when the system won't ask again`() = english {
         assertEquals(listOf("Without a microphone there are no captions."), WalkthroughAnswers.said(null to null, MicrophoneAsk.AskAgain to null))
         assertEquals(
