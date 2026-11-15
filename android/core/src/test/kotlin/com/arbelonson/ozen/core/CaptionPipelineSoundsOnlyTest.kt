@@ -474,4 +474,56 @@ class CaptionPipelineSoundsOnlyTest {
         assertEquals(waits, CaptionPipeline.SOUNDS_ONLY_RETRY_SECONDS)
         assertEquals((table.getValue("healthySeconds") as kotlinx.serialization.json.JsonPrimitive).content.toDouble(), CaptionPipeline.SOUNDS_ONLY_HEALTHY_SECONDS)
     }
+
+    @Test
+    fun `sound alerts switched off while the microphone is still being opened never open it`() = runTest {
+        val audio = FakeAudioCapturer().apply { holdPrepare = true }
+        val (pipeline, _, _) = makePipeline(audio = audio, soundDetector = FakeSoundDetector())
+        val opening = launch { pipeline.listenForSoundsOnly(AppSettings.default) }
+        assertTrue(eventually { audio.isHoldingPrepare })
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        audio.releasePrepare()
+        opening.join()
+
+        assertEquals(0, audio.captures())
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        assertFalse(pipeline.soundsOnlyShown)
+    }
+
+    @Test
+    fun `sound alerts switched on while the microphone is still being opened do not open it a second time`() = runTest {
+        val audio = FakeAudioCapturer().apply { holdPrepare = true }
+        val (pipeline, _, _) = makePipeline(audio = audio, soundDetector = FakeSoundDetector())
+        val opening = launch { pipeline.listenForSoundsOnly(AppSettings.default) }
+        assertTrue(eventually { audio.isHoldingPrepare })
+
+        audio.holdPrepare = false
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        delay(1.seconds)
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        opening.join()
+
+        assertEquals(1, audio.calls.count { it == "prepareSession" })
+        assertEquals(1, audio.captures())
+        assertTrue(pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test
+    fun `with alerts off between two tries the screen does not say sounds are listened for`() = runTest {
+        val (pipeline, audio, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        assertTrue(pipeline.soundsOnlyShown)
+        audio.startError = FakeAudioError("FakeAudio", 5)
+        audio.onCaptureLost?.invoke()
+        var told = 0
+        pipeline.onPhaseChange = { told += 1 }
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+
+        assertFalse(pipeline.soundsOnlyShown)
+        assertTrue(told >= 1)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(pipeline.soundsOnlyShown)
+    }
 }
