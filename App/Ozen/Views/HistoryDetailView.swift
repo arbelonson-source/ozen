@@ -46,11 +46,12 @@ struct HistoryDetailView: View {
         let record: TranscriptSessionRecord
         let marksUncertain: Bool
         let languageCode: String
+        let timeZone: String
     }
 
     private var exportKey: ExportKey? {
         record.map {
-            ExportKey(record: $0, marksUncertain: viewModel.display.markUncertainLines, languageCode: viewModel.settings.languageCode)
+            ExportKey(record: $0, marksUncertain: viewModel.display.markUncertainLines, languageCode: viewModel.settings.languageCode, timeZone: TimeZone.current.identifier)
         }
     }
 
