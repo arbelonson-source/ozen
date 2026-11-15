@@ -448,7 +448,14 @@ private fun OzenApp(
     val listeningCut by app.captions.listeningCut.collectAsStateWithLifecycle()
     val damagedModel by app.captions.damagedModelRemoved.collectAsStateWithLifecycle()
     LaunchedEffect(loadCrash != null) { if (loadCrash != null) app.captions.removeDamagedAfterCrash() }
-    LaunchedEffect(damagedModel) { if (damagedModel) onLaunch() }
+    // Once only: the notice stays up until dismissed, and a recreated screen must not start the captions again.
+    var damagedModelRestarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(damagedModel) {
+        if (damagedModel && !damagedModelRestarted) {
+            damagedModelRestarted = true
+            onLaunch()
+        }
+    }
     // Any start, from the card or the status line, ends the question, even
     // one that waits for Wi-Fi or fails before the captions run.
     val captionsStarted = state.phase != PipelinePhase.Idle
