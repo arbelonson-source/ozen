@@ -316,6 +316,7 @@ internal fun SayScreen(
                 TextButton(
                     onClick = {
                         confirmingRestore = false
+                        undo.currentSnackbarData?.dismiss()
                         onRestorePhrases()
                     },
                 ) { Text(tr("שחזור", "Restore"), color = MaterialTheme.colorScheme.error) }

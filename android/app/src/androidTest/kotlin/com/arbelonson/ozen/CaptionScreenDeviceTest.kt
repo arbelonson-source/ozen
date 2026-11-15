@@ -1376,6 +1376,7 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
             compose.onNode(hasText("Restore") and hasAnyAncestor(isDialog())).performClick()
             compose.waitUntil(5_000) { stored() == english }
+            compose.onNodeWithText("Undo").assertDoesNotExist()
             compose.onNodeWithText("Restore defaults").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("Done").performScrollTo().performClick()
             compose.onNodeWithText("New phrase").assertDoesNotExist()

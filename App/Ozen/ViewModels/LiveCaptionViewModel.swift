@@ -2211,7 +2211,7 @@ public final class LiveCaptionViewModel {
     }
 
     public func undoRemovedQuickPhrases() {
-        settings.quickPhrases = QuickPhraseUndo.restoring(removedQuickPhrases, into: quickPhrases)
+        settings.quickPhrases = QuickPhraseUndo.restoring(removedQuickPhrases, into: settings.quickPhrases)
         removedQuickPhrases = []
         persist()
     }
