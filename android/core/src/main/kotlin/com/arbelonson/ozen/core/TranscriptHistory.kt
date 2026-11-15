@@ -1543,6 +1543,25 @@ class TranscriptHistoryStore(
         }
 
         /**
+         * "Visit to the doctor 2023-11-14 22-13-20.txt": the title (or what
+         * the file is), then the phone's own date and time, so two shares
+         * never carry the same name. Characters a file system forbids become
+         * "_", and a long title is cut before the time.
+         */
+        fun sharedFileName(kind: SharedKind, title: String?, at: Double, utcOffsetSeconds: Int): String {
+            val fallback = if (kind == SharedKind.Starred) tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen") else tr("שיחה מתוך אוזן", "Conversation from Ozen")
+            val clean = title.orEmpty().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().take(SHARED_TITLE_LIMIT).trim()
+            val local = Math.floor(at).toLong() + utcOffsetSeconds
+            val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(at, utcOffsetSeconds))
+            val rest = Math.floorMod(local, 86_400L).toInt()
+            val day = "${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)}"
+            val time = "${twoDigits(rest / 3_600)}-${twoDigits(rest / 60 % 60)}-${twoDigits(rest % 60)}"
+            return "${clean.ifEmpty { fallback }} $day $time.txt"
+        }
+
+        private const val SHARED_TITLE_LIMIT = 80
+
+        /**
          * A long conversation shared as text opens with the lines that had a
          * time, an amount or a phone number in them (see `NumberEmphasis`), so
          * whoever reads it in a chat finds what the doctor said without
@@ -1748,3 +1767,5 @@ internal fun historyTrimmed(text: String): String {
     while (to > from && historyIsSpaceOrNewline(scalars[to - 1])) to--
     return String(scalars, from, to - from)
 }
+
+enum class SharedKind { Conversation, Starred }
