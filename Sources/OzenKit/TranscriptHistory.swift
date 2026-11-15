@@ -440,6 +440,11 @@ public struct TranscriptHistoryStore: Sendable {
     private let directoryURL: URL
     private let now: @Sendable () -> Date
     private let memory = TranscriptAutosaveMemory()
+    private let lock: NSRecursiveLock
+
+    /// Test-only: runs between an edit's read of a conversation file and its
+    /// write, to let a test land another writer in that gap.
+    var betweenPatchReadAndWrite: (@Sendable () -> Void)?
 
     /// How many conversations' last saves are remembered (see `save`).
     static let rememberedConversations = 8
@@ -465,6 +470,7 @@ public struct TranscriptHistoryStore: Sendable {
     public init(directoryURL: URL, now: @escaping @Sendable () -> Date = { Date() }) {
         self.directoryURL = directoryURL
         self.now = now
+        self.lock = TranscriptStoreLocks.lock(forFolder: directoryURL)
     }
 
     private var summariesURL: URL {
@@ -528,6 +534,8 @@ public struct TranscriptHistoryStore: Sendable {
     @discardableResult
     public func save(_ record: TranscriptSessionRecord, updateSearchCaches: Bool = true, throttleCaches: Bool = false) throws -> Bool {
         guard !record.segments.isEmpty else { return false }
+        lock.lock()
+        defer { lock.unlock() }
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         let url = fileURL(for: record.id)
         var record = record
@@ -1011,11 +1019,14 @@ public struct TranscriptHistoryStore: Sendable {
     /// dropped by a decode and re-encode (key order and spacing are not kept). `patch` returns false to leave the
     /// file untouched. Returns whether the file was rewritten.
     private func patchRecordFile(at url: URL, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         guard let data = try? Data(contentsOf: url),
               var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               patch(&object)
         else { return false }
         let patched = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        betweenPatchReadAndWrite?()
         memory.forget(url)
         try patched.write(to: url, options: .privateFile)
         if let record = try? JSONDecoder().decode(TranscriptSessionRecord.self, from: patched) {
@@ -1076,6 +1087,8 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     public func delete(id: UUID) throws {
+        lock.lock()
+        defer { lock.unlock() }
         let url = fileURL(for: id)
         memory.forget(url)
         try? FileManager.default.removeItem(at: summaryURL(forRecordFile: url))
@@ -1088,6 +1101,8 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     public func deleteAll() throws {
+        lock.lock()
+        defer { lock.unlock() }
         memory.forgetAll()
         for url in recordFiles() {
             try FileManager.default.removeItem(at: url)
@@ -1331,5 +1346,22 @@ public struct TranscriptHistoryStore: Sendable {
 
     private static func strippingNiqqud(_ text: String) -> String {
         HebrewText.stripNiqqud(text)
+    }
+}
+
+/// One lock per conversation folder, shared by every store that points at it,
+/// so an edit's read-patch-write and the live autosave take turns.
+enum TranscriptStoreLocks {
+    private static let guardLock = NSLock()
+    nonisolated(unsafe) private static var locks: [String: NSRecursiveLock] = [:]
+
+    static func lock(forFolder url: URL) -> NSRecursiveLock {
+        let key = url.standardizedFileURL.path
+        guardLock.lock()
+        defer { guardLock.unlock() }
+        if let existing = locks[key] { return existing }
+        let made = NSRecursiveLock()
+        locks[key] = made
+        return made
     }
 }

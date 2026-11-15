@@ -523,6 +523,11 @@ class TranscriptHistoryStore(
     private val directory: File,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
+    /** Test-only: runs between an edit's read of a conversation file and its write. */
+    internal var betweenPatchReadAndWrite: (() -> Unit)? = null
+
+    private val lock: Any = lockForFolder(directory)
+
     internal val conversationReads = AtomicInteger()
     internal val cacheRefreshes = AtomicInteger()
 
@@ -576,7 +581,7 @@ class TranscriptHistoryStore(
         record: TranscriptSessionRecord,
         updateSearchCaches: Boolean = true,
         throttleCaches: Boolean = false,
-    ): Boolean {
+    ): Boolean = synchronized(lock) {
         if (record.segments.isEmpty()) return false
         Files.createDirectories(directory.toPath())
         val file = fileFor(record.id)
@@ -877,8 +882,7 @@ class TranscriptHistoryStore(
         if (from.isEmpty() || to.isEmpty() || from == to) return 0
         var changed = 0
         for (file in recordFiles()) {
-            val data = readBytes(file) ?: continue
-            val patched = patchRecordFile(file, data, writeSearchText = true) { object_ ->
+            val patched = patchRecordFile(file, writeSearchText = true) { object_ ->
                 var any = false
                 val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
                 val renamed = lines.map { entry ->
@@ -901,9 +905,8 @@ class TranscriptHistoryStore(
     /** Names a saved conversation, or removes its name with an empty one. */
     fun rename(id: UUID, title: String) {
         val file = fileFor(id)
-        val data = readBytes(file) ?: return
         val trimmed = historyTrimmed(title)
-        patchRecordFile(file, data, writeSearchText = true) { object_ ->
+        patchRecordFile(file, writeSearchText = true) { object_ ->
             if (trimmed.isEmpty()) JsonObject(object_ - "title") else JsonObject(object_ + ("title" to JsonPrimitive(trimmed)))
         }
     }
@@ -916,9 +919,8 @@ class TranscriptHistoryStore(
      */
     fun toggleStar(segmentID: UUID, inSession: UUID): Boolean? {
         val file = fileFor(inSession)
-        val data = readBytes(file) ?: return null
         var state: Boolean? = null
-        patchRecordFile(file, data, writeSearchText = false) { object_ ->
+        patchRecordFile(file, writeSearchText = false) { object_ ->
             val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null
@@ -942,9 +944,17 @@ class TranscriptHistoryStore(
      * dropped by a decode and re-encode (spacing is not kept). `patch` returns null to leave the
      * file untouched. Returns whether the file was rewritten.
      */
-    private fun patchRecordFile(file: File, data: ByteArray, writeSearchText: Boolean, patch: (JsonObject) -> JsonObject?): Boolean {
+    private fun patchRecordFile(
+        file: File,
+        writeSearchText: Boolean,
+        throwIfUnreadable: Boolean = false,
+        patch: (JsonObject) -> JsonObject?,
+    ): Boolean = synchronized(lock) {
+        if (!file.exists()) return false
+        val data = (if (throwIfUnreadable) file.readBytes() else readBytes(file)) ?: return false
         val patched = lenientHistory { patch(parseHistoryJson(strictUtf8(data)).asHistoryObject()) } ?: return false
         val id = lenientHistory { UUID.fromString(file.nameWithoutExtension) }
+        betweenPatchReadAndWrite?.invoke()
         if (id != null) forget(id)
         PrivateFileWrites.write(file, patched.toString().toByteArray(Charsets.UTF_8))
         val record = lenientHistory { TranscriptSessionRecord.fromJson(patched.toString()) } ?: return true
@@ -964,9 +974,7 @@ class TranscriptHistoryStore(
      */
     fun fixText(segmentID: UUID, inSession: UUID, change: (String) -> String): Boolean {
         val file = fileFor(inSession)
-        if (!file.exists()) return false
-        val data = file.readBytes()
-        return patchRecordFile(file, data, writeSearchText = true) { object_ ->
+        return patchRecordFile(file, writeSearchText = true, throwIfUnreadable = true) { object_ ->
             val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null
@@ -988,7 +996,7 @@ class TranscriptHistoryStore(
         }
     }
 
-    fun delete(id: UUID) {
+    fun delete(id: UUID): Unit = synchronized(lock) {
         sweepStrayTemporaries()
         forget(id)
         val file = fileFor(id)
@@ -999,7 +1007,7 @@ class TranscriptHistoryStore(
         Files.delete(file.toPath())
     }
 
-    fun deleteAll() {
+    fun deleteAll(): Unit = synchronized(lock) {
         synchronized(memory) { memory.clear() }
         for (file in recordFiles()) Files.delete(file.toPath())
         // A save the system cut short (the app killed between writing the
@@ -1112,6 +1120,13 @@ class TranscriptHistoryStore(
     }
 
     companion object {
+        private val folderLocks = HashMap<String, Any>()
+
+        /** One lock per conversation folder, shared by every store on it. */
+        private fun lockForFolder(folder: File): Any = synchronized(folderLocks) {
+            folderLocks.getOrPut(folder.absoluteFile.normalize().path) { Any() }
+        }
+
         /**
          * Bumped whenever [TranscriptSessionSummary] changes meaning, so
          * summaries written by an older build are rebuilt instead of trusted.
