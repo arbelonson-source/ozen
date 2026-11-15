@@ -281,11 +281,23 @@ struct LocalizationTests {
         #expect(UILanguage.portuguese.speechVoiceCode == "pt-PT")
         let table = TranslationTable.shared.table(for: .portuguese)
         #expect(!table.isEmpty)
-        let brazilian: Set<String> = ["você", "vocês", "celular", "tela", "arquivo", "usuário", "baixar", "contato", "registrar"]
+        let brazilian: Set<String> = ["você", "vocês", "celular", "tela", "arquivo", "usuário", "baixar", "contato", "registrar", "aplicativo", "aplicativos"]
         for (english, portuguese) in table {
             let words = Set(portuguese.lowercased().split { !$0.isLetter }.map(String.init))
             for word in words.intersection(brazilian) {
                 Issue.record("Brazilian '\(word)' in the Portuguese for: \(english)")
+            }
+        }
+    }
+
+    @Test("the Portuguese safety texts use the table's own words for phone and alerts")
+    func portugueseSafetyTextsUseTheTablesWords() {
+        let table = TranslationTable.shared.table(for: .portuguese)
+        let prefixes = ["Another app is using the microphone", "Alerts won’t reach you"]
+        for (english, portuguese) in table where prefixes.contains(where: english.hasPrefix) {
+            let words = Set(portuguese.lowercased().split { !$0.isLetter }.map(String.init))
+            for word in words.intersection(["telefone", "alertas", "usando"]) {
+                Issue.record("'\(word)' in the Portuguese for: \(english)")
             }
         }
     }
