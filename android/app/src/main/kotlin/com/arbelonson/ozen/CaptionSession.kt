@@ -725,6 +725,7 @@ class CaptionSession(
     /** For the night: captions stop and the speech model is let go, while sound alerts keep listening. */
     fun listenForSoundsOnly() {
         restartRefused = false
+        refusalCard.captionsStarted()
         CaptionState.startRefused(false)
         replies.userTookControl()
         scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
@@ -733,6 +734,7 @@ class CaptionSession(
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
     fun listen(afterRestart: Boolean = false) {
         restartRefused = false
+        refusalCard.captionsStarted()
         CaptionState.startRefused(false)
         replies.userTookControl()
         if (ServiceRestart.soundsOnlyAfterRestart(afterRestart, soundsOnlyChoice.chosen)) {
@@ -886,7 +888,6 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        CaptionState.startRefused(ServiceRestart.refusalShownOnScreen(appIsActive, restartRefused, microphoneGranted()))
         stoppedCaptions.update(stoppedCause(), ServiceRestart.screenSaysCaptionsAreOff(appIsActive, restartRefused, microphoneGranted()), settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
     }
 
@@ -993,8 +994,12 @@ class CaptionSession(
         tellRestartRefused()
     }
 
+    private val refusalCard = RefusalCard()
+
     private fun tellRestartRefused() {
         restartRefused = true
+        refusalCard.refused(appIsActive, microphoneGranted())
+        CaptionState.startRefused(refusalCard.shown)
         microphoneGoneAtRestart = !microphoneGranted()
         // With the microphone gone the red screen says it. Otherwise nothing on
         // screen does: the refusal stays, and the notice comes at once.
