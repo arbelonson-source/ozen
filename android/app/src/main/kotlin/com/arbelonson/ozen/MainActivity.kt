@@ -130,6 +130,8 @@ import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.KeywordPill
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
+import com.arbelonson.ozen.core.OnboardingMicrophoneAdvice
+import com.arbelonson.ozen.core.OnboardingNotificationAdvice
 import com.arbelonson.ozen.core.MicrophoneDropNotice
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -196,6 +198,10 @@ class MainActivity : ComponentActivity() {
         captionsAsked.value = savedInstanceState?.getBoolean(CAPTIONS_ASKED) == true
         settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
         confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
+        // A refusal is kept through a rebuild, or a rotation after a permanent
+        // "no" would bring back an Approve button that raises no dialog.
+        microphoneAnswer.value = savedInstanceState?.takeIf { it.containsKey(MICROPHONE_REFUSED) }?.let { false }
+        notificationsAnswer.value = savedInstanceState?.takeIf { it.containsKey(NOTIFICATIONS_REFUSED) }?.let { false }
         val app = application as OzenApplication
         StartCaptionsRequest.applyAppLanguage(app.settings)
         StartCaptionsRequest.publishShortcut(this)
@@ -237,6 +243,15 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(CAPTIONS_ASKED, captionsAsked.value)
         outState.putBoolean(SETTINGS_AT_BACKUP, settingsAtBackup.value)
         outState.putBoolean(CONFIRMING_CELLULAR, confirmingCellular.value)
+        if (microphoneAnswer.value == false) outState.putBoolean(MICROPHONE_REFUSED, true)
+        if (notificationsAnswer.value == false) outState.putBoolean(NOTIFICATIONS_REFUSED, true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from the phone's Settings: an answer changed there is picked up.
+        if (microphoneAnswer.value == false && hasMicrophone()) microphoneAnswer.value = true
+        if (notificationsAnswer.value == false && AlertNotifier.allowed(this)) notificationsAnswer.value = true
     }
 
     override fun onStart() {
@@ -312,12 +327,13 @@ class MainActivity : ComponentActivity() {
         notifications = notificationsAnswer,
         canAskMicrophoneAgain = { canAskMicrophoneAgain() },
         shown = {
-            microphoneAnswer.value = if (hasMicrophone()) true else null
-            notificationsAnswer.value = if (AlertNotifier.allowed(this)) true else null
+            microphoneAnswer.value = OnboardingMicrophoneAdvice.keptAcrossRebuild(hasMicrophone(), microphoneAnswer.value)
+            notificationsAnswer.value = OnboardingNotificationAdvice.keptAcrossRebuild(AlertNotifier.allowed(this), notificationsAnswer.value)
         },
         approveMicrophone = { approveMicrophone.launch(Manifest.permission.RECORD_AUDIO) },
         approveNotifications = ::askForNotifications,
         openPhoneSettings = ::openAppSettings,
+        openNotificationSettings = ::openNotificationSettings,
         finish = { (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true } },
     )
 
@@ -331,8 +347,12 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             approveNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+            openNotificationSettings()
         }
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
     }
 
     private fun startSoundsOnly() {
@@ -379,6 +399,8 @@ class MainActivity : ComponentActivity() {
         const val SHOWING_SETTINGS = "showingSettings"
         const val CAPTIONS_ASKED = "captionsAsked"
         const val SETTINGS_AT_BACKUP = "settingsAtBackup"
+        const val MICROPHONE_REFUSED = "microphoneRefused"
+        const val NOTIFICATIONS_REFUSED = "notificationsRefused"
         const val CONFIRMING_CELLULAR = "confirmingCellular"
         const val TRANSPARENT = android.graphics.Color.TRANSPARENT
         // The scrims enableEdgeToEdge draws behind three-button navigation by default.
@@ -396,6 +418,7 @@ private class OnboardingHooks(
     val approveMicrophone: () -> Unit,
     val approveNotifications: () -> Unit,
     val openPhoneSettings: () -> Unit,
+    val openNotificationSettings: () -> Unit,
     val finish: () -> Unit,
 )
 
@@ -527,6 +550,7 @@ private fun OzenApp(
                                 onApproveMicrophone = onboarding.approveMicrophone,
                                 onApproveNotifications = onboarding.approveNotifications,
                                 onOpenPhoneSettings = onboarding.openPhoneSettings,
+                                onOpenNotificationSettings = onboarding.openNotificationSettings,
                                 onSpokenLanguage = app.engineSettings::chooseSpokenLanguage,
                                 phoneModels = app.captions.phoneModels,
                                 onAddName = app.captions::addNameAlert,

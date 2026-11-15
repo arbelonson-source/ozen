@@ -104,6 +104,8 @@ import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
+import com.arbelonson.ozen.core.OnboardingModelNote
+import com.arbelonson.ozen.core.OnboardingNotificationAdvice
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -150,6 +152,7 @@ internal fun OnboardingScreen(
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onSpokenLanguage: (UILanguage) -> Unit,
     phoneModels: PhoneModels,
     onAddName: (String) -> Unit,
@@ -235,7 +238,7 @@ internal fun OnboardingScreen(
                         focusManager.clearFocus()
                         turning.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                     }
-                    4 -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
+                    4 -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings, onOpenNotificationSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
@@ -293,6 +296,7 @@ private fun MicrophonePage(
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
 ) {
     // Each answer is said as it arrives, the reason for the notification
     // question with an approved microphone: with TalkBack they appeared in
@@ -327,7 +331,12 @@ private fun MicrophonePage(
                 Body(WalkthroughAnswers.whyNotifications())
                 when (notifications) {
                     true -> Status("✓ " + WalkthroughAnswers.notificationsApproved(), good = true)
-                    false -> Body(WalkthroughAnswers.noNotifications())
+                    false -> {
+                        Body(WalkthroughAnswers.noNotifications())
+                        if (OnboardingNotificationAdvice.showsSettingsButton(notifications)) {
+                            TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenNotificationSettings, Modifier.fillMaxWidth().testTag("onboarding-open-notification-settings"), icon = Icons.Rounded.Settings)
+                        }
+                    }
                     null -> TonalButton(tr("לאשר התראות", "Approve notifications"), onApproveNotifications, Modifier.fillMaxWidth(), icon = Icons.Rounded.NotificationsActive)
                 }
             }
@@ -489,6 +498,9 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
     Page(Icons.Rounded.Speed, pageTitle(MODEL_PAGE)) {
         Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
+        if (OnboardingModelNote.showsWifiNote(chosen, installed)) {
+            Body(tr("ההורדה דורשת Wi‑Fi. אפשר לאשר הורדה גם בחבילת הגלישה בהגדרות.", "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings."), Modifier.testTag("model-page-wifi"))
+        }
         missing?.let {
             Warning(
                 tr("אין מספיק מקום בטלפון למודל הזה. צריך לפנות עוד %1.", "Not enough room on the phone for this model. %1 more needs to be freed up.", listOf(ByteSize.text(it * StorageSpaceGate.BYTES_PER_MEGABYTE))),
@@ -600,8 +612,8 @@ private fun Page(icon: ImageVector, title: String, scrollsDownOn: String? = null
 }
 
 @Composable
-private fun Body(text: String) {
-    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+private fun Body(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, modifier = modifier.fillMaxWidth())
 }
 
 @Composable
