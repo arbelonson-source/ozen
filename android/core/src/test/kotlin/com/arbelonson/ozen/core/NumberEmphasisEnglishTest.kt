@@ -64,8 +64,8 @@ class NumberEmphasisEnglishTest {
     @Test
     fun `each language has its own word list, Hebrew and languages with no list are unchanged`() {
         assertEquals(emptyList(), emphasized("Take three pills", "he"))
-        assertEquals(emptyList(), emphasized("tome tres pastillas", "es"))
-        assertEquals(listOf("3"), emphasized("Take 3 pills", "es"))
+        assertEquals(emptyList(), emphasized("prenez trois comprimés", "fr"))
+        assertEquals(listOf("3"), emphasized("Take 3 pills", "fr"))
         assertEquals(listOf("שלושה כדורים", "בעשר"), emphasized("שלושה כדורים בעשר", "he"))
         assertEquals(listOf("3 pills", "שלושה כדורים"), emphasized("Take 3 pills, שלושה כדורים", "en"))
         assertEquals(listOf("3 pills"), emphasized("Take 3 pills", "en-US"))
