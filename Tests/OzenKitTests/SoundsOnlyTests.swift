@@ -318,6 +318,41 @@ struct SoundsOnlyTests {
         #expect(await eventually { pipeline.isListeningForSoundsOnly })
     }
 
+    @Test("sound alerts switched off while sounds are listened for close the microphone, and on again opens it", .timeLimit(.minutes(1)))
+    func offClosesTheMicrophone() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio)
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(audio.calls.last == "stopCapture")
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("an opening left behind by Stop does not keep the next choice from resuming after a lost microphone", .timeLimit(.minutes(1)))
+    func staleOpeningDoesNotBlock() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        pipeline.soundsOnlyRetryWait = { _ in try? await Task.sleep(for: .seconds(3_600)) }
+        let stale = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        pipeline.stop()
+        audio.holdPrepare = false
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        audio.onCaptureLost?()
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+        audio.releasePrepare()
+        await stale.value
+    }
+
     @Test("starting captions after sound alerts gave up clears the stopped flag", .timeLimit(.minutes(1)))
     func startingClearsStoppedFlag() async {
         let audio = FakeAudioCapturer()

@@ -362,7 +362,7 @@ public final class CaptionPipeline {
     /// What the screen and the notices say: chosen, and not switched off
     /// between two tries.
     public var soundsOnlyShown: Bool { soundsOnlyChosen && soundPolicy.preferences.isEnabled }
-    private var soundsOnlyOpens = 0
+    private var soundsOnlyOpening: [UUID] = []
     /// Sounds-only ended by itself: the microphone stopped and did not come
     /// back through every retry (`soundsOnlyRetrySeconds`). The screen and
     /// the away notice say so; cleared when anything starts again or stops.
@@ -1916,8 +1916,11 @@ public final class CaptionPipeline {
         if !preferences.isEnabled {
             soundsOnlyRetryTask?.cancel()
             soundsOnlyRetryTask = nil
-            if soundsOnlyChosen { onPhaseChange?(phase) }
-        } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, soundsOnlyOpens == 0 {
+            if soundsOnlyChosen {
+                stopListeningForSounds()
+                onPhaseChange?(phase)
+            }
+        } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, !soundsOnlyOpening.contains(runID) {
             Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
         }
     }
@@ -3123,8 +3126,6 @@ public final class CaptionPipeline {
     /// call ended: it keeps the count of attempts and, when it still cannot
     /// open the microphone, backs off instead of giving up at once.
     private func listenForSoundsOnly(retrying: Bool) async {
-        soundsOnlyOpens += 1
-        defer { soundsOnlyOpens -= 1 }
         switch phase {
         case .listening, .paused, .idle: break
         default: return
@@ -3143,6 +3144,8 @@ public final class CaptionPipeline {
         }
         soundsOnlyChosen = true
         let run = runID
+        soundsOnlyOpening.append(run)
+        defer { if let at = soundsOnlyOpening.firstIndex(of: run) { soundsOnlyOpening.remove(at: at) } }
         var source = try? audio.startCapture()
         if source == nil {
             guard await audio.requestPermission() == .granted else {
