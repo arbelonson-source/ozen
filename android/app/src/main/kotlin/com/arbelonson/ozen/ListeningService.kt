@@ -120,7 +120,7 @@ class ListeningService : Service() {
     }
 
     private fun drawn(content: LockScreenCaptionContent, public: Boolean) {
-        throttle.sent(content, secondsNow())
+        throttle.sent(content, secondsNow(), linesShown = public)
         drawnPublic = public
         showingOnLockScreen = public
     }
@@ -158,7 +158,7 @@ class ListeningService : Service() {
         }
         val content = content()
         val public = onLockScreen()
-        val decision = if (public != drawnPublic) LockScreenUpdateThrottle.Decision.Send else throttle.decide(content, secondsNow())
+        val decision = if (public != drawnPublic) LockScreenUpdateThrottle.Decision.Send else throttle.decide(content, secondsNow(), linesShown = public)
         when (decision) {
             LockScreenUpdateThrottle.Decision.NothingNew -> Unit
             LockScreenUpdateThrottle.Decision.Send -> {

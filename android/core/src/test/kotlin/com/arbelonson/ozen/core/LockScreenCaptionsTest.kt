@@ -310,4 +310,21 @@ class LockScreenUpdateThrottleTest {
         throttle.sent(first, at = 500.0)
         assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(second, now = 10.0))
     }
+
+    @Test
+    fun `with the lines hidden new words cause no re-post but a new status does`() {
+        val throttle = LockScreenUpdateThrottle(minimumInterval = 1.0)
+        throttle.sent(first, at = 100.0, linesShown = false)
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(second, now = 105.0, linesShown = false))
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(second.copy(ageNote = "1 min"), now = 160.0, linesShown = false))
+        assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(second.copy(status = "paused"), now = 105.0, linesShown = false))
+    }
+
+    @Test
+    fun `with the lines shown new words are sent once the interval is up`() {
+        val throttle = LockScreenUpdateThrottle(minimumInterval = 1.0)
+        throttle.sent(first, at = 100.0, linesShown = true)
+        assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(second, now = 105.0, linesShown = true))
+        assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(first.copy(ageNote = "1 min"), now = 105.0, linesShown = true))
+    }
 }
