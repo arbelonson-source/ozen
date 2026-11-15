@@ -272,7 +272,7 @@ object HebrewText {
      * Chinese are left alone too: a name may come out there as typed.
      */
     fun isInOtherLetters(phrase: String, captionLanguage: String): Boolean {
-        val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key) }?.value ?: return false
+        val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key, ignoreCase = true) }?.value ?: return false
         val hasTheirs = phrase.codePoints().anyMatch { point -> Character.isAlphabetic(point) && letters.any { point in it } }
         return !hasTheirs && phrase.codePoints().anyMatch { Character.isAlphabetic(it) }
     }
@@ -428,8 +428,8 @@ object HebrewText {
      * language has no such list.
      */
     fun withoutElidedWord(rawWord: String, captionLanguage: String): String? {
-        val listed = elidedWords.entries.firstOrNull { captionLanguage.startsWith(it.key) }?.value ?: return null
-        val mark = rawWord.indexOfFirst { it in APOSTROPHES }
+        val listed = elidedWords.entries.firstOrNull { captionLanguage.startsWith(it.key, ignoreCase = true) }?.value ?: return null
+        val mark = rawWord.withIndex().firstOrNull { it.index > 0 && it.value in APOSTROPHES }?.index ?: -1
         if (mark < 0 || normalize(rawWord.substring(0, mark)) !in listed) return null
         val rest = rawWord.substring(mark + 1)
         return rest.takeIf { normalize(it).isNotEmpty() }
@@ -443,7 +443,7 @@ object HebrewText {
      * ("in"), and a name like "Al" + s is German "als".
      */
     fun isLatinNameWithS(word: String, name: String, captionLanguage: String): Boolean {
-        if (!(captionLanguage.startsWith("en") || captionLanguage.startsWith("de")) || graphemesOf(name).size < 3 || word != name + "s" || name.endsWith("s")) return false
+        if (!(captionLanguage.startsWith("en", ignoreCase = true) || captionLanguage.startsWith("de", ignoreCase = true)) || graphemesOf(name).size < 3 || word != name + "s" || name.endsWith("s")) return false
         return name.codePoints().allMatch { it in 0x61..0x24F } && everydayWordsNotNames[name]?.contains(word) != true
     }
 

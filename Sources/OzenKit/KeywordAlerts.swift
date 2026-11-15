@@ -348,8 +348,8 @@ public enum HebrewText {
     /// ("Anne" from "l'Anne"), or nil when the word has none or the caption
     /// language has no such list.
     static func withoutElidedWord(_ rawWord: String, captionLanguage: String) -> String? {
-        guard let listed = elidedWords.first(where: { captionLanguage.hasPrefix($0.key) })?.value,
-              let mark = rawWord.firstIndex(where: apostrophes.contains),
+        guard let listed = elidedWords.first(where: { captionLanguage.lowercased().hasPrefix($0.key) })?.value,
+              let mark = rawWord.indices.dropFirst().first(where: { apostrophes.contains(rawWord[$0]) }),
               listed.contains(normalize(String(rawWord[..<mark])))
         else { return nil }
         let rest = String(rawWord[rawWord.index(after: mark)...])
@@ -362,7 +362,7 @@ public enum HebrewText {
     /// more written in Latin letters: in French, Spanish or Portuguese "Dan"
     /// + s is "dans" ("in"), and a name like "Al" + s is German "als".
     static func isLatinNameWithS(_ word: String, of name: String, captionLanguage: String) -> Bool {
-        guard ["en", "de"].contains(where: captionLanguage.hasPrefix), name.count >= 3, word == name + "s", !name.hasSuffix("s") else { return false }
+        guard ["en", "de"].contains(where: captionLanguage.lowercased().hasPrefix), name.count >= 3, word == name + "s", !name.hasSuffix("s") else { return false }
         return name.unicodeScalars.allSatisfy { (0x61...0x24F).contains($0.value) } && everydayWordsNotNames[name]?.contains(word) != true
     }
 

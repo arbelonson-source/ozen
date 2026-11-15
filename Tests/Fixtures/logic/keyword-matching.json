@@ -1338,6 +1338,40 @@
    "language": "am",
    "note": "another ending is not matched",
    "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "c'est d'Olga",
+   "language": "FR-FR",
+   "note": "language tags are case-insensitive",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "d'Olga",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "il a dit 'd'Olga' hier",
+   "language": "fr",
+   "note": "elided article inside quotes",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "d'Olga",
+     "wordIndex": 3
+    }
+   ]
   }
  ]
 }
