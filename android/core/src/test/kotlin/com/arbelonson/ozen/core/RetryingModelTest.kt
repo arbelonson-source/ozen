@@ -52,4 +52,11 @@ class RetryingModelTest {
         assertEquals(4, loads)
         assertEquals("voice model failed to load (try 4), giving up until the app restarts", notes.last())
     }
+
+    @Test
+    fun `running out of memory while loading counts as a failed load, not a crash`() {
+        val big = RetryingModel<String>("voice model", { throw OutOfMemoryError("buffer") }, { clock }, { notes += it })
+        assertNull(big.get())
+        assertEquals("voice model failed to load (try 1), trying again in 60 s", notes.single())
+    }
 }

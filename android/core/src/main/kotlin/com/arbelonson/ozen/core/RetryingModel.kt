@@ -25,13 +25,21 @@ class RetryingModel<T : Any>(
                 retry.succeeded()
             }
         } catch (error: Exception) {
-            retry.failed(now)
-            val gap = retry.nextGapSeconds
-            note(
-                if (gap != null) "$name failed to load (try ${retry.failureCount}), trying again in $gap s"
-                else "$name failed to load (try ${retry.failureCount}), giving up until the app restarts",
-            )
-            null
+            failed(now)
+        } catch (error: OutOfMemoryError) {
+            failed(now)
+        } catch (error: LinkageError) {
+            failed(now)
         }
+    }
+
+    private fun failed(now: Long): T? {
+        retry.failed(now)
+        val gap = retry.nextGapSeconds
+        note(
+            if (gap != null) "$name failed to load (try ${retry.failureCount}), trying again in $gap s"
+            else "$name failed to load (try ${retry.failureCount}), giving up until the app restarts",
+        )
+        return null
     }
 }
