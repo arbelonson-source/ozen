@@ -786,9 +786,13 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     private static let longerWordPairs: Set<String> = ["明星"]
 
     // A name inside a longer Chinese word or a different person's name is not
-    // a call. The rule is identical on both phones; when unsure it matches.
+    // a call; a surname character only counts when it starts a run of Chinese
+    // characters ("谢谢小明" keeps its match). The rule is identical on both phones; when unsure it matches.
+    private static func containsHan(_ character: Character) -> Bool { HebrewText.containsHan(String(character)) }
+
     private static func isWholeChineseName(_ target: [Character], in line: [Character], at position: Int) -> Bool {
-        if position > 0, let first = target.first, !commonSurnames.contains(first), commonSurnames.contains(line[position - 1]) {
+        if position > 0, let first = target.first, !commonSurnames.contains(first), commonSurnames.contains(line[position - 1]),
+           position == 1 || !containsHan(line[position - 2]) {
             return false
         }
         let end = position + target.count

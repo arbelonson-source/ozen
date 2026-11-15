@@ -1027,6 +1027,170 @@
   {
    "alerts": [
     {
+     "phrase": "小明"
+    }
+   ],
+   "text": "谢谢小明",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "上周小明去了",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "也许小明会来",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "关于小明的事",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "明白小明说的",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "祝贺小明",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "我向小明问好",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "一张小明的照片",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "提高小明的成绩",
+   "note": "surname character that ends an everyday word before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "。张小明说",
+   "note": "surname starting a run after punctuation: another person",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "Hi 张小明",
+   "note": "surname starting a run after a Latin word",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
      "phrase": "小明小"
     }
    ],

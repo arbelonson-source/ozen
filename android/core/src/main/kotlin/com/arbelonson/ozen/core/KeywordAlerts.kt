@@ -857,9 +857,12 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
         private val longerWordPairs = setOf("明星")
 
         // A name inside a longer Chinese word or a different person's name is
-        // not a call. The rule is identical on both phones; when unsure it matches.
+        // not a call; a surname character only counts when it starts a run of
+        // Chinese characters ("谢谢小明" keeps its match). The rule is identical on both phones; when unsure it matches.
         private fun isWholeChineseName(phrase: String, line: CharSequence, position: Int): Boolean {
-            if (position > 0 && phrase.first() !in commonSurnames && line[position - 1] in commonSurnames) return false
+            if (position > 0 && phrase.first() !in commonSurnames && line[position - 1] in commonSurnames &&
+                (position == 1 || !HebrewText.containsHan(line[position - 2].toString()))
+            ) return false
             val end = position + phrase.length
             if (end < line.length && "" + phrase.last() + line[end] in longerWordPairs) return false
             return true
