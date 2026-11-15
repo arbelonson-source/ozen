@@ -2431,6 +2431,49 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    private fun comeBackToTheScreen() {
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun awayAlertsOnWithNotificationsOffShowABannerThatGoesWhenNotificationsAreAllowedOrAwayAlertsTurnedOff() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.notifyWhenInBackground
+        val allowed = AlertNotifier.allowed
+        val title = "Notifications are off"
+        try {
+            compose.runOnUiThread {
+                CaptionState.clear()
+                app.settings.change { it.notifyWhenInBackground = true }
+            }
+            AlertNotifier.allowed = { false }
+            comeBackToTheScreen()
+            compose.onNodeWithText(title).assertExists()
+            compose.onNodeWithText("Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.").assertExists()
+            compose.onNode(hasContentDescription("Close") and hasAnyAncestor(hasText(title))).assertDoesNotExist()
+
+            compose.runOnUiThread { app.settings.change { it.notifyWhenInBackground = false } }
+            compose.waitForIdle()
+            compose.onNodeWithText(title).assertDoesNotExist()
+
+            compose.runOnUiThread { app.settings.change { it.notifyWhenInBackground = true } }
+            compose.waitForIdle()
+            compose.onNodeWithText(title).assertExists()
+
+            AlertNotifier.allowed = { true }
+            comeBackToTheScreen()
+            compose.onNodeWithText(title).assertDoesNotExist()
+        } finally {
+            AlertNotifier.allowed = allowed
+            compose.runOnUiThread {
+                app.settings.change { it.notifyWhenInBackground = before }
+                CaptionState.clear()
+            }
+        }
+    }
+
     @Test
     fun aLowBatteryWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication

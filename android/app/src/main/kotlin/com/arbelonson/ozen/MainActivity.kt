@@ -117,9 +117,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.AwayAlertsNotice
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.ByteSize
@@ -676,6 +678,7 @@ private fun OzenApp(
                                 onDismissBattery = app.captions::dismissBatteryWarning,
                                 onClear = app.captions::clearCaptions,
                                 clearQuestion = { HistoryTexts.clearQuestion(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
+                                awayAlertsOn = current.notifyWhenInBackground,
                             )
                         }
                     }
@@ -911,7 +914,16 @@ private fun CaptionScreen(
     onDismissBattery: () -> Unit,
     onClear: (keepingHistory: Boolean) -> Boolean,
     clearQuestion: () -> ClearQuestion,
+    awayAlertsOn: Boolean,
 ) {
+    val context = LocalContext.current
+    var notificationsAllowed by remember { mutableStateOf(AlertNotifier.allowed(context)) }
+    // Looked at again on coming back from the phone's settings.
+    LifecycleResumeEffect(Unit) {
+        notificationsAllowed = AlertNotifier.allowed(context)
+        onPauseOrDispose { }
+    }
+    val awayAlertsBlocked = AwayAlertsNotice.blocked(awayAlertsOn, notificationsAllowed)
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
     // final size is saved.
@@ -926,7 +938,6 @@ private fun CaptionScreen(
     var problemMarked by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var markedWithCaptions by rememberSaveable { mutableStateOf(true) }
     var problemMarkedAt by rememberSaveable { mutableDoubleStateOf(0.0) }
-    val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Closed by a tap: a text size change, which rebuilds the screen, or
     // TalkBack going on, which start its timer again, must not bring it back.
@@ -1158,6 +1169,7 @@ private fun CaptionScreen(
                     // after the sounds heard just now (which last seconds), so
                     // at the largest text it is never below the scrolled-off part.
                     ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
+                    ArrivingBanner(Unit.takeIf { awayAlertsBlocked }) { AwayAlertsBlockedBanner { openNotificationSettings(context) } }
                     ArrivingBanner(shownWord) { word ->
                         // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(
