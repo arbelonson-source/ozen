@@ -1,3 +1,4 @@
+import errno
 import io
 import ipaddress
 import json
@@ -10,6 +11,7 @@ import urllib.parse
 from unittest import mock
 
 import lan_tls
+import link_status
 import pairing
 
 _certificates = tempfile.TemporaryDirectory()
@@ -325,6 +327,42 @@ class CodeFile(unittest.TestCase):
             with open(path, "w", encoding="utf-8-sig", newline="") as f:
                 f.write("example-code-123\r\n")
             self.assertEqual(pairing.read_code(path), "example-code-123")
+
+
+class EncryptedLinkProblem(unittest.TestCase):
+    def make_page(self, folder):
+        code = os.path.join(folder, "code")
+        with open(code, "w", encoding="utf-8") as f:
+            f.write("a-code")
+        out = os.path.join(folder, "pairing.html")
+        argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open",
+                "--cert-dir", folder]
+        with mock.patch("sys.argv", argv), mock.patch("sys.stdout", io.StringIO()):
+            runpy.run_path(pairing.__file__, run_name="__main__")
+        with open(out, encoding="utf-8") as f:
+            return f.read()
+
+    def test_the_page_says_why_the_encrypted_connection_could_not_start(self):
+        with tempfile.TemporaryDirectory() as folder:
+            link_status.record(folder, OSError(errno.EADDRINUSE, "in use"), 8766)
+            page = self.make_page(folder)
+        self.assertIn("The encrypted connection couldn&#x27;t start: another program is already using port 8766", page)
+        self.assertIn("Phones paired to it can&#x27;t connect until this is fixed", page)
+
+    def test_the_page_has_no_warning_when_the_encrypted_connection_is_fine(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertNotIn("couldn", self.make_page(folder))
+
+    def test_a_page_made_earlier_gets_the_warning_and_loses_it_when_fixed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page_path = os.path.join(folder, "pairing.html")
+            before = self.make_page(folder)
+            link_status.record(folder, ImportError("cryptography"), 8766)
+            with open(page_path, encoding="utf-8") as f:
+                self.assertIn("library is missing", f.read())
+            link_status.clear(folder)
+            with open(page_path, encoding="utf-8") as f:
+                self.assertEqual(before, f.read())
 
 
 if __name__ == "__main__":

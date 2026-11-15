@@ -14,6 +14,7 @@ import qrcode
 import qrcode.image.svg
 
 import lan_tls
+import link_status
 
 TAILSCALE_PATHS = [
     "tailscale",
@@ -131,7 +132,7 @@ def main():
     page = f"""<!doctype html><meta charset="utf-8"><title>Ozen pairing</title>
 <style>body{{font:18px system-ui;text-align:center;margin:40px;background:#fff;color:#111}}svg{{width:360px;height:360px}}code{{font-size:16px}}</style>
 <h1>Ozen: pair a phone with this computer</h1>
-<p>Open the iPhone's Camera, point it at the code, and tap the Ozen link. Ozen asks before connecting.</p>
+{link_status.notice_block(args.cert_dir)}<p>Open the iPhone's Camera, point it at the code, and tap the Ozen link. Ozen asks before connecting.</p>
 {svg.getvalue().decode()}
 <p>Or type it into Ozen's Settings: Transcription engine, Home computer:</p>
 <p>Address: <code>{html.escape(typed)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>

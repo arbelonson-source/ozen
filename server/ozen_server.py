@@ -59,6 +59,7 @@ import websockets
 from faster_whisper import WhisperModel
 from faster_whisper.utils import download_model
 from faster_whisper.vad import VadOptions, get_speech_timestamps
+import link_status
 
 RATE = 16_000
 # The energy detector's rates are per reading, so it reads 688 samples at a
@@ -1100,6 +1101,7 @@ async def serve(args, transcriber, token, make_enhancer, general=None):
 
 async def listen_encrypted(args, connection, servers):
     if not args.tls_port:
+        link_status.clear(args.cert_dir)
         return
     try:
         context = tls_context(args.cert_dir)
@@ -1107,8 +1109,10 @@ async def listen_encrypted(args, connection, servers):
             websockets.serve(connection, args.host, args.tls_port, ssl=context, max_size=2**22, ping_interval=10,
                              ping_timeout=20))
     except (ImportError, OSError) as error:
-        log.warning("the encrypted home link on port %d is off (%s); the plain port still works", args.tls_port, error)
+        message = link_status.record(args.cert_dir, error, args.tls_port)
+        log.error("%s The plain port still works.", message)
         return
+    link_status.clear(args.cert_dir)
     log.info("listening on %s:%d over TLS (the encrypted home link)", args.host, args.tls_port)
 
 
