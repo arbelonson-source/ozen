@@ -30,9 +30,9 @@ object ScreenReader {
 
     private val saidKeys = java.util.Collections.synchronizedSet(HashSet<String>())
 
-    /** Said the first time this [key] is shown, so a card that scrolls out and back, or is rebuilt, is not read again. */
+    /** Said the first time this [key] is shown with a screen reader on, so a card that scrolls out and back, or is rebuilt, is not read again. */
     fun saidOnce(context: Context, key: String, text: String) {
-        if (saidKeys.add(key)) said(context, text)
+        if (isOn(context) && saidKeys.add(key)) said(context, text)
     }
 
     fun forgetSaid() = saidKeys.clear()
