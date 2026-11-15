@@ -2158,9 +2158,9 @@ public final class CaptionPipeline {
             // and asking afterwards gave the voice to whichever line had
             // started meanwhile, leaving the speaker's own line unnamed.
             let heardDuring = stabilizer.segments.last(where: { !$0.isCommitted })?.id
-            // With no line open, the lines that exist now: one that is not
-            // among them began after this audio was heard.
-            let linesBefore: Set<UUID> = heardDuring == nil ? Set(stabilizer.segments.map(\.id)) : []
+            // With no line open, the newest line that exists now: lines after
+            // it began after this audio was heard.
+            let lastBefore = stabilizer.segments.last?.id
             let computed = await Task.detached(priority: .userInitiated) {
                 embedder.embed(samples: window, sampleRate: sampleRate)
             }.value
@@ -2184,10 +2184,7 @@ public final class CaptionPipeline {
                 // claimed is that line's speaker, not the next one's;
                 // passing it on named a short reply by someone else after
                 // the person asking.
-                if let opened = segments.first(where: {
-                    !linesBefore.contains($0.id) && $0.speakerClusterID == nil
-                        && utteranceClusterAssignments[$0.id] == nil && !correctedUtterances.contains($0.id)
-                }) {
+                if let opened = lineOpenedAfter(lastBefore) {
                     give(embedding, clusterID: clusterID, toLine: opened.id)
                 } else {
                     recentSpeechCluster = (clusterID, now())
@@ -2195,6 +2192,21 @@ public final class CaptionPipeline {
                 continue
             }
             give(embedding, clusterID: clusterID, toLine: currentUtteranceID)
+        }
+    }
+
+    /// The earliest line after `lastBefore` with no speaker yet. Looks from
+    /// the end, where new lines are. When `lastBefore` is no longer in the
+    /// list (a replay dropped it), nothing is claimed: the voice then waits
+    /// for the line about to start, as before.
+    private func lineOpenedAfter(_ lastBefore: UUID?) -> TranscriptSegment? {
+        var start = 0
+        if let lastBefore {
+            guard let index = segments.lastIndex(where: { $0.id == lastBefore }) else { return nil }
+            start = index + 1
+        }
+        return segments[start...].first {
+            $0.speakerClusterID == nil && utteranceClusterAssignments[$0.id] == nil && !correctedUtterances.contains($0.id)
         }
     }
 

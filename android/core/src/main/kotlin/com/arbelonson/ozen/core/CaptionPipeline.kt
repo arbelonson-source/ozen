@@ -2327,10 +2327,9 @@ class CaptionPipeline(
                 // and asking afterwards gave the voice to whichever line had
                 // started meanwhile, leaving the speaker's own line unnamed.
                 val heardDuring = stabilizer.segments.lastOrNull { !it.isCommitted }?.id
-                // With no line open, the lines that exist now: one that is not
-                // among them began after this audio was heard.
-                val linesBefore: Set<UUID> =
-                    if (heardDuring == null) stabilizer.segments.map { it.id }.toSet() else emptySet()
+                // With no line open, the newest line that exists now: lines after
+                // it began after this audio was heard.
+                val lastBefore = stabilizer.segments.lastOrNull()?.id
                 val computed = withContext(embedderContext) {
                     embedder.embed(window, SAMPLE_RATE)
                 }
@@ -2354,10 +2353,7 @@ class CaptionPipeline(
                     // claimed is that line's speaker, not the next one's;
                     // passing it on named a short reply by someone else after
                     // the person asking.
-                    val opened = segments.firstOrNull {
-                        it.id !in linesBefore && it.speakerClusterID == null &&
-                            utteranceClusterAssignments[it.id] == null && it.id !in correctedUtterances
-                    }
+                    val opened = lineOpenedAfter(lastBefore)
                     if (opened != null) {
                         giveVoice(computed, clusterID, opened.id)
                     } else {
@@ -2370,6 +2366,30 @@ class CaptionPipeline(
         } catch (_: StopLoop) {
             return
         }
+    }
+
+    /**
+     * The earliest line after [lastBefore] with no speaker yet. Looks from
+     * the end, where new lines are. When [lastBefore] is no longer in the
+     * list (a replay dropped it), nothing is claimed: the voice then waits
+     * for the line about to start, as before.
+     */
+    private fun lineOpenedAfter(lastBefore: UUID?): TranscriptSegment? {
+        var start = 0
+        if (lastBefore != null) {
+            val index = segments.indexOfLast { it.id == lastBefore }
+            if (index < 0) return null
+            start = index + 1
+        }
+        for (i in start until segments.size) {
+            val line = segments[i]
+            if (line.speakerClusterID == null && utteranceClusterAssignments[line.id] == null &&
+                line.id !in correctedUtterances
+            ) {
+                return line
+            }
+        }
+        return null
     }
 
     private fun giveVoice(embedding: FloatArray, clusterID: Int, line: UUID) {
