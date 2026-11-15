@@ -137,4 +137,40 @@ class ReplayHalfLineTest {
         assertTrue(eventually { rig.captions.segments.last().text == "everything again" })
         assertEquals(listOf("everything again"), rig.captions.segments.map { it.text })
     }
+
+    private suspend fun Rig.liveAfterReplay(seconds: Double) {
+        val heard = phone.samplesSeen.size
+        said(seconds, 0.2f)
+        assertTrue(eventually { phone.samplesSeen.size >= heard + (seconds * 16_000).toInt() })
+    }
+
+    @Test
+    fun `a replay that yields no words keeps the half line when live words follow`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(5.0, 0.2f)
+        rig.cloud.emit(token("half line", false))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.dropAndReplay()
+        rig.liveAfterReplay(10.0)
+
+        rig.phone.emit(token("live words", true))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+        assertEquals(listOf("half line", "live words"), rig.captions.segments.map { it.text.removeSuffix("\u2026") })
+    }
+
+    @Test
+    fun `words from the replay that arrive after a little live audio still replace the half line`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(5.0, 0.2f)
+        rig.cloud.emit(token("half line", false))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.dropAndReplay()
+        rig.liveAfterReplay(2.0)
+
+        rig.phone.emit(token("half line and the rest", true))
+        assertTrue(eventually { rig.captions.segments.last().text == "half line and the rest" })
+        assertEquals(listOf("half line and the rest"), rig.captions.segments.map { it.text })
+    }
 }

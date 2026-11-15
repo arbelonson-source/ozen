@@ -3840,7 +3840,10 @@ class CaptionPipeline(
      * and the replay hears the same speech again: once the replay shows
      * words, those lines go, so nothing is on screen or saved twice. Only
      * lines that began inside the replayed audio go; one that began before
-     * it keeps its earlier words.
+     * it keeps its earlier words. A replay that shows no words before
+     * [REPLAY_WORDS_GRACE_SECONDS] of live audio have passed (see
+     * [replaying]) keeps the lines for good: words after that are the
+     * live speech's.
      */
     private fun dropLinesTheReplayRewrites() {
         if (replayedLines.isEmpty()) return
@@ -3858,7 +3861,13 @@ class CaptionPipeline(
     private fun replaying(replay: FloatArray, live: Flow<FloatArray>): Flow<FloatArray> = flow {
         val step = (SAMPLE_RATE / 5).toInt()
         for (start in replay.indices step step) emit(replay.copyOfRange(start, minOf(start + step, replay.size)))
-        emitAll(live)
+        var liveFed = 0L
+        val grace = (REPLAY_WORDS_GRACE_SECONDS * SAMPLE_RATE).toLong()
+        live.collect { chunk ->
+            emit(chunk)
+            liveFed += chunk.size
+            if (liveFed >= grace && replayedLines.isNotEmpty()) replayedLines = emptySet()
+        }
     }
 
     /**
@@ -3907,6 +3916,7 @@ class CaptionPipeline(
         private const val SAMPLE_RATE = 16_000.0
         private const val REPLAY_MARGIN_SECONDS = 2.0
         private const val REPLAY_MAX_SECONDS = 20.0
+        private const val REPLAY_WORDS_GRACE_SECONDS = 8.0
         private const val MAX_KEYWORD_HITS = 50
         private const val MAX_SOUND_ALERTS = 30
         private const val MINIMUM_SPEECH_FRACTION_FOR_EMBEDDING = 0.4
