@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TimeArticle
+import com.arbelonson.ozen.core.TranscriptFormats
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -86,7 +87,9 @@ data class SavedLine(
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
-                val time = if (segment.id in timed) clockTime(segment.startTimestamp, zone) else null
+                val time = if (segment.id !in timed) null
+                else if (record.fromRecording) TranscriptFormats.clock(segment.startTimestamp - record.startedAt)
+                else clockTime(segment.startTimestamp, zone)
                 val unsure = markUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
                 val phones = PhoneNumbers.matches(segment.text)
                 SavedLine(

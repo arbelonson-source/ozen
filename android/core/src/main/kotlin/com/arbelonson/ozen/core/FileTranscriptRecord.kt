@@ -25,6 +25,7 @@ object FileTranscriptRecord {
             },
             title = title(fileName),
             languageCode = languageCode,
+            fromRecording = true,
         )
     }
 

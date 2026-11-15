@@ -90,6 +90,11 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     /// the time it is opened again. Conversations saved before it existed
     /// have none.
     public var languageCode: String?
+    /// A recording that was turned into text, not a conversation heard live:
+    /// its lines say how far into the recording they were, not what time it
+    /// was when the person ran the transcription. Records saved before this
+    /// existed read as live conversations.
+    public var fromRecording: Bool
 
     public init(
         id: UUID = UUID(),
@@ -100,7 +105,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         inputName: String?,
         segments: [SavedSegment],
         title: String? = nil,
-        languageCode: String? = nil
+        languageCode: String? = nil,
+        fromRecording: Bool = false
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -111,6 +117,15 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         self.segments = segments
         self.title = title
         self.languageCode = languageCode
+        self.fromRecording = fromRecording
+    }
+
+    /// How a line's time reads: the time into the recording for a
+    /// transcribed recording, the clock time for a live conversation.
+    public func timeText(of segment: SavedSegment, utcOffsetSeconds: Int) -> String {
+        fromRecording
+            ? TranscriptFormats.clock(segment.startTimestamp - startedAt)
+            : TranscriptHistoryStore.formattedClockTime(segment.startTimestamp, utcOffsetSeconds: utcOffsetSeconds)
     }
 
     /// The language to show and export this conversation in: its own, or
@@ -165,7 +180,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode
+        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode, fromRecording
     }
 
     // Decoding is tolerant of missing keys on the fields a later build
@@ -187,6 +202,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         title = container.lenient(String.self, forKey: .title)
         // A value the reader cannot make sense of reads as none.
         languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(Self.plausibleLanguageCode)
+        fromRecording = container.lenient(Bool.self, forKey: .fromRecording) ?? false
     }
 
     /// A language tag as the settings write it ("he", "en", "pt-BR"): letters
@@ -1226,7 +1242,7 @@ public struct TranscriptHistoryStore: Sendable {
     public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false, currentLanguageCode: String = "he") -> String {
         let formatted = record.segments
             .map { segment in
-                let time = formattedClockTime(segment.startTimestamp, utcOffsetSeconds: offset(segment.startTimestamp))
+                let time = record.timeText(of: segment, utcOffsetSeconds: offset(segment.startTimestamp))
                 let star = segment.isStarred ? "★ " : ""
                 // As on the caption screen: pasted into a chat, "050 123
                 // 4567" in a Hebrew line would read "4567 123 050".

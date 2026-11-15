@@ -68,4 +68,31 @@ class FileTranscriptRecordTest {
         val fixed = UUID.randomUUID()
         assertEquals(fixed, FileTranscriptRecord.make("a.wav", lines, 1.0, null, null, id = fixed).id)
     }
+
+    @Test
+    fun theTextExportOfATranscribedRecordingShowsTheTimeIntoTheRecording() {
+        val lecture = listOf(TranscribedLine(5.0, 8.0, "first"), TranscribedLine(3_727.0, 3_730.0, "second"))
+        val record = FileTranscriptRecord.make("Lecture 4.mp3", lecture, finishedAt = 1_700_000_000.0, recordingSeconds = 3_800.0, modelVariant = "small")
+        val text = TranscriptHistoryStore.exportText(record)
+        assertTrue(text.contains("[0:05] first"), text)
+        assertTrue(text.contains("[1:02:07] second"), text)
+    }
+
+    @Test
+    fun theTextExportOfALiveConversationKeepsItsClockTimes() {
+        val segment = SavedSegment(UUID.randomUUID(), "hello", null, null, 50_527.0, isCommitted = true)
+        val live = TranscriptSessionRecord(startedAt = 50_500.0, endedAt = 50_600.0, engine = TranscriptionEngineKind.WhisperKit, modelVariant = "small", inputName = null, segments = listOf(segment))
+        assertTrue(TranscriptHistoryStore.exportText(live).contains("[14:02:07] hello"))
+    }
+
+    @Test
+    fun theRecordingMarkerSurvivesSavingAndAnOldRecordReadsAsLive() {
+        val record = FileTranscriptRecord.make("a.wav", lines, 5_060.0, 60.0, null)
+        assertTrue(record.fromRecording)
+        assertTrue(TranscriptSessionRecord.fromJson(record.toJson()).fromRecording)
+        val old = record.copy(fromRecording = false).toJson()
+        assertTrue(!old.contains("fromRecording"))
+        assertTrue(!TranscriptSessionRecord.fromJson(old).fromRecording)
+        assertTrue(!TranscriptSessionRecord.fromJson(record.toJson().replace("\"fromRecording\":true", "\"fromRecording\":\"yes\"")).fromRecording)
+    }
 }

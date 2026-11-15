@@ -99,4 +99,38 @@ struct FileTranscriptRecordTests {
         let empty = FileTranscriptRecord.make(fileName: "a.wav", lines: [], finishedAt: 1, recordingSeconds: nil, modelVariant: nil)
         #expect(try store.save(empty) == false)
     }
+
+    @Test("the text export of a transcribed recording shows the time into the recording, not a clock time")
+    func exportShowsOffsets() {
+        let lecture = [
+            TranscribedLine(startSeconds: 5, endSeconds: 8, text: "first"),
+            TranscribedLine(startSeconds: 3_727, endSeconds: 3_730, text: "second"),
+        ]
+        let record = FileTranscriptRecord.make(fileName: "Lecture 4.mp3", lines: lecture, finishedAt: 1_700_000_000, recordingSeconds: 3_800, modelVariant: "small")
+        let text = TranscriptHistoryStore.exportText(record)
+        #expect(text.contains("[0:05] first"))
+        #expect(text.contains("[1:02:07] second"))
+        #expect(!text.contains("[\(TranscriptHistoryStore.formattedClockTime(record.segments[0].startTimestamp, utcOffsetSeconds: 0))]"))
+    }
+
+    @Test("the text export of a live conversation keeps its clock times")
+    func liveExportKeepsClockTimes() {
+        let segment = SavedSegment(id: UUID(), text: "hello", speakerName: nil, speakerClusterID: nil, startTimestamp: 50_527, isCommitted: true)
+        let live = TranscriptSessionRecord(startedAt: 50_500, endedAt: 50_600, engine: .whisperKit, modelVariant: "small", inputName: nil, segments: [segment])
+        #expect(TranscriptHistoryStore.exportText(live).contains("[14:02:07] hello"))
+    }
+
+    @Test("a record saved without the recording marker loads as a live conversation, and the marker survives saving")
+    func markerIsLenient() throws {
+        let record = FileTranscriptRecord.make(fileName: "a.wav", lines: lines, finishedAt: 5_060, recordingSeconds: 60, modelVariant: nil)
+        #expect(record.fromRecording)
+        let data = try JSONEncoder().encode(record)
+        #expect(try JSONDecoder().decode(TranscriptSessionRecord.self, from: data).fromRecording)
+        var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "fromRecording")
+        let old = try JSONDecoder().decode(TranscriptSessionRecord.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(!old.fromRecording)
+        object["fromRecording"] = "yes"
+        #expect(try !JSONDecoder().decode(TranscriptSessionRecord.self, from: JSONSerialization.data(withJSONObject: object)).fromRecording)
+    }
 }
