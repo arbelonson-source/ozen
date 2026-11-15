@@ -28,6 +28,15 @@ object ScreenReader {
         if (isOn(context)) announce(context, text)
     }
 
+    private val saidKeys = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /** Said the first time this [key] is shown, so a card that scrolls out and back, or is rebuilt, is not read again. */
+    fun saidOnce(context: Context, key: String, text: String) {
+        if (saidKeys.add(key)) said(context, text)
+    }
+
+    fun forgetSaid() = saidKeys.clear()
+
     fun saidAdded(context: Context, word: String) = said(context, tr("נוסף: %1", "Added: %1", listOf(word)))
 
     var announce: (Context, String) -> Unit = { context, text ->

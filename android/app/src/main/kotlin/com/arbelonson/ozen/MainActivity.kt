@@ -99,6 +99,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -1145,7 +1146,7 @@ private fun CaptionScreen(
                         // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(
                             KeywordPill.text(word.said, pillSpeaker(word)),
-                            Modifier.clickable(onClickLabel = tr("סגירה", "Close")) {
+                            Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button) {
                                 closedWord = word.id
                                 shownWord = null
                             },

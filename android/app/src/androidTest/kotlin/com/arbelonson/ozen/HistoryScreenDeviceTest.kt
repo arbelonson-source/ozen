@@ -1019,6 +1019,44 @@ class HistoryScreenDeviceTest {
         }
     }
 
+    @Test
+    fun aStarTakenOffFromStarredLinesIsSaidToTheScreenReader() {
+        val target = "Star off test the key is under the mat"
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), target, null, null, startedAt, true, isStarred = true)),
+        )
+        store.save(record)
+        seeded += record.id
+        val announced = CopyOnWriteArrayList<String>()
+        val announceBefore = ScreenReader.announce
+        val readerBefore = ScreenReader.isOn
+        ScreenReader.isOn = { true }
+        ScreenReader.announce = { _, text -> announced += text }
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Star off test the key is under the mat")
+            val total = store.listSummaries().sumOf { it.starredCount }
+            compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+            waitFor("Share")
+            val line = compose.onNodeWithContentDescription(target, substring = true).fetchSemanticsNode()
+            val remove = line.config[SemanticsActions.CustomActions].single { it.label == "Remove the star" }
+            compose.runOnUiThread { remove.action() }
+            compose.waitUntil(5_000) { store.load(record.id)!!.segments.none { it.isStarred } }
+            compose.waitUntil(5_000) { "Star removed" in announced }
+            compose.waitForIdle()
+            assertEquals(announced.toString(), 1, announced.count { it == "Star removed" })
+        } finally {
+            ScreenReader.announce = announceBefore
+            ScreenReader.isOn = readerBefore
+        }
+    }
+
     private fun assertSides(english: String, hebrew: String, digits: String) {
         val left = inkMiddle(english)
         val right = inkMiddle(hebrew)

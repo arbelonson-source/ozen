@@ -1143,7 +1143,8 @@
   "Don’t optimize": "አታትባ",
   "Allow background usage": "የዳራ አጠቃቀምን ይፍቀዱ",
   "Unrestricted": "ያልተገደበ",
-  "Override Do Not Disturb": "«አትረብሽ»ን ሻር"
+  "Override Do Not Disturb": "«አትረብሽ»ን ሻር",
+  "Star removed": "ኮከቡ ተወግዷል"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2289,7 +2290,8 @@
   "Don’t optimize": "عدم تحسين",
   "Allow background usage": "السماح بالاستخدام في الخلفية",
   "Unrestricted": "الاستخدام غير المحدّد بقيود",
-  "Override Do Not Disturb": "تجاوز وضع “عدم الإزعاج”"
+  "Override Do Not Disturb": "تجاوز وضع “عدم الإزعاج”",
+  "Star removed": "أُزيلت النجمة"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3435,7 +3437,8 @@
   "Don’t optimize": "不优化",
   "Allow background usage": "允许后台使用",
   "Unrestricted": "无限制",
-  "Override Do Not Disturb": "覆盖‘勿扰’设置"
+  "Override Do Not Disturb": "覆盖‘勿扰’设置",
+  "Star removed": "已取消星标"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4581,7 +4584,8 @@
   "Don’t optimize": "Ne pas optimiser",
   "Allow background usage": "Autoriser l’utilisation en arrière-plan",
   "Unrestricted": "Sans restriction",
-  "Override Do Not Disturb": "Ignorer Ne pas déranger"
+  "Override Do Not Disturb": "Ignorer Ne pas déranger",
+  "Star removed": "Étoile retirée"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5727,7 +5731,8 @@
   "Don’t optimize": "Nicht optimieren",
   "Allow background usage": "Hintergrundnutzung zulassen",
   "Unrestricted": "Uneingeschränkt",
-  "Override Do Not Disturb": "„Bitte nicht stören“ ignorieren"
+  "Override Do Not Disturb": "„Bitte nicht stören“ ignorieren",
+  "Star removed": "Stern entfernt"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6873,7 +6878,8 @@
   "Don’t optimize": "ऑप्‍टिमाइज़ ना करें",
   "Allow background usage": "बैकग्राउंड में ऐप्लिकेशन के चलने की सुविधा चालू करें",
   "Unrestricted": "बैटरी के इस्तेमाल पर कोई पाबंदी नहीं",
-  "Override Do Not Disturb": "‘परेशान न करें’ मोड को बायपास करें"
+  "Override Do Not Disturb": "‘परेशान न करें’ मोड को बायपास करें",
+  "Star removed": "तारा हटाया गया"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -8019,7 +8025,8 @@
   "Don’t optimize": "Não otimizar",
   "Allow background usage": "Permitir utilização em segundo plano",
   "Unrestricted": "Sem restrições",
-  "Override Do Not Disturb": "Ignorar o modo Não incomodar"
+  "Override Do Not Disturb": "Ignorar o modo Não incomodar",
+  "Star removed": "Estrela removida"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -9165,7 +9172,8 @@
   "Don’t optimize": "Не экономить",
   "Allow background usage": "Разрешить использование в фоновом режиме",
   "Unrestricted": "Без ограничений",
-  "Override Do Not Disturb": "Уведомления в режиме „Не беспокоить“"
+  "Override Do Not Disturb": "Уведомления в режиме „Не беспокоить“",
+  "Star removed": "Звёздочка убрана"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10311,7 +10319,8 @@
   "Don’t optimize": "No optimizar",
   "Allow background usage": "Permitir uso en segundo plano",
   "Unrestricted": "Sin restricciones",
-  "Override Do Not Disturb": "Ignorar modo No molestar"
+  "Override Do Not Disturb": "Ignorar modo No molestar",
+  "Star removed": "Estrella quitada"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11457,6 +11466,7 @@
   "Don’t optimize": "Не оптимізувати",
   "Allow background usage": "Дозволити використання у фоновому режимі",
   "Unrestricted": "Без обмежень",
-  "Override Do Not Disturb": "Дозволити в режимі „Не турбувати“"
+  "Override Do Not Disturb": "Дозволити в режимі „Не турбувати“",
+  "Star removed": "Зірочку прибрано"
  }
 }
