@@ -359,6 +359,10 @@ public final class CaptionPipeline {
     /// to being the fallback of a failure. A call or a voice sample takes
     /// the microphone for a while; this brings the sounds back after.
     public private(set) var soundsOnlyChosen = false
+    /// What the screen and the notices say: chosen, and not switched off
+    /// between two tries.
+    public var soundsOnlyShown: Bool { soundsOnlyChosen && soundPolicy.preferences.isEnabled }
+    private var soundsOnlyOpens = 0
     /// Sounds-only ended by itself: the microphone stopped and did not come
     /// back through every retry (`soundsOnlyRetrySeconds`). The screen and
     /// the away notice say so; cleared when anything starts again or stops.
@@ -1909,7 +1913,11 @@ public final class CaptionPipeline {
         activeSettings?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
         onSoundAlertsAvailabilityChange?()
-        if preferences.isEnabled, soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil {
+        if !preferences.isEnabled {
+            soundsOnlyRetryTask?.cancel()
+            soundsOnlyRetryTask = nil
+            if soundsOnlyChosen { onPhaseChange?(phase) }
+        } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, soundsOnlyOpens == 0 {
             Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
         }
     }
@@ -3115,6 +3123,8 @@ public final class CaptionPipeline {
     /// call ended: it keeps the count of attempts and, when it still cannot
     /// open the microphone, backs off instead of giving up at once.
     private func listenForSoundsOnly(retrying: Bool) async {
+        soundsOnlyOpens += 1
+        defer { soundsOnlyOpens -= 1 }
         switch phase {
         case .listening, .paused, .idle: break
         default: return
@@ -3139,11 +3149,13 @@ public final class CaptionPipeline {
                 soundsOnlyFailedToStart(run: run, retrying: retrying, permissionDenied: true)
                 return
             }
-            guard runID == run else { return }
+            guard runID == run, soundPolicy.preferences.isEnabled else { return }
             let preferredInput = activeSettings?.preferredInputUID ?? audio.selectedInputUID
             let prepared = (try? await audio.prepareSession(preferredInputUID: preferredInput)) != nil
-            guard runID == run else {
-                if prepared { releaseSessionOfStoppedStart() }
+            guard runID == run, soundPolicy.preferences.isEnabled else {
+                if prepared {
+                    if runID == run, phase == .paused { releaseAudioSession() } else { releaseSessionOfStoppedStart() }
+                }
                 return
             }
             guard prepared else {
@@ -3216,6 +3228,7 @@ public final class CaptionPipeline {
             await waiter(wait)
             guard let self, !Task.isCancelled, self.runID == run, self.soundsOnlyChosen, !self.isListeningForSoundsOnly else { return }
             self.soundsOnlyRetryTask = nil
+            guard self.soundPolicy.preferences.isEnabled else { return }
             await self.listenForSoundsOnly(retrying: true)
         }
     }

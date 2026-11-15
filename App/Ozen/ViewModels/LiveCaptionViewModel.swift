@@ -716,14 +716,14 @@ public final class LiveCaptionViewModel {
     /// Posts or withdraws the "captions stopped" notification to match what
     /// the pipeline is doing now (see `StoppedCaptionsNotice`).
     private func checkCaptionsStillRunning() {
-        if !BatteryAdvisor.watches(pipeline.phase, soundsOnly: pipeline.soundsOnlyChosen) { batteryCleared() }
+        if !BatteryAdvisor.watches(pipeline.phase, soundsOnly: pipeline.soundsOnlyShown) { batteryCleared() }
         let cause = StoppedCaptionsNotice.cause(
             phase: pipeline.phase,
             retryScheduled: pipeline.isRecoveringByItself,
             systemInterrupted: isInterruptedBySystem,
             interruptedByCall: interruptedByCall,
             callEndedDuringInterruption: callEndedDuringInterruption,
-            soundsOnlyChosen: pipeline.soundsOnlyChosen,
+            soundsOnlyChosen: pipeline.soundsOnlyShown,
             soundAlertsNotWorking: pipeline.soundAlertsNotWorking,
             soundsOnlyStopped: pipeline.soundsOnlyStoppedByItself
         )
@@ -754,7 +754,7 @@ public final class LiveCaptionViewModel {
     /// reported with the stopped-captions notice ends it like a stop.
     private func updateListeningRecord(stopped: StoppedCaptionsNotice.Cause?) {
         guard let listeningRecorder else { return }
-        listeningRecorder.phaseChanged(pipeline.phase, stopped: stopped, soundsOnly: pipeline.soundsOnlyChosen)
+        listeningRecorder.phaseChanged(pipeline.phase, stopped: stopped, soundsOnly: pipeline.soundsOnlyShown)
         if listeningRecorder.isRecording {
             guard listeningKeepAliveTask == nil else { return }
             listeningKeepAliveTask = Task { @MainActor [weak self] in
