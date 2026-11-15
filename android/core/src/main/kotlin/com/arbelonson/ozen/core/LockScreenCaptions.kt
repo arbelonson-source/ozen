@@ -246,7 +246,9 @@ class LockScreenUpdateThrottle(var minimumInterval: Double = BACKGROUND_INTERVAL
     private var lastSentAt: Double? = null
     private var lastSent: LockScreenCaptionContent? = null
 
-    fun decide(content: LockScreenCaptionContent, now: Double): Decision {
+    /** With [linesShown] false the notification is the title alone, so only a new status or language counts. */
+    fun decide(content: LockScreenCaptionContent, now: Double, linesShown: Boolean = true): Decision {
+        val content = onScreen(content, linesShown)
         if (content == lastSent) return Decision.NothingNew
         val at = lastSentAt
         if (at == null || now < at || content.status != lastSent?.status || content.language != lastSent?.language) return Decision.Send
@@ -254,10 +256,13 @@ class LockScreenUpdateThrottle(var minimumInterval: Double = BACKGROUND_INTERVAL
         return if (elapsed >= minimumInterval) Decision.Send else Decision.Wait(minimumInterval - elapsed)
     }
 
-    fun sent(content: LockScreenCaptionContent, at: Double) {
-        lastSent = content
+    fun sent(content: LockScreenCaptionContent, at: Double, linesShown: Boolean = true) {
+        lastSent = onScreen(content, linesShown)
         lastSentAt = at
     }
+
+    private fun onScreen(content: LockScreenCaptionContent, linesShown: Boolean) =
+        if (linesShown) content else LockScreenCaptionContent(lines = emptyList(), status = content.status, language = content.language)
 
     /** Whatever comes next is sent straight away. */
     fun reset() {
