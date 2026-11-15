@@ -287,14 +287,13 @@ public final class AVAudioInputManager: AudioCapturing {
     func rebuildAfterMediaServicesReset() {
         guard sessionPrepared, !released else { return }
         resetRecovery?.cancel()
-        let wanted = preferredInputUID
         recoveriesRunning += 1
         resetRecovery = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.recoveriesRunning -= 1 }
             let back = await self.retry.run(sleep: self.wait) { [weak self] in
                 guard let self else { return true }
-                return (try? await self.prepareSession(preferredInputUID: wanted)) != nil
+                return await self.reactivateAfterReset()
             }
             guard !Task.isCancelled, self.sessionPrepared, !self.released else { return }
             guard back else {
@@ -307,6 +306,30 @@ public final class AVAudioInputManager: AudioCapturing {
             self.engine = AVAudioEngine()
             self.recoverFromConfigurationChange()
         }
+    }
+
+    /// One try at getting the session back after a reset. Unlike
+    /// `prepareSession` it leaves `released` and the chosen microphone as
+    /// they are: a Pause or Stop, or a microphone picked meanwhile, while
+    /// this waits on the audio system must not be undone by it. A session
+    /// activated after it was handed back is handed back again. A
+    /// microphone the system refuses for now is not a failed activation:
+    /// the session is up, and the choice is asked for again soon.
+    private func reactivateAfterReset() async -> Bool {
+        guard !released else { return true }
+        let activate = activateBeforeRecording
+        do {
+            try await Task.detached(priority: .userInitiated) { try activate() }.value
+        } catch {
+            return false
+        }
+        if released {
+            endSession()
+            return true
+        }
+        refreshAvailableInputs()
+        if (try? applySelection()) == nil { reapplySelectionSoon() }
+        return true
     }
 
     /// The system said the interruption is over. Taking the session back

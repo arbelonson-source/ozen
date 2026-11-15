@@ -31,7 +31,7 @@ private func preparedManager(_ activations: Activations) async throws -> AVAudio
     return manager
 }
 
-@Suite("AVAudioInputManager after the audio system starts over")
+@Suite("AVAudioInputManager after the audio system starts over", .serialized)
 @MainActor
 struct AVAudioInputManagerResetTests {
     @Test("a reset sets the session up again and builds the engine again", .timeLimit(.minutes(1)))

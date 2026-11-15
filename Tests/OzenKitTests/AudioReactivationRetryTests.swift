@@ -52,11 +52,13 @@ struct AudioReactivationRetryTests {
     func cancelled() async {
         let tries = Counter()
         let task = Task {
-            await AudioReactivationRetry(delays: [0.5, 1]).run(sleep: { _ in }, attempt: { _ = await tries.add(); return false })
+            await AudioReactivationRetry(delays: [0.5, 1]).run(
+                sleep: { _ in withUnsafeCurrentTask { $0?.cancel() } },
+                attempt: { _ = await tries.add(); return false }
+            )
         }
-        task.cancel()
         #expect(await task.value == false)
-        #expect(await tries.value <= 1)
+        #expect(await tries.value == 1)
     }
 }
 
