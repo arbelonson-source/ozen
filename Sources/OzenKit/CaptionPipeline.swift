@@ -3328,11 +3328,12 @@ public final class CaptionPipeline {
     /// `homeServerWaitSeconds` and starts captions once it answers. A
     /// refused code needs a person, so it isn't asked again, and neither is
     /// a plain ws:// address out on the internet, which the phone itself
-    /// refuses before asking.
+    /// refuses before asking, nor no saved address at all.
     @discardableResult
     private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
               !HomeServer.refusedPlainAddress(failure.engineUnavailability),
+              !HomeServer.missingAddress(failure.engineUnavailability),
               activeSettings?.engine == .homeServer
         else { return false }
         homeServerRecheck?.cancel()

@@ -1063,6 +1063,26 @@ struct HomeServerCoverTests {
         #expect(captions.scheduledRetry == nil)
     }
 
+    @Test("no saved address is not asked again on a timer: only an address saved in Settings can help")
+    func missingAddressNotAskedAgain() async throws {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, HomeServer.noAddress))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
+        )
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.phase.failure != nil })
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(server.prepareCount == 1)
+        #expect(captions.scheduledRetry == nil)
+    }
+
     @Test("stopped captions ask the computer sooner than covered ones look to switch back: nothing is captioned meanwhile")
     func stoppedCaptionsAskSooner() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))

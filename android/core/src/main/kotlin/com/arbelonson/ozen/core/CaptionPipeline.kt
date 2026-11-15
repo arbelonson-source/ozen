@@ -3610,11 +3610,12 @@ class CaptionPipeline(
      * [homeServerWaitSeconds] and starts captions once it answers. A
      * refused code needs a person, so it isn't asked again, and neither is
      * a plain ws:// address out on the internet, which the phone itself
-     * refuses before asking.
+     * refuses before asking, nor no saved address at all.
      */
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
             HomeServer.refusedPlainAddress(failure.engineUnavailability) ||
+            HomeServer.missingAddress(failure.engineUnavailability) ||
             settingsInUse?.engine != TranscriptionEngineKind.HomeServer
         ) {
             return false
