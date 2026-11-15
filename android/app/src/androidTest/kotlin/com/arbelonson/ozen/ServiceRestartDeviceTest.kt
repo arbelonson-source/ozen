@@ -2,11 +2,16 @@ package com.arbelonson.ozen
 
 import android.app.NotificationManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.io.File
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.AudioCapturing
+import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -103,5 +108,48 @@ class ServiceRestartDeviceTest {
         assertTrue(app.captions.mayStartCaptions())
         assertTrue(app.captions.resumeAfterRestart())
         assertNull(stoppedNotice())
+    }
+
+    @Test
+    fun aRestartRefusedBecauseTheMicrophonePermissionWasTurnedOffSaysSoInTheNoticeAndOnTheScreen() {
+        PreferencesMarkerStore(app).clear()
+        app.captions.checkLoadMarker()
+        val work = File(context.cacheDir, "mic-revoked-test").apply { deleteRecursively(); mkdirs() }
+        val denied = object : AudioCapturing by AndroidAudioCapture(context) {
+            override suspend fun requestPermission() = AudioPermission.Denied
+        }
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        var session: CaptionSession? = null
+        instrumentation.runOnMainSync {
+            session = CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                denied,
+                historyFolder = File(work, "history"),
+            ).also { it.microphoneGranted = { false } }
+        }
+        val captions = session!!
+        try {
+            instrumentation.runOnMainSync { captions.foregroundRefused(SecurityException("the microphone permission is off")) }
+            val until = System.currentTimeMillis() + 5_000
+            while (stoppedNotice() == null && System.currentTimeMillis() < until) Thread.sleep(100)
+            val body = stoppedNotice()?.notification?.extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()
+            assertEquals("Ozen doesn’t have permission to listen. Open the app to fix it.", body)
+
+            instrumentation.runOnMainSync { captions.appIsActive = true }
+            val shown = System.currentTimeMillis() + 5_000
+            while (captions.pipeline.phase.failure == null && System.currentTimeMillis() < shown) Thread.sleep(100)
+            assertEquals(PipelineFailure.Kind.MicrophonePermissionDenied, captions.pipeline.phase.failure?.kind)
+            assertEquals("No microphone access", CaptionState.screen.value.status.title)
+        } finally {
+            Localization.language = languageBefore
+            instrumentation.runOnMainSync {
+                captions.appIsActive = false
+                captions.close()
+            }
+        }
     }
 }

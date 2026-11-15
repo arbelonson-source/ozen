@@ -1,11 +1,13 @@
 package com.arbelonson.ozen
 
+import android.Manifest
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.media.projection.MediaProjection
 import android.os.BatteryManager
@@ -56,6 +58,7 @@ import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
@@ -462,6 +465,7 @@ class CaptionSession(
             val changed = active != field
             if (active) restartRefused = false
             field = active
+            if (active && microphoneGoneAtRestart) showMicrophoneGone()
             checkCaptionsStillRunning()
             if (changed && active) {
                 light.stop()
@@ -876,7 +880,7 @@ class CaptionSession(
 
     private fun stoppedCause(): StoppedCaptionsNotice.Cause? =
         if (restartRefused) {
-            StoppedCaptionsNotice.Cause.EndedByPhone
+            if (microphoneGranted()) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.Cause.Failed(microphoneTakenAway())
         } else {
             StoppedCaptionsNotice.cause(
                 pipeline.phase,
@@ -896,6 +900,19 @@ class CaptionSession(
      * happened, so the notice has done its job.
      */
     private var restartRefused = false
+
+    /** Whether Ozen may use the microphone now; replaced by device tests, since revoking it for real ends the test's own process. */
+    internal var microphoneGranted: () -> Boolean = { context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED }
+
+    private fun microphoneTakenAway() = PipelineFailure(PipelineFailure.Kind.MicrophonePermissionDenied, "the microphone permission was turned off while the app was ended")
+
+    /** The refused restart was because the microphone permission is gone: the screen says so when she comes back. */
+    private var microphoneGoneAtRestart = false
+
+    private fun showMicrophoneGone() {
+        microphoneGoneAtRestart = false
+        scope.launch { if (pipeline.phase == PipelinePhase.Idle && !microphoneGranted()) pipeline.start(chosenSettings()) }
+    }
 
     /**
      * The phone started the listening service again after ending the app.
@@ -927,6 +944,7 @@ class CaptionSession(
 
     private fun tellRestartRefused() {
         restartRefused = true
+        microphoneGoneAtRestart = !microphoneGranted()
         checkCaptionsStillRunning()
     }
 
