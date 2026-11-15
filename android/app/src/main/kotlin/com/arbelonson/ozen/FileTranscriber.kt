@@ -68,10 +68,12 @@ class FileTranscriber(
     private var chosenModel: String? = null
     private val work = FileTranscriptionJob(shown, scope, Dispatchers.Default)
 
+    internal val busyNotice = BusyNotice()
+
     val busy: Boolean get() = shown.value is FileTranscription.Working
 
     fun open(uri: Uri): Boolean {
-        if (busy) return false
+        if (!busyNotice.accept(busy)) return false
         source = uri
         name = displayName(uri)
         language = settings.current.value.spokenLanguage
@@ -105,6 +107,7 @@ class FileTranscriber(
 
     fun close() {
         if (busy) return
+        busyNotice.clear()
         shown.value = FileTranscription.Idle
         source = null
     }
@@ -222,7 +225,7 @@ class FileTranscriber(
         shown.value = working(model, stage, progress.fraction?.toFloat())
     }
 
-    private class Problem(val kind: FileTranscriptionProblem) : Exception()
+    internal class Problem(val kind: FileTranscriptionProblem) : Exception()
 
     private class Transcript(val lines: List<TranscribedLine>, val endMissing: Boolean)
 
@@ -246,13 +249,7 @@ class FileTranscriber(
         coroutineScope {
             val pieces = Channel<FloatArray>(PIECES_AHEAD)
             launch(Dispatchers.IO) {
-                val outcome = AudioFileDecoder.decode(context, uri) { piece -> pieces.trySendBlocking(piece).isSuccess }
-                when (outcome) {
-                    DecodeOutcome.Unreadable -> pieces.close(Problem(FileTranscriptionProblem.CouldNotRead))
-                    DecodeOutcome.NoAudio -> pieces.close(Problem(FileTranscriptionProblem.NoAudio))
-                    DecodeOutcome.Stalled -> { endMissing = true; pieces.close() }
-                    else -> pieces.close()
-                }
+                endMissing = DecodeFeed.run(pieces) { onPiece -> AudioFileDecoder.decode(context, uri, onPiece = onPiece) }
             }
             try {
                 for (piece in pieces) {

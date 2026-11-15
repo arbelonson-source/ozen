@@ -1153,7 +1153,8 @@
   "Sound alerts aren’t working": "የድምፅ ማንቂያዎች አይሠሩም",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "ኦዘን አሁን ድምፆችን መለየት አልቻለም፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። መተግበሪያው መሞከሩን ይቀጥላል።",
   "Star removed": "ኮከቡ ተወግዷል",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።"
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ሌላውን ፋይል አሁንም ወደ ጽሑፍ እየቀየረ ነው። ይህን ሲጨርስ እንደገና ያጋሩት።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2309,7 +2310,8 @@
   "Sound alerts aren’t working": "تنبيهات الصوت لا تعمل",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "تعذّر على Ozen التعرّف على الأصوات الآن، وقد يفوتكم رنين جرس الباب أو جهاز إنذار أو بكاء طفل. يواصل التطبيق المحاولة.",
   "Star removed": "أُزيلت النجمة",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "لا يزال Ozen يحوّل الملف الآخر إلى نص. شاركوا هذا الملف مرة أخرى عند الانتهاء."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3465,7 +3467,8 @@
   "Sound alerts aren’t working": "声音提醒无法使用",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen 目前无法识别声音，因此你可能会错过门铃、警报或婴儿的哭声。应用会继续尝试。",
   "Star removed": "已取消星标",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。"
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen 仍在转写另一个文件。请在完成后再次分享这个文件。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4621,7 +4624,8 @@
   "Sound alerts aren’t working": "Les alertes sonores ne fonctionnent pas",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer.",
   "Star removed": "Étoile retirée",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen est encore en train de transcrire l’autre fichier. Partagez celui-ci à nouveau quand ce sera terminé."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5777,7 +5781,8 @@
   "Sound alerts aren’t working": "Die Klanghinweise funktionieren nicht",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen kann gerade keine Geräusche erkennen, deshalb könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Die App versucht es weiter.",
   "Star removed": "Stern entfernt",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen wandelt gerade noch die andere Datei um. Teilt diese Datei erneut, wenn das fertig ist."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -6933,7 +6938,8 @@
   "Sound alerts aren’t working": "आवाज़ के अलर्ट काम नहीं कर रहे",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen अभी आवाज़ें पहचान नहीं पा रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की आवाज़ का पता न चले। ऐप कोशिश करता रहेगा।",
   "Star removed": "तारा हटाया गया",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।"
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen अभी दूसरी फ़ाइल को लिखित रूप में बदल रहा है। यह काम पूरा होने पर इस फ़ाइल को दोबारा शेयर करें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8089,7 +8095,8 @@
   "Sound alerts aren’t working": "Os alertas sonoros não estão a funcionar",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "O Ozen não consegue reconhecer sons neste momento, por isso pode perder uma campainha, um alarme ou o choro de um bebé. A aplicação continua a tentar.",
   "Star removed": "Estrela removida",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "O Ozen ainda está a transcrever o outro ficheiro. Partilhe este de novo quando terminar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9245,7 +9252,8 @@
   "Sound alerts aren’t working": "Звуковые оповещения не работают",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Сейчас Ozen не может распознавать звуки, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Приложение продолжает попытки.",
   "Star removed": "Звёздочка убрана",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ещё расшифровывает другой файл. Поделитесь этим файлом снова, когда расшифровка закончится."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10401,7 +10409,8 @@
   "Sound alerts aren’t working": "Las alertas de sonido no funcionan",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen no puede reconocer sonidos en este momento, así que podrías perderte un timbre, una alarma o el llanto de un bebé. La aplicación sigue intentándolo.",
   "Star removed": "Estrella quitada",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen sigue transcribiendo el otro archivo. Comparte este de nuevo cuando termine."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11557,6 +11566,7 @@
   "Sound alerts aren’t working": "Звукові сповіщення не працюють",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Зараз Ozen не може розпізнавати звуки, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Застосунок продовжує спроби.",
   "Star removed": "Зірочку прибрано",
-  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі."
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі.",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ще розшифровує інший файл. Поділіться цим файлом знову, коли розшифрування завершиться."
  }
 }
