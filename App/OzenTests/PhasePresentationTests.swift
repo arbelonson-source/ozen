@@ -381,6 +381,21 @@ struct PhasePresentationTests {
         #expect(PhasePresentation.remainingText(seconds: 3_600) == "עוד יותר משעה")
     }
 
+    @Test("a home computer that can't be reached says to scan its QR code again and to allow Local Network, and keeps the retry")
+    func homeServerUnreachableNamesQRAndLocalNetwork() {
+        Localization.$override.withValue(.english) {
+            let phase = failure(EngineUnavailability(kind: .homeServerUnreachable, detail: ""))
+            let shown = PhasePresentation(phase: phase, engine: .homeServer, interruptedBySystem: false)
+            #expect(shown.action == .retry)
+            #expect(shown.detail == HomeServer.unreachableDetail(localNetworkHint: true))
+            #expect(shown.detail?.contains("scan its QR code again") == true)
+            #expect(shown.detail?.contains("Settings › Privacy & Security › Local Network") == true)
+            #expect(shown.detail?.hasSuffix("Tap to try again") == true)
+            let offered = PhasePresentation(phase: phase, engine: .homeServer, interruptedBySystem: false, offerBackup: true)
+            #expect(offered.detail == HomeServer.unreachableBackupDetail(localNetworkHint: true))
+        }
+    }
+
     @Test("a home computer that can't be reached, with no backup on the phone, points to the backup instead of only retrying")
     func homeServerUnreachableOffersBackup() {
         let phase = failure(EngineUnavailability(kind: .homeServerUnreachable, detail: ""))

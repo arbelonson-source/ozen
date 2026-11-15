@@ -127,12 +127,26 @@ object HomeServer {
      * from home it never answers, and "check that the computer is on" sent
      * her to a computer that was fine.
      */
-    fun unreachableText(address: String): String =
-        if (homeWiFiOnly(address)) {
+    fun unreachableText(address: String): String {
+        val base = if (homeWiFiOnly(address)) {
             tr("אין תשובה מהמחשב. הכתובת הזאת עובדת רק ב־Wi‑Fi של הבית. בבית, בדקו שהמחשב דלוק ולא במצב שינה. מחוץ לבית, השתמשו בכתובת שמתחילה ב־wss://", "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://")
         } else {
             tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
         }
+        return base + " " + tr("אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו.", "If it moved to a new network, scan its QR code again.")
+    }
+
+    /** The same, when the tap opens the backup settings instead of retrying. */
+    fun unreachableBackupDetail(): String =
+        tr("בדקו שהמחשב דלוק ומחובר. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on and connected. If it moved to a new network, scan its QR code again · Tap to add a backup on the phone")
+
+    /**
+     * What the banner says when the phone could not reach the computer and
+     * a retry is on offer. A computer that got a new address looks the
+     * same as one that is off; only scanning its QR code again fixes that.
+     */
+    fun unreachableDetail(): String =
+        tr("בדקו שהמחשב דלוק ומחובר. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי לנסות שוב", "Check that the computer is on and connected. If it moved to a new network, scan its QR code again · Tap to try again")
 
     /**
      * "192.168.1.20", "grandma-pc:8765", "ws://..." or "wss://..." all work;

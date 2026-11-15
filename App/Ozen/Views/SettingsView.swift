@@ -747,7 +747,7 @@ struct SettingsView: View {
         case .codeRefused:
             tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה־QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.")
         case .unreachable:
-            HomeServer.unreachableText(address: address)
+            HomeServer.unreachableText(address: address, localNetworkHint: true)
         case .notSetUp:
             tr("הכתובת או הקוד חסרים", "The address or code is missing")
         case .needsEncryptedAddress:

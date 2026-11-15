@@ -202,6 +202,31 @@ struct HomeServerEngineTests {
         #expect(HomeServer.unreachableText(address: "192.168.1.20").contains("עובדת רק ב־Wi‑Fi של הבית"))
     }
 
+    @Test("when the computer can't be reached both texts say to scan its QR code again; the iPhone also names the Local Network permission")
+    func unreachableNamesQRAndLocalNetwork() {
+        Localization.$override.withValue(.english) {
+            let moved = "If it moved to a new network, scan its QR code again"
+            let local = "Settings › Privacy & Security › Local Network"
+            let banner = HomeServer.unreachableDetail()
+            #expect(banner.contains(moved))
+            #expect(!banner.contains(local))
+            #expect(banner.hasSuffix("Tap to try again"))
+            let phoneBanner = HomeServer.unreachableDetail(localNetworkHint: true)
+            #expect(phoneBanner.contains(moved) && phoneBanner.contains(local))
+            #expect(phoneBanner.hasSuffix("Tap to try again"))
+            let backup = HomeServer.unreachableBackupDetail()
+            #expect(backup.contains(moved) && backup.hasSuffix("Tap to add a backup on the phone") && !backup.contains(local))
+            #expect(HomeServer.unreachableBackupDetail(localNetworkHint: true).contains(local))
+            for typed in ["192.168.1.20", "203.0.113.5"] {
+                #expect(HomeServer.unreachableText(address: typed).contains(moved), "\(typed)")
+                #expect(!HomeServer.unreachableText(address: typed).contains(local), "\(typed)")
+                #expect(HomeServer.unreachableText(address: typed, localNetworkHint: true).contains(local), "\(typed)")
+            }
+        }
+        #expect(HomeServer.unreachableDetail(localNetworkHint: true).contains("רשת מקומית"))
+        #expect(HomeServer.unreachableDetail().contains("קוד ה־QR"))
+    }
+
     @Test("an address pasted into one already there is refused, not saved with the host \"wss\"")
     func doubledScheme() {
         #expect(HomeServer.url(from: "wss://wss://desktop.tail.ts.net") == nil)

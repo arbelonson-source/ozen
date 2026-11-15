@@ -421,7 +421,7 @@ class PhasePresentation private constructor(
                     detail = if (scheduledRetry != null) {
                         tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
                     } else {
-                        tr("בדקו שהמחשב דלוק · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on · Tap to add a backup on the phone")
+                        HomeServer.unreachableBackupDetail()
                     },
                     systemImage = result.systemImage,
                     tint = PhaseTint.Attention,
@@ -676,7 +676,7 @@ class PhasePresentation private constructor(
                 } else {
                     PhasePresentation(
                         title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
-                        detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו כדי לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
+                        detail = HomeServer.unreachableDetail(),
                         systemImage = "desktopcomputer.trianglebadge.exclamationmark",
                         tint = PhaseTint.Attention,
                         action = Action.Retry,
