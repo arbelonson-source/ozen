@@ -755,25 +755,34 @@ internal object CellularDownloadTexts {
  * built-in recognition can caption meanwhile, it is offered first.
  */
 @Composable
-private fun CellularDownloadDialog(megabytes: Int?, builtInOffered: Boolean, onBuiltIn: () -> Unit, onDownload: () -> Unit, onWait: () -> Unit) {
+internal fun CellularDownloadDialog(megabytes: Int?, builtInOffered: Boolean, onBuiltIn: () -> Unit, onDownload: () -> Unit, onWait: () -> Unit) {
+    if (builtInOffered) {
+        // At the phone's largest text the three stacked choices took the
+        // room and left the question a window of three lines: the choices
+        // now scroll along with it.
+        AlertDialog(
+            onDismissRequest = onWait,
+            title = { Text(CellularDownloadTexts.titleWithBuiltIn) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(CellularDownloadTexts.bodyWithBuiltIn(megabytes))
+                    Column(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = onBuiltIn) { Text(CellularDownloadTexts.builtInButton) }
+                        TextButton(onClick = onDownload) { Text(CellularDownloadTexts.downloadButtonWithBuiltIn) }
+                        TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) }
+                    }
+                }
+            },
+            confirmButton = {},
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = onWait,
-        title = { Text(if (builtInOffered) CellularDownloadTexts.titleWithBuiltIn else CellularDownloadTexts.title) },
-        text = { DialogText(if (builtInOffered) CellularDownloadTexts.bodyWithBuiltIn(megabytes) else CellularDownloadTexts.body(megabytes)) },
-        // Three choices stand one above the other, the one that gives
-        // captions now first, as on the iPhone.
-        confirmButton = {
-            if (builtInOffered) {
-                Column(horizontalAlignment = Alignment.End) {
-                    TextButton(onClick = onBuiltIn) { Text(CellularDownloadTexts.builtInButton) }
-                    TextButton(onClick = onDownload) { Text(CellularDownloadTexts.downloadButtonWithBuiltIn) }
-                    TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) }
-                }
-            } else {
-                TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) }
-            }
-        },
-        dismissButton = if (builtInOffered) null else ({ TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) } }),
+        title = { Text(CellularDownloadTexts.title) },
+        text = { DialogText(CellularDownloadTexts.body(megabytes)) },
+        confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
+        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) } },
     )
 }
 
