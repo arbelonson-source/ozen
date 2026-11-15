@@ -2096,7 +2096,15 @@ class CaptionPipeline(
         settingsInUse?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
         onSoundAlertsAvailabilityChange?.invoke()
-        if (soundsOnlyChosen && !preferences.isEnabled) stop()
+        if (!soundsOnlyChosen) return
+        if (!preferences.isEnabled) {
+            // Listening ends with the switch. Between tries there is nothing
+            // to end: the choice stays, so turning the alerts on again opens
+            // the microphone, and no timer opens it meanwhile.
+            if (isListeningForSoundsOnly) stop() else cancelSoundsOnlyRetry()
+        } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null) {
+            scope.launch { resumeSoundsOnly() }
+        }
     }
 
     // endregion
@@ -3330,6 +3338,7 @@ class CaptionPipeline(
      */
     private suspend fun resumeSoundsOnly() {
         if (!soundsOnlyChosen || isListeningForSoundsOnly || systemInterrupted || isRecordingVoice) return
+        if (!soundPolicy.preferences.isEnabled) return
         openSoundsOnly(retrying = true)
     }
 
@@ -3447,7 +3456,7 @@ class CaptionPipeline(
 
     /** See [SOUNDS_ONLY_RETRY_SECONDS]; a call holds the retries, and its end brings the sounds back. */
     private fun retrySoundsOnly() {
-        if (!soundsOnlyChosen || systemInterrupted) return
+        if (!soundsOnlyChosen || systemInterrupted || !soundPolicy.preferences.isEnabled) return
         val since = soundsOnlySince
         if (since != null && now() - since >= SOUNDS_ONLY_HEALTHY_SECONDS) soundsOnlyAttempts = 0
         soundsOnlySince = null
