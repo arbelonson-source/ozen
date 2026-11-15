@@ -122,4 +122,13 @@ class ShareReplacementTest {
         assertFalse(guard.arrive("two.mp3", done(HistorySave.Off)))
         assertEquals("two.mp3", guard.waiting.value)
     }
+
+    @Test
+    fun aNewerShareOpeningAtOnceDropsTheOlderHeldFile() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("old.mp3", done(HistorySave.Off))
+        assertTrue(guard.arrive("new.mp3", FileTranscription.Idle))
+        assertNull(guard.waiting.value)
+        assertNull(guard.follow(FileTranscription.Idle))
+    }
 }

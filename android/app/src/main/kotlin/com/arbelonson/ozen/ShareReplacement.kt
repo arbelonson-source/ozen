@@ -10,7 +10,10 @@ internal class ShareReplacement<T : Any> {
     private var opening = false
 
     fun arrive(file: T, shown: FileTranscription): Boolean {
-        if (opening || !shown.leavingLosesText) return true
+        if (opening || !shown.leavingLosesText) {
+            held.value = null
+            return true
+        }
         held.value = file
         return false
     }
