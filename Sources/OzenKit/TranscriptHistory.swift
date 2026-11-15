@@ -733,8 +733,19 @@ public struct TranscriptHistoryStore: Sendable {
 
     private func writeSearchText(_ text: String, forRecordFile url: URL, recordModifiedAt: Date?) {
         try? FileManager.default.createDirectory(at: summariesURL, withIntermediateDirectories: true)
-        try? Data(text.utf8).write(to: searchTextURL(forRecordFile: url), options: .privateFile)
+        do {
+            try Data(text.utf8).write(to: searchTextURL(forRecordFile: url), options: .privateFile)
+        } catch {
+            return
+        }
         removeCacheIfConversationChanged(searchTextURL(forRecordFile: url), forRecordFile: url, since: recordModifiedAt)
+        // Only now that the new file is on disk: a failed or interrupted
+        // rebuild keeps the old file, so search never loses a conversation.
+        // Done per conversation as it is rebuilt, so no folder scan is needed.
+        guard FileManager.default.fileExists(atPath: searchTextURL(forRecordFile: url).path) else { return }
+        for older in olderSearchTextURLs(forRecordFile: url) {
+            try? FileManager.default.removeItem(at: older)
+        }
     }
 
     /// One line per title, caption line and speaker name: first all of

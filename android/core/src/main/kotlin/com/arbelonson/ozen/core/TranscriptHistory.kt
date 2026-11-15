@@ -823,8 +823,15 @@ class TranscriptHistoryStore(
             summariesDirectory.mkdirs()
             PrivateFileWrites.write(searchTextFile(recordFile), text.toByteArray(Charsets.UTF_8))
         } catch (_: IOException) {
+            return
         }
         removeCacheIfConversationChanged(searchTextFile(recordFile), recordFile, recordModifiedAt)
+        // Only now that the new file is on disk: a failed or interrupted
+        // rebuild keeps the old file, so search never loses a conversation.
+        // Done per conversation as it is rebuilt, so no folder scan is needed.
+        if (searchTextFile(recordFile).exists()) {
+            for (older in olderSearchTextFiles(recordFile)) older.delete()
+        }
     }
 
     fun listSummaries(): List<TranscriptSessionSummary> = summaries(recordFiles())

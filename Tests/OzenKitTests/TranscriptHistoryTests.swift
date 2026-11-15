@@ -1179,6 +1179,40 @@ struct TranscriptHistorySearchCacheTests {
         dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v\(version).txt")
     }
 
+    @Test("a search file of the format before is removed once the new one is written")
+    func olderSearchFileRemovedAfterRebuild() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let saved = record(lines: [("The dentist moved it to Thursday", nil)])
+        try store.save(saved)
+        let current = searchFile(dir, saved.id)
+        try FileManager.default.removeItem(at: current)
+        let previous = searchFile(dir, saved.id, version: 4)
+        try Data("the dentist moved it to thursday".utf8).write(to: previous)
+
+        #expect(store.search("dentist").map(\.id) == [saved.id])
+        #expect(FileManager.default.fileExists(atPath: current.path))
+        #expect(!FileManager.default.fileExists(atPath: previous.path))
+    }
+
+    @Test("a search file of the format before stays when the new one cannot be written")
+    func olderSearchFileKeptWhenWriteFails() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let saved = record(lines: [("The dentist moved it to Thursday", nil)])
+        try store.save(saved)
+        let current = searchFile(dir, saved.id)
+        try FileManager.default.removeItem(at: current)
+        try FileManager.default.createDirectory(at: current, withIntermediateDirectories: false)
+        let previous = searchFile(dir, saved.id, version: 4)
+        try Data("the dentist moved it to thursday".utf8).write(to: previous)
+
+        _ = store.search("dentist")
+        #expect(FileManager.default.fileExists(atPath: previous.path))
+    }
+
     @Test("deleting a conversation deletes its search words of the format before too")
     func deletingRemovesOlderSearchFiles() throws {
         let dir = makeTempDirectory()
