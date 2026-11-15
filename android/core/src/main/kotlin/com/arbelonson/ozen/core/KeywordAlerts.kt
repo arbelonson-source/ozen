@@ -853,6 +853,23 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
     }
 
     companion object {
+        private val commonSurnames = "王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤".toSet()
+        private val titleWords = setOf("老师", "医生", "大夫", "先生", "女士", "小姐", "阿姨", "叔叔", "同学", "师傅", "老板", "经理", "主任", "护士", "爷爷", "奶奶", "姐", "哥")
+        private val longerWordPairs = setOf("明星")
+
+        // A name inside a longer Chinese word or a different person's name is
+        // not a call; a surname character only counts when it starts a run of
+        // Chinese characters ("谢谢小明" keeps its match). A title word such as
+        // 老师 is how people call "王老师", so it is exempt. The rule is identical on both phones; when unsure it matches.
+        private fun isWholeChineseName(phrase: String, line: CharSequence, position: Int): Boolean {
+            if (position > 0 && phrase !in titleWords && phrase.first() !in commonSurnames && line[position - 1] in commonSurnames &&
+                (position == 1 || !HebrewText.containsHan(line[position - 2].toString()))
+            ) return false
+            val end = position + phrase.length
+            if (end < line.length && "" + phrase.last() + line[end] in longerWordPairs) return false
+            return true
+        }
+
         private fun substringMatches(phrase: String, normalizedWords: List<String>): List<Pair<String, Int>> {
             val line = StringBuilder()
             val starts = mutableListOf<Pair<Int, Int>>()
@@ -866,8 +883,9 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
             if (phrase.isEmpty()) return hits
             var position = line.indexOf(phrase)
             while (position >= 0) {
-                hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
-                position = line.indexOf(phrase, position + phrase.length)
+                val whole = isWholeChineseName(phrase, line, position)
+                if (whole) hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
+                position = line.indexOf(phrase, position + if (whole) phrase.length else 1)
             }
             return hits
         }
