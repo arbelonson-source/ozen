@@ -121,6 +121,12 @@ object HomeServer {
         return a == 10 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254)
     }
 
+    /** Said to a screen reader when Save address is pressed: the button vanishes under focus, so nothing else says the address was kept. */
+    fun addressSavedText(): String = tr("כתובת המחשב נשמרה", "Computer address saved")
+
+    /** Said to a screen reader when Save code is pressed, as the green line that appears is not announced by itself. */
+    fun codeSavedText(): String = tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone")
+
     /** What a connection test says when the computer's certificate is no longer the one in the QR code. */
     fun pairingChangedText(): String = tr("הצימוד עם המחשב השתנה. סרקו שוב את קוד ה־QR שלו.", "The computer’s pairing changed. Scan its QR code again.")
 

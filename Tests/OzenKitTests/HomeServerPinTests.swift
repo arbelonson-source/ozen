@@ -171,4 +171,12 @@ struct HomeServerPinTests {
             #expect(HomeServer.rejectedCoverDetail(detail: "pairing code refused bad").contains("didn’t accept the pairing code"))
         }
     }
+
+    @Test("saving the address or the pairing code has words to announce")
+    func savedWords() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.addressSavedText() == "Computer address saved")
+            #expect(HomeServer.codeSavedText() == "Pairing code saved on the phone")
+        }
+    }
 }

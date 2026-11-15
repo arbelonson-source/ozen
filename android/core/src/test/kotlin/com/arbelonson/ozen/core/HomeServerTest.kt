@@ -332,6 +332,14 @@ class HomeServerTest {
     }
 
     @Test
+    fun `saving the address or the pairing code has words to announce`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Computer address saved", HomeServer.addressSavedText())
+            assertEquals("Pairing code saved on the phone", HomeServer.codeSavedText())
+        }
+    }
+
+    @Test
     fun `a certificate that did not match is its own answer, with words that tell her to scan the QR code again`() {
         val mismatch = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerRejected, HomeServer.PAIRING_CHANGED)
         assertEquals(HomeServerCheck.PairingChanged, HomeServerCheck.of(mismatch, 0.1))
