@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.content.Context
+import android.os.SystemClock
 import com.arbelonson.ozen.core.RestartBudget
 import com.arbelonson.ozen.core.SoundClassifierSupervisor
 import com.arbelonson.ozen.core.SoundEventCatalog
@@ -25,9 +26,10 @@ class YamnetSoundDetector(private val context: Context) : SoundEventDetecting {
         var classifier: Classifier? = null
         try {
             audio.collect { chunk ->
+                if (chunk.isEmpty()) supervisor.audioGap()
                 for (window in windows.add(chunk)) {
                     val now = System.currentTimeMillis() / 1_000.0
-                    when (supervisor.step(classifier != null, now)) {
+                    when (supervisor.step(classifier != null, SystemClock.elapsedRealtime() / 1_000.0)) {
                         SoundClassifierSupervisor.Step.Skip -> {
                             supervisor.takeChange()?.let(availability)
                             continue

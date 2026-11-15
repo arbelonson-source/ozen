@@ -13,9 +13,11 @@ public struct SoundClassifierSupervisor: Sendable, Equatable {
     private var budget: RestartBudget
     private var workingSince: TimeInterval?
     private var reported = true
+    private var firstLoadPending: Bool
 
-    public init(budget: RestartBudget) {
+    public init(budget: RestartBudget, firstLoadIsFree: Bool = true) {
         self.budget = budget
+        self.firstLoadPending = firstLoadIsFree
     }
 
     public mutating func step(hasWorkingClassifier: Bool, at now: TimeInterval) -> Step {
@@ -26,9 +28,17 @@ public struct SoundClassifierSupervisor: Sendable, Equatable {
             return .classify
         }
         workingSince = nil
+        if firstLoadPending {
+            firstLoadPending = false
+            return .restart
+        }
         if budget.spend(at: now) { return .restart }
         isAvailable = false
         return .skip
+    }
+
+    public mutating func audioGap() {
+        workingSince = nil
     }
 
     public mutating func restartGaveNoClassifier() {

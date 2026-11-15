@@ -126,6 +126,16 @@ class ListeningCutTest {
     }
 
     @Test
+    fun `sound alerts that cannot work are not a stop, a failure that retries by itself keeps the record, a reported one still ends it`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, stopped = null)
+        recorder.phaseChanged(PipelinePhase.Failed(failure), stopped = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking)
+        assertNotNull(store.value)
+        recorder.phaseChanged(PipelinePhase.Failed(failure), stopped = StoppedCaptionsNotice.Cause.Failed(failure))
+        assertNull(store.value)
+    }
+
+    @Test
     fun `a tick while nothing listens writes nothing`() {
         recorder().keepAlive()
         assertNull(store.value)

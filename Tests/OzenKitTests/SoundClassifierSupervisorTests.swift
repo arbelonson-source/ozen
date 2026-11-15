@@ -45,7 +45,7 @@ struct SoundClassifierSupervisorTests {
     @Test("restarts used up on a classifier that loads but fails again at once also report it unavailable")
     func restartsUsedUp() {
         var supervisor = supervisor()
-        for second in stride(from: 0.0, to: 61, by: 15) {
+        for second in stride(from: 0.0, to: 76, by: 15) {
             #expect(supervisor.step(hasWorkingClassifier: false, at: second) == .restart)
             #expect(supervisor.step(hasWorkingClassifier: true, at: second + 1) == .classify)
         }
@@ -81,5 +81,31 @@ struct SoundClassifierSupervisorTests {
             #expect(supervisor.step(hasWorkingClassifier: false, at: second + 10) != .classify)
         }
         #expect(!supervisor.isAvailable)
+    }
+
+    @Test("the first load of a classifier is free, so the restarts that follow are all five")
+    func firstLoadIsFree() {
+        var supervisor = supervisor()
+        var restarts = 0
+        for second in stride(from: 0.0, to: 90, by: 15) {
+            if supervisor.step(hasWorkingClassifier: false, at: second) == .restart {
+                restarts += 1
+                supervisor.restartGaveNoClassifier()
+            }
+        }
+        #expect(restarts == 6)
+    }
+
+    @Test("time with no audio, sound alerts off, does not count toward proving a classifier")
+    func gapsDoNotCountAsHealth() {
+        var supervisor = supervisor()
+        _ = supervisor.step(hasWorkingClassifier: false, at: 0)
+        supervisor.restartGaveNoClassifier()
+        #expect(supervisor.step(hasWorkingClassifier: true, at: 10) == .classify)
+        supervisor.audioGap()
+        #expect(supervisor.step(hasWorkingClassifier: true, at: 60) == .classify)
+        #expect(!supervisor.isAvailable)
+        #expect(supervisor.step(hasWorkingClassifier: true, at: 81) == .classify)
+        #expect(supervisor.isAvailable)
     }
 }

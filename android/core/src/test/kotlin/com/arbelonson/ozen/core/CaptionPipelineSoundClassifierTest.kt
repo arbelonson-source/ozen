@@ -132,4 +132,21 @@ class CaptionPipelineSoundClassifierTest {
         detector.report(false, detector.runs - 1)
         assertTrue(eventually { pipeline.soundAlertsNotWorking })
     }
+
+    @Test
+    fun `a report from a sounds-only detector that was stopped is ignored after a retry starts a new one in the same run`() = runTest {
+        val detector = ReportingSoundDetector()
+        val audio = FakeAudioCapturer()
+        val (pipeline, _, _) = makePipeline(audio = audio, soundDetector = detector)
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        assertTrue(eventually { detector.runs == 1 })
+
+        audio.onCaptureLost?.invoke()
+        assertTrue(eventually(kotlin.time.Duration.parse("30s")) { detector.runs == 2 && pipeline.isListeningForSoundsOnly })
+
+        detector.report(false, 0)
+        assertFalse(eventually(kotlin.time.Duration.parse("200ms")) { pipeline.soundAlertsNotWorking })
+        detector.report(false, 1)
+        assertTrue(eventually { pipeline.soundAlertsNotWorking })
+    }
 }

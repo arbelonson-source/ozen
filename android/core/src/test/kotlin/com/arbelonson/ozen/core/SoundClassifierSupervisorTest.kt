@@ -50,7 +50,7 @@ class SoundClassifierSupervisorTest {
     @Test
     fun `restarts used up on a classifier that loads but fails again at once also report it unavailable`() {
         val supervisor = supervisor()
-        for (second in seconds(0.0, 61.0, 15.0)) {
+        for (second in seconds(0.0, 76.0, 15.0)) {
             assertEquals(SoundClassifierSupervisor.Step.Restart, supervisor.step(false, second))
             assertEquals(SoundClassifierSupervisor.Step.Classify, supervisor.step(true, second + 1))
         }
@@ -86,5 +86,31 @@ class SoundClassifierSupervisorTest {
             assertTrue(supervisor.step(false, second + 10) != SoundClassifierSupervisor.Step.Classify)
         }
         assertFalse(supervisor.isAvailable)
+    }
+
+    @Test
+    fun `the first load of a classifier is free, so the restarts that follow are all five`() {
+        val supervisor = supervisor()
+        var restarts = 0
+        for (second in seconds(0.0, 90.0, 15.0)) {
+            if (supervisor.step(false, second) == SoundClassifierSupervisor.Step.Restart) {
+                restarts += 1
+                supervisor.restartGaveNoClassifier()
+            }
+        }
+        assertEquals(6, restarts)
+    }
+
+    @Test
+    fun `time with no audio, sound alerts off, does not count toward proving a classifier`() {
+        val supervisor = supervisor()
+        supervisor.step(false, 0.0)
+        supervisor.restartGaveNoClassifier()
+        assertEquals(SoundClassifierSupervisor.Step.Classify, supervisor.step(true, 10.0))
+        supervisor.audioGap()
+        supervisor.step(true, 60.0)
+        assertFalse(supervisor.isAvailable)
+        supervisor.step(true, 81.0)
+        assertTrue(supervisor.isAvailable)
     }
 }

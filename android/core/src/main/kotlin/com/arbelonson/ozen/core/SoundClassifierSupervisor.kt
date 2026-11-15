@@ -1,12 +1,13 @@
 package com.arbelonson.ozen.core
 
-class SoundClassifierSupervisor(private val budget: RestartBudget) {
+class SoundClassifierSupervisor(private val budget: RestartBudget, firstLoadIsFree: Boolean = true) {
     enum class Step { Classify, Restart, Skip }
 
     var isAvailable = true
         private set
     private var workingSince: Double? = null
     private var reported = true
+    private var firstLoadPending = firstLoadIsFree
 
     fun step(hasWorkingClassifier: Boolean, now: Double): Step {
         if (hasWorkingClassifier) {
@@ -16,9 +17,17 @@ class SoundClassifierSupervisor(private val budget: RestartBudget) {
             return Step.Classify
         }
         workingSince = null
+        if (firstLoadPending) {
+            firstLoadPending = false
+            return Step.Restart
+        }
         if (budget.spend(now)) return Step.Restart
         isAvailable = false
         return Step.Skip
+    }
+
+    fun audioGap() {
+        workingSince = null
     }
 
     fun restartGaveNoClassifier() {

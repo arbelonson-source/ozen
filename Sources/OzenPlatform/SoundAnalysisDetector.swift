@@ -58,7 +58,7 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
                 // conversation; a new analyzer picks up from the next chunk,
                 // so a doorbell later in the evening still gets through.
                 var session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
-                var supervisor = SoundClassifierSupervisor(budget: RestartBudget(limit: Self.maximumRestarts, windowSeconds: Self.restartWindowSeconds, minimumSpacingSeconds: Self.restartSpacingSeconds))
+                var supervisor = SoundClassifierSupervisor(budget: RestartBudget(limit: Self.maximumRestarts, windowSeconds: Self.restartWindowSeconds, minimumSpacingSeconds: Self.restartSpacingSeconds), firstLoadIsFree: false)
                 var framePosition: AVAudioFramePosition = 0
                 for await chunk in audio {
                     if Task.isCancelled { break }
@@ -66,6 +66,7 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
                     // the audio the old one held, so none of it is
                     // classified, on its own or joined to what comes next.
                     if chunk.isEmpty {
+                        supervisor.audioGap()
                         session?.analyzer.removeAllRequests()
                         session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
                         framePosition = 0
