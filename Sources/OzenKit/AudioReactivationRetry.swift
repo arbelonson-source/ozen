@@ -22,8 +22,13 @@ public struct AudioReactivationRetry: Sendable, Equatable {
     }
 
     /// Runs `attempt` until it succeeds or the waits run out; `sleep` is the
-    /// wait itself. A cancelled task gives up at once.
-    public func run(sleep: (Double) async -> Void, attempt: () async -> Bool) async -> Bool {
+    /// wait itself. A cancelled task gives up at once. It runs on the
+    /// caller's actor, so the closures may touch that actor's state.
+    public func run(
+        isolation: isolated (any Actor)? = #isolation,
+        sleep: (Double) async -> Void,
+        attempt: () async -> Bool
+    ) async -> Bool {
         var failures = 0
         while !Task.isCancelled {
             if await attempt() { return true }
