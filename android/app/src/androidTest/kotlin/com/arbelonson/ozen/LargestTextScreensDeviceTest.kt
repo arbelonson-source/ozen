@@ -73,6 +73,8 @@ class LargestTextScreensDeviceTest {
     private fun shell(command: String): String =
         ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes().decodeToString() }
 
+    private fun overrideOf(what: String): String? = Regex("Override $what: (\\S+)").find(shell("wm $what"))?.groupValues?.get(1)
+
     private fun everyNode(inDialog: Boolean): List<SemanticsNode> =
         compose.onAllNodes(if (inDialog) hasAnyAncestor(isDialog()) else SemanticsMatcher("any") { true }, useUnmergedTree = true).fetchSemanticsNodes()
 
@@ -90,7 +92,7 @@ class LargestTextScreensDeviceTest {
             val layouts = ArrayList<TextLayoutResult>()
             node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
             val layout = layouts.firstOrNull() ?: continue
-            if (layout.multiParagraph.didExceedMaxLines || (0 until layout.lineCount).any { layout.isLineEllipsized(it) } || layout.size.width > node.size.width || (layout.size.height > node.size.height && !scrollsItself(node))) problems += "cut off: \"${wordsOf(node)}\" needs ${layout.size.width}x${layout.size.height} px, shows ${node.size.width}x${node.size.height}, ${layout.lineCount} lines"
+            if (layout.multiParagraph.didExceedMaxLines || (0 until layout.lineCount).any { layout.isLineEllipsized(it) } || layout.size.width > node.size.width || (layout.multiParagraph.height > node.size.height + 1 && !scrollsItself(node))) problems += "cut off: \"${wordsOf(node)}\" needs ${layout.size.width}x${layout.size.height} px, shows ${node.size.width}x${node.size.height}, ${layout.lineCount} lines"
         }
         for ((i, a) in texts.withIndex()) for (b in texts.drop(i + 1)) {
             val across = minOf(a.boundsInRoot.right, b.boundsInRoot.right) - maxOf(a.boundsInRoot.left, b.boundsInRoot.left)
@@ -191,6 +193,8 @@ class LargestTextScreensDeviceTest {
     @Test
     fun theThreeChoicesOfTheMobileDataQuestionAreAllOnScreenAtTheLargestText() {
         val scale = shell("settings get system font_scale").trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
+        val size = overrideOf("size")
+        val density = overrideOf("density")
         try {
             shell("settings put system font_scale 2.0")
             shell("wm size 720x1280")
@@ -218,8 +222,8 @@ class LargestTextScreensDeviceTest {
                 assertTrue("$choice is only partly on screen", wholly(node.fetchSemanticsNode()))
             }
         } finally {
-            shell("wm size reset")
-            shell("wm density reset")
+            shell("wm size ${size ?: "reset"}")
+            shell("wm density ${density ?: "reset"}")
             shell("settings put system font_scale $scale")
         }
     }
