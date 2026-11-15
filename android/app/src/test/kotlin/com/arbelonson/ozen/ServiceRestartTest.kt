@@ -23,4 +23,16 @@ class ServiceRestartTest {
         assertEquals(false, ServiceRestart.soundsOnlyAfterRestart(systemRestart = true, chosenBeforeKill = false))
         assertEquals(false, ServiceRestart.soundsOnlyAfterRestart(systemRestart = false, chosenBeforeKill = true))
     }
+
+    @Test
+    fun aRefusedStartWithTheMicrophoneAllowedIsNotCoveredByTheScreenSoTheNoticeStillComes() {
+        assertEquals(false, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = true, restartRefused = true, microphoneGranted = true))
+    }
+
+    @Test
+    fun theScreenCoversTheNoticeWhenTheMicrophoneIsGoneOrNothingWasRefused() {
+        assertEquals(true, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = true, restartRefused = true, microphoneGranted = false))
+        assertEquals(true, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = true, restartRefused = false, microphoneGranted = true))
+        assertEquals(false, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = false, restartRefused = true, microphoneGranted = true))
+    }
 }

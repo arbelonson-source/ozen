@@ -5,4 +5,7 @@ object ServiceRestart {
         !systemRestart || mayStartCaptions || soundsOnly
 
     fun soundsOnlyAfterRestart(systemRestart: Boolean, chosenBeforeKill: Boolean): Boolean = systemRestart && chosenBeforeKill
+
+    fun screenSaysCaptionsAreOff(appIsActive: Boolean, restartRefused: Boolean, microphoneGranted: Boolean): Boolean =
+        appIsActive && !(restartRefused && microphoneGranted)
 }

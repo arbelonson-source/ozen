@@ -10,6 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -44,9 +45,10 @@ class DamagedModelCleanupTest {
                 return HTTPFileFetcher().sha256(file)
             }
         }
-        job = launch(Dispatchers.Default) {
+        job = launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
             DamagedModelCleanup(PhoneModelDownloader(file, source, cancelling)).run { followed = true }
         }
+        job.start()
         job.join()
         assertFalse(file.exists())
         assertTrue(followed)

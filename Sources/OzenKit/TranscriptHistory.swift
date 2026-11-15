@@ -541,15 +541,16 @@ public struct TranscriptHistoryStore: Sendable {
     /// finding the old files and rebuilds them. (v1 also held "speaker 2"
     /// and "unknown speaker" labels; v3 had no lines as said, so a result's
     /// preview showed "10:30" as "1030"; v4 left out a line whose optional
-    /// value was damaged, which is kept now.)
+    /// value was damaged, which is kept now; v5 kept Arabic spelling variants
+    /// apart, which are folded together now.)
     private func searchTextURL(forRecordFile url: URL) -> URL {
-        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v5.txt")
+        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v6.txt")
     }
 
     /// Search files of earlier formats hold the conversation's words too,
     /// so deleting it deletes them.
     private func olderSearchTextURLs(forRecordFile url: URL) -> [URL] {
-        ["v1", "v2", "v3", "v4"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
+        ["v1", "v2", "v3", "v4", "v5"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
     }
 
     /// Saves a session, overwriting any earlier save with the same id —
@@ -819,7 +820,7 @@ public struct TranscriptHistoryStore: Sendable {
     /// found by "2500", "0501234567" or "1030" too, not split in two.
     private static func normalizedForSearch(_ text: String) -> String {
         let separated = HebrewText.separatingJoiners(joiningDigitGroups(text.replacingOccurrences(of: "\n", with: " ")))
-        let withoutNiqqud = strippingNiqqud(separated)
+        let withoutNiqqud = foldingArabicSpelling(strippingNiqqud(separated))
         let withoutPunctuation = withoutNiqqud.unicodeScalars.map { scalar -> Unicode.Scalar in
             (CharacterSet.punctuationCharacters.contains(scalar) || CharacterSet.symbols.contains(scalar)) ? " " : scalar
         }
@@ -1416,6 +1417,26 @@ public struct TranscriptHistoryStore: Sendable {
 
     private static func strippingNiqqud(_ text: String) -> String {
         HebrewText.stripNiqqud(text)
+    }
+
+    /// Arabic spelling variants that people type one way and engines write
+    /// another: harakat (U+064B...U+065F), the superscript alef (U+0670)
+    /// and the stretching tatweel (U+0640) are dropped; hamza and madda
+    /// alefs and the wasla alef become a plain alef, alef maqsura becomes
+    /// ya, and ta marbuta becomes ha. Every folded letter is one letter
+    /// for one letter, so line numbers and word boundaries are unchanged.
+    private static func foldingArabicSpelling(_ text: String) -> String {
+        var folded = String.UnicodeScalarView()
+        for scalar in text.unicodeScalars {
+            switch scalar.value {
+            case 0x064B...0x065F, 0x0670, 0x0640: continue
+            case 0x0623, 0x0625, 0x0622, 0x0671: folded.append("\u{0627}")
+            case 0x0649: folded.append("\u{064A}")
+            case 0x0629: folded.append("\u{0647}")
+            default: folded.append(scalar)
+            }
+        }
+        return String(folded)
     }
 }
 

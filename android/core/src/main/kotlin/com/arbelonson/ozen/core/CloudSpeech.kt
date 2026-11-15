@@ -267,6 +267,12 @@ sealed class CloudSpeechError : Exception() {
     data object OutOfCredit : CloudSpeechError()
     data object RateLimited : CloudSpeechError()
     data object Offline : CloudSpeechError()
+
+    /**
+     * The request ran out of time without any answer: a captive or
+     * black-holed network that accepts the connection and passes nothing.
+     */
+    data object TimedOut : CloudSpeechError()
     data class ServerTrouble(val status: Int) : CloudSpeechError()
     data object BadReply : CloudSpeechError()
 
@@ -277,7 +283,7 @@ sealed class CloudSpeechError : Exception() {
     val needsPerson: Boolean
         get() = when (this) {
             KeyMissing, KeyRejected, OutOfCredit -> true
-            RateLimited, Offline, is ServerTrouble, BadReply -> false
+            RateLimited, Offline, TimedOut, is ServerTrouble, BadReply -> false
         }
 
     val unavailability: EngineUnavailability
@@ -286,6 +292,7 @@ sealed class CloudSpeechError : Exception() {
             KeyRejected -> EngineUnavailability(EngineUnavailability.Kind.CloudKeyNeeded, "the cloud service turned the key down")
             OutOfCredit -> EngineUnavailability(EngineUnavailability.Kind.CloudOutOfCredit, "the cloud key is out of credit")
             Offline -> EngineUnavailability(EngineUnavailability.Kind.NoInternet, "no connection to the cloud service")
+            TimedOut -> EngineUnavailability(EngineUnavailability.Kind.NoInternet, "the cloud service did not answer in time")
             RateLimited -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "the cloud service's rate limit")
             is ServerTrouble -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "the cloud service answered $status")
             BadReply -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "unreadable reply from the cloud service")

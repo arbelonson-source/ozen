@@ -1122,7 +1122,7 @@ class TranscriptHistorySearchCacheTest {
 
     private fun recordFile(dir: File, id: UUID) = File(dir, "${uuidString(id)}.json")
 
-    private fun searchFile(dir: File, id: UUID, version: Int = 5) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
+    private fun searchFile(dir: File, id: UUID, version: Int = 6) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
 
     @Test
     fun `deleting a conversation deletes its search words of the format before too`() {
@@ -1132,7 +1132,7 @@ class TranscriptHistorySearchCacheTest {
             store.save(saved)
             val older = searchFile(dir, saved.id, version = 3)
             older.writeText("the dentist moved it to thursday")
-            val previous = searchFile(dir, saved.id, version = 4)
+            val previous = searchFile(dir, saved.id, version = 5)
             previous.writeText("the dentist moved it to thursday")
 
             store.delete(saved.id)
@@ -1234,6 +1234,18 @@ class TranscriptHistoryMatchingLinesTest {
 
     private fun record(segments: List<SavedSegment>) =
         TranscriptSessionRecord(id = UUID.randomUUID(), startedAt = 0.0, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null, segments = segments)
+
+    @Test
+    fun `Arabic search picks the lines holding the plain-typed word`() {
+        val lines = listOf(
+            line("قال أحمد إن المَدْرَســة قريبة", "سارة"),
+            line("حسنا", "سارة"),
+            line("أين المدرسة؟", "منى"),
+        )
+        val conversation = record(lines)
+        assertEquals(listOf(lines[0].id), TranscriptHistoryStore.matchingSegmentIDs(conversation, query = "احمد"))
+        assertEquals(listOf(lines[0].id, lines[2].id), TranscriptHistoryStore.matchingSegmentIDs(conversation, query = "مدرسه"))
+    }
 
     @Test
     fun `the lines a search found, in order, by words or by who said them`() {
@@ -1576,6 +1588,19 @@ class TranscriptHistoryTitleTest {
     }
 
     @Test
+    fun `Arabic search ignores hamza forms, harakat, tatweel, alef maqsura and ta marbuta, in the search and in the saved lines`() {
+        withHistoryDirectory("ozen-arabic-search") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val id = UUID.randomUUID()
+            store.save(record(id, listOf("قال أحمد إن المَدْرَســة قريبة", "ذهب إلى المستشفى")))
+            for (query in listOf("احمد", "أحمد", "مدرسه", "المدرسة", "المستشفي", "الي")) {
+                assertEquals(listOf(id), store.search(query).map { it.id }, query)
+            }
+            assertTrue(store.search("سعيد").isEmpty())
+        }
+    }
+
+    @Test
     fun `without the prepared search files (a copy restored from a backup) a conversation is still found by its name, and they are made again`() {
         withHistoryDirectory("ozen-titles") { dir ->
             val store = TranscriptHistoryStore(dir)
@@ -1588,7 +1613,7 @@ class TranscriptHistoryTitleTest {
             assertEquals(listOf(id), store.search("רופא").map { it.id })
             assertTrue(store.search("סבתא").isEmpty())
             val remade = prepared.list()?.toList() ?: emptyList()
-            assertTrue(remade.any { it.endsWith(".search-v5.txt") })
+            assertTrue(remade.any { it.endsWith(".search-v6.txt") })
             assertEquals(listOf(id), store.search("רופא").map { it.id })
         }
     }
@@ -1932,8 +1957,8 @@ class TranscriptHistoryLenientReadTest {
         withHistoryDirectory("ozen-history-older-search") { dir ->
             val saved = savedConversation(dir)
             val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
-            val current = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
-            val previous = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            val current = File(prepared, "${uuidString(saved.id)}.search-v6.txt")
+            val previous = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
             assertTrue(current.delete())
             previous.writeText("alpha one")
 
@@ -1948,8 +1973,8 @@ class TranscriptHistoryLenientReadTest {
         withHistoryDirectory("ozen-history-older-search") { dir ->
             val saved = savedConversation(dir)
             val prepared = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)
-            val current = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
-            val previous = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            val current = File(prepared, "${uuidString(saved.id)}.search-v6.txt")
+            val previous = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
             assertTrue(current.delete())
             assertTrue(current.mkdir())
             previous.writeText("alpha one")
@@ -1971,7 +1996,7 @@ class TranscriptHistoryLenientReadTest {
             cached["summary"] = JsonObject(cached.getValue("summary").jsonObject + ("segmentCount" to JsonPrimitive(2)))
             cached["format"] = JsonPrimitive(4)
             summaryFile.writeText(JsonObject(cached).toString())
-            val oldSearch = File(prepared, "${uuidString(saved.id)}.search-v4.txt")
+            val oldSearch = File(prepared, "${uuidString(saved.id)}.search-v5.txt")
             oldSearch.writeText("bravo two\ncharlie three\nbravo two\ncharlie three")
             val later = System.currentTimeMillis() + 60_000
             summaryFile.setLastModified(later)

@@ -17,7 +17,7 @@ public enum CloudKeyCheck: Sendable, Equatable {
         switch provider.failure(from: response) {
         case .keyRejected, .keyMissing: return .rejected
         case .outOfCredit: return .noCredit
-        case .rateLimited, .offline, .serverTrouble, .badReply: return .unreachable
+        case .rateLimited, .offline, .timedOut, .serverTrouble, .badReply: return .unreachable
         }
     }
 }

@@ -220,6 +220,9 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
     case outOfCredit
     case rateLimited
     case offline
+    /// The connection was made or assumed, and nothing came back before
+    /// the request ran out of time: a captive or black-holed network.
+    case timedOut
     case serverTrouble(status: Int)
     case badReply
 
@@ -228,7 +231,7 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
     public var needsPerson: Bool {
         switch self {
         case .keyMissing, .keyRejected, .outOfCredit: return true
-        case .rateLimited, .offline, .serverTrouble, .badReply: return false
+        case .rateLimited, .offline, .timedOut, .serverTrouble, .badReply: return false
         }
     }
 
@@ -238,6 +241,7 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
         case .keyRejected: return EngineUnavailability(kind: .cloudKeyNeeded, detail: "the cloud service turned the key down")
         case .outOfCredit: return EngineUnavailability(kind: .cloudOutOfCredit, detail: "the cloud key is out of credit")
         case .offline: return EngineUnavailability(kind: .noInternet, detail: "no connection to the cloud service")
+        case .timedOut: return EngineUnavailability(kind: .noInternet, detail: "the cloud service did not answer in time")
         case .rateLimited: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service's rate limit")
         case .serverTrouble(let status): return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service answered \(status)")
         case .badReply: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "unreadable reply from the cloud service")
