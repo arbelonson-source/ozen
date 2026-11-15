@@ -1152,7 +1152,8 @@
   "Override Do Not Disturb": "«አትረብሽ»ን ሻር",
   "Sound alerts aren’t working": "የድምፅ ማንቂያዎች አይሠሩም",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "ኦዘን አሁን ድምፆችን መለየት አልቻለም፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። መተግበሪያው መሞከሩን ይቀጥላል።",
-  "Star removed": "ኮከቡ ተወግዷል"
+  "Star removed": "ኮከቡ ተወግዷል",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2307,7 +2308,8 @@
   "Override Do Not Disturb": "تجاوز وضع “عدم الإزعاج”",
   "Sound alerts aren’t working": "التنبيهات الصوتية لا تعمل",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "تعذّر على أوزن التعرّف على الأصوات الآن، وقد يفوتك رنين جرس الباب أو جهاز إنذار أو بكاء طفل. يواصل التطبيق المحاولة.",
-  "Star removed": "أُزيلت النجمة"
+  "Star removed": "أُزيلت النجمة",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3462,7 +3464,8 @@
   "Override Do Not Disturb": "覆盖‘勿扰’设置",
   "Sound alerts aren’t working": "声音提醒无法使用",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen 目前无法识别声音，因此您可能会错过门铃、警报或婴儿的哭声。应用会继续尝试。",
-  "Star removed": "已取消星标"
+  "Star removed": "已取消星标",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4617,7 +4620,8 @@
   "Override Do Not Disturb": "Ignorer Ne pas déranger",
   "Sound alerts aren’t working": "Les alertes sonores ne fonctionnent pas",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer.",
-  "Star removed": "Étoile retirée"
+  "Star removed": "Étoile retirée",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5772,7 +5776,8 @@
   "Override Do Not Disturb": "„Bitte nicht stören“ ignorieren",
   "Sound alerts aren’t working": "Die Tonwarnungen funktionieren nicht",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen kann gerade keine Geräusche erkennen, deshalb könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Die App versucht es weiter.",
-  "Star removed": "Stern entfernt"
+  "Star removed": "Stern entfernt",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -6927,7 +6932,8 @@
   "Override Do Not Disturb": "‘परेशान न करें’ मोड को बायपास करें",
   "Sound alerts aren’t working": "ध्वनि अलर्ट काम नहीं कर रहे",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen अभी आवाज़ें पहचान नहीं पा रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की आवाज़ का पता न चले। ऐप कोशिश करता रहेगा।",
-  "Star removed": "तारा हटाया गया"
+  "Star removed": "तारा हटाया गया",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ वाले अलर्ट बंद हो जाते हैं।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8082,7 +8088,8 @@
   "Override Do Not Disturb": "Ignorar o modo Não incomodar",
   "Sound alerts aren’t working": "Os alertas sonoros não estão a funcionar",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "O Ozen não consegue reconhecer sons neste momento, por isso pode perder uma campainha, um alarme ou o choro de um bebé. A aplicação continua a tentar.",
-  "Star removed": "Estrela removida"
+  "Star removed": "Estrela removida",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9237,7 +9244,8 @@
   "Override Do Not Disturb": "Уведомления в режиме „Не беспокоить“",
   "Sound alerts aren’t working": "Звуковые оповещения не работают",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Сейчас Ozen не может распознавать звуки, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Приложение продолжает попытки.",
-  "Star removed": "Звёздочка убрана"
+  "Star removed": "Звёздочка убрана",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10392,7 +10400,8 @@
   "Override Do Not Disturb": "Ignorar modo No molestar",
   "Sound alerts aren’t working": "Las alertas de sonido no funcionan",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen no puede reconocer sonidos en este momento, así que podrías perderte un timbre, una alarma o el llanto de un bebé. La aplicación sigue intentándolo.",
-  "Star removed": "Estrella quitada"
+  "Star removed": "Estrella quitada",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11547,6 +11556,7 @@
   "Override Do Not Disturb": "Дозволити в режимі „Не турбувати“",
   "Sound alerts aren’t working": "Звукові сповіщення не працюють",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Зараз Ozen не може розпізнавати звуки, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Застосунок продовжує спроби.",
-  "Star removed": "Зірочку прибрано"
+  "Star removed": "Зірочку прибрано",
+  "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі."
  }
 }

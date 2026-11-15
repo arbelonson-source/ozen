@@ -216,6 +216,28 @@ class OnboardingDeviceTest {
     // the screen's edge, and with TalkBack they came in silence: the reason
     // for the notification question was never heard. As on the iPhone.
     @Test
+    fun theMicrophonePageSaysWhichAnswerToPickBeforeTheSystemAsksEvenAtTheLargestText() {
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        val line = "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night."
+        try {
+            shell("settings put system font_scale 2.0")
+            compose.waitForTheSystemRebuildAt(2f)
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Next") }
+            repeat(4) {
+                compose.onNodeWithText("Next").performClick()
+                compose.waitForIdle()
+            }
+            compose.runOnUiThread { compose.activity.microphoneAnswer.value = null }
+            compose.waitUntil(5_000) { shown("Approve the microphone") }
+            compose.onNodeWithText(line).assertIsDisplayed()
+            compose.onNodeWithText("Approve the microphone").assertIsDisplayed()
+        } finally {
+            shell("settings put system font_scale 1.0")
+        }
+    }
+
+    @Test
     fun atTheLargestTextEachPermissionAnswerIsBroughtIntoViewAndSaid() {
         val announced = CopyOnWriteArrayList<String>()
         val readerBefore = ScreenReader.isOn
