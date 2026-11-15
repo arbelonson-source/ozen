@@ -1075,10 +1075,13 @@ public struct TranscriptHistoryStore: Sendable {
     private func patchRecordFile(at url: URL, throwIfUnreadable: Bool = false, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
         lock.lock()
         defer { lock.unlock() }
+        let read: Data?
         if throwIfUnreadable, FileManager.default.fileExists(atPath: url.path) {
-            _ = try Data(contentsOf: url)
+            read = try Data(contentsOf: url)
+        } else {
+            read = try? Data(contentsOf: url)
         }
-        guard let data = try? Data(contentsOf: url),
+        guard let data = read,
               var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               patch(&object)
         else { return false }
