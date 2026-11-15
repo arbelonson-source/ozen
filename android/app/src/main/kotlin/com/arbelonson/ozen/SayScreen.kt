@@ -122,6 +122,8 @@ internal fun SayScreen(
     val context = LocalContext.current
     // A deleted phrase is offered back for a while; the snackbar is read out by screen readers.
     val undo = remember { SnackbarHostState() }
+    // Both before the big letters return below, so opening them does not cancel a waiting Undo.
+    val scope = rememberCoroutineScope()
     val addNew = { text: String ->
         val trimmed = text.trim()
         val isNew = trimmed.isNotEmpty() && trimmed !in phrases
@@ -153,7 +155,6 @@ internal fun SayScreen(
         return
     }
     val play = tr("השמעה", "Play")
-    val scope = rememberCoroutineScope()
     val deletePhrase = { phrase: String ->
         val at = phrases.indexOf(phrase)
         onRemovePhrase(phrase)
