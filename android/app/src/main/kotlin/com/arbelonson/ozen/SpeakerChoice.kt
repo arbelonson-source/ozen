@@ -46,7 +46,8 @@ internal object SpeakerChoice {
         AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_USB_HEADSET -> SpeakingOutput.Kind.Wired
         AudioDeviceInfo.TYPE_BUS -> SpeakingOutput.Kind.Car
         AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_ACCESSORY, AudioDeviceInfo.TYPE_LINE_ANALOG, AudioDeviceInfo.TYPE_LINE_DIGITAL, AudioDeviceInfo.TYPE_HDMI -> SpeakingOutput.Kind.Other
-        else -> null
+        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE, AudioDeviceInfo.TYPE_TELEPHONY -> null
+        else -> SpeakingOutput.Kind.Other
     }
 
     fun beforeSpeaking(context: Context, engine: TextToSpeech) {
@@ -59,6 +60,7 @@ internal object SpeakerChoice {
             false
         }
         routed = routedNow
+        if (chosen && !routedNow) chosen = false
         if (!routedNow && callAttributes) {
             engine.setAudioAttributes(attributes(AudioAttributes.USAGE_MEDIA))
             callAttributes = false

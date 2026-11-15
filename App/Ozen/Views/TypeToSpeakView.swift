@@ -119,9 +119,9 @@ struct TypeToSpeakView: View {
             // isn't announced twice.
             .watchingMediaVolume(while: !showingBigText) { mediaVolume = $0 }
             .announcing(silentNotice ?? "", whenTurningTrue: silentNotice != nil)
-            .watchingSpeakingRoute { outputs = $0 }
+            .watchingSpeakingRoute(while: !showingBigText) { outputs = $0 }
             .onChange(of: routeNotice) { _, notice in
-                if let notice { Announcement.post(notice) }
+                if let notice, !showingBigText { Announcement.post(notice) }
             }
         }
         .presentationDetents([.medium, .large])

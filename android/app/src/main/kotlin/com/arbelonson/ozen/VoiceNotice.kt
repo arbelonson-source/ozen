@@ -72,15 +72,15 @@ internal fun MediaVolumeNotice() {
     var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
     LaunchedEffect(audio) {
         while (true) {
-            volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
             delay(1_000)
         }
     }
     val notice = VoiceNotice.silentMedia(volume) ?: return
     Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     TextButton(onClick = {
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
-        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        audio.adjustStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+        volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
     }) { Text(VoiceNotice.turnUp()) }
 }
 

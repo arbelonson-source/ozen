@@ -51,6 +51,8 @@ class SpeakingRouteTest {
         assertEquals(listOf(SpeakingOutput.Kind.HearingAid), aid.map { it.kind })
         val wired = SpeakerChoice.outputsFor(listOf(SpeakerChoice.Device(AudioDeviceInfo.TYPE_WIRED_HEADSET, "")))
         assertEquals(listOf(SpeakingOutput.Kind.Wired), wired.map { it.kind })
+        val dock = SpeakerChoice.outputsFor(listOf(SpeakerChoice.Device(AudioDeviceInfo.TYPE_DOCK, "Desk dock")))
+        assertEquals(listOf(SpeakingOutput.Kind.Other), dock.map { it.kind })
         val earpieceOnly = SpeakerChoice.outputsFor(listOf(SpeakerChoice.Device(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE, "")))
         assertNull(SpeakingRoute.notice(earpieceOnly))
     }
