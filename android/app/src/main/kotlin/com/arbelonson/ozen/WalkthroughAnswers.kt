@@ -8,7 +8,7 @@ internal object WalkthroughAnswers {
 
     fun whyNotifications() = tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name.")
 
-    fun microphoneChoice() = tr("כשאנדרואיד שואל, בחרו “בזמן השימוש באפליקציה”. “רק הפעם” מפסיק את התראות הקול במהלך הלילה.", "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.")
+    fun microphoneChoice() = tr("כשאנדרואיד שואל, בחרו “בזמן השימוש באפליקציה”. “רק הפעם” מפסיק את התראות על צלילים במהלך הלילה.", "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.")
 
     fun microphoneBlocked() = tr("המיקרופון חסום", "Microphone blocked")
 
