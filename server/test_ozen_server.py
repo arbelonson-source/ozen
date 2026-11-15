@@ -2143,6 +2143,44 @@ class PhoneContract(unittest.TestCase):
         self.assertTrue(any("captions, Ozen test build, beam 3" in line for line in logged.output), logged.output)
 
 
+class LanguageCheck(unittest.TestCase):
+    def hello_with(self, **fields):
+        hello = {"type": "hello", "token": "example-code-123", **fields}
+        ws = PhoneSocket(hello, [json.dumps({"type": "end"})])
+        made = []
+
+        class Recorded(S.Session):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                made.append(self)
+
+        with mock.patch.object(S, "Session", Recorded), self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0), 5))
+        return [json.loads(text) for text in ws.sent], made
+
+    def test_a_language_whisper_does_not_know_is_refused_before_a_session_starts(self):
+        for language in ("xx", "", 5, None, ["he"], "he.IL"):
+            sent, made = self.hello_with(language=language)
+            self.assertEqual([frame["type"] for frame in sent], ["error"], language)
+            self.assertEqual(sent[0]["code"], "unsupported_language", language)
+            self.assertEqual(made, [], language)
+
+    def test_a_region_code_or_the_old_hebrew_code_is_read_as_the_language_it_names(self):
+        for language, wanted in (("he-IL", "he"), ("iw", "he"), ("en_US", "en"), ("EN", "en")):
+            sent, made = self.hello_with(language=language)
+            self.assertEqual(sent[0]["type"], "ready", language)
+            self.assertEqual(made[0].language, wanted)
+
+    def test_a_hello_without_a_language_is_still_hebrew(self):
+        sent, made = self.hello_with()
+        self.assertEqual((sent[0]["type"], made[0].language), ("ready", "he"))
+
+    def test_every_language_code_faster_whisper_accepts_is_accepted(self):
+        self.assertEqual(len(S.WHISPER_LANGUAGES), 100)
+        for code in S.WHISPER_LANGUAGES:
+            self.assertEqual(S.whisper_language(code), code)
+
+
 class ClosingSocket(PhoneSocket):
     async def send(self, text):
         raise S.websockets.ConnectionClosed()
