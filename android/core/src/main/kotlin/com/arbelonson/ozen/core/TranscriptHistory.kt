@@ -1550,7 +1550,7 @@ class TranscriptHistoryStore(
          */
         fun sharedFileName(kind: SharedKind, title: String?, at: Double, utcOffsetSeconds: Int): String {
             val fallback = if (kind == SharedKind.Starred) tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen") else tr("שיחה מתוך אוזן", "Conversation from Ozen")
-            val clean = title.orEmpty().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trim()
+            val clean = withoutInvisible(title.orEmpty()).replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trim()
             val local = Math.floor(at).toLong() + utcOffsetSeconds
             val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(at, utcOffsetSeconds))
             val rest = Math.floorMod(local, 86_400L).toInt()
@@ -1561,19 +1561,45 @@ class TranscriptHistoryStore(
 
         private const val SHARED_TITLE_BYTES = 80
 
-        private fun cutToBytes(text: String, limit: Int): String {
-            var bytes = 0
+        private val INVISIBLE = Regex("[\\u202A-\\u202E\\u2066-\\u2069\\u200E\\u200F\\u061C\\u2028\\u2029\\u200B\\u200C\\uFEFF]")
+
+        private fun isPictographic(point: Int) =
+            point >= 0x1F000 || point in 0x2190..0x2BFF || point == 0xFE0F
+
+        /**
+         * Direction overrides, line separators and zero-width characters
+         * would hide in a file name (a right-to-left override can make
+         * "evil.txt.exe" look harmless). A joiner stays only between two
+         * pictures, where it builds one emoji.
+         */
+        private fun withoutInvisible(text: String): String {
+            val stripped = INVISIBLE.replace(text, "")
             val out = StringBuilder()
             var index = 0
-            while (index < text.length) {
-                val point = text.codePointAt(index)
-                val size = String(Character.toChars(point)).toByteArray(Charsets.UTF_8).size
-                if (bytes + size > limit) break
-                bytes += size
-                out.appendCodePoint(point)
-                index += Character.charCount(point)
+            while (index < stripped.length) {
+                val point = stripped.codePointAt(index)
+                val next = index + Character.charCount(point)
+                val joins = point == 0x200D && out.isNotEmpty() && next < stripped.length &&
+                    isPictographic(out.codePointBefore(out.length)) && isPictographic(stripped.codePointAt(next))
+                if (point != 0x200D || joins) out.appendCodePoint(point)
+                index = next
             }
             return out.toString()
+        }
+
+        private fun cutToBytes(text: String, limit: Int): String {
+            val clusters = java.text.BreakIterator.getCharacterInstance(java.util.Locale.ROOT)
+            clusters.setText(text)
+            var bytes = 0
+            var end = 0
+            var next = clusters.next()
+            while (next != java.text.BreakIterator.DONE) {
+                bytes += text.substring(end, next).toByteArray(Charsets.UTF_8).size
+                if (bytes > limit) break
+                end = next
+                next = clusters.next()
+            }
+            return text.substring(0, end)
         }
 
         /**
