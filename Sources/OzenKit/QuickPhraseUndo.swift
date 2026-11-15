@@ -1,6 +1,5 @@
 import Foundation
 
-/// A quick phrase taken off the list, and the place it had in it.
 public struct RemovedQuickPhrase: Equatable, Sendable {
     public let phrase: String
     public let index: Int
@@ -11,7 +10,6 @@ public struct RemovedQuickPhrase: Equatable, Sendable {
     }
 }
 
-/// Puts back quick phrases that were deleted by mistake, each in its old place.
 public enum QuickPhraseUndo {
     public static func removed(at offsets: IndexSet, from list: [String]) -> [RemovedQuickPhrase] {
         offsets.filter { list.indices.contains($0) }.map { RemovedQuickPhrase(phrase: list[$0], index: $0) }
