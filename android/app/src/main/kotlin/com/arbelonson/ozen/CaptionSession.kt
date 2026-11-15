@@ -187,7 +187,7 @@ class CaptionSession(
         scope = scope,
         audio = audio,
         engineFactory = ::engine,
-        embedder = CamPlusPlusEmbedder(context),
+        embedder = CamPlusPlusEmbedder(context, note = { note(it) }),
         soundDetector = YamnetSoundDetector(context),
         availableStorageBytes = { freeSpace() },
         network = network,
