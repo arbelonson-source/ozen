@@ -18,8 +18,13 @@ object PhoneNumbers {
      * last taking a spare digit. A "+" stays on the first digit.
      */
     fun spokenForm(match: Match, text: String): String {
-        val written = asciiDigits(match.textIn(text))
-        val spoken = Regex("[0-9]+").findAll(written).flatMap { spokenGroups(it.value) }
+        val written = match.textIn(text)
+        val runs = ArrayList<String>()
+        val run = StringBuilder()
+        for (digit in written.codePoints().toArray().map { Character.digit(it, 10) } + -1) {
+            if (digit >= 0) run.append(digit) else if (run.isNotEmpty()) { runs.add(run.toString()); run.setLength(0) }
+        }
+        val spoken = runs.flatMap { spokenGroups(it) }
             .joinToString(", ") { group -> group.toList().joinToString(" ") }
         return if (written.startsWith("+")) "+$spoken" else spoken
     }

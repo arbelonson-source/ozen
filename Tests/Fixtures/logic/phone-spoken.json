@@ -12,6 +12,7 @@
   {"text": "1-700-123-456", "spoken": "1, 7 0 0, 1 2 3, 4 5 6"},
   {"text": "1700123456", "spoken": "1 7 0, 0 1 2, 3 4 5 6"},
   {"text": "call ٠٥٠-١٢٣٤٥٦٧", "spoken": "0 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "call 050-\ud835\udfd1\ud835\udfd2\ud835\udfd3\ud835\udfd4\ud835\udfd5\ud835\udfd6\ud835\udfd7", "spoken": "0 5 0, 3 4 5, 6 7 8 9"},
   {"text": "call ０５０-１２３４５６７", "spoken": "0 5 0, 1 2 3, 4 5 6 7"}
  ]
 }

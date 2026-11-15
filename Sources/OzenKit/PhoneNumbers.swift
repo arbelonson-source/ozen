@@ -15,12 +15,12 @@ public enum PhoneNumbers {
     /// written in the caption; a run of more than four digits is cut into
     /// threes, the last taking a spare digit. A "+" stays on the first digit.
     public static func spokenForm(_ match: Match, in text: String) -> String {
-        let written = asciiDigits(String(text[match.range]))
+        let written = text[match.range]
         var runs: [String] = []
         var run = ""
-        for character in written {
-            if character.isASCII, character.isNumber {
-                run.append(character)
+        for scalar in written.unicodeScalars {
+            if scalar.properties.numericType == .decimal, let value = scalar.properties.numericValue {
+                run += String(Int(value))
             } else if !run.isEmpty {
                 runs.append(run)
                 run = ""
