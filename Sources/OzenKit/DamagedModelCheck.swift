@@ -24,13 +24,22 @@ public enum DamagedModelCheck {
         fileManager: FileManager = .default,
         sha256: (URL) throws -> String
     ) -> [String] {
+        // A size that can't be read (passing I/O error) proves nothing:
+        // that file is left out. Only a missing file or a size actually
+        // read and different counts.
+        var unreadable = Set<String>()
         let wrongSize = expected.filter { file in
-            let attributes = try? fileManager.attributesOfItem(atPath: folder.appendingPathComponent(file.path).path)
-            return (attributes?[.size] as? NSNumber)?.int64Value != file.size
+            let path = folder.appendingPathComponent(file.path).path
+            guard fileManager.fileExists(atPath: path) else { return true }
+            guard let attributes = try? fileManager.attributesOfItem(atPath: path) else {
+                unreadable.insert(file.path)
+                return false
+            }
+            return (attributes[.size] as? NSNumber)?.int64Value != file.size
         }
         guard wrongSize.isEmpty else { return wrongSize.map(\.path) }
         return expected.compactMap { file in
-            guard let published = file.sha256 else { return nil }
+            guard !unreadable.contains(file.path), let published = file.sha256 else { return nil }
             // A file that can't be read (locked phone, passing I/O error)
             // proves nothing, so it never counts as damaged.
             guard let actual = try? sha256(folder.appendingPathComponent(file.path)) else { return nil }

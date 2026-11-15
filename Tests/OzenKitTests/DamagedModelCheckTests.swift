@@ -95,6 +95,20 @@ struct DamagedModelCheckTests {
         #expect(exists(model.folder))
     }
 
+    private final class ThrowingAttributes: FileManager, @unchecked Sendable {
+        override func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any] {
+            throw CocoaError(.fileReadUnknown)
+        }
+    }
+
+    @Test func aSizeThatCannotBeReadKeepsTheModel() throws {
+        let model = try makeModel(weights: "good weights!")
+        let manager = ThrowingAttributes()
+        #expect(DamagedModelCheck.damagedPaths(in: model.folder, expected: model.expected, fileManager: manager, sha256: hex).isEmpty)
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, fileManager: manager, sha256: hex) == false)
+        #expect(exists(model.folder))
+    }
+
     @Test func aLoadedFreshCopyCanBeRepairedAgain() throws {
         let model = try makeModel(weights: "good wei")
         let marker = model.partial.deletingLastPathComponent().appendingPathComponent("m.damaged-removed")
