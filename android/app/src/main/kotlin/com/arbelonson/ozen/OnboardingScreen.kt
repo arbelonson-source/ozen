@@ -338,6 +338,7 @@ private fun MicrophonePage(
             }
             MicrophoneAsk.AskAgain -> {
                 if (microphone == false) Body(WalkthroughAnswers.noMicrophone())
+                Body(WalkthroughAnswers.microphoneChoice())
                 PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
             }
         }
