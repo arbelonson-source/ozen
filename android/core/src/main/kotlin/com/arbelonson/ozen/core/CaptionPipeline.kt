@@ -2668,7 +2668,7 @@ class CaptionPipeline(
                 return
             }
             logEvent(PipelineEvent.Kind.Note("cloud unavailable, the phone's own model took over"))
-            if (failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable) prepareReplay()
+            prepareReplay()
             nextStartCoversCloud = true
             coverReason = failure.engineUnavailability?.kind
             coveredSettings = settingsInUse?.copy()
@@ -3735,10 +3735,10 @@ class CaptionPipeline(
     }
 
     /**
-     * What was said while the home computer was already gone, but before
-     * the phone gave up on it, never got a caption: the phone's model hears
-     * it first, then the live audio, as on the iPhone. Only the speech after
-     * the last line the home computer finished, from a little before it so
+     * What was said while the home computer or the cloud was already gone,
+     * but before the phone gave up on it, never got a caption: the phone's
+     * model hears it first, then the live audio, as on the iPhone. Only the
+     * speech after the last line that engine finished, from a little before it so
      * a half-heard word is whole, and never more than [REPLAY_MAX_SECONDS].
      */
     private fun prepareReplay() {

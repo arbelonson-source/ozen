@@ -36,6 +36,27 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         }
     }
 
+    /** Removes a model file that is not the file published (wrong size, then wrong checksum, or unreadable); false when it is fine, not there, or could not be removed. */
+    fun removeIfDamaged(): Boolean {
+        val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
+        lock.lock()
+        try {
+            if (!file.isFile || !damaged()) return false
+            return file.delete()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun damaged(): Boolean {
+        if (file.length() != source.bytes) return true
+        return try {
+            !fetcher.sha256(file).equals(source.sha256, ignoreCase = true)
+        } catch (unreadable: IOException) {
+            true
+        }
+    }
+
     private fun fetch(checking: () -> Unit, progress: (Double) -> Unit) {
         file.absoluteFile.parentFile?.mkdirs()
         val from = resumeFrom()

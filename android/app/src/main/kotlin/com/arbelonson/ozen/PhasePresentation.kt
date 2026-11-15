@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.DamagedModelNotice
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
@@ -627,6 +628,14 @@ class PhasePresentation private constructor(
                     detail = tr("הקישו כדי לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
                     systemImage = "cpu",
                     tint = PhaseTint.Problem,
+                    action = Action.Retry,
+                )
+
+                EngineUnavailability.Kind.ModelDamaged -> PhasePresentation(
+                    title = DamagedModelNotice.text(),
+                    detail = tr("הקישו כדי להוריד אותו שוב", "Tap to download it again"),
+                    systemImage = "arrow.down.circle",
+                    tint = PhaseTint.Attention,
                     action = Action.Retry,
                 )
 

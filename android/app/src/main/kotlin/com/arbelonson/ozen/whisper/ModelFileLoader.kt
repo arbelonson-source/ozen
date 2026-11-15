@@ -17,6 +17,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
@@ -52,7 +53,8 @@ class ModelFileLoader(
         cellularDownloadAllowed: Boolean,
         progress: (EnginePreparationProgress) -> Unit,
     ): WhisperLoadedModel {
-        if (!file.isFile) {
+        val existed = file.isFile
+        if (!existed) {
             fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), cellularDownloadAllowed, progress)
         }
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = variant ?: file.name))
@@ -68,10 +70,12 @@ class ModelFileLoader(
             throw stopped
         } catch (failed: Exception) {
             marker?.clear()
+            removeIfDamaged(existed)
             throw failed
         }
         val model = opened ?: run {
             marker?.clear()
+            removeIfDamaged(existed)
             throw EngineUnavailability(EngineUnavailability.Kind.ModelLoadFailed, "${file.name} did not load")
         }
         return WhisperLoadedModel(
@@ -79,6 +83,16 @@ class ModelFileLoader(
             release = { thread(name = "ozen-model-release") { model.close() } },
             settled = { marker?.clear() },
         )
+    }
+
+    // Only a file that was on the phone before this try is checked: one just
+    // downloaded was checked as it arrived. A file that matches the published
+    // one is kept, and the failure stands as it was.
+    private suspend fun removeIfDamaged(existed: Boolean) {
+        if (!existed || download == null) return
+        if (withContext(NonCancellable + Dispatchers.IO) { download.removeIfDamaged() }) {
+            throw EngineUnavailability(EngineUnavailability.Kind.ModelDamaged, "${file.name} did not match the published file and was removed")
+        }
     }
 
     private suspend fun fetch(download: PhoneModelDownloader, cellularAllowed: Boolean, progress: (EnginePreparationProgress) -> Unit) {

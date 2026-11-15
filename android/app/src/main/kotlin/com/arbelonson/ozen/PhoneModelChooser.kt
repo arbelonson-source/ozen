@@ -287,6 +287,16 @@ class PhoneModelChooser(
     private fun failed(file: String, error: Throwable?, stopped: AtomicBoolean) {
         synchronized(lock) {
             if (stopped.get()) return
+            // A disk that filled up mid-download is the same answer as before
+            // it started: no room, with how much more is needed. Trying again
+            // by itself would only fill it again.
+            if (error != null && StorageSpaceGate.isOutOfSpace(error)) {
+                val model = PhoneModelCatalog.byFile(file)
+                val left = model?.let { PhoneModelDownloader(File(modelFolder, file), it.source, fetcher()).pendingMegabytes() } ?: 0
+                val missing = StorageSpaceGate.shortfallMegabytes(left, freeSpace()) ?: StorageSpaceGate.requiredMegabytes(left)
+                switchState.value = PhoneModelSwitch.NotEnoughRoom(file, missing)
+                return
+            }
             if (error is PhoneModelDownloader.ChecksumMismatch) {
                 switchState.value = PhoneModelSwitch.Failed(file)
                 return

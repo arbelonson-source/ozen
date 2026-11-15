@@ -125,6 +125,7 @@ import com.arbelonson.ozen.core.AwayAlertsNotice
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.DamagedModelNotice
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.KeywordPill
@@ -445,6 +446,16 @@ private fun OzenApp(
     val inUseModelBytes = remember(current, comebacks) { app.captions.phoneModels.inUseBytes() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
     val listeningCut by app.captions.listeningCut.collectAsStateWithLifecycle()
+    val damagedModel by app.captions.damagedModelRemoved.collectAsStateWithLifecycle()
+    LaunchedEffect(loadCrash != null) { if (loadCrash != null) app.captions.removeDamagedAfterCrash() }
+    // Once only: the notice stays up until dismissed, and a recreated screen must not start the captions again.
+    var damagedModelRestarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(damagedModel) {
+        if (damagedModel && !damagedModelRestarted) {
+            damagedModelRestarted = true
+            onLaunch()
+        }
+    }
     // Any start, from the card or the status line, ends the question, even
     // one that waits for Wi-Fi or fails before the captions run.
     val captionsStarted = state.phase != PipelinePhase.Idle
@@ -664,7 +675,11 @@ private fun OzenApp(
                                         )
                                     }
                                 },
-                                listeningCutCard = listeningCut?.let { cut -> { ListeningCutCard(cut.text(), app.captions::dismissListeningCut) } },
+                                listeningCutCard = if (damagedModel) {
+                                    { ListeningCutCard(DamagedModelNotice.text(), app.captions::dismissDamagedModel) }
+                                } else {
+                                    listeningCut?.let { cut -> { ListeningCutCard(cut.text(), app.captions::dismissListeningCut) } }
+                                },
                                 // Not while it slides away under another screen: talk
                                 // that resumes then is heard there, not buzzed here.
                                 buzzWhenTalkResumes = current.hapticOnSpeechResume && transition.targetState == EnterExitState.Visible,

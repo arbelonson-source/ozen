@@ -25,7 +25,7 @@ enum class FileTranscriptionProblem {
         fun of(failure: EngineUnavailability): FileTranscriptionProblem = when (failure.kind) {
             EngineUnavailability.Kind.NotEnoughStorage -> NotEnoughStorage
             EngineUnavailability.Kind.WaitingForWiFi -> NeedsWiFi
-            EngineUnavailability.Kind.ModelLoadFailed -> ModelFailed
+            EngineUnavailability.Kind.ModelLoadFailed, EngineUnavailability.Kind.ModelDamaged -> ModelFailed
             EngineUnavailability.Kind.ModelDownloadFailed, EngineUnavailability.Kind.ModelNotOnDevice -> ModelDownloadFailed
             else -> Unexpected
         }
