@@ -169,6 +169,8 @@ class AutoRecoveryPolicy(
                 EngineUnavailability.Kind.ModelNotOnDevice -> Schedule.Never
                 EngineUnavailability.Kind.ModelDownloadFailed -> Schedule.Download
                 EngineUnavailability.Kind.ModelLoadFailed -> Schedule.LoadFailure
+                // The damaged file is gone; the next try downloads it again.
+                EngineUnavailability.Kind.ModelDamaged -> Schedule.Glitch
                 EngineUnavailability.Kind.HomeServerUnreachable ->
                     if (HomeServer.refusedPlainAddress(failure.engineUnavailability)) Schedule.Never else Schedule.Glitch
                 EngineUnavailability.Kind.NoInternet,

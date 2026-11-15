@@ -62,6 +62,7 @@ data class PipelineFailure(
                 -> true
                 EngineUnavailability.Kind.PermissionDenied,
                 EngineUnavailability.Kind.WaitingForWiFi,
+                EngineUnavailability.Kind.ModelDamaged,
                 EngineUnavailability.Kind.CloudKeyNeeded,
                 EngineUnavailability.Kind.CloudOutOfCredit,
                 EngineUnavailability.Kind.CloudLanguageNotCovered,
