@@ -540,7 +540,7 @@ class CaptionSessionDeviceTest {
                 SettingsHolder(SettingsStore(File(work, "settings.json"))),
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
-                ClipAudio(speech),
+                ClipAudio(speech, after = roomTone(speech)),
                 historyFolder = File(work, "history"),
             )
         }
@@ -587,7 +587,7 @@ class CaptionSessionDeviceTest {
                 SettingsHolder(SettingsStore(File(work, "settings.json"))),
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
-                ClipAudio(speech),
+                ClipAudio(speech, after = roomTone(speech)),
                 historyFolder = File(work, "history"),
             ).also { it.appIsActive = true }
         }
