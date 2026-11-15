@@ -218,16 +218,6 @@ address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
   gets captions. Away from Wi-Fi the phone uses about 120 MB of mobile data
   an hour.
 
-## Starting it with Windows
-
-In the Windows command prompt, once:
-
-```
-schtasks /Create /TN "Ozen server" /SC ONLOGON /TR "wsl.exe -d Ubuntu -- bash -lc ~/ozen-server/run.sh"
-```
-
-It starts when you log in to Windows and stops when you log out.
-
 ## Checking it
 
 ```

@@ -296,6 +296,10 @@ class Transcriber:
                 if not work.cancelled():
                     work.exception()
                 raise
+            except ValueError:
+                # The model library's complaint about what this phone asked
+                # for (a language it lacks, say), not the card failing.
+                raise
             except Exception:
                 self.failures += 1
                 if self.failures >= self.failures_before_exit:
@@ -437,6 +441,25 @@ def load_general(args):
 
 def speaks_hebrew(language):
     return str(language).lower().split("-")[0] in ("he", "iw")
+
+
+# The codes faster-whisper accepts (its tokenizer's list); it raises
+# ValueError for any other. Kept here so a hello can be checked without
+# loading the model library.
+WHISPER_LANGUAGES = frozenset(
+    "af am ar as az ba be bg bn bo br bs ca cs cy da de el en es et eu fa fi fo fr gl gu ha haw he hi hr ht hu hy "
+    "id is it ja jw ka kk km kn ko la lb ln lo lt lv mg mi mk ml mn mr ms mt my ne nl nn no oc pa pl ps pt ro ru "
+    "sa sd si sk sl sn so sq sr su sv sw ta te tg th tk tl tr tt uk ur uz vi yi yo zh yue".split())
+
+
+def whisper_language(value):
+    """The Whisper code a hello's language names ("he-IL" and the old "iw"
+    are "he"), or None when it names none Whisper has."""
+    if not isinstance(value, str):
+        return None
+    code = value.strip().lower().replace("_", "-").split("-")[0]
+    code = "he" if code == "iw" else code
+    return code if code in WHISPER_LANGUAGES else None
 
 
 class OnDemandTranscriber:
@@ -899,7 +922,13 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
         await refuse(ws, "unauthorized", "")
         return
     beam = requested_beam(hello.get("beam"))
-    language = hello.get("language", "he")
+    language = whisper_language(hello.get("language", "he"))
+    if language is None:
+        # One unknown code would fail every pass of the session, and passes
+        # that fail in a row restart the whole server for every phone.
+        log.warning("refused %s: language %.20r", peer, hello.get("language"))
+        await refuse(ws, "unsupported_language", "")
+        return
     if general is not None and not speaks_hebrew(language):
         transcriber = general
     on_demand = isinstance(transcriber, OnDemandTranscriber)
