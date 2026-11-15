@@ -262,6 +262,10 @@ object CloudSpeech {
 }
 
 sealed class CloudSpeechError : Exception() {
+    companion object {
+        const val KEY_REJECTED_DETAIL = "the cloud service turned the key down"
+    }
+
     data object KeyMissing : CloudSpeechError()
     data object KeyRejected : CloudSpeechError()
     data object OutOfCredit : CloudSpeechError()
@@ -289,10 +293,10 @@ sealed class CloudSpeechError : Exception() {
     val unavailability: EngineUnavailability
         get() = when (this) {
             KeyMissing -> EngineUnavailability(EngineUnavailability.Kind.CloudKeyNeeded, "no key for the cloud service")
-            KeyRejected -> EngineUnavailability(EngineUnavailability.Kind.CloudKeyNeeded, "the cloud service turned the key down")
+            KeyRejected -> EngineUnavailability(EngineUnavailability.Kind.CloudKeyNeeded, CloudSpeechError.KEY_REJECTED_DETAIL)
             OutOfCredit -> EngineUnavailability(EngineUnavailability.Kind.CloudOutOfCredit, "the cloud key is out of credit")
             Offline -> EngineUnavailability(EngineUnavailability.Kind.NoInternet, "no connection to the cloud service")
-            TimedOut -> EngineUnavailability(EngineUnavailability.Kind.NoInternet, "the cloud service did not answer in time")
+            TimedOut -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "the cloud service did not answer in time")
             RateLimited -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "the cloud service's rate limit")
             is ServerTrouble -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "the cloud service answered $status")
             BadReply -> EngineUnavailability(EngineUnavailability.Kind.TemporarilyUnavailable, "unreadable reply from the cloud service")
@@ -341,3 +345,7 @@ private inline fun trimmingScalars(text: String, isTrimmed: (Int) -> Boolean): S
     while (to > from && isTrimmed(scalars[to - 1])) to--
     return String(scalars, from, to - from)
 }
+
+/** The cloud service turned the key down, as opposed to there being no key. */
+val EngineUnavailability.cloudKeyWasRejected: Boolean
+    get() = kind == EngineUnavailability.Kind.CloudKeyNeeded && detail == CloudSpeechError.KEY_REJECTED_DETAIL

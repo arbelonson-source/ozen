@@ -195,6 +195,28 @@ struct PhasePresentationTests {
         #expect(covering(HomeServer.pairingChanged).detail != covering("pairing code refused").detail)
     }
 
+    @Test("no saved address, a refused key and a slow cloud each say what is wrong, on the screen and in the cover line")
+    func causesAreNamedNotGuessed() {
+        func shown(_ why: EngineUnavailability, _ engine: TranscriptionEngineKind) -> PhasePresentation {
+            PhasePresentation(phase: failure(why), engine: engine, interruptedBySystem: false)
+        }
+        func covering(_ reason: EngineUnavailability.Kind, _ detail: String, _ covered: TranscriptionEngineKind) -> PhasePresentation {
+            PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: covered, coverReason: reason, coverDetail: detail)
+        }
+        let noAddress = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress)
+        #expect(shown(noAddress, .homeServer).title == HomeServer.rejectionTitle(detail: HomeServer.noAddress))
+        #expect(shown(noAddress, .homeServer).action == .openEngineSettings)
+        #expect(covering(.homeServerUnreachable, HomeServer.noAddress, .homeServer).detail == HomeServer.addressCoverDetail(detail: HomeServer.noAddress))
+        #expect(covering(.homeServerUnreachable, HomeServer.needsEncryption, .homeServer).detail == HomeServer.addressCoverDetail(detail: HomeServer.needsEncryption))
+        #expect(covering(.homeServerUnreachable, "no answer", .homeServer).detail != HomeServer.addressCoverDetail(detail: HomeServer.noAddress))
+        let rejected = CloudSpeechError.keyRejected.unavailability
+        let missing = CloudSpeechError.keyMissing.unavailability
+        #expect(shown(rejected, .cloud).title == CloudKeyCheck.rejected.message)
+        #expect(shown(missing, .cloud).title != CloudKeyCheck.rejected.message)
+        #expect(covering(.cloudKeyNeeded, rejected.detail, .cloud).detail?.hasPrefix(CloudKeyCheck.rejected.message) == true)
+        #expect(covering(.cloudKeyNeeded, missing.detail, .cloud).detail?.hasPrefix(CloudKeyCheck.rejected.message) == false)
+    }
+
     @Test("a short hint stays in the status button; a long one gets its own line rather than being cut off")
     func longDetailsLeaveTheButton() {
         let listening = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false)

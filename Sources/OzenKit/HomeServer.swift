@@ -99,7 +99,7 @@ public enum HomeServer {
     public static func rejectionTitle(detail: String?) -> String {
         switch detail {
         case pairingChanged: pairingChangedText()
-        case noCode: tr("הכתובת או הקוד חסרים", "The address or code is missing")
+        case noCode, noAddress: tr("הכתובת או הקוד חסרים", "The address or code is missing")
         default: tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code")
         }
     }
@@ -112,6 +112,26 @@ public enum HomeServer {
             return rejectionTitle(detail: detail) + " · " + pause
         default:
             return tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + pause
+        }
+    }
+
+    /// No address is saved, or the one saved is no address at all: nothing was ever asked, so the computer may well be fine.
+    public static func missingAddress(_ why: EngineUnavailability?) -> Bool {
+        why?.kind == .homeServerUnreachable && why?.detail == noAddress
+    }
+
+    /// What the notice and the caption screen say about a plain ws:// address the phone refuses outside the home network.
+    public static func plainAddressRefusedText() -> String {
+        tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
+    }
+
+    /// What the caption screen says while the phone carries on by itself because the address never allowed asking the computer; nil for a computer that simply did not answer.
+    public static func addressCoverDetail(detail: String?) -> String? {
+        let pause = tr("הקישו כדי להשהות", "Tap to pause")
+        switch detail {
+        case noAddress: return rejectionTitle(detail: noAddress) + " · " + pause
+        case needsEncryption: return plainAddressRefusedText() + " · " + pause
+        default: return nil
         }
     }
 

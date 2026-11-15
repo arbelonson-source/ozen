@@ -304,10 +304,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "There’s no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone’s own speech recognition."
                 )
             case (_, .homeServerUnreachable?) where HomeServer.refusedPlainAddress(failure.engineUnavailability):
-                return tr(
-                    "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://",
-                    "Outside the home network, use the address that starts with wss://"
-                )
+                return HomeServer.plainAddressRefusedText()
+            case (_, .homeServerUnreachable?) where HomeServer.missingAddress(failure.engineUnavailability):
+                return HomeServer.rejectionTitle(detail: HomeServer.noAddress) + ". " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             case (_, .homeServerUnreachable?):
                 return tr(
                     "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",

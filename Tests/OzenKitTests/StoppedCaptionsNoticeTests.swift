@@ -442,6 +442,15 @@ struct CaptionPipelinePhaseChangeTests {
         }
     }
 
+    @Test("a phone with no saved address does not tell her to check that the computer is on")
+    func missingAddressHasItsOwnWords() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress)
+        let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: why)
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(failure)).body == "The address or code is missing. Open Ozen to continue.")
+        }
+    }
+
     @Test("a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped")
     func deliveredNoticeIsWithdrawnWhenSoundAlertsAreNoLongerMeantToRun() {
         var kept = StoppedCaptionsNotice()

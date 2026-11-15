@@ -491,6 +491,17 @@ class StoppedCaptionsNoticeTest {
             )
         }
     }
+
+    @Test
+    fun `a phone with no saved address does not tell her to check that the computer is on`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "The address or code is missing. Open Ozen to continue.",
+                StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why))).body,
+            )
+        }
+    }
 }
 
 class CaptionPipelinePhaseChangeTest {

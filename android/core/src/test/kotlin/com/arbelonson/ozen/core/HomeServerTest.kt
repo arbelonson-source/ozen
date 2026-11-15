@@ -375,4 +375,20 @@ class HomeServerTest {
         assertEquals("xn--4ca0b.local", HomeServer.url("ÄÖ.local")?.host)
         assertEquals(8765, HomeServer.url("ÄÖ.local")?.port)
     }
+
+    @Test
+    fun `no saved address and a refused plain address each have their own words, never check that it is on`() {
+        val none = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
+        val plain = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION)
+        val down = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no answer")
+        assertTrue(HomeServer.missingAddress(none))
+        assertFalse(HomeServer.missingAddress(plain) || HomeServer.missingAddress(down) || HomeServer.missingAddress(null))
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("The address or code is missing", HomeServer.rejectionTitle(HomeServer.NO_ADDRESS))
+            assertEquals("The address or code is missing · Tap to pause", HomeServer.addressCoverDetail(HomeServer.NO_ADDRESS))
+            assertEquals("Outside the home network, use the address that starts with wss:// · Tap to pause", HomeServer.addressCoverDetail(HomeServer.NEEDS_ENCRYPTION))
+            assertNull(HomeServer.addressCoverDetail("no answer"))
+            assertNull(HomeServer.addressCoverDetail(null))
+        }
+    }
 }

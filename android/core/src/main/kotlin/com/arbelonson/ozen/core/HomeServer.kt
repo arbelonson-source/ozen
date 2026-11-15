@@ -127,7 +127,7 @@ object HomeServer {
     /** The headline the caption screen gives a home computer that turned the phone away: the same words Test connection uses. */
     fun rejectionTitle(detail: String?): String = when (detail) {
         PAIRING_CHANGED -> pairingChangedText()
-        NO_CODE -> tr("הכתובת או הקוד חסרים", "The address or code is missing")
+        NO_CODE, NO_ADDRESS -> tr("הכתובת או הקוד חסרים", "The address or code is missing")
         else -> tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code")
     }
 
@@ -137,6 +137,27 @@ object HomeServer {
         return when (detail) {
             PAIRING_CHANGED, NO_CODE -> rejectionTitle(detail) + " · " + pause
             else -> tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + pause
+        }
+    }
+
+    /** No address is saved, or the one saved is no address at all: nothing was ever asked, so the computer may well be fine. */
+    fun missingAddress(why: EngineUnavailability?): Boolean =
+        why?.kind == EngineUnavailability.Kind.HomeServerUnreachable && why.detail == NO_ADDRESS
+
+    /** What the notice and the caption screen say about a plain ws:// address the phone refuses outside the home network. */
+    fun plainAddressRefusedText(): String =
+        tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
+
+    /**
+     * What the caption screen says while the phone carries on by itself because the address never
+     * allowed asking the computer; null for a computer that simply did not answer.
+     */
+    fun addressCoverDetail(detail: String?): String? {
+        val pause = tr("הקישו כדי להשהות", "Tap to pause")
+        return when (detail) {
+            NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
+            NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
+            else -> null
         }
     }
 
