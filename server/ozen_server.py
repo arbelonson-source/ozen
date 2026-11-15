@@ -296,10 +296,6 @@ class Transcriber:
                 if not work.cancelled():
                     work.exception()
                 raise
-            except ValueError:
-                # The model library's complaint about what this phone asked
-                # for (a language it lacks, say), not the card failing.
-                raise
             except Exception:
                 self.failures += 1
                 if self.failures >= self.failures_before_exit:

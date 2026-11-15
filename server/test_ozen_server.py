@@ -2180,29 +2180,6 @@ class LanguageCheck(unittest.TestCase):
         for code in S.WHISPER_LANGUAGES:
             self.assertEqual(S.whisper_language(code), code)
 
-    def test_a_bad_pass_from_one_phone_does_not_count_toward_a_restart(self):
-        class RefusesLanguage:
-            def transcribe(self, audio, **kw):
-                raise ValueError("'xx' is not a valid language code")
-
-        t = S.Transcriber.__new__(S.Transcriber)
-        t.model = t.final_model = RefusesLanguage()
-        t.beam, t.context, t.speech_gate = 5, 0, 0.0
-        t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
-        exits = []
-        speech = np.full(1600, 0.1, dtype=np.float32)
-
-        async def evening():
-            t.lock = asyncio.Lock()
-            for _ in range(5):
-                with self.assertRaises(ValueError):
-                    await t.transcribe(speech, "xx", None, True)
-
-        with mock.patch.object(S.os, "_exit", exits.append), mock.patch.object(S.logging, "shutdown", lambda: None):
-            asyncio.run(evening())
-        self.assertEqual(exits, [])
-        self.assertEqual(t.failures, 0)
-
 
 class ClosingSocket(PhoneSocket):
     async def send(self, text):
