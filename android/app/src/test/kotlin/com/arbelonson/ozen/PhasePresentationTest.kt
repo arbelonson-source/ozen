@@ -44,10 +44,12 @@ class PhasePresentationTest {
         builtInOffered: Boolean = false,
         modelGettingReady: Boolean = false,
         modelJustReady: Boolean = false,
+        coverDetail: String? = null,
     ) = PhasePresentation(
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
         pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
         builtInOffered = builtInOffered, modelGettingReady = modelGettingReady, modelJustReady = modelJustReady,
+        coverDetail = coverDetail,
     )
 
     @Test
@@ -353,6 +355,25 @@ class PhasePresentationTest {
         assertEquals(PhaseTint.Active, covering.tint)
         assertNotEquals(plain.detail, covering.detail)
         assertTrue(covering.detail?.contains("בענן") == true)
+    }
+
+    @Test
+    fun `a home computer that turned the phone away is named by why, pairing changed, no code or code refused`() {
+        fun shown(detail: String) = present(
+            failure(EngineUnavailability(EngineUnavailability.Kind.HomeServerRejected, detail)),
+            TranscriptionEngineKind.HomeServer,
+        )
+        assertEquals(HomeServer.pairingChangedText(), shown("certificate did not match").title)
+        assertEquals(HomeServer.rejectionTitle("no pairing code"), shown("no pairing code").title)
+        assertEquals(HomeServer.rejectionTitle("pairing code refused"), shown("pairing code refused").title)
+        assertNotEquals(shown("certificate did not match").title, shown("pairing code refused").title)
+        fun covering(detail: String) = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer,
+            coverReason = EngineUnavailability.Kind.HomeServerRejected, coverDetail = detail,
+        )
+        assertEquals(HomeServer.rejectedCoverDetail("certificate did not match"), covering("certificate did not match").detail)
+        assertNotEquals(covering("certificate did not match").detail, covering("pairing code refused").detail)
     }
 
     @Test

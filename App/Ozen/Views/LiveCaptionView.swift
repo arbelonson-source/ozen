@@ -139,6 +139,7 @@ struct LiveCaptionView: View {
             coveringForCloud: viewModel.pipeline.isCoveringForCloud,
             coveredEngine: viewModel.settings.engine,
             coverReason: viewModel.pipeline.coverReason,
+            coverDetail: viewModel.pipeline.coverDetail,
             offerBackup: viewModel.phase.failure?.engineUnavailability?.kind == .homeServerUnreachable
                 && BackupModel.shouldOffer(after: .homeServerUnreachable, status: viewModel.backupModelStatus),
             spokenLanguage: viewModel.settings.spokenLanguage,

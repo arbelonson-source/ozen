@@ -954,6 +954,20 @@ struct HomeServerCoverTests {
         }
     }
 
+    @Test("the cover keeps why the computer turned the phone away, so the screen can tell a changed pairing from a wrong code")
+    func coverKeepsTheRejectionDetail() async {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerRejected, HomeServer.pairingChanged))
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : FakeEngine(kind: .whisperKit) },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.phase == .listening })
+        #expect(captions.coverDetail == HomeServer.pairingChanged)
+    }
+
     @Test("the server going away mid-conversation hands over to the phone instead of stopping")
     func coversMidStream() async {
         let server = FakeEngine(kind: .homeServer)

@@ -236,6 +236,10 @@ class CaptionPipeline(
     var coverReason: EngineUnavailability.Kind? = null
         private set
 
+    /** What the failure that made the phone cover said, so the screen can tell a changed pairing from a wrong or missing code. */
+    var coverDetail: String? = null
+        private set
+
     /**
      * While the phone covers for a home computer it couldn't reach, how
      * often to look whether the computer is back. Without it a single
@@ -752,6 +756,7 @@ class CaptionPipeline(
         nextStartCoversCloud = false
         if (!isCoveringForCloud) {
             coverReason = null
+            coverDetail = null
             coveredSettings = null
             homeServerRecheck?.cancel()
             homeServerRecheck = null
@@ -1240,6 +1245,7 @@ class CaptionPipeline(
         isCoveringForCloud = false
         nextStartCoversCloud = false
         coverReason = null
+        coverDetail = null
         coveredSettings = null
         endWaitingModel()
         homeServerRecheck?.cancel()
@@ -2720,6 +2726,7 @@ class CaptionPipeline(
             prepareReplay()
             nextStartCoversCloud = true
             coverReason = failure.engineUnavailability?.kind
+            coverDetail = failure.engineUnavailability?.detail
             coveredSettings = settingsInUse?.copy()
             start(onPhone)
             if (coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&

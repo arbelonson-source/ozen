@@ -141,6 +141,15 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `the cover keeps why the computer turned the phone away, so the screen can tell a changed pairing from a wrong code`() = runTest {
+        val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerRejected, HomeServer.PAIRING_CHANGED))
+        val captions = serverPipeline(server, FakeEngine(kind = phoneKind))
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening })
+        assertEquals(HomeServer.PAIRING_CHANGED, captions.coverDetail)
+    }
+
+    @Test
     fun `once the unreachable computer answers again, captions go back to it by themselves`() = runTest {
         val server = FakeEngine(kind = homeKind)
         val phone = FakeEngine(kind = phoneKind)

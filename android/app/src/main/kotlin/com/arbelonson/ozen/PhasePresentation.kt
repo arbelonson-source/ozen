@@ -190,6 +190,7 @@ class PhasePresentation private constructor(
             builtInOffered: Boolean = false,
             modelGettingReady: Boolean = false,
             modelJustReady: Boolean = false,
+            coverDetail: String? = null,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -259,7 +260,7 @@ class PhasePresentation private constructor(
                     isBusy = true,
                 )
 
-                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network, modelGettingReady, modelJustReady)
+                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network, modelGettingReady, modelJustReady, coverDetail)
 
                 PipelinePhase.Paused ->
                     if (pausedForSpeech) {
@@ -294,6 +295,7 @@ class PhasePresentation private constructor(
             network: NetworkConditions?,
             modelGettingReady: Boolean,
             modelJustReady: Boolean,
+            coverDetail: String?,
         ): PhasePresentation {
             fun listening(detail: String, action: Action) = PhasePresentation(
                 title = tr("מאזינה", "Listening"),
@@ -305,10 +307,7 @@ class PhasePresentation private constructor(
             return when {
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer &&
                     coverReason == EngineUnavailability.Kind.HomeServerRejected ->
-                    listening(
-                        tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help"),
-                        Action.Pause,
-                    )
+                    listening(HomeServer.rejectedCoverDetail(coverDetail), Action.Pause)
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
                     listening(
@@ -693,7 +692,7 @@ class PhasePresentation private constructor(
                 }
 
                 EngineUnavailability.Kind.HomeServerRejected -> PhasePresentation(
-                    title = tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code"),
+                    title = HomeServer.rejectionTitle(engineFailure.detail),
                     detail = tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
                     systemImage = "key",
                     tint = PhaseTint.Attention,

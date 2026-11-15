@@ -156,4 +156,19 @@ struct HomeServerPinTests {
         let refused = EngineAvailability.unavailable(.homeServerRejected, "unauthorized")
         #expect(HomeServerCheck(availability: refused, seconds: 0) == .codeRefused)
     }
+
+    @Test("the caption screen words a changed pairing, a missing code and a refused code apart")
+    func captionScreenRejectionWords() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.rejectionTitle(detail: HomeServer.pairingChanged) == HomeServer.pairingChangedText())
+            #expect(HomeServer.rejectionTitle(detail: HomeServer.noCode) == "The address or code is missing")
+            #expect(HomeServer.rejectionTitle(detail: "pairing code refused bad") == "The home computer didn’t accept the pairing code")
+            #expect(HomeServer.rejectionTitle(detail: nil) == "The home computer didn’t accept the pairing code")
+            let changed = HomeServer.rejectedCoverDetail(detail: HomeServer.pairingChanged)
+            #expect(changed == HomeServer.pairingChangedText() + " · Tap to pause")
+            #expect(!changed.contains("didn’t accept"))
+            #expect(HomeServer.rejectedCoverDetail(detail: HomeServer.noCode) == "The address or code is missing · Tap to pause")
+            #expect(HomeServer.rejectedCoverDetail(detail: "pairing code refused bad").contains("didn’t accept the pairing code"))
+        }
+    }
 }

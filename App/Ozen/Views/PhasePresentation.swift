@@ -94,6 +94,7 @@ struct PhasePresentation {
         coveringForCloud: Bool = false,
         coveredEngine: TranscriptionEngineKind? = nil,
         coverReason: EngineUnavailability.Kind? = nil,
+        coverDetail: String? = nil,
         offerBackup: Bool = false,
         spokenLanguage: UILanguage = .hebrew,
         network: NetworkConditions? = nil,
@@ -151,7 +152,7 @@ struct PhasePresentation {
             self.init(title: tr("מפעילים את המיקרופון", "Starting the microphone"), detail: nil, systemImage: "mic", tint: .yellow, isBusy: true)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerRejected:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+            self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.rejectedCoverDetail(detail: coverDetail), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
@@ -435,7 +436,7 @@ struct PhasePresentation {
             )
         case .homeServerRejected:
             self.init(
-                title: tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code"),
+                title: HomeServer.rejectionTitle(detail: engineFailure?.detail),
                 detail: tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
                 systemImage: "key",
                 tint: .orange,
