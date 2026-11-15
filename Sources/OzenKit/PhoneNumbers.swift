@@ -86,10 +86,31 @@ public enum PhoneNumbers {
         }
         for item in northAmericanPattern.matches(in: read, range: whole) {
             guard let range = Range(item.range, in: text) else { continue }
+            guard let readRange = Range(item.range, in: read) else { continue }
+            let written = String(read[readRange])
+            let before = String(read[..<readRange.lowerBound].suffix(40))
+            guard looksWritten(written) || callWordBefore(before) else { continue }
             found.append(Match(range: range, dialable: digitsOf(text[range])))
         }
         return found
     }
+
+    /// True when a North American run is written the way a phone number is:
+    /// parentheses, a dash or dot between the groups, or a leading 1. Digit
+    /// groups with only spaces between them are also how amounts and years
+    /// are said, so those need a call word before them.
+    private static func looksWritten(_ run: String) -> Bool {
+        run.hasPrefix("1") || run.contains { "(.-\u{2011}".contains($0) }
+    }
+
+    private static func callWordBefore(_ before: String) -> Bool {
+        callWordPattern?.firstMatch(in: before, range: NSRange(before.startIndex..., in: before)) != nil
+    }
+
+    private static let callWordPattern = try? NSRegularExpression(
+        pattern: #"\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:\s+[\w']+){0,2}\s*[:,]?\s*$"#,
+        options: .caseInsensitive
+    )
 
     /// `text` with every digit of another script (Arabic-Indic, Persian,
     /// Devanagari, full-width) written as 0-9, so a number said in Arabic

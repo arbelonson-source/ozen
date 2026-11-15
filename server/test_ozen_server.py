@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import errno
 import gc
 import json
 import logging
@@ -2614,6 +2616,53 @@ class RefusedPeers(unittest.TestCase):
             held = asyncio.run(asyncio.wait_for(run(), 30))
         for seconds in held:
             self.assertLess(seconds, S.REFUSED_GOODBYE_WAIT + 2)
+
+
+class EncryptedLinkCannotOpen(unittest.TestCase):
+    def listen(self, folder, context=None, serve=None):
+        args = types.SimpleNamespace(tls_port=8766, host="127.0.0.1", cert_dir=folder)
+        context = context or mock.Mock(return_value=None)
+        serve = serve or mock.MagicMock()
+
+        async def run():
+            async with contextlib.AsyncExitStack() as servers:
+                await S.listen_encrypted(args, None, servers)
+
+        with mock.patch.object(S, "tls_context", context), \
+                mock.patch.object(S.websockets, "serve", serve, create=True):
+            asyncio.run(run())
+
+    def test_a_port_already_in_use_is_logged_as_an_error_and_shown_on_the_pairing_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = os.path.join(folder, "pairing.html")
+            with open(page, "w", encoding="utf-8") as f:
+                f.write("<h1>Ozen: pair a phone with this computer</h1>\n<p>code</p>")
+            busy = mock.Mock(side_effect=OSError(errno.EADDRINUSE, "Address already in use"))
+            with self.assertLogs(S.log, "ERROR") as logged:
+                self.listen(folder, serve=busy)
+            self.assertIn("another program is already using port 8766", logged.output[0])
+            with open(page, encoding="utf-8") as f:
+                self.assertIn("another program is already using port 8766", f.read())
+
+    def test_a_missing_library_is_logged_as_an_error_and_written_for_the_pairing_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            missing = mock.Mock(side_effect=ImportError("No module named 'cryptography'"))
+            with self.assertLogs(S.log, "ERROR") as logged:
+                self.listen(folder, context=missing)
+            self.assertIn("'cryptography' library is missing", logged.output[0])
+            with open(os.path.join(folder, "encrypted-link-problem.txt"), encoding="utf-8") as f:
+                self.assertIn("Phones paired to it can't connect", f.read())
+
+    def test_an_encrypted_link_that_opens_clears_an_old_problem(self):
+        with tempfile.TemporaryDirectory() as folder:
+            problem = os.path.join(folder, "encrypted-link-problem.txt")
+            with open(problem, "w", encoding="utf-8") as f:
+                f.write("old problem")
+            serve = mock.MagicMock()
+            serve.return_value.__aenter__ = mock.AsyncMock()
+            serve.return_value.__aexit__ = mock.AsyncMock(return_value=False)
+            self.listen(folder, serve=serve)
+            self.assertFalse(os.path.exists(problem))
 
 
 if __name__ == "__main__":

@@ -79,4 +79,15 @@ class DelayedPostTest {
         scope.runCurrent()
         assertFalse(awake.held)
     }
+
+    @Test
+    fun `a wait scheduled after the scope was closed holds no lock and posts nothing`() {
+        scope.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+        wait.schedule(60.0) { posted += "a" }
+        scope.runCurrent()
+        scope.advanceTimeBy(120_000)
+        scope.runCurrent()
+        assertFalse(awake.held)
+        assertTrue(posted.isEmpty())
+    }
 }
