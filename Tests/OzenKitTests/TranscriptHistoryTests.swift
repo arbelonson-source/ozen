@@ -1989,6 +1989,22 @@ struct TranscriptHistoryLenientReadTests {
         #expect(lines[2]["text"] as? String == "charlie fixed")
     }
 
+    @Test("fixing a word in a record that cannot be read now throws, so the fix stays queued, and works once it can be read")
+    func replaceTextThrowsWhenUnreadable() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ids = [UUID(), UUID(), UUID()]
+        let (store, id, url) = try savedConversation(in: dir, ids: ids)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        #expect(throws: (any Error).self) { try store.replaceText(segmentID: ids[2], inSession: id, with: "charlie fixed") }
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        try store.replaceText(segmentID: ids[2], inSession: id, with: "charlie fixed")
+        let object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let lines = try #require(object["segments"] as? [[String: Any]])
+        #expect(lines[2]["text"] as? String == "charlie fixed")
+    }
+
     @Test("fixing a voice name in a partly readable record keeps every line it could not read")
     func renameSpeakerKeepsUnreadableLines() throws {
         let dir = makeTempDirectory()
