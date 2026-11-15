@@ -662,6 +662,16 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theCallActionOfALineWithANumberNamesItDigitByDigitForAScreenReader() {
+        val phone = committed("תתקשרי למרפאה 050 123 4567")
+        showLines(listOf(phone))
+        val line = compose.onNodeWithText("תתקשרי", substring = true).fetchSemanticsNode()
+        val labels = line.config[SemanticsActions.CustomActions].map { it.label }
+        assertTrue("no spoken Call action in $labels", "Call 0 5 0, 1 2 3, 4 5 6 7" in labels)
+        assertFalse("the Call action reads the number whole in $labels", labels.any { it.contains("0501234567") })
+    }
+
+    @Test
     fun captionsNotGoodMarksAProblemInTheJournalFromTheHoldMenuOrTheScreenReaderAndSaysWhereItWent() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val kept = SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE))

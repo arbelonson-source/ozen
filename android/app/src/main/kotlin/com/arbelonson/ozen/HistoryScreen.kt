@@ -1082,8 +1082,8 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
     // A phone number or an address said, to paste somewhere else.
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     val uris = LocalUriHandler.current
-    val calls = line.phones.map { phone ->
-        CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
+    val calls = line.phones.mapIndexed { at, phone ->
+        CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(line.phonesSpoken.getOrElse(at) { phone.dialable }))) { uris.openUri(phone.url); true }
     }
     var menu by remember { mutableStateOf(false) }
     Column(

@@ -62,6 +62,8 @@ data class SavedLine(
     val unsure: Boolean = false,
     val copied: String = text,
     val phones: List<PhoneNumbers.Match> = emptyList(),
+    /** Each of [phones] as a screen reader says it, worked out on the line as written (see `PhoneNumbers.spokenForm`). */
+    val phonesSpoken: List<String> = emptyList(),
     /** Laid out from the right, as `CaptionLayout.readsRightToLeft` says for its words. */
     val rightToLeft: Boolean = true,
     /** The voice it was heard in, which with the name picks the speaker's colour. */
@@ -86,6 +88,7 @@ data class SavedLine(
                 val previous = record.segments.getOrNull(index - 1)
                 val time = if (segment.id in timed) clockTime(segment.startTimestamp, zone) else null
                 val unsure = markUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
+                val phones = PhoneNumbers.matches(segment.text)
                 SavedLine(
                     id = segment.id,
                     time = time,
@@ -95,7 +98,8 @@ data class SavedLine(
                     starred = segment.isStarred,
                     unsure = unsure,
                     copied = CaptionLayout.copiedText(segment.text),
-                    phones = PhoneNumbers.matches(segment.text),
+                    phones = phones,
+                    phonesSpoken = phones.map { PhoneNumbers.spokenForm(it, segment.text) },
                     rightToLeft = CaptionLayout.readsRightToLeft(segment.text, language),
                     cluster = segment.speakerClusterID,
                     slot = slots.slot(segment.speakerClusterID, segment.speakerName),

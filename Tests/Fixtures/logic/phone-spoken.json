@@ -1,0 +1,18 @@
+{
+ "about": "Cases for PhoneNumbers.spokenForm, the number as a screen reader should read it in the Call action: each digit on its own so it can be checked against what was said, groups apart by a comma, a + kept on the first digit. Read by OzenKitTests (PhoneNumbersSpokenTests, Swift) and core PhoneNumbersSpokenTest (Kotlin); each text holds one number, and spoken is the form for the first number found in it.",
+ "cases": [
+  {"text": "050-1234567", "spoken": "0 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "050 123 4567", "spoken": "0 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "0501234567", "spoken": "0 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "02-1234567", "spoken": "0 2, 1 2 3, 4 5 6 7"},
+  {"text": "+972501234567", "spoken": "+9 7 2, 5 0 1, 2 3 4, 5 6 7"},
+  {"text": "+972-50-123-4567", "spoken": "+9 7 2, 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "call +1 (415) 555-2671 now", "spoken": "+1, 4 1 5, 5 5 5, 2 6 7 1"},
+  {"text": "415-555-2671", "spoken": "4 1 5, 5 5 5, 2 6 7 1"},
+  {"text": "1-700-123-456", "spoken": "1, 7 0 0, 1 2 3, 4 5 6"},
+  {"text": "1700123456", "spoken": "1 7 0, 0 1 2, 3 4 5 6"},
+  {"text": "call ٠٥٠-١٢٣٤٥٦٧", "spoken": "0 5 0, 1 2 3, 4 5 6 7"},
+  {"text": "call 050-\ud835\udfd1\ud835\udfd2\ud835\udfd3\ud835\udfd4\ud835\udfd5\ud835\udfd6\ud835\udfd7", "spoken": "0 5 0, 3 4 5, 6 7 8 9"},
+  {"text": "call ０５０-１２３４５６７", "spoken": "0 5 0, 1 2 3, 4 5 6 7"}
+ ]
+}

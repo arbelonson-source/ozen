@@ -9,6 +9,29 @@ object PhoneNumbers {
         fun textIn(text: String): String = text.substring(start, end)
     }
 
+    /**
+     * The number as a screen reader should say it, for the Call action: each
+     * digit on its own, so it can be checked against what was said (a bare
+     * "+972501234567" can be read as one number in the billions), with a
+     * comma between groups for a pause. The groups are the ones written in
+     * the caption; a run of more than four digits is cut into threes, the
+     * last taking a spare digit. A "+" stays on the first digit.
+     */
+    fun spokenForm(match: Match, text: String): String {
+        val written = match.textIn(text)
+        val runs = ArrayList<String>()
+        val run = StringBuilder()
+        for (digit in written.codePoints().toArray().map { Character.digit(it, 10) } + -1) {
+            if (digit >= 0) run.append(digit) else if (run.isNotEmpty()) { runs.add(run.toString()); run.setLength(0) }
+        }
+        val spoken = runs.flatMap { spokenGroups(it) }
+            .joinToString(", ") { group -> group.toList().joinToString(" ") }
+        return if (written.startsWith("+")) "+$spoken" else spoken
+    }
+
+    private fun spokenGroups(run: String): List<String> =
+        if (run.length <= 4) listOf(run) else listOf(run.take(3)) + spokenGroups(run.drop(3))
+
     fun matches(text: String): List<Match> {
         val found = ArrayList<Match>()
         val read = asciiDigits(text)
