@@ -48,7 +48,7 @@ class HomeServerEngine(
     val address: String,
     private val token: () -> String?,
     private val connector: HomeServerConnecting,
-    private val handshakeSeconds: Double = 5.0,
+    private val handshakeSeconds: Double = DEFAULT_HANDSHAKE_SECONDS,
     private val client: String = "",
     private val stallSeconds: Double = 35.0,
     private val pingSeconds: Double = 5.0,
@@ -522,6 +522,7 @@ class HomeServerEngine(
 
     companion object {
         const val DEFAULT_APPROVAL_SECONDS: Double = 30.0
+        const val DEFAULT_HANDSHAKE_SECONDS: Double = 5.0
     }
 }
 

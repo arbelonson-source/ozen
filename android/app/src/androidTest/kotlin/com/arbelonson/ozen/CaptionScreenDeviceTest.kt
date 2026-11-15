@@ -3148,12 +3148,30 @@ class CaptionScreenDeviceTest {
             assertTrue("words still being heard are dimmed with the phone's contrast left alone", brightest() < 0.9f)
             shell("settings put secure contrast_level 1.0")
             compose.waitUntil(5_000) { uiMode.contrast > 0f }
-            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
-            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            // Not moveToState: it parks the app behind the test library's own
+            // empty activity and brings it back with a broadcast that activity
+            // must be listening for. A contrast change makes the system
+            // restyle every window a moment later, and that activity, being
+            // recreated right then, missed the broadcast and stayed on top
+            // for good ("last lifecycle transition = STOPPED", seen on
+            // GitHub's slow emulator). The Home key and a launch of the app
+            // are what a person does, and need no listener.
+            shell("input keyevent KEYCODE_HOME")
+            waitForScenarioState(Lifecycle.State.CREATED)
+            shell("am start --activity-reorder-to-front -n ${app.packageName}/.MainActivity")
+            waitForScenarioState(Lifecycle.State.RESUMED)
             compose.waitUntil(5_000) { brightest() > 0.97f }
         } finally {
             shell("settings delete secure contrast_level")
             app.settings.change { it.display = displayBefore }
+        }
+    }
+
+    private fun waitForScenarioState(state: Lifecycle.State) {
+        val deadline = System.currentTimeMillis() + 30_000
+        while (compose.activityRule.scenario.state != state) {
+            assertTrue("the app never became $state, it is ${compose.activityRule.scenario.state}", System.currentTimeMillis() < deadline)
+            Thread.sleep(50)
         }
     }
 

@@ -29,6 +29,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assert
@@ -99,6 +100,7 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
@@ -918,9 +920,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-for-the-test")
         keyboardAway()
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
-        compose.waitUntil(timeoutMillis = 30_000) {
-            compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForNoAnswerFromTheComputer()
         compose.onNodeWithText("This address works only on the home Wi‑Fi", substring = true).assertExists()
         compose.onNodeWithText("Check that it’s on, awake", substring = true).assertDoesNotExist()
     }
@@ -933,9 +933,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-for-the-test")
         keyboardAway()
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
-        compose.waitUntil(timeoutMillis = 30_000) {
-            compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForNoAnswerFromTheComputer()
         assertEquals("ws://10.0.2.2:9", app.settings.current.value.homeServerAddress)
         assertEquals("code-for-the-test", app.homeServerCode.read())
     }
@@ -1088,9 +1086,7 @@ class SettingsScreenDeviceTest {
         keyboardAway()
         assertReadableOnWhite("Pairing code saved on the phone")
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
-        compose.waitUntil(timeoutMillis = 30_000) {
-            compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForNoAnswerFromTheComputer()
         assertReadableOnWhite("No answer from the computer")
     }
 
@@ -2890,6 +2886,22 @@ class SettingsScreenDeviceTest {
      * moves: a click on a button below the field landed where the button had
      * been and did nothing, about one full run in three.
      */
+    // The app gives a computer HomeServerEngine.DEFAULT_HANDSHAKE_SECONDS
+    // to answer and then says so. GitHub's emulator, drawing the progress
+    // bar at about two frames a second, was seen still "Checking…" after 30
+    // s, so the wait is twelve times the app's own limit, and a failure says
+    // whether the app was still checking or had stopped without an answer.
+    private fun waitForNoAnswerFromTheComputer() {
+        val answer = { compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        val waitMillis = (HomeServerEngine.DEFAULT_HANDSHAKE_SECONDS * 12_000).toLong()
+        try {
+            compose.waitUntil(timeoutMillis = waitMillis) { answer() }
+        } catch (error: ComposeTimeoutException) {
+            val checking = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Checking…")).fetchSemanticsNodes().isNotEmpty()
+            throw AssertionError("no \"No answer from the computer\" in $waitMillis ms; the app was ${if (checking) "still checking" else "not checking"}", error)
+        }
+    }
+
     private fun keyboardAway() {
         val window = compose.activity.window
         compose.runOnUiThread { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime()) }
