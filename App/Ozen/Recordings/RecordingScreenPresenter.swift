@@ -11,6 +11,11 @@ enum RecordingScreenPresenter {
         }
         do {
             let file = try await RecordingFiles.open(url)
+            if let busy = FileTranscriptionProblem.forNewShare(isTranscribing: viewModel.pipeline.isTranscribingRecording) {
+                file.finish()
+                alert(busy.message)
+                return
+            }
             let model = TranscribeRecordingModel(file: file, host: LiveRecordingHost(viewModel: viewModel))
             present(model, language: viewModel.uiLanguage)
         } catch {
