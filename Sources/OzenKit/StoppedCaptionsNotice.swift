@@ -30,6 +30,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         case otherAppHasMicrophone
         /// Sound alerts are on, but the classifier keeps failing.
         case soundAlertsNotWorking
+        /// Sounds alone were listened for, and the microphone stopped and did not come back.
+        case soundAlertsStopped
     }
 
     public indirect enum Update: Sendable, Equatable {
@@ -105,7 +107,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         interruptedByCall: Bool,
         callEndedDuringInterruption: Bool,
         soundsOnlyChosen: Bool = false,
-        soundAlertsNotWorking: Bool = false
+        soundAlertsNotWorking: Bool = false,
+        soundsOnlyStopped: Bool = false
     ) -> Cause? {
         if systemInterrupted {
             // A failure during the call is retried once the call gives the
@@ -114,6 +117,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             if callEndedDuringInterruption { return .callEnded }
             return interruptedByCall ? nil : .otherAppHasMicrophone
         }
+        if soundsOnlyStopped { return .soundAlertsStopped }
         guard let failure = phase.failure, !retryScheduled else { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
         // Starts by itself as soon as the phone is on Wi-Fi.
         if failure.engineUnavailability?.kind == .waitingForWiFi { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
@@ -124,14 +128,18 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// Nothing is posted while the app is on screen (the status already
     /// says it), or when she turned notifications from the app off.
     ///
+    /// `soundAlertsMeantToRun` is false once sound alerts were turned off, or
+    /// captions paused or stopped on purpose: a "not working" notice that was
+    /// kept through recoveries is then withdrawn with the rest.
+    ///
     /// Opening the app while captions are still stopped takes the notice
     /// away: the status says the same thing, and a notice left behind sat
     /// in Notification Center for as long as the problem lasted. Putting
     /// the phone away again doesn't post it a second time.
-    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Update? {
+    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool, soundAlertsMeantToRun: Bool = true, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Update? {
         guard let cause else {
             toldCause = nil
-            if keepsDeliveredNotice(now: now) { return nil }
+            if soundAlertsMeantToRun, keepsDeliveredNotice(now: now) { return nil }
             return withdrawIfPosted(now: now)
         }
         let changed = toldCause.map { !Self.sameStop($0, cause) } ?? false
@@ -233,6 +241,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     private static func title(for cause: Cause) -> String {
         switch cause {
         case .soundAlertsNotWorking: return soundAlertsNotWorkingTitle
+        case .soundAlertsStopped: return tr("ההתראות על צלילים נעצרו", "Sound alerts stopped")
         case .otherAppHasMicrophone: return tr("הכתוביות מושהות", "Captions paused")
         default: return tr("הכתוביות נעצרו", "Captions stopped")
         }
@@ -242,6 +251,11 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         switch cause {
         case .soundAlertsNotWorking:
             return soundAlertsNotWorkingDetail
+        case .soundAlertsStopped:
+            return tr(
+                "המיקרופון הפסיק לפעול ולא חזר. פתחו את אוזן כדי להפעיל שוב את ההתראות על צלילים.",
+                "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again."
+            )
         case .otherAppHasMicrophone:
             return tr(
                 "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",

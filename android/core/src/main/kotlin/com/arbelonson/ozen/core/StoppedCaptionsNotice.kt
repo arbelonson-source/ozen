@@ -94,17 +94,21 @@ class StoppedCaptionsNotice {
      * Nothing is posted while the app is on screen (the status already
      * says it), or when she turned notifications from the app off.
      *
+     * [soundAlertsMeantToRun] is false once sound alerts were turned off, or
+     * captions paused or stopped on purpose: a "not working" notice that was
+     * kept through recoveries is then withdrawn with the rest.
+     *
      * Opening the app while captions are still stopped takes the notice
      * away: the status says the same thing, and a notice left behind sat
      * in the notification shade for as long as the problem lasted. Putting
      * the phone away again doesn't post it a second time.
      */
-    fun update(cause: Cause?, appIsActive: Boolean, isEnabled: Boolean, now: Double = System.nanoTime() / 1e9): Update? {
+    fun update(cause: Cause?, appIsActive: Boolean, isEnabled: Boolean, soundAlertsMeantToRun: Boolean = true, now: Double = System.nanoTime() / 1e9): Update? {
         val first = firstUpdate
         firstUpdate = false
         if (cause == null) {
             toldCause = null
-            if (keepsDeliveredNotice(now)) return null
+            if (soundAlertsMeantToRun && keepsDeliveredNotice(now)) return null
             return withdrawIfPosted(sweep = first, now = now)
         }
         val changed = toldCause?.let { !sameStop(it, cause) } ?: false

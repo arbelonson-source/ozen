@@ -419,4 +419,31 @@ struct CaptionPipelinePhaseChangeTests {
 
         #expect(reported == ["permission", "preparing", "audio", "listening", "paused"])
     }
+
+    @Test("a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped")
+    func deliveredNoticeIsWithdrawnWhenSoundAlertsAreNoLongerMeantToRun() {
+        var kept = StoppedCaptionsNotice()
+        _ = kept.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true, now: 0)
+        #expect(kept.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: true, now: 70) == nil)
+
+        var off = StoppedCaptionsNotice()
+        _ = off.update(for: .soundAlertsNotWorking, appIsActive: false, isEnabled: true, now: 0)
+        #expect(off.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: false, now: 70) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(off.update(for: nil, appIsActive: false, isEnabled: true, soundAlertsMeantToRun: false, now: 80) == nil)
+    }
+
+    @Test("sound alerts that stopped by themselves are posted at once, with the text the other phone uses")
+    func soundAlertsStoppedNotice() {
+        var notice = StoppedCaptionsNotice()
+        guard case .post(let content)? = notice.update(for: .soundAlertsStopped, appIsActive: false, isEnabled: true, now: 0) else {
+            Issue.record("expected a notification at once")
+            return
+        }
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .soundAlertsStopped).title == "Sound alerts stopped")
+            #expect(StoppedCaptionsNotice.content(for: .soundAlertsStopped).body == "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.")
+        }
+        #expect(content.isUrgent)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: 5) == .withdraw(identifier: StoppedCaptionsNotice.identifier))
+    }
 }

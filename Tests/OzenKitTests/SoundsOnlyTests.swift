@@ -27,6 +27,13 @@ private func makeSoundsPipeline(
     )
 }
 
+private final class WaitLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var list: [TimeInterval] = []
+    var values: [TimeInterval] { lock.withLock { list } }
+    func add(_ value: TimeInterval) { lock.withLock { list.append(value) } }
+}
+
 @Suite("Sound alerts only")
 @MainActor
 struct SoundsOnlyTests {
@@ -170,12 +177,13 @@ struct SoundsOnlyTests {
         #expect(audio.endSessionCalls == releasedBefore + 1)
     }
 
-    @Test("a microphone lost during sounds-only is started again, and a second loss soon after ends it", .timeLimit(.minutes(1)))
+    @Test("a microphone lost during sounds-only is started again after a wait, and a second loss soon after is too", .timeLimit(.minutes(1)))
     func captureLostRestartsOnce() async {
         for fromCaptions in [false, true] {
             let clock = TestClock()
             let audio = FakeAudioCapturer()
             let pipeline = makeSoundsPipeline(audio: audio, now: { clock.now })
+            pipeline.soundsOnlyRetryWait = { _ in }
             if fromCaptions { await pipeline.start(settings: .default) }
             await pipeline.listenForSoundsOnly()
             #expect(pipeline.isListeningForSoundsOnly, Comment(rawValue: "from captions \(fromCaptions)"))
@@ -189,11 +197,10 @@ struct SoundsOnlyTests {
 
             clock.advance(5)
             audio.onCaptureLost?()
-            try? await Task.sleep(for: .milliseconds(100))
-            #expect(!pipeline.isListeningForSoundsOnly, Comment(rawValue: "from captions \(fromCaptions)"))
-            #expect(!pipeline.soundsOnlyChosen, Comment(rawValue: "from captions \(fromCaptions)"))
-            #expect(!pipeline.stats.soundDetectionRunning)
-            #expect(audio.calls.filter { $0 == "startCapture" }.count == starts + 1)
+            #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == starts + 2 && pipeline.isListeningForSoundsOnly },
+                    Comment(rawValue: "from captions \(fromCaptions)"))
+            #expect(pipeline.soundsOnlyChosen)
+            #expect(!pipeline.soundsOnlyStoppedByItself)
         }
     }
 
@@ -218,16 +225,46 @@ struct SoundsOnlyTests {
         #expect(await eventually { pipeline.isListeningForSoundsOnly })
     }
 
-    @Test("a second silence soon after ends sounds-only, so the screen stops saying it is on", .timeLimit(.minutes(1)))
-    func secondSilenceEndsIt() async {
+    @Test("silences that keep coming end sounds-only after the backed-off retries, so the screen stops saying it is on", .timeLimit(.minutes(1)))
+    func keptSilenceEndsIt() async {
         let audio = FakeAudioCapturer()
         let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        pipeline.soundsOnlyRetryWait = { _ in }
         await pipeline.start(settings: .default)
         await pipeline.listenForSoundsOnly()
 
-        #expect(await eventually { pipeline.stats.audioStalls == 2 })
-        #expect(await eventually { !pipeline.soundsOnlyChosen })
+        #expect(await eventually(within: .seconds(40)) { pipeline.soundsOnlyStoppedByItself })
+        #expect(!pipeline.soundsOnlyChosen)
         #expect(!pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("a microphone that stalls again and again is retried after the shared waits, then ends with the away-notice cause", .timeLimit(.minutes(1)))
+    func stallsBackOffThenSayAlertsStopped() async throws {
+        let table = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Fixtures/logic/sounds-only-retry.json"))) as! [String: Any]
+        let shared = (table["retrySeconds"] as! [NSNumber]).map(\.doubleValue)
+        #expect(CaptionPipeline.soundsOnlyRetrySeconds == shared)
+        #expect(CaptionPipeline.soundsOnlyHealthySeconds == (table["healthySeconds"] as! NSNumber).doubleValue)
+
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, now: { 1_000 })
+        let waits = WaitLog()
+        pipeline.soundsOnlyRetryWait = { waits.add($0) }
+        await pipeline.listenForSoundsOnly()
+        for attempt in 0...shared.count {
+            #expect(await eventually { pipeline.isListeningForSoundsOnly })
+            #expect(pipeline.soundsOnlyStoppedByItself == false, Comment(rawValue: "attempt \(attempt)"))
+            audio.onCaptureLost?()
+            if attempt < shared.count { #expect(await eventually { waits.values.count == attempt + 1 }) }
+        }
+        #expect(await eventually { pipeline.soundsOnlyStoppedByItself })
+        #expect(waits.values == shared)
+        #expect(!pipeline.soundsOnlyChosen)
+        let cause = StoppedCaptionsNotice.cause(
+            phase: pipeline.phase, retryScheduled: false, systemInterrupted: false, interruptedByCall: false,
+            callEndedDuringInterruption: false, soundsOnlyChosen: pipeline.soundsOnlyChosen,
+            soundsOnlyStopped: pipeline.soundsOnlyStoppedByItself
+        )
+        #expect(cause == .soundAlertsStopped)
     }
 
     @Test("audio that keeps arriving, even quiet, is never a stall", .timeLimit(.minutes(1)))
