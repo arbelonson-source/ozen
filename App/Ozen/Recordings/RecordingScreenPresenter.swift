@@ -52,8 +52,10 @@ enum RecordingScreenPresenter {
     }
 
     private static func alert(_ message: String) {
-        UIAccessibility.post(notification: .announcement, argument: message)
-        guard let top = topController(), !(top is UIAlertController) else { return }
+        guard let top = topController(), !(top is UIAlertController) else {
+            UIAccessibility.post(notification: .announcement, argument: message)
+            return
+        }
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: tr("סגירה", "Close"), style: .cancel))
         top.present(alert, animated: true)

@@ -5,6 +5,7 @@ import com.arbelonson.ozen.core.FileTranscriptionProblem
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -32,6 +33,37 @@ class BusyNoticeTest {
         notice.accept(busy = true)
         notice.accept(busy = false)
         assertFalse(notice.shown.value)
+    }
+
+    @Test
+    fun everyRefusalCountsSoTheNoteIsAnnouncedAgainWhileItStaysOneNote() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        assertEquals(1, notice.refusals.value)
+        notice.accept(busy = true)
+        assertEquals(2, notice.refusals.value)
+        assertTrue(notice.shown.value)
+    }
+
+    @Test
+    fun theCountStartsAgainOnceTheNoteIsGone() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        notice.accept(busy = true)
+        notice.clear()
+        assertEquals(0, notice.refusals.value)
+        notice.accept(busy = true)
+        notice.follow(failed)
+        assertEquals(0, notice.refusals.value)
+        notice.accept(busy = true)
+        assertEquals(1, notice.refusals.value)
+    }
+
+    @Test
+    fun anIdleShareCountsNothing() {
+        val notice = BusyNotice()
+        notice.accept(busy = false)
+        assertEquals(0, notice.refusals.value)
     }
 
     private val ready = FileTranscription.Ready("a.mp3", UILanguage.English, null, emptyList(), PhoneModelCatalog.all.first(), null, false)

@@ -48,9 +48,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
@@ -259,6 +257,9 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
 @Composable
 private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNotice, onCancel: () -> Unit) {
     val another by busyNotice.shown.collectAsStateWithLifecycle()
+    val refusals by busyNotice.refusals.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(refusals) { if (refusals > 0) ScreenReader.said(context, BUSY_LINE) }
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
@@ -286,7 +287,7 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
         if (another) {
             Text(
                 BUSY_LINE,
-                modifier = Modifier.testTag("transcribe-busy").semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.testTag("transcribe-busy"),
                 color = MaterialTheme.colorScheme.error,
             )
         }
