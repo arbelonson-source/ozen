@@ -167,7 +167,7 @@ internal fun SoundAlertsNotWorkingBanner() {
         NoticeTone.Emergency,
         StoppedCaptionsNotice.soundAlertsNotWorkingTitle(),
         StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
 
@@ -224,6 +224,7 @@ internal fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: (
     val question = tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?")
     val hint = tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name")
     LaunchedEffect(Unit) { ScreenReader.saidOnce(context, "name-alert-offer", "$question $hint") }
+    val putAway = { ScreenReader.forgetSaid("name-alert-offer"); onDismiss() }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh),
@@ -240,7 +241,7 @@ internal fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: (
                 modifier = Modifier.align(Alignment.End).heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
-        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
+        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, putAway)
     }
 }
 
@@ -251,6 +252,7 @@ internal fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: 
     val context = LocalContext.current
     val title = tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone")
     LaunchedEffect(model.file) { ScreenReader.saidOnce(context, "lighter-model-offer-" + model.file, title) }
+    val putAway = { ScreenReader.forgetSaid("lighter-model-offer-" + model.file); onDismiss() }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).testTag("model-fit-offer"),
@@ -280,7 +282,7 @@ internal fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: 
                 modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").widthIn(min = OzenSpacing.MinTouch).heightIn(min = OzenSpacing.MinTouch).wrapContentSize(Alignment.Center),
             )
         }
-        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
+        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, putAway)
     }
 }
 
@@ -412,6 +414,7 @@ internal fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capt
     val context = LocalContext.current
     val title = tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes)))
     LaunchedEffect(recent.id) { ScreenReader.saidOnce(context, "recent-conversation-" + recent.id, title) }
+    val putAway = { ScreenReader.forgetSaid("recent-conversation-" + recent.id); onDismiss() }
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -427,7 +430,7 @@ internal fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capt
                 Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
             }
         }
-        BannerClose(tr("סגירה", "Close"), MaterialTheme.colorScheme.onSurfaceVariant, onDismiss)
+        BannerClose(tr("סגירה", "Close"), MaterialTheme.colorScheme.onSurfaceVariant, putAway)
     }
 }
 
