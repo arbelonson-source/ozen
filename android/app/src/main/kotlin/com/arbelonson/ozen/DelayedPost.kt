@@ -1,8 +1,10 @@
 package com.arbelonson.ozen
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
@@ -18,8 +20,9 @@ class DelayedPost(private val scope: CoroutineScope, private val awake: KeptAwak
 
     fun schedule(afterSeconds: Double, post: () -> Unit) {
         cancel()
+        if (!scope.isActive) return
         awake.keepAwake(afterSeconds.seconds + MARGIN)
-        val job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.ATOMIC) {
             try {
                 delay((afterSeconds * 1000).toLong())
                 post()
