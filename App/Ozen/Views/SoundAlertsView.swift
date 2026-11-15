@@ -221,25 +221,22 @@ private struct SoundEventRow: View {
 
     @ViewBuilder
     private func sensitivityNudge(_ nearMiss: SoundNearMisses.Entry?) -> some View {
+        let caption = nearMiss.map {
+            tr("נשמע ב־%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", args: ["\(Int(($0.bestConfidence * 100).rounded()))"])
+        } ?? tr("יש התראה גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo.")
         nudgeLayout {
-            Group {
-                if let nearMiss {
-                    Text(tr(
-                        "נשמע ב־%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", args: ["\(Int((nearMiss.bestConfidence * 100).rounded()))"]
-                    ))
-                } else {
-                    Text(tr("יש התראה גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo."))
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             Toggle(isOn: $isSensitive) {
                 Text(tr("להתריע גם על צליל חלש יותר", "Alert on a fainter sound too"))
                     .font(.caption.weight(.semibold))
-                    .frame(minHeight: 30)
+                    .frame(minHeight: 44)
             }
             .toggleStyle(.button)
+            .accessibilityHint(caption)
         }
         .accessibilityIdentifier("soundSensitivityToggle-\(event.identifier)")
     }

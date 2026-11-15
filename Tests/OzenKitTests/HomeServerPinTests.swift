@@ -187,4 +187,14 @@ struct HomeServerPinTests {
             #expect(HomeServer.addressCoverDetail(detail: nil) == nil)
         }
     }
+
+    @Test("saving the address or the pairing code has words to announce")
+    func savedWords() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.addressSavedText(address: "wss://home.example") == "Computer address saved")
+            #expect(HomeServer.addressSavedText(address: "  ") == "Computer address removed")
+            #expect(HomeServer.addressSavedText(address: "") == "Computer address removed")
+            #expect(HomeServer.codeSavedText() == "Pairing code saved on the phone")
+        }
+    }
 }

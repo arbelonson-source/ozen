@@ -131,6 +131,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
@@ -735,6 +737,9 @@ private fun HomeComputerSection(
     var code by codeDraft
     var codeSaveFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val addressFocus = remember { FocusRequester() }
+    val codeFocus = remember { FocusRequester() }
     var checking by remember { mutableStateOf(false) }
     var check by remember { mutableStateOf<HomeServerCheck?>(null) }
     var checkGeneration by remember { mutableIntStateOf(0) }
@@ -747,20 +752,37 @@ private fun HomeComputerSection(
         forgetCheck()
         engineSettings.saveHomeComputerAddress(address)
     }
-    val saveCode: suspend () -> Unit = {
+    // The button vanishes the moment it is pressed, so the save is said
+    // aloud and focus goes to the field instead of falling away.
+    val saveAddressAndSay = {
+        saveAddress()
+        addressFocus.requestFocus()
+        ScreenReader.said(context, HomeServer.addressSavedText(address))
+    }
+    val saveCode: suspend () -> Boolean = {
+        var stored = false
         if (code.isNotBlank()) {
             val typed = code
-            val stored = engineSettings.savePairingCode(typed)
+            stored = engineSettings.savePairingCode(typed)
             codeSaveFailed = !stored
             if (stored) {
                 if (code == typed) code = ""
                 forgetCheck()
             }
         }
+        stored
     }
     // As on the iPhone, what is on screen is what gets tested: a code or
     // address typed but not saved yet is saved first.
-    val saveCodeNow = { scope.launch { saveCode() }; Unit }
+    val saveCodeNow = {
+        scope.launch {
+            if (saveCode()) {
+                codeFocus.requestFocus()
+                ScreenReader.said(context, HomeServer.codeSavedText())
+            }
+        }
+        Unit
+    }
     val testConnection = {
         checking = true
         val typed = address
@@ -806,10 +828,10 @@ private fun HomeComputerSection(
                     label = { Text(tr("כתובת המחשב", "Computer address")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { saveAddress() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardActions = KeyboardActions(onDone = { saveAddressAndSay() }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(addressFocus),
                 )
-                if (address.trim() != saved) TonalButton(tr("שמירת הכתובת", "Save address"), onClick = saveAddress, modifier = Modifier.fillMaxWidth())
+                if (address.trim() != saved) TonalButton(tr("שמירת הכתובת", "Save address"), onClick = saveAddressAndSay, modifier = Modifier.fillMaxWidth())
                 if (HomeServer.homeLinkIsPlain(address, if (address.trim() == saved) current.homeServerCertificatePin else null)) {
                     Caution(
                         tr(
@@ -841,7 +863,7 @@ private fun HomeComputerSection(
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { saveCodeNow() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(codeFocus),
                 )
                 if (code.isNotBlank()) TonalButton(tr("שמירת הקוד", "Save code"), onClick = saveCodeNow, modifier = Modifier.fillMaxWidth())
                 if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))

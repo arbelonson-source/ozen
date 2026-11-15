@@ -77,13 +77,42 @@ struct HistoryView: View {
                     .foregroundStyle(.readable(.red))
             }
             Toggle(tr("שמירת שיחות", "Save conversations"), isOn: $viewModel.saveHistory)
-            Picker(tr("מחיקה אוטומטית", "Automatic deletion"), selection: retentionChoice) {
-                ForEach(HistoryRetention.allCases, id: \.self) { retention in
-                    Text(Self.name(for: retention)).tag(retention)
-                }
-            }
+            retentionRow
         } footer: {
             Text(Self.savingFooter(saving: viewModel.saveHistory, size: ModelManagerView.format(bytes: totalSize), retention: viewModel.historyRetention))
+        }
+    }
+
+    /// A menu button holds one line, so at the largest text sizes its value
+    /// was cut to the first and last letters. There the row opens a page
+    /// with the choices and shows the value wrapped under its name, as in
+    /// Settings.
+    @ViewBuilder
+    private var retentionRow: some View {
+        let title = tr("מחיקה אוטומטית", "Automatic deletion")
+        let picker = Picker(title, selection: retentionChoice) {
+            ForEach(HistoryRetention.allCases, id: \.self) { retention in
+                Text(Self.name(for: retention)).tag(retention)
+            }
+        }
+        if dynamicTypeSize.isAccessibilitySize {
+            NavigationLink {
+                Form {
+                    picker
+                        .pickerStyle(.inline)
+                        .labelsHidden()
+                }
+                .navigationTitle(title)
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                    Text(Self.name(for: viewModel.historyRetention))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+        } else {
+            picker
         }
     }
 

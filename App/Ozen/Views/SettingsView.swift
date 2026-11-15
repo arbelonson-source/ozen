@@ -70,6 +70,9 @@ struct SettingsView: View {
     @State private var closingAfterCloudConsent = false
     @State private var confirmingWalkthrough = false
     @State private var homeServerCodeSaveFailed = false
+    @AccessibilityFocusState private var savedFieldFocus: HomeServerField?
+
+    private enum HomeServerField { case address, code }
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -580,7 +583,8 @@ struct SettingsView: View {
                 .textContentType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .onSubmit(saveHomeServerAddress)
+                .onSubmit(saveHomeServerAddressAndSay)
+                .accessibilityFocused($savedFieldFocus, equals: .address)
                 .onAppear {
                     let saved = viewModel.settings.homeServerAddress
                     homeServerAddressDraft = HomeServer.addressField(draft: homeServerAddressDraft, loaded: homeServerAddressLoaded, saved: saved)
@@ -588,7 +592,7 @@ struct SettingsView: View {
                     hasHomeServerCode = HomeServerCodeStore.hasKey
                 }
             if homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines) != viewModel.settings.homeServerAddress {
-                Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddress)
+                Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddressAndSay)
             }
             if HomeServer.needsEncryptedAddress(homeServerAddressDraft) {
                 Label(tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://"), systemImage: "exclamationmark.triangle.fill")
@@ -609,9 +613,10 @@ struct SettingsView: View {
             SecureField(hasHomeServerCode ? tr("קוד חדש במקום השמור", "New code instead of the saved one") : tr("קוד הצימוד מהמחשב", "The pairing code from the computer"), text: $homeServerCodeDraft)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .onSubmit(saveHomeServerCode)
+                .onSubmit(saveHomeServerCodeAndSay)
+                .accessibilityFocused($savedFieldFocus, equals: .code)
             if !homeServerCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Button(tr("שמירת הקוד", "Save code"), action: saveHomeServerCode)
+                Button(tr("שמירת הקוד", "Save code"), action: saveHomeServerCodeAndSay)
             }
             if homeServerCodeSaveFailed {
                 Label(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."), systemImage: "exclamationmark.triangle.fill")
@@ -779,16 +784,33 @@ struct SettingsView: View {
         Task { await viewModel.setHomeServerAddress(address) }
     }
 
-    private func saveHomeServerCode() {
+    /// The button vanishes the moment it is pressed and the green line that
+    /// replaces it is not announced, so the save is said, and VoiceOver
+    /// focus goes to the field instead of falling to the top of the screen.
+    private func saveHomeServerAddressAndSay() {
+        saveHomeServerAddress()
+        savedFieldFocus = .address
+        AccessibilityNotification.Announcement(HomeServer.addressSavedText(address: homeServerAddressDraft)).post()
+    }
+
+    private func saveHomeServerCodeAndSay() {
+        guard saveHomeServerCode() else { return }
+        savedFieldFocus = .code
+        AccessibilityNotification.Announcement(HomeServer.codeSavedText()).post()
+    }
+
+    @discardableResult
+    private func saveHomeServerCode() -> Bool {
         let code = homeServerCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !code.isEmpty else { return }
+        guard !code.isEmpty else { return false }
         let saved = HomeServerCodeStore.save(code)
         homeServerCodeSaveFailed = !saved
-        guard saved else { return }
+        guard saved else { return false }
         homeServerCodeDraft = ""
         forgetHomeServerCheck()
         hasHomeServerCode = true
         Task { await viewModel.homeServerCodeChanged() }
+        return true
     }
 
     /// A key is the only way sound reaches a cloud service, so it is saved
