@@ -449,7 +449,20 @@ class CaptionPipelineSoundsOnlyTest {
         delay(20.minutes)
         assertEquals(before, audio.captures())
         assertFalse(pipeline.isListeningForSoundsOnly)
+        assertTrue(pipeline.soundsOnlyChosen)
         assertFalse(pipeline.soundsOnlyStoppedByItself)
+    }
+
+    @Test
+    fun `sound alerts turned off and straight back on during the retry wait listen at once`() = runTest {
+        val (pipeline, audio, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        audio.startError = FakeAudioError("FakeAudio", 5)
+        audio.onCaptureLost?.invoke()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        audio.startError = null
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually(within = 100.milliseconds) { pipeline.isListeningForSoundsOnly })
     }
 
     @Test
