@@ -928,6 +928,7 @@ class CaptionPipeline(
         }
         engine.setVocabulary(primedVocabulary(settings.vocabulary))
         if (runID != run) return abandon(earlyFan)
+        engine.setPhoneModelCheck { phoneModelCanCover() }
         currentEngine = engine
 
         phase = PipelinePhase.StartingAudio
@@ -2498,6 +2499,18 @@ class CaptionPipeline(
         val dropped = engineCache.values.filter { it !== keeping }
         engineCache.clear()
         dropped.forEach { it.release() }
+    }
+
+    /**
+     * Whether the phone's own model is already installed to take over from
+     * the cloud (see [CloudCover]); never while it is the one covering.
+     */
+    private suspend fun phoneModelCanCover(): Boolean {
+        val settings = settingsInUse ?: return false
+        if (settings.engine != TranscriptionEngineKind.Cloud || isCoveringForCloud) return false
+        val onPhone = settings.copy()
+        onPhone.engine = TranscriptionEngineKind.WhisperKit
+        return probeEngine(onPhone).hasModelOnPhone()
     }
 
     /**

@@ -726,6 +726,7 @@ public final class CaptionPipeline {
         }
         await engine.setVocabulary(primedVocabulary(userVocabulary: settings.vocabulary))
         guard runID == run else { return }
+        await engine.setPhoneModelCheck { [weak self] in await self?.phoneModelCanCover() ?? false }
         currentEngine = engine
 
         phase = .startingAudio
@@ -2327,6 +2328,15 @@ public final class CaptionPipeline {
         let engine = engineFactory(settings)
         engineCache[key] = engine
         return engine
+    }
+
+    /// Whether the phone's own model is already installed to take over from
+    /// the cloud (see `CloudCover`); never while it is the one covering.
+    private func phoneModelCanCover() async -> Bool {
+        guard let settings = activeSettings, settings.engine == .cloud, !isCoveringForCloud else { return false }
+        var onPhone = settings
+        onPhone.engine = .whisperKit
+        return await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil
     }
 
     private func engineCacheKey(_ settings: AppSettings) -> String {

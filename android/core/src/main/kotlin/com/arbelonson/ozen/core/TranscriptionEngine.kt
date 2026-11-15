@@ -309,6 +309,16 @@ interface TranscriptionEngine {
     suspend fun setVocabulary(terms: List<String>) {}
 
     /**
+     * How to ask whether the phone's own model is installed and could take
+     * over if this engine's service stops answering. Set before every
+     * [stream], and asked only when a request gets no answer, so the answer
+     * is never older than the failure. A cloud engine that hears nothing
+     * back and is told yes hands over at once instead of retrying for
+     * minutes; others ignore it.
+     */
+    suspend fun setPhoneModelCheck(check: suspend () -> Boolean) {}
+
+    /**
      * What the engine knows about how its work has gone (how long passes
      * take, how much it threw away), for the journal when a problem is
      * marked. Null from engines that keep no such count.

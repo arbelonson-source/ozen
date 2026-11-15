@@ -33,7 +33,7 @@ enum class CloudKeyCheck {
             return when (provider.failure(response)) {
                 CloudSpeechError.KeyRejected, CloudSpeechError.KeyMissing -> Rejected
                 CloudSpeechError.OutOfCredit -> NoCredit
-                CloudSpeechError.RateLimited, CloudSpeechError.Offline, is CloudSpeechError.ServerTrouble, CloudSpeechError.BadReply -> Unreachable
+                CloudSpeechError.RateLimited, CloudSpeechError.Offline, CloudSpeechError.TimedOut, is CloudSpeechError.ServerTrouble, CloudSpeechError.BadReply -> Unreachable
             }
         }
     }
