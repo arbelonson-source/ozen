@@ -100,7 +100,7 @@ class LargestTextScreensDeviceTest {
         assertTrue(problems.joinToString("; "), problems.isEmpty())
     }
 
-    private fun assertEveryControlReachableAndAFingerBig(inDialog: Boolean = false) {
+    private fun assertEveryControlIsAFingerBig(inDialog: Boolean = false) {
         val finger = compose.activity.resources.displayMetrics.density * 48
         val controls = everyNode(inDialog).filter { it.config.getOrNull(SemanticsActions.OnClick) != null }
         assertTrue("no control on screen", controls.isNotEmpty())
@@ -120,7 +120,7 @@ class LargestTextScreensDeviceTest {
     fun theNightChecklistCanBeReadAndReachedToTheEndAtTheLargestText() {
         onASmallPhoneAtTheLargestText(scrolling = false) { NightAlertsScreen(soundsOn = false, onSounds = {}, onClose = {}) }
         assertNothingCutOrOverlapping()
-        assertEveryControlReachableAndAFingerBig()
+        assertEveryControlIsAFingerBig()
         reach("Silent mode and charging")
         reach("On silent, alerts", substring = true)
         reach("Test that an alert arrives when the phone is locked")
@@ -146,7 +146,7 @@ class LargestTextScreensDeviceTest {
             }
             compose.waitUntil(5_000) { compose.onAllNodes(hasContentDescription("Starred line 1:", substring = true)).fetchSemanticsNodes().isNotEmpty() }
             assertNothingCutOrOverlapping()
-            assertEveryControlReachableAndAFingerBig()
+            assertEveryControlIsAFingerBig()
             val row = compose.onNode(hasContentDescription("Starred line 1:", substring = true)).fetchSemanticsNode()
             val threeLines = 3 * 16f * 2f * compose.activity.resources.displayMetrics.density
             assertTrue("a starred line is only ${row.size.height} px tall, its three lines need $threeLines", row.size.height >= threeLines)
@@ -162,7 +162,7 @@ class LargestTextScreensDeviceTest {
     fun diagnosticsCanBeReadAndReachedToTheEndAtTheLargestText() {
         onASmallPhoneAtTheLargestText(scrolling = false) { DiagnosticsScreen(app.captions, onClose = {}) }
         assertNothingCutOrOverlapping()
-        assertEveryControlReachableAndAFingerBig()
+        assertEveryControlIsAFingerBig()
         reach("Send report")
         reach("Copy report")
         reach("Status")
@@ -178,7 +178,7 @@ class LargestTextScreensDeviceTest {
             SoundAlertsNotWorkingBanner()
         }
         assertNothingCutOrOverlapping()
-        assertEveryControlReachableAndAFingerBig()
+        assertEveryControlIsAFingerBig()
         for (tag in listOf("model-fit-switch", "model-load-crash-switch", "model-load-crash-retry", "listening-cut-dismiss")) {
             val node = compose.onNode(hasTestTag(tag))
             if (!wholly(node.fetchSemanticsNode())) node.performScrollTo()
@@ -204,7 +204,7 @@ class LargestTextScreensDeviceTest {
             }
             compose.waitUntil(5_000) { compose.onAllNodes(hasText("Wait for Wi‑Fi") and hasAnyAncestor(isDialog())).fetchSemanticsNodes().isNotEmpty() }
             assertNothingCutOrOverlapping(inDialog = true)
-            assertEveryControlReachableAndAFingerBig(inDialog = true)
+            assertEveryControlIsAFingerBig(inDialog = true)
             val body = everyNode(inDialog = true).first { "language model downloads once" in wordsOf(it) }
             val layouts = ArrayList<TextLayoutResult>()
             body.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
