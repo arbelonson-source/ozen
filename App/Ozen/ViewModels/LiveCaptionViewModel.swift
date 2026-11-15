@@ -724,9 +724,10 @@ public final class LiveCaptionViewModel {
             interruptedByCall: interruptedByCall,
             callEndedDuringInterruption: callEndedDuringInterruption,
             soundsOnlyChosen: pipeline.soundsOnlyChosen,
-            soundAlertsNotWorking: pipeline.soundAlertsNotWorking
+            soundAlertsNotWorking: pipeline.soundAlertsNotWorking,
+            soundsOnlyStopped: pipeline.soundsOnlyStoppedByItself
         )
-        if let update = stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
+        if let update = stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground, soundAlertsMeantToRun: pipeline.soundAlertsMeantToRun) {
             apply(update)
         }
         updateListeningRecord(stopped: cause)

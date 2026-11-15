@@ -509,4 +509,19 @@ class CaptionPipelinePhaseChangeTest {
 
         assertEquals(listOf("permission", "preparing", "audio", "listening", "paused"), reported)
     }
+
+    @Test
+    fun `a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped`() {
+        val kept = StoppedCaptionsNotice()
+        kept.update(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking, appIsActive = false, isEnabled = true, now = 0.0)
+        assertNull(kept.update(null, appIsActive = false, isEnabled = true, soundAlertsMeantToRun = true, now = 70.0))
+
+        val off = StoppedCaptionsNotice()
+        off.update(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking, appIsActive = false, isEnabled = true, now = 0.0)
+        assertEquals(
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
+            off.update(null, appIsActive = false, isEnabled = true, soundAlertsMeantToRun = false, now = 70.0),
+        )
+        assertNull(off.update(null, appIsActive = false, isEnabled = true, soundAlertsMeantToRun = false, now = 80.0))
+    }
 }

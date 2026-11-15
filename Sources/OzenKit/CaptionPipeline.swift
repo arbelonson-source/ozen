@@ -340,6 +340,13 @@ public final class CaptionPipeline {
     /// Sound alerts are on, and the classifier can't be made to work: it
     /// keeps being tried again, and this clears when one works.
     public var soundAlertsNotWorking: Bool { soundClassifierUnavailable && soundPolicy.preferences.isEnabled }
+    /// Sound alerts are on and something is meant to be listening: captions
+    /// are running or on their way back, or sounds alone were chosen. False
+    /// once she turned them off or paused or stopped on purpose.
+    public var soundAlertsMeantToRun: Bool {
+        guard soundPolicy.preferences.isEnabled else { return false }
+        return soundsOnlyChosen || (phase != .idle && phase != .paused)
+    }
     /// Called when `soundAlertsNotWorking` may have changed.
     public var onSoundAlertsAvailabilityChange: (() -> Void)?
     /// The microphone is on for sound alerts alone, while captions wait to
@@ -350,6 +357,12 @@ public final class CaptionPipeline {
     /// to being the fallback of a failure. A call or a voice sample takes
     /// the microphone for a while; this brings the sounds back after.
     public private(set) var soundsOnlyChosen = false
+    /// Sounds-only ended by itself: the microphone stopped and did not come
+    /// back through every retry (`soundsOnlyRetrySeconds`). The screen and
+    /// the away notice say so; cleared when anything starts again or stops.
+    public private(set) var soundsOnlyStoppedByItself = false
+    /// How long each wait for a stopped microphone is; a test makes it instant.
+    public var soundsOnlyRetryWait: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }
     private var staleCommitTask: Task<Void, Never>?
     private var soundsOnlyWatchTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
@@ -435,7 +448,9 @@ public final class CaptionPipeline {
     /// it then instead of showing "Listening" on nothing after the load.
     private var earlyCaptureRun: UUID?
     private var lastMicrophoneChangeRetryAt: TimeInterval?
-    private var lastSoundsOnlyRestartAt: TimeInterval?
+    private var soundsOnlyAttempts = 0
+    private var soundsOnlySince: TimeInterval?
+    private var soundsOnlyRetryTask: Task<Void, Never>?
     /// Free space on the phone in bytes, or nil when it can't be read.
     private let availableStorageBytes: (@Sendable () -> Int64?)?
 
@@ -521,6 +536,9 @@ public final class CaptionPipeline {
         cancelScheduledRetry()
         stopListeningForSounds()
         soundsOnlyChosen = false
+        soundsOnlyStoppedByItself = false
+        soundsOnlyRetryTask?.cancel()
+        soundsOnlyRetryTask = nil
         let run = UUID()
         runID = run
         sessionAudioStart = recentAudio.totalAppended
@@ -1264,6 +1282,12 @@ public final class CaptionPipeline {
     }
 
     static let microphoneChangeRetrySeconds: TimeInterval = 30
+    /// Sounds alone whose microphone stopped are tried again after each of
+    /// these waits, about ten minutes in all, then stop and say so. Listening
+    /// for `soundsOnlyHealthySeconds` starts the count again. The same
+    /// numbers as on Android (Tests/Fixtures/logic/sounds-only-retry.json).
+    static let soundsOnlyRetrySeconds: [TimeInterval] = [1, 3, 10, 30, 60, 120, 300]
+    static let soundsOnlyHealthySeconds: TimeInterval = 60
 
     private func syncInputs() {
         availableInputs = audio.availableInputs
@@ -1879,6 +1903,9 @@ public final class CaptionPipeline {
         activeSettings?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
         onSoundAlertsAvailabilityChange?()
+        if preferences.isEnabled, soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil {
+            Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
+        }
     }
 
     // MARK: - Tokens
@@ -2930,7 +2957,7 @@ public final class CaptionPipeline {
             cancelScheduledRetry()
             stopListeningForSounds()
         } else if soundsOnlyChosen, !isListeningForSoundsOnly {
-            Task { [weak self] in await self?.listenForSoundsOnly() }
+            Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
         } else if let failure = phase.failure {
             recovery.reset()
             scheduleAutoRecovery(for: failure)
@@ -3021,6 +3048,7 @@ public final class CaptionPipeline {
         let fan = AudioFanOut(source: source, count: 1, onChunk: { [arrivals] _ in arrivals.increment() })
         fanOut = fan
         isListeningForSoundsOnly = true
+        soundsOnlySince = now()
         stats.soundDetectionRunning = true
         if soundsOnlyChosen { watchForSilentMicrophone(counting: arrivals, run: run) }
         let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0]), availability: soundAvailabilityReporter())
@@ -3066,6 +3094,14 @@ public final class CaptionPipeline {
     /// From listening, paused or idle; not during a call or a voice sample.
     /// Starting captions again (or stopping) ends it.
     public func listenForSoundsOnly() async {
+        soundsOnlyAttempts = 0
+        await listenForSoundsOnly(retrying: false)
+    }
+
+    /// `retrying` is a start by itself after the microphone stopped or a
+    /// call ended: it keeps the count of attempts and, when it still cannot
+    /// open the microphone, backs off instead of giving up at once.
+    private func listenForSoundsOnly(retrying: Bool) async {
         switch phase {
         case .listening, .paused, .idle: break
         default: return
@@ -3087,7 +3123,7 @@ public final class CaptionPipeline {
         var source = try? audio.startCapture()
         if source == nil {
             guard await audio.requestPermission() == .granted else {
-                soundsOnlyFailedToStart(run: run)
+                soundsOnlyFailedToStart(run: run, retrying: retrying, permissionDenied: true)
                 return
             }
             guard runID == run else { return }
@@ -3098,12 +3134,12 @@ public final class CaptionPipeline {
                 return
             }
             guard prepared else {
-                soundsOnlyFailedToStart(run: run)
+                soundsOnlyFailedToStart(run: run, retrying: retrying)
                 return
             }
             source = try? audio.startCapture()
             if source == nil {
-                soundsOnlyFailedToStart(run: run)
+                soundsOnlyFailedToStart(run: run, retrying: retrying)
                 if runID == run, !soundsOnlyChosen { releaseSessionOfStoppedStart() }
                 return
             }
@@ -3116,33 +3152,59 @@ public final class CaptionPipeline {
     /// Sounds-only that could not get the microphone (no permission, a
     /// session the phone refused) is not on: left chosen, the battery watch
     /// and the listening record counted a silent night as listened to. Kept
-    /// chosen during a call, whose end starts it again.
-    private func soundsOnlyFailedToStart(run: UUID) {
+    /// chosen during a call, whose end starts it again. Coming back by
+    /// itself, a refusal that is not a missing permission is tried again
+    /// after a wait (`retrySoundsOnly`): the phone app can hold the
+    /// microphone a moment after a call.
+    private func soundsOnlyFailedToStart(run: UUID, retrying: Bool, permissionDenied: Bool = false) {
         guard runID == run, !systemInterrupted else { return }
+        if retrying, !permissionDenied {
+            retrySoundsOnly()
+            return
+        }
         soundsOnlyChosen = false
+        soundsOnlyStoppedByItself = retrying
         onPhaseChange?(phase)
     }
 
     /// A microphone the phone gave up setting up again took the sound
     /// alerts with it, while the screen still said they were on: nothing
     /// else was listening for the loss, since captions were not running.
-    /// Capture starts once more; a second loss within
-    /// `microphoneChangeRetrySeconds` ends sounds-only, so the screen shows
-    /// it stopped instead of a loop of failing starts.
+    /// Capture starts again after waits that grow (`soundsOnlyRetrySeconds`,
+    /// about ten minutes in all); when none holds, sounds-only ends and
+    /// `soundsOnlyStoppedByItself` says so, for the screen and the away
+    /// notice, instead of a loop of failing starts or a silent night.
     private func soundsOnlyCaptureLost(run: UUID) {
         guard runID == run, isListeningForSoundsOnly, !systemInterrupted else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         stopListeningForSounds()
-        let at = now()
-        if let last = lastSoundsOnlyRestartAt, at >= last, at - last < Self.microphoneChangeRetrySeconds {
+        retrySoundsOnly()
+    }
+
+    private func retrySoundsOnly() {
+        guard soundsOnlyChosen, !systemInterrupted else { return }
+        if let since = soundsOnlySince, now() - since >= Self.soundsOnlyHealthySeconds { soundsOnlyAttempts = 0 }
+        soundsOnlySince = nil
+        guard soundsOnlyAttempts < Self.soundsOnlyRetrySeconds.count else {
+            logEvent(.note("sounds only: the microphone did not come back, sound alerts stopped"))
             soundsOnlyChosen = false
-            releaseSessionOfStoppedStart()
+            soundsOnlyStoppedByItself = true
+            if phase == .paused { releaseAudioSession() } else { releaseSessionOfStoppedStart() }
             onPhaseChange?(phase)
             return
         }
-        lastSoundsOnlyRestartAt = at
-        Task { [weak self] in await self?.listenForSoundsOnly() }
+        let wait = Self.soundsOnlyRetrySeconds[soundsOnlyAttempts]
+        soundsOnlyAttempts += 1
+        soundsOnlyRetryTask?.cancel()
+        let run = runID
+        soundsOnlyRetryTask = Task { [weak self] in
+            guard let waiter = self?.soundsOnlyRetryWait else { return }
+            await waiter(wait)
+            guard let self, !Task.isCancelled, self.runID == run, self.soundsOnlyChosen, !self.isListeningForSoundsOnly else { return }
+            self.soundsOnlyRetryTask = nil
+            await self.listenForSoundsOnly(retrying: true)
+        }
     }
 
     /// Waiting for Wi-Fi or for room on the phone has no timer, but
@@ -3329,6 +3391,9 @@ public final class CaptionPipeline {
         soundClassifierUnavailable = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
+        soundsOnlyStoppedByItself = false
+        soundsOnlyRetryTask?.cancel()
+        soundsOnlyRetryTask = nil
         soundsOnlyWatchTask?.cancel()
         soundsOnlyWatchTask = nil
         staleCommitTask?.cancel()

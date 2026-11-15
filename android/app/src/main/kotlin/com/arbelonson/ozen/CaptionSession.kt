@@ -845,7 +845,7 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground)?.let(::applyNoticeUpdate)
+        stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
     }
 
     private fun applyNoticeUpdate(update: StoppedCaptionsNotice.Update) {
