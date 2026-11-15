@@ -95,4 +95,48 @@ class FileTranscriptKeeperTest {
         assertTrue(saved().isEmpty())
         assertFalse(marker.exists())
     }
+
+    @Test
+    fun aFileThatBreaksPartwayIsSavedOnceUnderTheSameIdWithItsLines() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(6))
+        val partial = FileTranscriptRecord.make("Lecture.mp3", said(6), clock + 90, 3_600.0, "small", id = keeper.id, languageCode = "en")
+        assertTrue(store.save(partial))
+        keeper.finished()
+        assertEquals(listOf(keeper.id), saved().map { it.id })
+        assertEquals(6, store.load(keeper.id)!!.segments.size)
+        assertFalse(marker.exists())
+        assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
+    }
+
+    @Test
+    fun stoppingBeforeAnyBatchWasSavedHasNothingToRemoveAndNothingToRecover() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(2))
+        keeper.discard()
+        assertTrue(saved().isEmpty())
+        assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
+    }
+
+    @Test
+    fun turningHistoryOffMidRunRemovesWhatWasAlreadyKept() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(5))
+        assertEquals(1, saved().size)
+        saving = false
+        keeper.linesSoFar(said(6))
+        assertTrue(saved().isEmpty())
+        assertFalse(marker.exists())
+    }
+
+    @Test
+    fun finishingWithHistoryOffLeavesNoUnfinishedCopy() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(5))
+        saving = false
+        keeper.finished()
+        assertTrue(saved().isEmpty())
+        assertFalse(marker.exists())
+        assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
+    }
 }

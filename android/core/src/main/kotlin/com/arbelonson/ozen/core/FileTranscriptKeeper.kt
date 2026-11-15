@@ -46,7 +46,11 @@ class FileTranscriptKeeper(
     /** Every line so far; saves when enough are new, or enough time has passed since the last save. */
     fun linesSoFar(lines: List<TranscribedLine>) {
         val fresh = lines.size - keptLines
-        if (fresh <= 0 || !historyOn()) return
+        if (!historyOn()) {
+            dropKept()
+            return
+        }
+        if (fresh <= 0) return
         val due = fresh >= everyLines || now() - lastKept >= everySeconds
         if (!due) return
         val reach = maxOf(recordingSeconds ?: 0.0, lines.maxOf { it.endSeconds })
@@ -63,7 +67,16 @@ class FileTranscriptKeeper(
 
     /** The finished conversation has been saved under [id]: nothing is left to recover. */
     fun finished() {
+        if (!historyOn()) dropKept()
         marker.delete()
+    }
+
+    /** History was switched off meanwhile: the unfinished copy it already holds goes, as nothing is to be kept. */
+    private fun dropKept() {
+        if (keptLines == 0 && !marker.exists()) return
+        runCatching { store.delete(id) }
+        marker.delete()
+        keptLines = 0
     }
 
     /** The run ended without text worth keeping (stopped, or failed): what was kept goes. */
