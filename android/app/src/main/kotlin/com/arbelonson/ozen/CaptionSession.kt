@@ -24,6 +24,7 @@ import com.arbelonson.ozen.core.AwaySoundRecord
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.DamagedModelCleanup
 import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.BuiltInWhileWaiting
 import com.arbelonson.ozen.core.EngineUnavailability
@@ -378,12 +379,12 @@ class CaptionSession(
     suspend fun removeDamagedAfterCrash() {
         if (loadCrash.showing.value == null) return
         val current = settings.current.value.phoneModel
-        val removed = withContext(Dispatchers.IO) { PhoneModelDownloader(File(modelFolder, current.file), current.source, modelFetcher).removeIfDamaged() }
-        if (!removed) return
-        note("${current.file} did not match the published file after the app was ended while it set up; removed")
-        loadCrash.dismiss()
-        phoneModels.refreshInstalled()
-        damagedModelNotice.value = true
+        DamagedModelCleanup(PhoneModelDownloader(File(modelFolder, current.file), current.source, modelFetcher)).run {
+            note("${current.file} did not match the published file after the app was ended while it set up; removed")
+            loadCrash.dismiss()
+            phoneModels.refreshInstalled()
+            damagedModelNotice.value = true
+        }
     }
 
     private var screensInFront = 0
