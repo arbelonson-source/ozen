@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
@@ -14,6 +15,9 @@ import kotlinx.coroutines.withContext
 
 class HistoryDeletesTest {
     private val main = Executors.newSingleThreadExecutor { Thread(it, "fake-main") }.asCoroutineDispatcher()
+
+    @AfterTest
+    fun closeMain() = main.close()
 
     @Test
     fun aDeleteStuckBehindASaveDoesNotHoldTheCallingThread() {
