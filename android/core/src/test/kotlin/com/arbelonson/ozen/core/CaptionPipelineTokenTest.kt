@@ -642,6 +642,7 @@ class CaptionPipelineTokenTest {
             assertTrue(eventually { pipeline.segments.size == 2 })
             assertNull(pipeline.segments[1].speakerClusterID)
         } finally {
+            embedder.release()
             pipeline.stop()
         }
     }
