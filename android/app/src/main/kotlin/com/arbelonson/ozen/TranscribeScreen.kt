@@ -41,13 +41,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
@@ -77,6 +80,8 @@ const val TRANSCRIBE_SUBTITLES = "transcribe-subtitles"
 
 private val PRIVACY_LINE get() = tr("ההקלטה נשארת בטלפון. שום דבר לא נשלח לשום מקום.", "The recording stays on this phone. Nothing is sent anywhere.")
 
+private val BUSY_LINE get() = tr("ההקלטה האחרת עדיין בהמרה לטקסט. שתפו את זו שוב כשההמרה תסתיים.", "Ozen is still transcribing the other file. Share this one again when it's done.")
+
 @Composable
 internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscription, onClose: () -> Unit) {
     var confirmingStop by rememberSaveable { mutableStateOf(false) }
@@ -97,7 +102,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
-        is FileTranscription.Working -> WorkingPage(state, onCancel = { confirmingStop = true })
+        is FileTranscription.Working -> WorkingPage(state, transcriber.busyNotice, onCancel = { confirmingStop = true })
         is FileTranscription.Done -> DonePage(state, close)
         is FileTranscription.Failed -> OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
             Text(state.name, style = MaterialTheme.typography.titleMedium)
@@ -232,7 +237,8 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
 }
 
 @Composable
-private fun WorkingPage(working: FileTranscription.Working, onCancel: () -> Unit) {
+private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNotice, onCancel: () -> Unit) {
+    val another by busyNotice.shown.collectAsStateWithLifecycle()
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
@@ -256,7 +262,15 @@ private fun WorkingPage(working: FileTranscription.Working, onCancel: () -> Unit
         }
     }
     OzenScreen(working.name, closeLabel = "", scrolls = false) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Outside the caption list, so it stays composed (and announced) while the lines scroll.
+        if (another) {
+            Text(
+                BUSY_LINE,
+                modifier = Modifier.testTag("transcribe-busy").semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             // The progress stays put above the newest lines while they leave
             // room for two lines. At the largest text on a small phone the
             // progress alone fills the page (and squeezed Cancel), so there

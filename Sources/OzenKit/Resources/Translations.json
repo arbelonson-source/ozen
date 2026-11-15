@@ -1159,7 +1159,8 @@
   "Star removed": "ኮከቡ ተወግዷል",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል፤ እንደገና ያወርደዋል።",
-  "Tap to download it again": "እንደገና ለማውረድ ይንኩ"
+  "Tap to download it again": "እንደገና ለማውረድ ይንኩ",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ሌላውን ፋይል አሁንም ወደ ጽሑፍ እየቀየረ ነው። ይህን ሲጨርስ እንደገና ያጋሩት።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2321,7 +2322,8 @@
   "Star removed": "أُزيلت النجمة",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen وستنزّله من جديد.",
-  "Tap to download it again": "المسوا لتنزيله مجددًا"
+  "Tap to download it again": "المسوا لتنزيله مجددًا",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "لا يزال Ozen يحوّل الملف الآخر إلى نص. شاركوا هذا الملف مرة أخرى عند الانتهاء."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3483,7 +3485,8 @@
   "Star removed": "已取消星标",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "这部手机上的语音模型已损坏，Ozen 已将其删除，并会重新下载。",
-  "Tap to download it again": "点按重新下载"
+  "Tap to download it again": "点按重新下载",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen 仍在转写另一个文件。请在完成后再次分享这个文件。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4645,7 +4648,8 @@
   "Star removed": "Étoile retirée",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau.",
-  "Tap to download it again": "Touchez pour le télécharger de nouveau"
+  "Tap to download it again": "Touchez pour le télécharger de nouveau",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen est encore en train de transcrire l’autre fichier. Partagez celui-ci à nouveau quand ce sera terminé."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5807,7 +5811,8 @@
   "Star removed": "Stern entfernt",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt und lädt es erneut herunter.",
-  "Tap to download it again": "Zum erneuten Laden tippen"
+  "Tap to download it again": "Zum erneuten Laden tippen",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen wandelt gerade noch die andere Datei um. Teilt diese Datei erneut, wenn das fertig ist."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -6969,7 +6974,8 @@
   "Star removed": "तारा हटाया गया",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया और फिर से डाउनलोड करेगा।",
-  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें"
+  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen अभी दूसरी फ़ाइल को लिखित रूप में बदल रहा है। यह काम पूरा होने पर इस फ़ाइल को दोबारा शेयर करें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8131,7 +8137,8 @@
   "Star removed": "Estrela removida",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o e vai transferi-lo de novo.",
-  "Tap to download it again": "Toque para o transferir novamente"
+  "Tap to download it again": "Toque para o transferir novamente",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "O Ozen ainda está a transcrever o outro ficheiro. Partilhe este de novo quando terminar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9293,7 +9300,8 @@
   "Star removed": "Звёздочка убрана",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Речевая модель на этом телефоне была повреждена, поэтому Ozen удалил её и загрузит заново.",
-  "Tap to download it again": "Нажмите, чтобы загрузить её снова"
+  "Tap to download it again": "Нажмите, чтобы загрузить её снова",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ещё расшифровывает другой файл. Поделитесь этим файлом снова, когда расшифровка закончится."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10455,7 +10463,8 @@
   "Star removed": "Estrella quitada",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó y lo descargará de nuevo.",
-  "Tap to download it again": "Toca para descargarlo de nuevo"
+  "Tap to download it again": "Toca para descargarlo de nuevo",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen sigue transcribiendo el otro archivo. Comparte este de nuevo cuando termine."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11617,6 +11626,7 @@
   "Star removed": "Зірочку прибрано",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Мовну модель на цьому телефоні було пошкоджено, тому Ozen видалив її й завантажить знову.",
-  "Tap to download it again": "Натисніть, щоб завантажити її знову"
+  "Tap to download it again": "Натисніть, щоб завантажити її знову",
+  "Ozen is still transcribing the other file. Share this one again when it's done.": "Ozen ще розшифровує інший файл. Поділіться цим файлом знову, коли розшифрування завершиться."
  }
 }
