@@ -904,7 +904,7 @@ class CaptionScreenDeviceTest {
             assertEquals(Uri.parse("tel:0501234567"), started.single().data)
 
             started.clear()
-            val call = lineText("050 123 4567").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Call 0501234567" }
+            val call = lineText("050 123 4567").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Call 0 5 0, 1 2 3, 4 5 6 7" }
             compose.runOnUiThread { call.action() }
             compose.waitUntil(5_000) { started.isNotEmpty() }
             assertEquals(Uri.parse("tel:0501234567"), started.single().data)
