@@ -549,6 +549,8 @@ class PhasePresentationTest {
             assertEquals(HomeServer.unreachableDetail(), shown.detail)
             assertTrue(shown.detail?.contains("scan its QR code again") == true)
             assertTrue(shown.detail?.endsWith("Tap to try again") == true)
+            val offered = present(failure(unavailable(EngineUnavailability.Kind.HomeServerUnreachable)), TranscriptionEngineKind.HomeServer, offerBackup = true)
+            assertEquals(HomeServer.unreachableBackupDetail(), offered.detail)
         }
     }
 

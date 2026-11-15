@@ -103,6 +103,14 @@ public enum HomeServer {
         return base + " " + moved + " " + tr("בדקו גם שאוזן מורשית בהגדרות › פרטיות ואבטחה › רשת מקומית.", "Also check that Ozen is allowed under Settings › Privacy & Security › Local Network.")
     }
 
+    /// The same, when no backup is on the phone and the tap opens the
+    /// backup settings instead of retrying.
+    public static func unreachableBackupDetail(localNetworkHint: Bool = false) -> String {
+        localNetworkHint
+            ? tr("בדקו שהמחשב דלוק ומחובר, ושאוזן מורשית בהגדרות › פרטיות ואבטחה › רשת מקומית. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on and connected, and that Ozen is allowed under Settings › Privacy & Security › Local Network. If it moved to a new network, scan its QR code again · Tap to add a backup on the phone")
+            : tr("בדקו שהמחשב דלוק ומחובר. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on and connected. If it moved to a new network, scan its QR code again · Tap to add a backup on the phone")
+    }
+
     /// What the banner says when the phone could not reach the computer
     /// and a retry is on offer. Two causes it can't tell from a computer
     /// that is off: the computer got a new address (only scanning its QR

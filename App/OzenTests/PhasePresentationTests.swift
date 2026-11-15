@@ -391,6 +391,8 @@ struct PhasePresentationTests {
             #expect(shown.detail?.contains("scan its QR code again") == true)
             #expect(shown.detail?.contains("Settings › Privacy & Security › Local Network") == true)
             #expect(shown.detail?.hasSuffix("Tap to try again") == true)
+            let offered = PhasePresentation(phase: phase, engine: .homeServer, interruptedBySystem: false, offerBackup: true)
+            #expect(offered.detail == HomeServer.unreachableBackupDetail(localNetworkHint: true))
         }
     }
 

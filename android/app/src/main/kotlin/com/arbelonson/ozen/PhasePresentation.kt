@@ -421,7 +421,7 @@ class PhasePresentation private constructor(
                     detail = if (scheduledRetry != null) {
                         tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
                     } else {
-                        tr("בדקו שהמחשב דלוק · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on · Tap to add a backup on the phone")
+                        HomeServer.unreachableBackupDetail()
                     },
                     systemImage = result.systemImage,
                     tint = PhaseTint.Attention,

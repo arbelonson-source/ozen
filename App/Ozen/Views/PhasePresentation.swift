@@ -237,7 +237,7 @@ struct PhasePresentation {
                     title: title,
                     detail: scheduledRetry != nil
                         ? tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
-                        : tr("בדקו שהמחשב דלוק · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on · Tap to add a backup on the phone"),
+                        : HomeServer.unreachableBackupDetail(localNetworkHint: true),
                     systemImage: systemImage,
                     tint: .orange,
                     isBusy: scheduledRetry != nil,

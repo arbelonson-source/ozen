@@ -214,6 +214,9 @@ struct HomeServerEngineTests {
             let phoneBanner = HomeServer.unreachableDetail(localNetworkHint: true)
             #expect(phoneBanner.contains(moved) && phoneBanner.contains(local))
             #expect(phoneBanner.hasSuffix("Tap to try again"))
+            let backup = HomeServer.unreachableBackupDetail()
+            #expect(backup.contains(moved) && backup.hasSuffix("Tap to add a backup on the phone") && !backup.contains(local))
+            #expect(HomeServer.unreachableBackupDetail(localNetworkHint: true).contains(local))
             for typed in ["192.168.1.20", "203.0.113.5"] {
                 #expect(HomeServer.unreachableText(address: typed).contains(moved), "\(typed)")
                 #expect(!HomeServer.unreachableText(address: typed).contains(local), "\(typed)")

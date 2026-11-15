@@ -136,6 +136,10 @@ object HomeServer {
         return base + " " + tr("אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו.", "If it moved to a new network, scan its QR code again.")
     }
 
+    /** The same, when the tap opens the backup settings instead of retrying. */
+    fun unreachableBackupDetail(): String =
+        tr("בדקו שהמחשב דלוק ומחובר. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on and connected. If it moved to a new network, scan its QR code again · Tap to add a backup on the phone")
+
     /**
      * What the banner says when the phone could not reach the computer and
      * a retry is on offer. A computer that got a new address looks the

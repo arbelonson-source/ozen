@@ -76,6 +76,8 @@ class HomeServerTest {
             assertTrue(banner.contains(moved))
             assertTrue(banner.endsWith("Tap to try again"))
             assertFalse(banner.contains("Local Network"))
+            val backup = HomeServer.unreachableBackupDetail()
+            assertTrue(backup.contains(moved) && backup.endsWith("Tap to add a backup on the phone"))
             for (typed in listOf("192.168.1.20", "203.0.113.5")) {
                 assertTrue(HomeServer.unreachableText(typed).contains(moved), typed)
             }
