@@ -51,11 +51,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.TranscribedLine
@@ -165,7 +167,10 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
             )
         }
         Text(ready.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
-        ready.durationSeconds?.let { Text(tr("אורך: %1", "Length: %1", listOf(TranscriptFormats.clock(it)))) }
+        ready.durationSeconds?.let {
+            val spokenLength = tr("אורך: %1", "Length: %1", listOf(ConversationStats.spokenDuration(it)))
+            Text(tr("אורך: %1", "Length: %1", listOf(TranscriptFormats.clock(it))), modifier = Modifier.semantics { contentDescription = spokenLength })
+        }
         ChoiceRow(tr("שפה", "Language"), ready.language.nativeName, "transcribe-language") { choosingLanguage = true }
         if (model != null) {
             ChoiceRow(tr("מודל", "Model"), model.displayName, "transcribe-model", enabled = ready.downloaded.size > 1) { choosingModel = true }
@@ -387,8 +392,9 @@ private fun LinesList(
         if (lead != null) item { lead() }
         items(lines) { line ->
             // One stop for a screen reader, the time with its words, as on the iPhone.
+            val spokenTime = ConversationStats.spokenDuration(line.startSeconds) + "."
             Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp).semantics { contentDescription = spokenTime })
                 Text(
                     captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null, languageCode = languageCode),
                     style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),

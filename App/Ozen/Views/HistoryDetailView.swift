@@ -620,11 +620,17 @@ private struct SavedLineRow: View {
         return Date(timeIntervalSince1970: segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened)
     }
 
-    /// VoiceOver hears the time the screen shows above the line, and no
+    private var spokenTimeText: String {
+        if let recordingStart { return ConversationStats.spokenDuration(segment.startTimestamp - recordingStart) }
+        return timeText
+    }
+
+    /// VoiceOver hears the time the screen shows above the line (a
+    /// position in a recording as words), and no
     /// "Unknown speaker:" before every line of an unrecognised voice.
     private var accessibilityText: AttributedString {
         CaptionSpeechText.label(
-            whole: SavedLineSpeech.label(for: segment, time: showsTime ? timeText : nil, uncertain: isUncertain),
+            whole: SavedLineSpeech.label(for: segment, time: showsTime ? spokenTimeText : nil, uncertain: isUncertain),
             endingWith: segment.text,
             languageCode: languageCode
         )

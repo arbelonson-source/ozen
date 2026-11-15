@@ -82,7 +82,9 @@ struct TranscribeRecordingView: View {
                 Text(ready.name)
                     .font(.headline)
                 if let seconds = ready.durationSeconds {
+                    let spokenLength = ConversationStats.spokenDuration(seconds)
                     Text(tr("אורך: %1", "Length: %1", args: ["\(TranscriptFormats.clock(seconds))"]))
+                        .accessibilityLabel(tr("אורך: %1", "Length: %1", args: ["\(spokenLength)"]))
                 }
                 Text(tr("ההקלטה נשארת בטלפון. שום דבר לא נשלח לשום מקום.", "The recording stays on this phone. Nothing is sent anywhere."))
                     .font(.footnote)
@@ -252,6 +254,7 @@ struct TranscribeRecordingView: View {
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel(ConversationStats.spokenDuration(line.startSeconds) + ".")
                 Text(CaptionLayout.directed(line.text, languageCode: code))
             }
             .accessibilityElement(children: .combine)

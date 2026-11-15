@@ -87,9 +87,11 @@ data class SavedLine(
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
+                val offset = segment.startTimestamp - record.startedAt
                 val time = if (segment.id !in timed) null
-                else if (record.fromRecording) TranscriptFormats.clock(segment.startTimestamp - record.startedAt)
+                else if (record.fromRecording) TranscriptFormats.clock(offset)
                 else clockTime(segment.startTimestamp, zone)
+                val spokenTime = if (time != null && record.fromRecording) ConversationStats.spokenDuration(offset) else time
                 val unsure = markUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
                 val phones = PhoneNumbers.matches(segment.text)
                 SavedLine(
@@ -97,7 +99,7 @@ data class SavedLine(
                     time = time,
                     speaker = segment.speakerName.takeIf { CaptionLayout.showsSpeakerLabel(segment, previous) },
                     text = CaptionLayout.displayText(segment.text, language),
-                    spoken = SavedLineSpeech.label(segment, time, uncertain = unsure),
+                    spoken = SavedLineSpeech.label(segment, spokenTime, uncertain = unsure),
                     starred = segment.isStarred,
                     unsure = unsure,
                     copied = CaptionLayout.copiedText(segment.text),

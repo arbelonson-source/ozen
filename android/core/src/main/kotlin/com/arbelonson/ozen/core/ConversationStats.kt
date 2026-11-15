@@ -313,6 +313,34 @@ data class ConversationStats(
             }
         }
 
+        /**
+         * A position in a recording as words, for a screen reader: "5 seconds",
+         * "1 minute, 2 seconds", "1 hour, 2 minutes, 7 seconds".
+         */
+        fun spokenDuration(seconds: Double): String {
+            val whole = if (seconds.isFinite()) Math.floor(seconds.coerceIn(0.0, 1e9)).toInt() else 0
+            val hours = whole / 3_600
+            val minutes = whole % 3_600 / 60
+            val rest = whole % 60
+            val parts = mutableListOf<String>()
+            if (hours > 0) parts += spokenHours(hours)
+            if (minutes > 0) parts += spokenMinutes(minutes)
+            if (rest > 0 || parts.isEmpty()) parts += secondsText(rest)
+            return parts.joinToString(", ")
+        }
+
+        private fun spokenHours(count: Int): String = when (val language = Localization.language) {
+            UILanguage.English -> if (count == 1) "1 hour" else "$count hours"
+            UILanguage.Hebrew -> when (count) { 1 -> "שעה אחת"; 2 -> "שעתיים"; else -> "$count שעות" }
+            else -> countedTime(count, hour = true, language)
+        }
+
+        private fun spokenMinutes(count: Int): String = when (val language = Localization.language) {
+            UILanguage.English -> if (count == 1) "1 minute" else "$count minutes"
+            UILanguage.Hebrew -> when (count) { 1 -> "דקה אחת"; 2 -> "שתי דקות"; else -> "$count דקות" }
+            else -> countedTime(count, hour = false, language)
+        }
+
         fun paceText(wordsPerMinute: Double): String =
             tr("%1 לדקה", "%1 per minute", listOf(wordsText(wordsPerMinute.roundToInt())))
 
