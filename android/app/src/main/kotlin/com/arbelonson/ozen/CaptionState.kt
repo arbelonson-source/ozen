@@ -130,6 +130,7 @@ data class CaptionScreenState(
     val coveringForCloud: Boolean = false,
     val coveredEngine: TranscriptionEngineKind? = null,
     val coverReason: EngineUnavailability.Kind? = null,
+    val coverDetail: String? = null,
     /** The home computer can't be reached and the phone has no backup to carry on with. */
     val offerBackup: Boolean = false,
     /** The connection as last reported; null when unknown. */
@@ -147,7 +148,7 @@ data class CaptionScreenState(
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
             coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
-            builtInOffered, modelGettingReady, modelJustReady,
+            builtInOffered, modelGettingReady, modelJustReady, coverDetail,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -219,6 +220,7 @@ object CaptionState {
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
+        coverDetail: String? = null,
         offerBackup: Boolean = false,
         network: NetworkConditions? = null,
         soundsOnly: Boolean = false,
@@ -257,6 +259,7 @@ object CaptionState {
             coveringForCloud = coveringForCloud,
             coveredEngine = coveredEngine,
             coverReason = coverReason,
+            coverDetail = coverDetail,
             offerBackup = offerBackup,
             network = network,
             soundsOnly = soundsOnly,

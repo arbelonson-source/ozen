@@ -179,6 +179,22 @@ struct PhasePresentationTests {
         #expect(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
 
+    @Test("a home computer that turned the phone away is named by why: pairing changed, no code, or code refused")
+    func rejectedHomeServerNamesTheProblem() {
+        func shown(_ detail: String) -> PhasePresentation {
+            PhasePresentation(phase: failure(EngineUnavailability(kind: .homeServerRejected, detail: detail)), engine: .homeServer, interruptedBySystem: false)
+        }
+        #expect(shown(HomeServer.pairingChanged).title == HomeServer.pairingChangedText())
+        #expect(shown(HomeServer.noCode).title == HomeServer.rejectionTitle(detail: HomeServer.noCode))
+        #expect(shown("pairing code refused").title == HomeServer.rejectionTitle(detail: "pairing code refused"))
+        #expect(shown(HomeServer.pairingChanged).title != shown("pairing code refused").title)
+        func covering(_ detail: String) -> PhasePresentation {
+            PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .homeServer, coverReason: .homeServerRejected, coverDetail: detail)
+        }
+        #expect(covering(HomeServer.pairingChanged).detail == HomeServer.rejectedCoverDetail(detail: HomeServer.pairingChanged))
+        #expect(covering(HomeServer.pairingChanged).detail != covering("pairing code refused").detail)
+    }
+
     @Test("a short hint stays in the status button; a long one gets its own line rather than being cut off")
     func longDetailsLeaveTheButton() {
         let listening = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false)

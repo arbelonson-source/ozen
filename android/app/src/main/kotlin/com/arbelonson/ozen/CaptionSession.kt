@@ -1037,6 +1037,7 @@ class CaptionSession(
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,
+            coverDetail = pipeline.coverDetail,
             offerBackup = offersBackup(),
             network = pipeline.networkConditions,
             soundsOnly = pipeline.soundsOnlyShown,

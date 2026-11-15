@@ -121,6 +121,8 @@ public final class CaptionPipeline {
     /// server pairing code needs someone to re-enter it, an unreachable
     /// server doesn't.
     public private(set) var coverReason: EngineUnavailability.Kind?
+    /// What the failure that made the phone cover said, so the screen can tell a changed pairing from a wrong or missing code.
+    public private(set) var coverDetail: String?
     /// While the phone covers for a home computer it couldn't reach, how
     /// often to look whether the computer is back. Without it a single
     /// dropped connection kept a phone that is never stopped on its own
@@ -563,6 +565,7 @@ public final class CaptionPipeline {
         nextStartCoversCloud = false
         if !isCoveringForCloud {
             coverReason = nil
+            coverDetail = nil
             coveredSettings = nil
             homeServerRecheck?.cancel()
             homeServerRecheck = nil
@@ -969,6 +972,7 @@ public final class CaptionPipeline {
         isCoveringForCloud = false
         nextStartCoversCloud = false
         coverReason = nil
+        coverDetail = nil
         coveredSettings = nil
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
@@ -2466,6 +2470,7 @@ public final class CaptionPipeline {
         prepareReplay()
         nextStartCoversCloud = true
         coverReason = failure.engineUnavailability?.kind
+        coverDetail = failure.engineUnavailability?.detail
         coveredSettings = activeSettings
         await start(settings: onPhone)
         if coverReason == .homeServerUnreachable, coveredSettings?.engine == .homeServer {

@@ -124,6 +124,22 @@ object HomeServer {
     /** What a connection test says when the computer's certificate is no longer the one in the QR code. */
     fun pairingChangedText(): String = tr("הצימוד עם המחשב השתנה. סרקו שוב את קוד ה־QR שלו.", "The computer’s pairing changed. Scan its QR code again.")
 
+    /** The headline the caption screen gives a home computer that turned the phone away: the same words Test connection uses. */
+    fun rejectionTitle(detail: String?): String = when (detail) {
+        PAIRING_CHANGED -> pairingChangedText()
+        NO_CODE -> tr("הכתובת או הקוד חסרים", "The address or code is missing")
+        else -> tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code")
+    }
+
+    /** What the caption screen says while the phone carries on by itself because the home computer turned it away. */
+    fun rejectedCoverDetail(detail: String?): String {
+        val pause = tr("הקישו כדי להשהות", "Tap to pause")
+        return when (detail) {
+            PAIRING_CHANGED, NO_CODE -> rejectionTitle(detail) + " · " + pause
+            else -> tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + pause
+        }
+    }
+
     /**
      * What a connection test that got no answer says. Paired at home, the
      * saved address is often one only the home Wi‑Fi reaches; tested away

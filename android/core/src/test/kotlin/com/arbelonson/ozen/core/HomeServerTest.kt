@@ -341,6 +341,21 @@ class HomeServerTest {
     }
 
     @Test
+    fun `the caption screen words a changed pairing, a missing code and a refused code apart`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(HomeServer.pairingChangedText(), HomeServer.rejectionTitle(HomeServer.PAIRING_CHANGED))
+            assertEquals("The address or code is missing", HomeServer.rejectionTitle(HomeServer.NO_CODE))
+            assertEquals("The home computer didn’t accept the pairing code", HomeServer.rejectionTitle("pairing code refused bad"))
+            assertEquals("The home computer didn’t accept the pairing code", HomeServer.rejectionTitle(null))
+            val changed = HomeServer.rejectedCoverDetail(HomeServer.PAIRING_CHANGED)
+            assertEquals(HomeServer.pairingChangedText() + " · Tap to pause", changed)
+            assertFalse(changed.contains("didn’t accept"))
+            assertEquals("The address or code is missing · Tap to pause", HomeServer.rejectedCoverDetail(HomeServer.NO_CODE))
+            assertTrue(HomeServer.rejectedCoverDetail("pairing code refused bad").contains("didn’t accept the pairing code"))
+        }
+    }
+
+    @Test
     fun `the check reads an availability as connected with the time it took, a refused code, no answer, or nothing set up yet`() {
         assertEquals(HomeServerCheck.Connected(42), HomeServerCheck.of(EngineAvailability.Available, 0.0424))
         val refused = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerRejected, "unauthorized")

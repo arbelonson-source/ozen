@@ -95,6 +95,26 @@ public enum HomeServer {
         tr("הצימוד עם המחשב השתנה. סרקו שוב את קוד ה־QR שלו.", "The computer’s pairing changed. Scan its QR code again.")
     }
 
+    /// The headline the caption screen gives a home computer that turned the phone away: the same words Test connection uses.
+    public static func rejectionTitle(detail: String?) -> String {
+        switch detail {
+        case pairingChanged: pairingChangedText()
+        case noCode: tr("הכתובת או הקוד חסרים", "The address or code is missing")
+        default: tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code")
+        }
+    }
+
+    /// What the caption screen says while the phone carries on by itself because the home computer turned it away.
+    public static func rejectedCoverDetail(detail: String?) -> String {
+        let pause = tr("הקישו כדי להשהות", "Tap to pause")
+        switch detail {
+        case pairingChanged, noCode:
+            return rejectionTitle(detail: detail) + " · " + pause
+        default:
+            return tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + pause
+        }
+    }
+
     /// What a connection test that got no answer says. Paired at home, the
     /// saved address is often one only the home Wi‑Fi reaches; tested away
     /// from home it never answers, and "check that the computer is on" sent
