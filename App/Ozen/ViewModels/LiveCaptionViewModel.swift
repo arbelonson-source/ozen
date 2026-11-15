@@ -209,6 +209,8 @@ public final class LiveCaptionViewModel {
     /// Apple's sound classifier, history under Application Support.
     public convenience init(settingsStore: SettingsStore) {
         let audio = AVAudioInputManager()
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let journal = SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log"))
         let pipeline = CaptionPipeline(
             audio: audio,
             engineFactory: { settings in
@@ -238,12 +240,11 @@ public final class LiveCaptionViewModel {
             // CAM++ needs its bundled CoreML model to actually load; a
             // corrupt install falls back to the older, always-available
             // MFCC embedder rather than failing to launch.
-            embedder: CAMPlusPlusSpeakerEmbedder() ?? MFCCSpeakerEmbedder(),
+            embedder: CAMPlusPlusSpeakerEmbedder(journal: journal) ?? MFCCSpeakerEmbedder(),
             soundDetector: SoundAnalysisDetector(),
             network: PathNetworkMonitor(),
             availableStorageBytes: { DeviceStorage.availableBytes() }
         )
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         self.init(
             settingsStore: settingsStore,
             pipeline: pipeline,
@@ -264,7 +265,7 @@ public final class LiveCaptionViewModel {
             notificationsAllowed: { await AlertNotifier.shared.isAllowed() },
             phoneCalls: PhoneCallMonitor(),
             lockScreen: LockScreenCaptionsActivity(),
-            journal: SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log")),
+            journal: journal,
             problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true)),
             listeningRecorder: ListeningRecords.makeRecorder(),
             awaySoundStore: UserDefaultsAwaySoundStore()

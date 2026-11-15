@@ -33,13 +33,17 @@ public final class CAMPlusPlusSpeakerEmbedder: SpeakerEmbedding, @unchecked Send
     /// loading the model; a test holds this to the model's real output.
     public var embeddingLength: Int? { 512 }
     private var loadedModel: MLModel?
-    private var loadFailed = false
+    /// A failed load is tried again after a while (see `ModelLoadRetry`),
+    /// not given up on until the next launch; the journal notes each step.
+    private var retry = ModelLoadRetry()
+    private let journal: SessionJournal?
+    private let uptime: @Sendable () -> TimeInterval
 
     /// Nil if the bundled model can't be found, a corrupt install rather than
     /// something to crash the app launching over. Callers fall back to
     /// `MFCCSpeakerEmbedder`. Only the file's presence is checked here; a
     /// model that is there but won't load gives no voice prints, and so no
-    /// speaker labels, until the next launch.
+    /// speaker labels, until a later try loads it (see `ModelLoadRetry`).
     ///
     /// Looks for `.mlmodelc`, not the `.mlpackage` the source tree and
     /// `Package.swift` name: Xcode's own SPM integration compiles a
@@ -47,11 +51,13 @@ public final class CAMPlusPlusSpeakerEmbedder: SpeakerEmbedding, @unchecked Send
     /// part of the build (CoreML gets this special handling regardless of
     /// `.copy` vs `.process`), so that's what actually ends up in
     /// `Bundle.module` — confirmed by CI, not assumed.
-    public init?() {
+    public init?(journal: SessionJournal? = nil, uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         guard let modelURL = Bundle.module.url(forResource: "CAMPlusPlus", withExtension: "mlmodelc") else {
             return nil
         }
         self.modelURL = modelURL
+        self.journal = journal
+        self.uptime = uptime
     }
 
     /// Loads the model on the CPU. This model is small (7.3M parameters) and
@@ -63,15 +69,22 @@ public final class CAMPlusPlusSpeakerEmbedder: SpeakerEmbedding, @unchecked Send
         lock.lock()
         defer { lock.unlock() }
         if let loadedModel { return loadedModel }
-        guard !loadFailed else { return nil }
+        let now = uptime()
+        guard retry.shouldTry(at: now) else { return nil }
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .cpuOnly
         do {
             let model = try MLModel(contentsOf: modelURL, configuration: configuration)
             loadedModel = model
+            if retry.failureCount > 0 {
+                journal?.append("speaker voice model loaded again after \(retry.failureCount) failed tries", at: Date().timeIntervalSince1970)
+            }
+            retry.succeeded()
             return model
         } catch {
-            loadFailed = true
+            retry.failed(at: now)
+            let wait = retry.nextGap.map { "trying again in \(Int($0)) s" } ?? "giving up until the app restarts"
+            journal?.append("speaker voice model failed to load (try \(retry.failureCount)), \(wait)", at: Date().timeIntervalSince1970)
             return nil
         }
     }
