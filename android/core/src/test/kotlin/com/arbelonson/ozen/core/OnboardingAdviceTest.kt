@@ -26,8 +26,9 @@ class OnboardingAdviceTest {
 
     @Test
     fun `the Wi-Fi sentence is shown only while the chosen model is not on the phone`() {
-        assertTrue(OnboardingModelNote.showsWifiNote("small.bin", emptySet()))
-        assertTrue(OnboardingModelNote.showsWifiNote("small.bin", setOf("tiny.bin")))
-        assertFalse(OnboardingModelNote.showsWifiNote("small.bin", setOf("small.bin")))
+        assertTrue(OnboardingModelNote.showsWifiNote("small.bin", emptySet(), mobileDataAllowed = false))
+        assertTrue(OnboardingModelNote.showsWifiNote("small.bin", setOf("tiny.bin"), mobileDataAllowed = false))
+        assertFalse(OnboardingModelNote.showsWifiNote("small.bin", setOf("small.bin"), mobileDataAllowed = false))
+        assertFalse(OnboardingModelNote.showsWifiNote("small.bin", emptySet(), mobileDataAllowed = true))
     }
 }

@@ -498,7 +498,7 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
     Page(Icons.Rounded.Speed, pageTitle(MODEL_PAGE)) {
         Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
-        if (OnboardingModelNote.showsWifiNote(chosen, installed)) {
+        if (OnboardingModelNote.showsWifiNote(chosen, installed, settings.allowCellularModelDownload)) {
             Body(tr("ההורדה דורשת Wi‑Fi. אפשר לאשר הורדה גם בחבילת הגלישה בהגדרות.", "The download needs Wi‑Fi. Downloads on mobile data can be allowed in Settings."), Modifier.testTag("model-page-wifi"))
         }
         missing?.let {
