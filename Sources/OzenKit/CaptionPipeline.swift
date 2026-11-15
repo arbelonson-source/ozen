@@ -2075,7 +2075,6 @@ public final class CaptionPipeline {
         if !isKnown && token.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return
         }
-        dropLinesTheReplayRewrites()
         // "toda. toda. toda." ("thanks") invented window after window on a
         // quiet room: see `SilencePhraseGuard`. Suppressing this token
         // still must not swallow a true final: the words already shown
@@ -2087,6 +2086,7 @@ public final class CaptionPipeline {
             if token.isFinal { commitWithoutNewWords(token.utteranceID) }
             return
         }
+        dropLinesTheReplayRewrites()
         var enriched = token
         if enriched.speakerClusterID == nil {
             if let assigned = utteranceClusterAssignments[token.utteranceID] {

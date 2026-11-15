@@ -4,6 +4,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 
@@ -92,5 +93,20 @@ class ReplayHalfLineTest {
         assertTrue(eventually { rig.captions.segments.size == 2 })
         assertTrue(rig.captions.segments.first().text.startsWith("half line"))
         assertEquals("new line", rig.captions.segments.last().text)
+    }
+
+    @Test
+    fun `a replayed line the silence guard refuses leaves the half line in place`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(5.0, 0.2f)
+        rig.cloud.emit(token("half line", false))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.dropAndReplay()
+
+        rig.phone.emit(token("תודה. תודה. תודה.", true))
+        delay(300)
+        assertEquals(1, rig.captions.segments.size)
+        assertTrue(rig.captions.segments.first().text.startsWith("half line"))
     }
 }

@@ -2222,7 +2222,6 @@ class CaptionPipeline(
         if (!isKnown && isBlank(token.text)) {
             return
         }
-        dropLinesTheReplayRewrites()
         // "toda. toda. toda." ("thanks") invented window after window on a
         // quiet room: see `SilencePhraseGuard`. Suppressing this token
         // still must not swallow a true final: the words already shown
@@ -2232,6 +2231,7 @@ class CaptionPipeline(
             if (token.isFinal) commitWithoutNewWords(token.utteranceID)
             return
         }
+        dropLinesTheReplayRewrites()
         var enriched = token
         if (token.utteranceID in correctedUtterances) {
             enriched = enriched.copy(speakerClusterID = utteranceClusterAssignments[token.utteranceID])

@@ -88,4 +88,19 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.first?.text.hasPrefix("half line") == true)
         #expect(pipeline.segments.last?.text == "new line")
     }
+
+    @Test("a replayed line the silence guard refuses leaves the half line in place")
+    func refusedReplayKeepsTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 5, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "half line", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "תודה. תודה. תודה.", isFinal: true, timestamp: 2_000))
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(pipeline.segments.map(\.text).count == 1)
+        #expect(pipeline.segments.first?.text.hasPrefix("half line") == true)
+    }
 }
