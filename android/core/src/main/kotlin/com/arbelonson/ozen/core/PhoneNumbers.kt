@@ -70,10 +70,24 @@ object PhoneNumbers {
         }
         val northAmerican = northAmericanPattern.matcher(read)
         while (northAmerican.find()) {
-            found.add(Match(northAmerican.start(), northAmerican.end(), digitsOf(northAmerican.group())))
+            if (looksWritten(northAmerican.group()) || callWordBefore(read.substring(0, northAmerican.start()))) {
+                found.add(Match(northAmerican.start(), northAmerican.end(), digitsOf(northAmerican.group())))
+            }
         }
         return found
     }
+
+    /**
+     * True when a North American run is written the way a phone number is:
+     * parentheses, a dash or dot between the groups, or a leading 1. Digit
+     * groups with only spaces between them are also how amounts and years
+     * are said, so those need a call word before them ([callWordBefore]).
+     */
+    private fun looksWritten(run: String): Boolean = run.startsWith("1") || run.any { it == '(' || it == '.' || it == '-' || it == '\u2011' }
+
+    private fun callWordBefore(before: String): Boolean = callWordPattern.matcher(before.takeLast(40)).find()
+
+    private val callWordPattern: Pattern = Pattern.compile("""\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:\s+[\w']+){0,2}\s*[:,]?\s*$""", Pattern.CASE_INSENSITIVE)
 
     /**
      * [text] with every digit of another script (Arabic-Indic, Persian,
