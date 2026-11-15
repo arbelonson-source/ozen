@@ -17,7 +17,7 @@ class QuickPhraseUndoTest {
 
     @Test
     fun `with a screen reader the message says that Undo is available`() = Localization.withLanguage(UILanguage.English) {
-        assertEquals("Deleted: Thanks. Undo is available.", QuickPhraseUndo.deletedMessage("Thanks", screenReaderOn = true))
+        assertEquals("Deleted: Thanks. Undo is available until you leave this screen.", QuickPhraseUndo.deletedMessage("Thanks", screenReaderOn = true))
     }
 
     @Test

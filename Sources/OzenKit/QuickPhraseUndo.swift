@@ -30,6 +30,6 @@ public enum QuickPhraseUndo {
     }
 
     public static func deletedAnnouncement(_ removed: String) -> String {
-        tr("נמחק: %1. אפשר להחזיר.", "Deleted: %1. Undo is available.", args: ["\(removed)"])
+        tr("נמחק: %1. אפשר להחזיר עד היציאה מהמסך.", "Deleted: %1. Undo is available until you leave this screen.", args: ["\(removed)"])
     }
 }

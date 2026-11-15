@@ -11,9 +11,18 @@ internal class BusyNotice {
     private val count = MutableStateFlow(0)
     val refusals: StateFlow<Int> = count
 
+    private var announced = 0
+
+    fun announcementDue(): Boolean {
+        val current = count.value
+        val due = current > announced
+        announced = current
+        return due
+    }
+
     fun accept(busy: Boolean): Boolean {
         raised.value = busy
-        if (busy) count.value += 1 else count.value = 0
+        if (busy) count.value += 1 else resetCount()
         return !busy
     }
 
@@ -23,6 +32,11 @@ internal class BusyNotice {
 
     fun clear() {
         raised.value = false
+        resetCount()
+    }
+
+    private fun resetCount() {
         count.value = 0
+        announced = 0
     }
 }

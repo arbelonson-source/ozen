@@ -264,7 +264,7 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
     val another by busyNotice.shown.collectAsStateWithLifecycle()
     val refusals by busyNotice.refusals.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    LaunchedEffect(refusals) { if (refusals > 0) ScreenReader.said(context, BUSY_LINE) }
+    LaunchedEffect(refusals) { if (busyNotice.announcementDue()) ScreenReader.said(context, BUSY_LINE) }
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
