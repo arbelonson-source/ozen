@@ -7,20 +7,28 @@ import kotlinx.coroutines.flow.StateFlow
 internal class ShareReplacement<T : Any> {
     private val held = MutableStateFlow<T?>(null)
     val waiting: StateFlow<T?> = held
+    private var opening = false
 
     fun arrive(file: T, shown: FileTranscription): Boolean {
-        if (!shown.leavingLosesText) return true
+        if (opening || !shown.leavingLosesText) return true
         held.value = file
         return false
     }
 
-    fun replace(): T? = held.value.also { held.value = null }
+    fun replace(): T? {
+        val file = held.value
+        held.value = null
+        opening = file != null
+        return file
+    }
 
     fun keep() {
         held.value = null
     }
 
     fun follow(shown: FileTranscription) {
-        if (!shown.leavingLosesText) held.value = null
+        if (shown.leavingLosesText) return
+        opening = false
+        held.value = null
     }
 }

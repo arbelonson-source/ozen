@@ -124,6 +124,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         )
     }
     val shared by transcriber.replacement.waiting.collectAsStateWithLifecycle()
+    LaunchedEffect(shared) { if (shared != null) confirmingLeave = false }
     if (shared != null) {
         AlertDialog(
             onDismissRequest = transcriber.replacement::keep,

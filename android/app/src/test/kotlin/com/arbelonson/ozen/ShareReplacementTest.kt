@@ -74,4 +74,24 @@ class ShareReplacementTest {
         guard.follow(FileTranscription.Idle)
         assertNull(guard.waiting.value)
     }
+
+    @Test
+    fun aFileSharedWhileTheReplacingOneIsStillBeingReadOpensAtOnce() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("one.mp3", done(HistorySave.Off))
+        assertEquals("one.mp3", guard.replace())
+        assertTrue(guard.arrive("two.mp3", done(HistorySave.Off)))
+        assertNull(guard.waiting.value)
+    }
+
+    @Test
+    fun onceTheReplacingFileShowsAnItsPageAskingWorksAgain() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("one.mp3", done(HistorySave.Off))
+        guard.replace()
+        guard.follow(ready)
+        guard.follow(done(HistorySave.Off))
+        assertFalse(guard.arrive("two.mp3", done(HistorySave.Off)))
+        assertEquals("two.mp3", guard.waiting.value)
+    }
 }
