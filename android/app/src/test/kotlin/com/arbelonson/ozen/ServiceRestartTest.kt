@@ -35,4 +35,16 @@ class ServiceRestartTest {
         assertEquals(true, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = true, restartRefused = false, microphoneGranted = true))
         assertEquals(false, ServiceRestart.screenSaysCaptionsAreOff(appIsActive = false, restartRefused = true, microphoneGranted = true))
     }
+
+    @Test
+    fun aRefusedStartWhileOzenIsInFrontIsToldOnTheScreenUntilCaptionsStartAgain() {
+        assertEquals(true, ServiceRestart.refusalShownOnScreen(appIsActive = true, restartRefused = true, microphoneGranted = true))
+        assertEquals(false, ServiceRestart.refusalShownOnScreen(appIsActive = true, restartRefused = false, microphoneGranted = true))
+    }
+
+    @Test
+    fun theRefusalCardStaysAwayWhenTheRedMicrophoneScreenOrTheNotificationAlreadyTellsIt() {
+        assertEquals(false, ServiceRestart.refusalShownOnScreen(appIsActive = true, restartRefused = true, microphoneGranted = false))
+        assertEquals(false, ServiceRestart.refusalShownOnScreen(appIsActive = false, restartRefused = true, microphoneGranted = true))
+    }
 }

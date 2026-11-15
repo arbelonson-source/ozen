@@ -725,6 +725,7 @@ class CaptionSession(
     /** For the night: captions stop and the speech model is let go, while sound alerts keep listening. */
     fun listenForSoundsOnly() {
         restartRefused = false
+        CaptionState.startRefused(false)
         replies.userTookControl()
         scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
     }
@@ -732,6 +733,7 @@ class CaptionSession(
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
     fun listen(afterRestart: Boolean = false) {
         restartRefused = false
+        CaptionState.startRefused(false)
         replies.userTookControl()
         if (ServiceRestart.soundsOnlyAfterRestart(afterRestart, soundsOnlyChoice.chosen)) {
             scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
@@ -884,6 +886,7 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
+        CaptionState.startRefused(ServiceRestart.refusalShownOnScreen(appIsActive, restartRefused, microphoneGranted()))
         stoppedCaptions.update(stoppedCause(), ServiceRestart.screenSaysCaptionsAreOff(appIsActive, restartRefused, microphoneGranted()), settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
     }
 

@@ -171,6 +171,21 @@ internal fun SoundAlertsNotWorkingBanner() {
     )
 }
 
+/** The phone refused to start listening while Ozen was in front; it stays until captions start again, which is the one thing she can do. */
+@Composable
+internal fun StartRefusedBanner() {
+    NoticeBanner(
+        Icons.Rounded.Warning,
+        NoticeTone.Emergency,
+        tr("הכתוביות נעצרו", "Captions stopped"),
+        tr(
+            "הטלפון לא איפשר לאוזן להאזין. לחצו על התחלת כתוביות כדי לנסות שוב.",
+            "The phone wouldn’t let Ozen listen. Tap Start captions to try again.",
+        ),
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
 /** Away alerts are on but the phone's notifications for Ozen are off: nothing reaches her while the phone is put away. It stays up for as long as that lasts; a tap opens the phone's notification settings, as the iPhone's does. */
 @Composable
 internal fun AwayAlertsBlockedBanner(onOpenSettings: () -> Unit) {
