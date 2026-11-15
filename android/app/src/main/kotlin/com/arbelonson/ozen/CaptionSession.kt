@@ -358,6 +358,34 @@ class CaptionSession(
 
     fun dismissLoadCrash() = loadCrash.dismiss()
 
+    private val damagedModelNotice = MutableStateFlow(false)
+
+    /** The model that set up when the app was last ended did not match the published file, so it was removed. */
+    val damagedModelRemoved: StateFlow<Boolean> get() = damagedModelNotice
+
+    fun dismissDamagedModel() {
+        damagedModelNotice.value = false
+    }
+
+    /**
+     * After the app was ended while it set up the chosen model, a damaged file
+     * is the likelier cause than too little memory: the file is checked (its
+     * size first, then its checksum, off the main thread) and, if it is not
+     * the published one, removed, so the captions that follow fetch it again
+     * instead of ending the app the same way. Only done after such a crash,
+     * never on an ordinary start.
+     */
+    suspend fun removeDamagedAfterCrash() {
+        if (loadCrash.showing.value == null) return
+        val current = settings.current.value.phoneModel
+        val removed = withContext(Dispatchers.IO) { PhoneModelDownloader(File(modelFolder, current.file), current.source, modelFetcher).removeIfDamaged() }
+        if (!removed) return
+        note("${current.file} did not match the published file after the app was ended while it set up; removed")
+        loadCrash.dismiss()
+        phoneModels.refreshInstalled()
+        damagedModelNotice.value = true
+    }
+
     private var screensInFront = 0
 
     /** A caption screen came to the front; true if the app was away until now. */

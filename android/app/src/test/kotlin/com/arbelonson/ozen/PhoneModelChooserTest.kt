@@ -60,12 +60,14 @@ class PhoneModelChooserTest {
     private var breaksLeft = 0
     private var downloadsStarted = 0
     private var whenHashing: () -> Unit = {}
+    private var diskFull = false
 
     private val fetcher = object : ReleaseFileFetching {
         override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
             val model = PhoneModelCatalog.all.first { it.source.url == url }
             fetched += model.file
             starts += from
+            if (diskFull) throw IOException("write failed: ENOSPC (No space left on device)")
             if (breaksLeft != 0) {
                 if (breaksLeft > 0) breaksLeft -= 1
                 RandomAccessFile(appendingTo, "rw").use { it.setLength(1_000_000) }
@@ -229,6 +231,22 @@ class PhoneModelChooserTest {
         scope.runCurrent()
         assertEquals(PhoneModelSwitch.Downloading("ggml-base-q5_1.bin", 1.0, checking = true), seen)
         assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+    }
+
+    @Test
+    fun `a disk that fills up during a download says there is no room, and does not try again by itself`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        diskFull = true
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        val state = chooser.switching.value as PhoneModelSwitch.NotEnoughRoom
+        assertEquals("ggml-base-q5_1.bin", state.file)
+        assertTrue(state.megabytes > 0)
+        scope.advanceTimeBy(30 * 60 * 1000L)
+        scope.runCurrent()
+        assertEquals(1, fetched.size)
+        assertEquals(state, chooser.switching.value)
+        assertNull(saved().phoneModelFile)
     }
 
     @Test

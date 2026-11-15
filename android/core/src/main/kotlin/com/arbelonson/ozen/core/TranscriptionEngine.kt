@@ -160,6 +160,9 @@ data class EngineUnavailability(
         ModelDownloadFailed("modelDownloadFailed"),
         ModelLoadFailed("modelLoadFailed"),
 
+        /** Android only: the model file on the phone did not match the published one, so it was removed; the next try downloads it again. */
+        ModelDamaged("modelDamaged"),
+
         /**
          * Android only: the phone's own model file isn't on the phone, and
          * the app has nowhere to download it from yet. Not a failed

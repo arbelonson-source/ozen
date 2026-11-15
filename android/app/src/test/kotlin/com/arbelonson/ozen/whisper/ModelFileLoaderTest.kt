@@ -180,6 +180,47 @@ class ModelFileLoaderTest {
         assertEquals(setOf("Turbo Hebrew, noise-trained (Ozen)"), steps.map { WhisperModelCatalog.option(it.detail ?: "")?.displayName }.toSet())
     }
 
+    private fun failureOfLoadingWhat(on: ByteArray?): EngineUnavailability = runBlocking {
+        if (on != null) file.writeBytes(on)
+        assertFailsWith<EngineUnavailability> { loader(ChunkedModel(data)).load("en", cellularDownloadAllowed = true) {} }
+    }
+
+    @Test
+    fun `a model file cut short after it was downloaded is removed when it fails to load, and the person is told it was damaged`() {
+        val failure = failureOfLoadingWhat(data.copyOf(data.size / 2))
+        assertEquals("modelDamaged", failure.kind.rawValue)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `a model file with a changed byte is removed when it fails to load`() {
+        val failure = failureOfLoadingWhat(data.copyOf().also { it[100] = (it[100] + 1).toByte() })
+        assertEquals("modelDamaged", failure.kind.rawValue)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `a model file that is as published is kept when it fails to load, and the failure stays a failed load`() {
+        val failure = failureOfLoadingWhat(data)
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind)
+        assertTrue(file.isFile)
+    }
+
+    @Test
+    fun `a model file that fails to load with nowhere to check it against is kept`() = runBlocking {
+        file.writeBytes(data.copyOf(10))
+        val failure = assertFailsWith<EngineUnavailability> { loader(null).load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind)
+        assertTrue(file.isFile)
+    }
+
+    @Test
+    fun `a model that was just downloaded and fails to load is not checked again`() = runBlocking {
+        val failure = assertFailsWith<EngineUnavailability> { loader(ChunkedModel(data)).load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind)
+        assertTrue(file.isFile)
+    }
+
     @Test
     fun `a download that fails is a failed download, which can be tried again, not a missing model`() = runBlocking {
         val failure = assertFailsWith<EngineUnavailability> { loader(Unreachable()).load("en", cellularDownloadAllowed = true) {} }

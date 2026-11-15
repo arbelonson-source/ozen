@@ -119,6 +119,45 @@ class PhoneModelDownloaderTest {
     }
 
     @Test
+    fun `a file on the phone that is not the published one is removed, one that is, or none at all, is left alone`() {
+        val downloader = PhoneModelDownloader(file, source, ServedModel(data))
+        assertFalse(downloader.removeIfDamaged())
+        file.writeBytes(data)
+        assertFalse(downloader.removeIfDamaged())
+        assertTrue(file.isFile)
+        file.writeBytes(data.copyOf(data.size - 1))
+        assertTrue(downloader.removeIfDamaged())
+        assertFalse(file.exists())
+        file.writeBytes(data.copyOf().also { it[7] = (it[7] + 1).toByte() })
+        assertTrue(downloader.removeIfDamaged())
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `a wrong size is found without reading the file`() {
+        var hashed = false
+        val fetcher = object : ReleaseFileFetching by ServedModel(data) {
+            override fun sha256(file: File): String {
+                hashed = true
+                return ""
+            }
+        }
+        file.writeBytes(data.copyOf(5))
+        assertTrue(PhoneModelDownloader(file, source, fetcher).removeIfDamaged())
+        assertFalse(hashed)
+    }
+
+    @Test
+    fun `a file that cannot be read is damaged`() {
+        val fetcher = object : ReleaseFileFetching by ServedModel(data) {
+            override fun sha256(file: File): String = throw IOException("input/output error")
+        }
+        file.writeBytes(data)
+        assertTrue(PhoneModelDownloader(file, source, fetcher).removeIfDamaged())
+        assertFalse(file.exists())
+    }
+
+    @Test
     fun `a part longer than the model is started over`() {
         val served = ServedModel(data)
         val downloader = PhoneModelDownloader(file, source, served)
