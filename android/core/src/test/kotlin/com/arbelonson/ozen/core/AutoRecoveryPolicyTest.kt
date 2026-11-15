@@ -30,6 +30,12 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `no saved address is not retried on a timer, since only a new address helps`() {
+        val none = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, "no valid server address"))
+        assertEquals(S.Never, AutoRecoveryPolicy.schedule(none))
+    }
+
+    @Test
     fun `a plain ws address out on the internet is not retried on a timer, which cannot change the address`() {
         val plain = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(plain))

@@ -201,6 +201,41 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `no saved address is not asked again on a timer - only an address saved in Settings can help`() = runTest {
+        val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, "no valid server address"))
+        val phone = FakeEngine(kind = phoneKind)
+        phone.pendingDownload = 819
+        val captions = serverPipeline(server, phone, recovery = oneQuickRetry())
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase is PipelinePhase.Failed })
+        delay(300.milliseconds)
+        assertEquals(1, server.prepareCount, "asked again with no address")
+        assertNull(captions.scheduledRetry)
+    }
+
+    @Test
+    fun `with no saved address or a refused plain address, sound alerts keep listening, and switching them off and on reopens the microphone`() = runTest {
+        for (detail in listOf("no valid server address", HomeServer.NEEDS_ENCRYPTION)) {
+            val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, detail))
+            val phone = FakeEngine(kind = phoneKind)
+            phone.pendingDownload = 819
+            val captions = serverPipeline(server, phone, recovery = oneQuickRetry(), soundDetector = FakeSoundDetector())
+            val settings = serverSettings()
+            settings.soundAlerts = settings.soundAlerts.copy(isEnabled = true)
+            captions.start(settings)
+            assertTrue(eventually { captions.phase is PipelinePhase.Failed && captions.scheduledRetry == null }, detail)
+            assertTrue(eventually { captions.isListeningForSoundsOnly && captions.stats.soundDetectionRunning }, detail)
+            captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+            assertFalse(captions.isListeningForSoundsOnly, detail)
+            captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+            assertTrue(eventually { captions.isListeningForSoundsOnly }, detail)
+            captions.stop()
+        }
+    }
+
+    @Test
     fun `stopped captions ask the computer sooner than covered ones look to switch back - nothing is captioned meanwhile`() = runTest {
         val server = unreachableServer()
         val phone = FakeEngine(kind = phoneKind)

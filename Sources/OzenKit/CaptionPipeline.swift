@@ -3319,9 +3319,12 @@ public final class CaptionPipeline {
 
     /// Waiting for Wi-Fi or for room on the phone has no timer, but
     /// captions come back by themselves: on the next change of connection,
-    /// or when the app is opened again with room. The microphone was off
-    /// for sounds all that time, and a smoke alarm went unheard.
+    /// or when the app is opened again with room. So do captions stopped by
+    /// no saved home-computer address or by a plain ws:// one the phone
+    /// refuses: saving an address in Settings restarts them. The microphone
+    /// was off for sounds all that time, and a smoke alarm went unheard.
     private func comesBackWithoutTimer(_ failure: PipelineFailure) -> Bool {
+        if HomeServer.missingAddress(failure.engineUnavailability) || HomeServer.refusedPlainAddress(failure.engineUnavailability) { return true }
         guard let kind = failure.engineUnavailability?.kind else { return false }
         return kind == .waitingForWiFi || kind == .notEnoughStorage
     }
@@ -3371,11 +3374,12 @@ public final class CaptionPipeline {
     /// `homeServerWaitSeconds` and starts captions once it answers. A
     /// refused code needs a person, so it isn't asked again, and neither is
     /// a plain ws:// address out on the internet, which the phone itself
-    /// refuses before asking.
+    /// refuses before asking, nor no saved address at all.
     @discardableResult
     private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
               !HomeServer.refusedPlainAddress(failure.engineUnavailability),
+              !HomeServer.missingAddress(failure.engineUnavailability),
               activeSettings?.engine == .homeServer
         else { return false }
         homeServerRecheck?.cancel()

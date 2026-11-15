@@ -419,6 +419,22 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `no saved address keeps its advice and Settings button with a backup offered or a retry scheduled`() {
+        val phase = failure(EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no valid server address"))
+        val bare = present(phase, TranscriptionEngineKind.HomeServer)
+        assertEquals(Action.OpenEngineSettings, bare.action)
+        for ((backup, retry) in listOf(true to false, false to true, true to true)) {
+            val shown = present(
+                phase, TranscriptionEngineKind.HomeServer, offerBackup = backup,
+                scheduledRetry = if (retry) ScheduledRetry(0.0, 1) else null,
+            )
+            assertEquals(bare.detail, shown.detail, "backup $backup retry $retry")
+            assertEquals(Action.OpenEngineSettings, shown.action, "backup $backup retry $retry")
+            assertFalse(shown.isBusy)
+        }
+    }
+
+    @Test
     fun `a short hint stays in the status button, a long one gets its own line rather than being cut off`() {
         val listening = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit)
         val paused = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit)
