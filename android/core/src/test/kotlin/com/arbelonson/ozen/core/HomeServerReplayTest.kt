@@ -124,6 +124,18 @@ class HomeServerReplayTest {
     }
 
     @Test
+    fun `after a replay with no words a live line that starts like the last line keeps its opening words`() = runTest {
+        val rig = takenOverAfter("see you at noon tomorrow")
+        val heard = rig.phone.samplesSeen.size
+        rig.said(10.0)
+        assertTrue(eventually { rig.phone.samplesSeen.size >= heard + 160_000 })
+        rig.phone.emit(line("at noon tomorrow we leave"))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+
+        assertEquals(listOf("see you at noon tomorrow", "at noon tomorrow we leave"), rig.lines())
+    }
+
+    @Test
     fun `a replayed partial that grows past the overlap keeps the new words`() = runTest {
         val rig = takenOverAfter("see you at noon tomorrow")
         val id = UUID.randomUUID()
