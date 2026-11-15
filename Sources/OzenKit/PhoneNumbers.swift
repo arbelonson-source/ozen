@@ -88,7 +88,7 @@ public enum PhoneNumbers {
             guard let range = Range(item.range, in: text) else { continue }
             guard let readRange = Range(item.range, in: read) else { continue }
             let written = String(read[readRange])
-            let before = String(read[..<readRange.lowerBound].suffix(40))
+            let before = String(read[..<readRange.lowerBound].suffix(80))
             guard looksWritten(written) || callWordBefore(before) else { continue }
             found.append(Match(range: range, dialable: digitsOf(text[range])))
         }
@@ -108,7 +108,7 @@ public enum PhoneNumbers {
     }
 
     private static let callWordPattern = try? NSRegularExpression(
-        pattern: #"\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:(?:\s+[\w']+){0,2}\s+(?:me|us|him|her|them|at|on|is|are|to))?\s*[:,]?\s*$"#,
+        pattern: #"\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:(?:\s+[\w']+){0,3}\s+(?:me|us|him|her|them|at|on|is|are|to)|(?:\s+(?-i:\p{Lu})[\w'.]*){1,2})?\s*[:,]?\s*$"#,
         options: .caseInsensitive
     )
 
