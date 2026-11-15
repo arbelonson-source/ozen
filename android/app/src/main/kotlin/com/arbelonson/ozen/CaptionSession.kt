@@ -463,7 +463,7 @@ class CaptionSession(
         set(active) {
             if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
             val changed = active != field
-            if (active) restartRefused = false
+            if (active && !microphoneGoneAtRestart) restartRefused = false
             field = active
             if (active && microphoneGoneAtRestart) showMicrophoneGone()
             checkCaptionsStillRunning()
@@ -909,9 +909,18 @@ class CaptionSession(
     /** The refused restart was because the microphone permission is gone: the screen says so when she comes back. */
     private var microphoneGoneAtRestart = false
 
+    /**
+     * Starting once with the permission gone puts the red screen up. The
+     * refusal stays the reported stop until that start has failed, so the
+     * notice that already told her is not told again when she leaves.
+     */
     private fun showMicrophoneGone() {
         microphoneGoneAtRestart = false
-        scope.launch { if (pipeline.phase == PipelinePhase.Idle && !microphoneGranted()) pipeline.start(chosenSettings()) }
+        scope.launch {
+            if (pipeline.phase == PipelinePhase.Idle && !microphoneGranted()) pipeline.start(chosenSettings())
+            restartRefused = false
+            checkCaptionsStillRunning()
+        }
     }
 
     /**
@@ -945,6 +954,10 @@ class CaptionSession(
     private fun tellRestartRefused() {
         restartRefused = true
         microphoneGoneAtRestart = !microphoneGranted()
+        // On screen already, the screen says it: nothing is left to tell her on leaving.
+        if (appIsActive) {
+            if (microphoneGoneAtRestart) showMicrophoneGone() else restartRefused = false
+        }
         checkCaptionsStillRunning()
     }
 

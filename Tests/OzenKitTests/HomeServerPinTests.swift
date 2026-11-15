@@ -145,6 +145,15 @@ struct HomeServerPinTests {
         let availability = await engine.checkAvailability(languageCode: "he")
         #expect(availability.unavailability?.kind == .homeServerRejected)
         #expect(availability.unavailability?.detail == "certificate did not match")
-        #expect(HomeServerCheck(availability: availability, seconds: 0) == .codeRefused)
+        #expect(HomeServerCheck(availability: availability, seconds: 0) == .pairingChanged)
+    }
+
+    @Test("Test connection words a changed pairing as such, and a refused code as before")
+    func pairingChangedWords() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.pairingChangedText() == "The computer’s pairing changed. Scan its QR code again.")
+        }
+        let refused = EngineAvailability.unavailable(.homeServerRejected, "unauthorized")
+        #expect(HomeServerCheck(availability: refused, seconds: 0) == .codeRefused)
     }
 }

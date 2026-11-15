@@ -274,6 +274,14 @@ class StoppedCaptionsNotice {
                         "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
                         "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.",
                     )
+                    why == EngineUnavailability.Kind.HomeServerRejected && failure.engineUnavailability?.detail == HomeServer.PAIRING_CHANGED -> tr(
+                        "הצימוד עם המחשב השתנה. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
+                        "The computer’s pairing changed. Open Ozen and scan its QR code again.",
+                    )
+                    why == EngineUnavailability.Kind.HomeServerRejected -> tr(
+                        "המחשב לא קיבל את קוד הצימוד. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
+                        "The computer didn’t accept the pairing code. Open Ozen and scan its QR code again.",
+                    )
                     else -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
                 }
             }

@@ -121,6 +121,9 @@ object HomeServer {
         return a == 10 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254)
     }
 
+    /** What a connection test says when the computer's certificate is no longer the one in the QR code. */
+    fun pairingChangedText(): String = tr("הצימוד עם המחשב השתנה. סרקו שוב את קוד ה־QR שלו.", "The computer’s pairing changed. Scan its QR code again.")
+
     /**
      * What a connection test that got no answer says. Paired at home, the
      * saved address is often one only the home Wi‑Fi reaches; tested away
@@ -410,6 +413,8 @@ sealed class HomeServerCheck {
 
     data object CodeRefused : HomeServerCheck()
 
+    data object PairingChanged : HomeServerCheck()
+
     data object Unreachable : HomeServerCheck()
 
     data object NotSetUp : HomeServerCheck()
@@ -421,7 +426,11 @@ sealed class HomeServerCheck {
             is EngineAvailability.Available -> Connected(maxOf(0, rounded(seconds * 1000)))
             is EngineAvailability.Unavailable -> when (availability.why.kind) {
                 EngineUnavailability.Kind.HomeServerRejected ->
-                    if (availability.why.detail == HomeServer.NO_CODE) NotSetUp else CodeRefused
+                    when (availability.why.detail) {
+                        HomeServer.NO_CODE -> NotSetUp
+                        HomeServer.PAIRING_CHANGED -> PairingChanged
+                        else -> CodeRefused
+                    }
                 EngineUnavailability.Kind.HomeServerUnreachable -> when (availability.why.detail) {
                     HomeServer.NO_ADDRESS -> NotSetUp
                     HomeServer.NEEDS_ENCRYPTION -> NeedsEncryptedAddress

@@ -152,4 +152,74 @@ class ServiceRestartDeviceTest {
             }
         }
     }
+
+    private fun withMicrophoneOffSession(body: (CaptionSession) -> Unit) {
+        PreferencesMarkerStore(app).clear()
+        app.captions.checkLoadMarker()
+        val work = File(context.cacheDir, "mic-off-once-test").apply { deleteRecursively(); mkdirs() }
+        val denied = object : AudioCapturing by AndroidAudioCapture(context) {
+            override suspend fun requestPermission() = AudioPermission.Denied
+        }
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        var session: CaptionSession? = null
+        instrumentation.runOnMainSync {
+            session = CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                denied,
+                historyFolder = File(work, "history"),
+            ).also { it.microphoneGranted = { false } }
+        }
+        val captions = session!!
+        try {
+            body(captions)
+        } finally {
+            Localization.language = languageBefore
+            instrumentation.runOnMainSync {
+                captions.appIsActive = false
+                captions.close()
+            }
+        }
+    }
+
+    private fun waitUntil(what: () -> Boolean) {
+        val until = System.currentTimeMillis() + 5_000
+        while (!what() && System.currentTimeMillis() < until) Thread.sleep(100)
+    }
+
+    @Test
+    fun theMicrophoneNoticeIsNotPostedASecondTimeAfterSheOpenedTheAppAndSawTheRedScreen() {
+        withMicrophoneOffSession { captions ->
+            instrumentation.runOnMainSync { captions.foregroundRefused(SecurityException("the microphone permission is off")) }
+            waitUntil { stoppedNotice() != null }
+            assertTrue(stoppedNotice() != null)
+
+            instrumentation.runOnMainSync { captions.appIsActive = true }
+            waitUntil { captions.pipeline.phase.failure != null }
+            assertEquals(PipelineFailure.Kind.MicrophonePermissionDenied, captions.pipeline.phase.failure?.kind)
+            manager.cancelAll()
+
+            instrumentation.runOnMainSync { captions.appIsActive = false }
+            Thread.sleep(2_000)
+            assertNull(stoppedNotice())
+        }
+    }
+
+    @Test
+    fun aRefusalThatArrivesWhileTheAppIsOnScreenLeavesNoNoticeWhenSheLeaves() {
+        withMicrophoneOffSession { captions ->
+            instrumentation.runOnMainSync { captions.appIsActive = true }
+            instrumentation.runOnMainSync { captions.foregroundRefused(SecurityException("the microphone permission is off")) }
+            waitUntil { captions.pipeline.phase.failure != null }
+            assertEquals(PipelineFailure.Kind.MicrophonePermissionDenied, captions.pipeline.phase.failure?.kind)
+            assertNull(stoppedNotice())
+
+            instrumentation.runOnMainSync { captions.appIsActive = false }
+            Thread.sleep(2_000)
+            assertNull(stoppedNotice())
+        }
+    }
 }

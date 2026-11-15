@@ -411,6 +411,17 @@ class StoppedCaptionsNoticeTest {
             assertTrue(english.body.contains("doorbell"))
         }
     }
+
+    @Test
+    fun `a refused pairing has its own words that say to scan the QR code again, a changed certificate included`() {
+        fun body(detail: String) = StoppedCaptionsNotice.content(
+            failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerRejected, detail))),
+        ).body
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("The computer’s pairing changed. Open Ozen and scan its QR code again.", body(HomeServer.PAIRING_CHANGED))
+            assertEquals("The computer didn’t accept the pairing code. Open Ozen and scan its QR code again.", body("unauthorized"))
+        }
+    }
 }
 
 class CaptionPipelinePhaseChangeTest {
