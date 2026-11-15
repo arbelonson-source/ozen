@@ -139,4 +139,15 @@ class FileTranscriptKeeperTest {
         assertFalse(marker.exists())
         assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
     }
+
+    @Test
+    fun historyTurnedOffBeforeTheAppWasEndedLeavesNothingToRecover() {
+        val keeper = keeper()
+        keeper.linesSoFar(said(5))
+        assertEquals(1, saved().size)
+        saving = false
+        assertNull(FileTranscriptKeeper(store, marker, historyOn = { saving }).recoverInterrupted())
+        assertTrue(saved().isEmpty())
+        assertFalse(marker.exists())
+    }
 }

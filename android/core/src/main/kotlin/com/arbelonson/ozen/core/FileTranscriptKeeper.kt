@@ -88,6 +88,11 @@ class FileTranscriptKeeper(
     fun recoverInterrupted(): Interrupted? {
         val text = runCatching { marker.readText().trim() }.getOrNull() ?: return null
         val kept = runCatching { UUID.fromString(text) }.getOrNull()
+        if (!historyOn()) {
+            kept?.let { runCatching { store.delete(it) } }
+            marker.delete()
+            return null
+        }
         val record = kept?.let { runCatching { store.load(it) }.getOrNull() }
         if (record == null || record.endedAt != null) {
             marker.delete()
