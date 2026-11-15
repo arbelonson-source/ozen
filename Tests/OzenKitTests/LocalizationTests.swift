@@ -294,7 +294,9 @@ struct LocalizationTests {
     func portugueseSafetyTextsUseTheTablesWords() {
         let table = TranslationTable.shared.table(for: .portuguese)
         let prefixes = ["Another app is using the microphone", "Alerts won’t reach you"]
-        for (english, portuguese) in table where prefixes.contains(where: english.hasPrefix) {
+        let rows = table.filter { english, _ in prefixes.contains(where: english.hasPrefix) }
+        #expect(rows.count == prefixes.count)
+        for (english, portuguese) in rows {
             let words = Set(portuguese.lowercased().split { !$0.isLetter }.map(String.init))
             for word in words.intersection(["telefone", "alertas", "usando"]) {
                 Issue.record("'\(word)' in the Portuguese for: \(english)")
