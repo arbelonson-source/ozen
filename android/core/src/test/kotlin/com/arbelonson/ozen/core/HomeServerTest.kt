@@ -69,6 +69,21 @@ class HomeServerTest {
     }
 
     @Test
+    fun `when the computer cannot be reached both texts say to scan its QR code again`() {
+        Localization.withLanguage(UILanguage.English) {
+            val moved = "If it moved to a new network, scan its QR code again"
+            val banner = HomeServer.unreachableDetail()
+            assertTrue(banner.contains(moved))
+            assertTrue(banner.endsWith("Tap to try again"))
+            assertFalse(banner.contains("Local Network"))
+            for (typed in listOf("192.168.1.20", "203.0.113.5")) {
+                assertTrue(HomeServer.unreachableText(typed).contains(moved), typed)
+            }
+        }
+        assertTrue(HomeServer.unreachableDetail().contains("קוד ה־QR"))
+    }
+
+    @Test
     fun `a typed address out on the internet must be wss, plain ws would carry the pairing code, the names and the sound unencrypted`() = runTest {
         for (typed in listOf("203.0.113.5", "192.186.1.20", "ws://captions.example.org:8765")) {
             assertNull(HomeServer.url(typed), typed)

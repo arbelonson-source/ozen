@@ -676,7 +676,7 @@ class PhasePresentation private constructor(
                 } else {
                     PhasePresentation(
                         title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
-                        detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו כדי לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
+                        detail = HomeServer.unreachableDetail(),
                         systemImage = "desktopcomputer.trianglebadge.exclamationmark",
                         tint = PhaseTint.Attention,
                         action = Action.Retry,

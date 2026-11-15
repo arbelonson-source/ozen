@@ -94,10 +94,25 @@ public enum HomeServer {
     /// saved address is often one only the home Wi‑Fi reaches; tested away
     /// from home it never answers, and "check that the computer is on" sent
     /// her to a computer that was fine.
-    public static func unreachableText(address: String) -> String {
-        homeWiFiOnly(address)
+    public static func unreachableText(address: String, localNetworkHint: Bool = false) -> String {
+        let base = homeWiFiOnly(address)
             ? tr("אין תשובה מהמחשב. הכתובת הזאת עובדת רק ב־Wi‑Fi של הבית. בבית, בדקו שהמחשב דלוק ולא במצב שינה. מחוץ לבית, השתמשו בכתובת שמתחילה ב־wss://", "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://")
             : tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
+        let moved = tr("אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו.", "If it moved to a new network, scan its QR code again.")
+        guard localNetworkHint else { return base + " " + moved }
+        return base + " " + moved + " " + tr("בדקו גם שאוזן מורשית בהגדרות › פרטיות ואבטחה › רשת מקומית.", "Also check that Ozen is allowed under Settings › Privacy & Security › Local Network.")
+    }
+
+    /// What the banner says when the phone could not reach the computer
+    /// and a retry is on offer. Two causes it can't tell from a computer
+    /// that is off: the computer got a new address (only scanning its QR
+    /// code again fixes that) and, on the iPhone, a refused Local Network
+    /// permission (iOS reports it like any other failed connection, so
+    /// the iPhone always names it).
+    public static func unreachableDetail(localNetworkHint: Bool = false) -> String {
+        localNetworkHint
+            ? tr("בדקו שהמחשב דלוק ומחובר, ושאוזן מורשית בהגדרות › פרטיות ואבטחה › רשת מקומית. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי לנסות שוב", "Check that the computer is on and connected, and that Ozen is allowed under Settings › Privacy & Security › Local Network. If it moved to a new network, scan its QR code again · Tap to try again")
+            : tr("בדקו שהמחשב דלוק ומחובר. אם עבר לרשת חדשה, סרקו שוב את קוד ה־QR שלו · הקישו כדי לנסות שוב", "Check that the computer is on and connected. If it moved to a new network, scan its QR code again · Tap to try again")
     }
 
     /// "192.168.1.20", "grandma-pc:8765", "ws://…" or "wss://…" all work;

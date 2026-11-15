@@ -542,6 +542,17 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a home computer that cannot be reached says to scan its QR code again and keeps the retry`() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(failure(unavailable(EngineUnavailability.Kind.HomeServerUnreachable)), TranscriptionEngineKind.HomeServer)
+            assertEquals(Action.Retry, shown.action)
+            assertEquals(HomeServer.unreachableDetail(), shown.detail)
+            assertTrue(shown.detail?.contains("scan its QR code again") == true)
+            assertTrue(shown.detail?.endsWith("Tap to try again") == true)
+        }
+    }
+
+    @Test
     fun `a home computer that cannot be reached, with no backup on the phone, points to the backup instead of only retrying`() {
         val phase = failure(unavailable(EngineUnavailability.Kind.HomeServerUnreachable))
         val plain = present(phase, TranscriptionEngineKind.HomeServer)
