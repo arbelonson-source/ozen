@@ -2583,6 +2583,7 @@ public final class LiveCaptionViewModel {
         // saving to the record that is still there. Nothing can queue an
         // autosave in between, since this runs on the main actor.
         try historyWriter.deleteNow(id: id)
+        ExportScratchFolder.standard.clear()
         closedHistorySessions.removeAll { $0.id == id }
         if recentConversation?.id == id { recentConversation = nil }
         if id == historySessionID {
@@ -2613,6 +2614,7 @@ public final class LiveCaptionViewModel {
     /// Deletes every saved conversation, including the one in progress.
     public func deleteAllConversations() throws {
         try historyWriter.deleteAllNow()
+        ExportScratchFolder.standard.clear()
         recentConversation = nil
         problemAudio?.deleteAll()
         deleteMarkedCaptionLines()

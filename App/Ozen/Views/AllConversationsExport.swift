@@ -14,9 +14,8 @@ struct AllConversationsExport: Transferable, Sendable {
         }
     }
 
-    func writeFile(now: Date = Date(), in directory: URL = FileManager.default.temporaryDirectory) throws -> URL {
-        let folder = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    func writeFile(now: Date = Date(), in scratch: ExportScratchFolder = .standard) throws -> URL {
+        let folder = try scratch.makeFolder()
         let name = TranscriptHistoryStore.exportAllFileName(
             now: now.timeIntervalSince1970,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: now)

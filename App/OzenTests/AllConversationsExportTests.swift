@@ -28,7 +28,7 @@ struct AllConversationsExportTests {
 
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let url = try AllConversationsExport(store: store, marksUncertain: false)
-            .writeFile(now: now, in: top.appendingPathComponent("out"))
+            .writeFile(now: now, in: ExportScratchFolder(root: top.appendingPathComponent("out")))
 
         let offset: (TimeInterval) -> Int = { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) }
         let expected = try #require(TranscriptHistoryStore.exportAllText([older, newer], utcOffsetAt: offset, marksUncertain: false))
@@ -45,7 +45,7 @@ struct AllConversationsExportTests {
         defer { try? FileManager.default.removeItem(at: top) }
         let store = TranscriptHistoryStore(directoryURL: top.appendingPathComponent("history"))
         #expect(throws: (any Error).self) {
-            try AllConversationsExport(store: store, marksUncertain: false).writeFile(in: top)
+            try AllConversationsExport(store: store, marksUncertain: false).writeFile(in: ExportScratchFolder(root: top))
         }
     }
 }
