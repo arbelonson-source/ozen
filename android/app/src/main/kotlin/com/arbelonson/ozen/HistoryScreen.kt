@@ -242,13 +242,14 @@ fun HistoryScreen(
     var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingRetention = pendingRetentionValue?.let(HistoryRetention::fromRawValue)
     val pendingDeletion = pendingDeletionID?.let { id -> loaded?.summaries?.firstOrNull { it.id.toString() == id } }
+    val deletes = remember { HistoryDeletes() }
     val deleting = { delete: () -> Unit ->
-        try {
-            delete()
-        } catch (failure: Exception) {
-            deleteError = failure.message ?: failure.toString()
+        scope.launch {
+            val outcome = deletes.run(delete)
+            if (outcome is HistoryDeletes.Outcome.Failed) deleteError = outcome.message
+            if (outcome !is HistoryDeletes.Outcome.Ignored) reloads += 1
         }
-        reloads += 1
+        Unit
     }
     val keepFor = { choice: HistoryRetention ->
         scope.launch {
@@ -262,7 +263,7 @@ fun HistoryScreen(
         close = tr("סגירה", "Close"),
         onClose = onClose,
         actions = {
-            TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true) {
+            TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true && !deletes.busy) {
                 Text(tr("מחיקת הכול", "Delete all"), color = if (loaded?.summaries?.isNotEmpty() == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
@@ -730,6 +731,7 @@ internal fun ConversationScreen(
         }
     }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    val deletes = remember { HistoryDeletes() }
     var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
@@ -907,11 +909,12 @@ internal fun ConversationScreen(
                 TextButton(
                     onClick = {
                         confirmingDelete = false
-                        try {
-                            conversations.delete(id)
-                            onClose()
-                        } catch (failure: Exception) {
-                            deleteError = failure.message ?: failure.toString()
+                        scope.launch {
+                            when (val outcome = deletes.run { conversations.delete(id) }) {
+                                HistoryDeletes.Outcome.Done -> onClose()
+                                is HistoryDeletes.Outcome.Failed -> deleteError = outcome.message
+                                HistoryDeletes.Outcome.Ignored -> Unit
+                            }
                         }
                     },
                 ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
