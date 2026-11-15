@@ -580,6 +580,37 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a short line that opened and finished while its voice was still being read gets that voice and can be named`() = runTest {
+        val engine = FakeEngine()
+        val audio = FakeAudioCapturer()
+        val embedder = GatedEmbedder()
+        val pipeline = captionPipeline(
+            audio = audio,
+            engineFactory = { engine },
+            embedder = embedder,
+            recovery = AutoRecoveryPolicy.disabled(),
+            now = { 1_000.0 },
+            embedderContext = Dispatchers.Default,
+        )
+        pipeline.start(AppSettings.default)
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventuallyInRealTime { embedder.callsStarted == 1 })
+        try {
+            engine.emit(token(UUID.randomUUID(), "hello", final = true))
+            assertTrue(eventually { pipeline.segments.size == 1 && pipeline.segments[0].isCommitted })
+            assertNull(pipeline.segments[0].speakerClusterID)
+        } finally {
+            embedder.release()
+        }
+        assertTrue(eventuallyInRealTime { pipeline.segments[0].speakerClusterID != null })
+        val print = pipeline.nameSpeaker(pipeline.segments[0], "Moshe")
+
+        assertContentEquals(floatArrayOf(1f, 0f, 0f), print)
+        assertEquals("Moshe", pipeline.displayName(pipeline.segments[0]))
+        pipeline.stop()
+    }
+
+    @Test
     fun `a speaker corrected on a line still being spoken stays corrected as it grows`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

@@ -2327,6 +2327,9 @@ class CaptionPipeline(
                 // and asking afterwards gave the voice to whichever line had
                 // started meanwhile, leaving the speaker's own line unnamed.
                 val heardDuring = stabilizer.segments.lastOrNull { !it.isCommitted }?.id
+                // With no line open, the newest line that exists now: lines after
+                // it began after this audio was heard.
+                val lastBefore = stabilizer.segments.lastOrNull()?.id
                 val computed = withContext(embedderContext) {
                     embedder.embed(window, SAMPLE_RATE)
                 }
@@ -2342,35 +2345,72 @@ class CaptionPipeline(
                 speakerClusters = clusterer.clusters
 
                 if (heardDuring == null) {
-                    // Heard before any line was open: the line about to start
-                    // takes this voice. A window an open line claimed is that
-                    // line's speaker, not the next one's; passing it on named
-                    // a short reply by someone else after the person asking.
-                    recentSpeechCluster = RecentSpeechCluster(clusterID, now())
+                    // Heard before any line was open. A line that opened while
+                    // the embedding ran, and has no speaker yet, takes this
+                    // voice (the earliest such line); a slow first embedding
+                    // used to leave a short first line unnamed. Otherwise the
+                    // line about to start takes it. A window an open line
+                    // claimed is that line's speaker, not the next one's;
+                    // passing it on named a short reply by someone else after
+                    // the person asking.
+                    val opened = lineOpenedAfter(lastBefore)
+                    if (opened != null) {
+                        giveVoice(computed, clusterID, opened.id)
+                    } else {
+                        recentSpeechCluster = RecentSpeechCluster(clusterID, now())
+                    }
                     return@collect
                 }
-                if (utteranceEmbeddings.put(heardDuring, computed) == null) {
-                    utteranceEmbeddingOrder.addLast(heardDuring)
-                    if (utteranceEmbeddingOrder.size > UTTERANCE_EMBEDDING_LIMIT) {
-                        val evicted = utteranceEmbeddingOrder.removeFirst()
-                        utteranceEmbeddings.remove(evicted)
-                        utteranceClusterAssignments.remove(evicted)
-                    }
-                }
-                // A line the person moved to someone else stays there.
-                if (heardDuring in correctedUtterances) return@collect
-                utteranceClusterAssignments[heardDuring] = clusterID
-                // Writing an unchanged value still tells every observer the
-                // transcript changed and redraws the caption list, every 1.5 s
-                // of speech; only write when the speaker actually changed.
-                val index = segments.indexOfLast { it.id == heardDuring }
-                if (index >= 0 && segments[index].speakerClusterID != clusterID) {
-                    setSegment(index, segments[index].copy(speakerClusterID = clusterID))
-                    onCaptionsChanged?.invoke()
-                }
+                giveVoice(computed, clusterID, heardDuring)
             }
         } catch (_: StopLoop) {
             return
+        }
+    }
+
+    /**
+     * The earliest line after [lastBefore] with no speaker yet. Looks from
+     * the end, where new lines are. When [lastBefore] is no longer in the
+     * list (a replay dropped it), nothing is claimed: the voice then waits
+     * for the line about to start, as before.
+     */
+    private fun lineOpenedAfter(lastBefore: UUID?): TranscriptSegment? {
+        var start = 0
+        if (lastBefore != null) {
+            val index = segments.indexOfLast { it.id == lastBefore }
+            if (index < 0) return null
+            start = index + 1
+        }
+        for (i in start until segments.size) {
+            val line = segments[i]
+            if (line.speakerClusterID == null && utteranceClusterAssignments[line.id] == null &&
+                line.id !in correctedUtterances
+            ) {
+                return line
+            }
+        }
+        return null
+    }
+
+    private fun giveVoice(embedding: FloatArray, clusterID: Int, line: UUID) {
+        if (utteranceEmbeddings.put(line, embedding) == null) {
+            utteranceEmbeddingOrder.addLast(line)
+            if (utteranceEmbeddingOrder.size > UTTERANCE_EMBEDDING_LIMIT) {
+                val evicted = utteranceEmbeddingOrder.removeFirst()
+                utteranceEmbeddings.remove(evicted)
+                utteranceClusterAssignments.remove(evicted)
+            }
+        }
+        // A line the person moved to someone else stays there.
+        if (line in correctedUtterances) return
+        utteranceClusterAssignments[line] = clusterID
+        // Writing an unchanged value still tells every observer the
+        // transcript changed and redraws the caption list, every 1.5 s
+        // of speech; only write when the speaker actually changed.
+        val index = segments.indexOfLast { it.id == line }
+        if (index >= 0 && segments[index].speakerClusterID != clusterID) {
+            setSegment(index, segments[index].copy(speakerClusterID = clusterID))
+            onCaptionsChanged?.invoke()
         }
     }
 
@@ -3554,12 +3594,16 @@ class CaptionPipeline(
     /**
      * Waiting for Wi-Fi or for room on the phone has no timer, but
      * captions come back by themselves: on the next change of connection,
-     * or when the app is opened again with room. The microphone was off
-     * for sounds all that time, and a smoke alarm went unheard. A computer
+     * or when the app is opened again with room. So do captions stopped by
+     * no saved home-computer address or by a plain ws:// one the phone
+     * refuses: saving an address in Settings restarts them. A computer
      * that cannot caption the language is the same: no timer asks it again,
-     * and only a change of language or engine brings captions back.
+     * and only a change of language or engine brings captions back. The
+     * microphone was off for sounds all that time, and a smoke alarm went
+     * unheard.
      */
     private fun comesBackWithoutTimer(failure: PipelineFailure): Boolean {
+        if (HomeServer.missingAddress(failure.engineUnavailability) || HomeServer.refusedPlainAddress(failure.engineUnavailability)) return true
         val kind = failure.engineUnavailability?.kind ?: return false
         return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage ||
             HomeServer.languageNotCovered(failure.engineUnavailability)
@@ -3613,12 +3657,13 @@ class CaptionPipeline(
      * [homeServerWaitSeconds] and starts captions once it answers. A
      * refused code needs a person, so it isn't asked again, and neither is
      * a plain ws:// address out on the internet, which the phone itself
-     * refuses before asking.
+     * refuses before asking, nor no saved address at all.
      */
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
             HomeServer.refusedPlainAddress(failure.engineUnavailability) ||
             HomeServer.languageNotCovered(failure.engineUnavailability) ||
+            HomeServer.missingAddress(failure.engineUnavailability) ||
             settingsInUse?.engine != TranscriptionEngineKind.HomeServer
         ) {
             return false
@@ -3871,7 +3916,13 @@ class CaptionPipeline(
             emit(chunk)
             val before = liveFed
             liveFed += chunk.size
-            if (before < grace && liveFed >= grace) scope.launch { if (runID == run) replayedLines = emptySet() }
+            if (before < grace && liveFed >= grace) {
+                scope.launch {
+                    if (runID != run || replayUtterance != null) return@launch
+                    replayedLines = emptySet()
+                    replayDedupe = emptyList()
+                }
+            }
         }
     }
 

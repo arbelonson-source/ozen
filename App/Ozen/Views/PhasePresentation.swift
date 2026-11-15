@@ -214,7 +214,7 @@ struct PhasePresentation {
 
         case .failed(let failure):
             self.init(failure: failure, engine: engine, spokenLanguage: spokenLanguage)
-            if scheduledRetry != nil {
+            if scheduledRetry != nil, !HomeServer.missingAddress(failure.engineUnavailability) {
                 // The pipeline is already on it. Say so, calmly, and keep
                 // the tap as "try right now" rather than the only way out.
                 self = PhasePresentation(
@@ -240,7 +240,8 @@ struct PhasePresentation {
                 )
             }
             if offerBackup, failure.engineUnavailability?.kind == .homeServerUnreachable,
-               !HomeServer.refusedPlainAddress(failure.engineUnavailability) {
+               !HomeServer.refusedPlainAddress(failure.engineUnavailability),
+               !HomeServer.missingAddress(failure.engineUnavailability) {
                 // Without the phone's own model nothing can cover for the
                 // computer, so the way out is a backup, not another retry.
                 self = PhasePresentation(

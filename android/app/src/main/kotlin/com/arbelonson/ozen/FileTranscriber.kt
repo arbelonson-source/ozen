@@ -85,7 +85,7 @@ class FileTranscriber(
     private var leftForRecovery = false
 
     init {
-        scope.launch { shown.collect { busyNotice.follow(it); replacement.follow(it) } }
+        scope.launch { shown.collect { busyNotice.follow(it); replacement.follow(it)?.let(::openShared) } }
         scope.launch(Dispatchers.IO) {
             captions.fileKeeper.recoverInterrupted()?.let { interrupted.value = it.name ?: tr("הקלטה", "Recording") }
         }
@@ -100,7 +100,11 @@ class FileTranscriber(
     }
 
     fun replaceWithShared() {
-        replacement.replace()?.let { openNow(it) }
+        replacement.replace()?.let(::openShared)
+    }
+
+    private fun openShared(uri: Uri) {
+        if (!openNow(uri)) replacement.declined()
     }
 
     private fun openNow(uri: Uri): Boolean {

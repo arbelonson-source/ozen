@@ -94,4 +94,41 @@ class ShareReplacementTest {
         assertFalse(guard.arrive("two.mp3", done(HistorySave.Off)))
         assertEquals("two.mp3", guard.waiting.value)
     }
+
+    @Test
+    fun aHeldFileIsHandedOverToOpenOnceTheTextIsSaved() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("new.mp3", done(HistorySave.Failed))
+        assertEquals("new.mp3", guard.follow(done(HistorySave.Saved(UUID.randomUUID()))))
+        assertNull(guard.waiting.value)
+        assertNull(guard.follow(done(HistorySave.Saved(UUID.randomUUID()))))
+        assertNull(guard.follow(FileTranscription.Idle))
+    }
+
+    @Test
+    fun aHeldFileIsHandedOverWhenTheTextLeavesTheScreen() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("new.mp3", done(HistorySave.Off))
+        assertNull(guard.follow(done(HistorySave.Off)))
+        assertEquals("new.mp3", guard.follow(FileTranscription.Idle))
+    }
+
+    @Test
+    fun aShareAfterAnOpenThatDidNotHappenStillAsks() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("one.mp3", done(HistorySave.Off))
+        assertEquals("one.mp3", guard.replace())
+        guard.declined()
+        assertFalse(guard.arrive("two.mp3", done(HistorySave.Off)))
+        assertEquals("two.mp3", guard.waiting.value)
+    }
+
+    @Test
+    fun aNewerShareOpeningAtOnceDropsTheOlderHeldFile() {
+        val guard = ShareReplacement<String>()
+        guard.arrive("old.mp3", done(HistorySave.Off))
+        assertTrue(guard.arrive("new.mp3", FileTranscription.Idle))
+        assertNull(guard.waiting.value)
+        assertNull(guard.follow(FileTranscription.Idle))
+    }
 }

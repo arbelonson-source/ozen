@@ -52,6 +52,15 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: why) == .never)
     }
 
+    @Test("no saved address is not retried on a timer, since only a new address helps")
+    func missingAddressNotRetried() {
+        let none = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.noAddress)
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: none) == .never)
+    }
+
     @Test("a microphone another app holds is retried on a slow tail, not given up on")
     func microphoneTail() {
         for kind in [PipelineFailure.Kind.audioSessionFailed, .noAudioInputs] {

@@ -2158,6 +2158,9 @@ public final class CaptionPipeline {
             // and asking afterwards gave the voice to whichever line had
             // started meanwhile, leaving the speaker's own line unnamed.
             let heardDuring = stabilizer.segments.last(where: { !$0.isCommitted })?.id
+            // With no line open, the newest line that exists now: lines after
+            // it began after this audio was heard.
+            let lastBefore = stabilizer.segments.last?.id
             let computed = await Task.detached(priority: .userInitiated) {
                 embedder.embed(samples: window, sampleRate: sampleRate)
             }.value
@@ -2173,32 +2176,59 @@ public final class CaptionPipeline {
             speakerClusters = clusterer.clusters
 
             guard let currentUtteranceID = heardDuring else {
-                // Heard before any line was open: the line about to start
-                // takes this voice. A window an open line claimed is that
-                // line's speaker, not the next one's; passing it on named
-                // a short reply by someone else after the person asking.
-                recentSpeechCluster = (clusterID, now())
+                // Heard before any line was open. A line that opened while
+                // the embedding ran, and has no speaker yet, takes this
+                // voice (the earliest such line); a slow first embedding
+                // used to leave a short first line unnamed. Otherwise the
+                // line about to start takes it. A window an open line
+                // claimed is that line's speaker, not the next one's;
+                // passing it on named a short reply by someone else after
+                // the person asking.
+                if let opened = lineOpenedAfter(lastBefore) {
+                    give(embedding, clusterID: clusterID, toLine: opened.id)
+                } else {
+                    recentSpeechCluster = (clusterID, now())
+                }
                 continue
             }
-            if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
-                utteranceEmbeddingOrder.append(currentUtteranceID)
-                if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
-                    let evicted = utteranceEmbeddingOrder.removeFirst()
-                    utteranceEmbeddings[evicted] = nil
-                    utteranceClusterAssignments[evicted] = nil
-                }
+            give(embedding, clusterID: clusterID, toLine: currentUtteranceID)
+        }
+    }
+
+    /// The earliest line after `lastBefore` with no speaker yet. Looks from
+    /// the end, where new lines are. When `lastBefore` is no longer in the
+    /// list (a replay dropped it), nothing is claimed: the voice then waits
+    /// for the line about to start, as before.
+    private func lineOpenedAfter(_ lastBefore: UUID?) -> TranscriptSegment? {
+        var start = 0
+        if let lastBefore {
+            guard let index = segments.lastIndex(where: { $0.id == lastBefore }) else { return nil }
+            start = index + 1
+        }
+        return segments[start...].first {
+            $0.speakerClusterID == nil && utteranceClusterAssignments[$0.id] == nil && !correctedUtterances.contains($0.id)
+        }
+    }
+
+    private func give(_ embedding: [Float], clusterID: Int, toLine currentUtteranceID: UUID) {
+        if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
+            utteranceEmbeddingOrder.append(currentUtteranceID)
+            if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
+                let evicted = utteranceEmbeddingOrder.removeFirst()
+                utteranceEmbeddings[evicted] = nil
+                utteranceClusterAssignments[evicted] = nil
             }
-            // A line the user moved to another person stays there.
-            if correctedUtterances.contains(currentUtteranceID) { continue }
-            utteranceClusterAssignments[currentUtteranceID] = clusterID
-            // Writing an unchanged value still tells every observer the
-            // transcript changed and redraws the caption list, every 1.5 s
-            // of speech; only write when the speaker actually changed.
-            if let index = segments.lastIndex(where: { $0.id == currentUtteranceID }),
-               segments[index].speakerClusterID != clusterID {
-                segments[index].speakerClusterID = clusterID
-                onCaptionsChanged?()
-            }
+        }
+        // A line the user moved to another person stays there.
+        if correctedUtterances.contains(currentUtteranceID) { return }
+        utteranceClusterAssignments[currentUtteranceID] = clusterID
+        // Writing an unchanged value still tells every observer the
+        // transcript changed and redraws the caption list, every 1.5 s
+        // of speech; only write when the speaker actually changed.
+        if let index = segments.lastIndex(where: { $0.id == currentUtteranceID }),
+           segments[index].speakerClusterID != clusterID {
+            segments[index].speakerClusterID = clusterID
+            onCaptionsChanged?()
         }
     }
 
@@ -2583,8 +2613,12 @@ public final class CaptionPipeline {
             for await chunk in live {
                 if Task.isCancelled { break }
                 continuation.yield(chunk)
+                let before = liveFed
                 liveFed += chunk.count
-                if liveFed >= grace, !self.replayedLines.isEmpty { self.replayedLines = [] }
+                if before < grace, liveFed >= grace, self.replayUtterance == nil {
+                    self.replayedLines = []
+                    self.replayDedupe = []
+                }
             }
             continuation.finish()
         }
@@ -3285,11 +3319,15 @@ public final class CaptionPipeline {
 
     /// Waiting for Wi-Fi or for room on the phone has no timer, but
     /// captions come back by themselves: on the next change of connection,
-    /// or when the app is opened again with room. The microphone was off
-    /// for sounds all that time, and a smoke alarm went unheard. A computer
+    /// or when the app is opened again with room. So do captions stopped by
+    /// no saved home-computer address or by a plain ws:// one the phone
+    /// refuses: saving an address in Settings restarts them. A computer
     /// that cannot caption the language is the same: no timer asks it
     /// again, and only a change of language or engine brings captions back.
+    /// The microphone was off for sounds all that time, and a smoke alarm
+    /// went unheard.
     private func comesBackWithoutTimer(_ failure: PipelineFailure) -> Bool {
+        if HomeServer.missingAddress(failure.engineUnavailability) || HomeServer.refusedPlainAddress(failure.engineUnavailability) { return true }
         guard let kind = failure.engineUnavailability?.kind else { return false }
         return kind == .waitingForWiFi || kind == .notEnoughStorage || HomeServer.languageNotCovered(failure.engineUnavailability)
     }
@@ -3339,12 +3377,13 @@ public final class CaptionPipeline {
     /// `homeServerWaitSeconds` and starts captions once it answers. A
     /// refused code needs a person, so it isn't asked again, and neither is
     /// a plain ws:// address out on the internet, which the phone itself
-    /// refuses before asking.
+    /// refuses before asking, nor no saved address at all.
     @discardableResult
     private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
               !HomeServer.refusedPlainAddress(failure.engineUnavailability),
               !HomeServer.languageNotCovered(failure.engineUnavailability),
+              !HomeServer.missingAddress(failure.engineUnavailability),
               activeSettings?.engine == .homeServer
         else { return false }
         homeServerRecheck?.cancel()

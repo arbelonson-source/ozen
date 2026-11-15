@@ -170,4 +170,24 @@ struct ReplayHalfLineTests {
         #expect(await eventually { pipeline.segments.last?.text == "half line and the rest" })
         #expect(pipeline.segments.map(\.text) == ["half line and the rest"])
     }
+
+    @Test("a replay line that is only overlap when the grace passes still removes the half line when it adds words")
+    func overlapOnlyLineInProgressAtTheGrace() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line A is done", isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await said(pipeline, audio, seconds: 6, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts", isFinal: false, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+
+        let replayLine = UUID()
+        phone.emit(TranscriptToken(utteranceID: replayLine, text: "line A is done", isFinal: false, timestamp: 2_000))
+        await liveAfterReplay(pipeline, audio, phone, seconds: 10)
+        phone.emit(TranscriptToken(utteranceID: replayLine, text: "line A is done and the rest", isFinal: true, timestamp: 2_001))
+        #expect(await eventually { pipeline.segments.last?.text == "and the rest" })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "and the rest"])
+    }
 }
