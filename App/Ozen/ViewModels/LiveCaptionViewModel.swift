@@ -1777,12 +1777,14 @@ public final class LiveCaptionViewModel {
         let onScreen = Set([historySessionID] + closedHistorySessions.map(\.id)).union(openedHistoryIDs)
         let writer = historyWriter
         let clips = problemAudio
-        return await Task.detached(priority: .utility) {
+        let deleted = await Task.detached(priority: .utility) {
             if let cutoff = retention.cutoff(now: now) {
                 clips?.deleteClips(olderThan: cutoff)
             }
             return writer.deleteExpiredNow(retention: retention, now: now, protecting: onScreen)
         }.value
+        if deleted > 0 { ExportScratchFolder.standard.clear() }
+        return deleted
     }
 
     // MARK: - Keyword alerts
