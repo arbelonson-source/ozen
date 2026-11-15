@@ -197,4 +197,17 @@ struct HomeServerPinTests {
             #expect(HomeServer.codeSavedText() == "Pairing code saved on the phone")
         }
     }
+
+    @Test("saving an address that shows a caution says the caution after the saved words")
+    func savedWordsWithCaution() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.addressSavedAnnouncement(address: "wss://home.example") == "Computer address saved")
+            #expect(HomeServer.addressSavedAnnouncement(address: "192.168.1.20") == "Computer address saved")
+            #expect(HomeServer.addressSavedAnnouncement(address: "") == "Computer address removed")
+            #expect(HomeServer.addressSavedAnnouncement(address: "ws://203.0.113.9:8765")
+                == "Computer address saved. Outside the home network, use the address that starts with wss://")
+            #expect(HomeServer.addressSavedAnnouncement(address: " not an address ")
+                == "Computer address saved. That address doesn’t look right")
+        }
+    }
 }

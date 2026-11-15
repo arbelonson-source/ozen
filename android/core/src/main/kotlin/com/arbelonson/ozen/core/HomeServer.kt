@@ -125,6 +125,17 @@ object HomeServer {
     fun addressSavedText(address: String): String =
         if (address.isBlank()) tr("כתובת המחשב הוסרה", "Computer address removed") else tr("כתובת המחשב נשמרה", "Computer address saved")
 
+    /** What Save address says aloud: the saved words, then the caution Settings shows under the field for that address, as one announcement. */
+    fun addressSavedAnnouncement(address: String): String {
+        val saved = addressSavedText(address)
+        return when {
+            address.isBlank() -> saved
+            needsEncryptedAddress(address) -> saved + ". " + plainAddressRefusedText()
+            url(address) == null -> saved + ". " + tr("הכתובת לא נראית תקינה", "That address doesn’t look right")
+            else -> saved
+        }
+    }
+
     /** Said to a screen reader when Save code is pressed, as the green line that appears is not announced by itself. */
     fun codeSavedText(): String = tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone")
 

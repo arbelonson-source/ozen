@@ -332,6 +332,20 @@ class HomeServerTest {
     }
 
     @Test
+    fun `saving an address that shows a caution says the caution after the saved words`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Computer address saved", HomeServer.addressSavedAnnouncement("wss://home.example"))
+            assertEquals("Computer address saved", HomeServer.addressSavedAnnouncement("192.168.1.20"))
+            assertEquals("Computer address removed", HomeServer.addressSavedAnnouncement(""))
+            assertEquals(
+                "Computer address saved. Outside the home network, use the address that starts with wss://",
+                HomeServer.addressSavedAnnouncement("ws://203.0.113.9:8765"),
+            )
+            assertEquals("Computer address saved. That address doesn’t look right", HomeServer.addressSavedAnnouncement(" not an address "))
+        }
+    }
+
+    @Test
     fun `saving the address or the pairing code has words to announce`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Computer address saved", HomeServer.addressSavedText("wss://home.example"))

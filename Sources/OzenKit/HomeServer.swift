@@ -98,6 +98,17 @@ public enum HomeServer {
             : tr("כתובת המחשב נשמרה", "Computer address saved")
     }
 
+    /// What Save address says aloud: the saved words, then the caution Settings
+    /// shows under the field for that address, as one announcement.
+    public static func addressSavedAnnouncement(address: String) -> String {
+        let saved = addressSavedText(address: address)
+        let typed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty { return saved }
+        if needsEncryptedAddress(address) { return saved + ". " + plainAddressRefusedText() }
+        if url(from: address) == nil { return saved + ". " + tr("הכתובת לא נראית תקינה", "That address doesn’t look right") }
+        return saved
+    }
+
     /// Said to a screen reader when Save code is pressed, as the green line
     /// that appears is not announced by itself.
     public static func codeSavedText() -> String {

@@ -52,6 +52,13 @@ struct SharedFileNameTests {
         #expect(scalars(SharedFileName.make(from: "\u{200F}שיחה\u{200E}")) == scalars("שיחה"))
     }
 
+    @Test("a zero-width space is left out like the other invisible marks")
+    func zeroWidthSpace() {
+        func scalars(_ text: String) -> [UInt32] { text.unicodeScalars.map(\.value) }
+        #expect(scalars(SharedFileName.make(from: "a\u{200B}b")) == scalars("ab"))
+        #expect(SharedFileName.make(from: "\u{200B}\u{200B}") == "recording")
+    }
+
     @Test("an ordinary name, Hebrew or not, stays as it is")
     func ordinary() {
         #expect(SharedFileName.make(from: "Lecture 4") == "Lecture 4")

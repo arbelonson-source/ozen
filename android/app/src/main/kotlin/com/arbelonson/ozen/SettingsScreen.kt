@@ -757,8 +757,11 @@ private fun HomeComputerSection(
     // aloud and focus goes to the field instead of falling away.
     val saveAddressAndSay = {
         saveAddress()
-        addressFocus.requestFocus()
-        ScreenReader.said(context, HomeServer.addressSavedText(address))
+        try {
+            addressFocus.requestFocus()
+        } catch (_: IllegalStateException) {
+        }
+        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false
@@ -778,7 +781,10 @@ private fun HomeComputerSection(
     val saveCodeNow = {
         scope.launch {
             if (saveCode()) {
-                codeFocus.requestFocus()
+                try {
+                    codeFocus.requestFocus()
+                } catch (_: IllegalStateException) {
+                }
                 ScreenReader.said(context, HomeServer.codeSavedText())
             }
         }
