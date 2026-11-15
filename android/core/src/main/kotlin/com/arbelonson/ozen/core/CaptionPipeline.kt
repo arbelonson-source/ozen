@@ -961,7 +961,7 @@ class CaptionPipeline(
         // run before it returns; the dead fan-out must not start listening.
         if (runID != run) return abandon(fan)
         fanOut = fan
-        val engineAudio = if (replay.isEmpty()) fan.outputs[0] else replaying(replay, fan.outputs[0])
+        val engineAudio = if (replay.isEmpty()) fan.outputs[0] else replaying(replay, fan.outputs[0], run)
         val tokens = engine.stream(settings.languageCode, engineAudio)
         val embedderAudio = fan.outputs[1]
         val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]), soundAvailabilityReporter())
@@ -3858,15 +3858,16 @@ class CaptionPipeline(
      * so it holds nothing beyond the replay itself: the live audio waits in
      * the fan-out's own bounded channel meanwhile.
      */
-    private fun replaying(replay: FloatArray, live: Flow<FloatArray>): Flow<FloatArray> = flow {
+    private fun replaying(replay: FloatArray, live: Flow<FloatArray>, run: UUID): Flow<FloatArray> = flow {
         val step = (SAMPLE_RATE / 5).toInt()
         for (start in replay.indices step step) emit(replay.copyOfRange(start, minOf(start + step, replay.size)))
         var liveFed = 0L
         val grace = (REPLAY_WORDS_GRACE_SECONDS * SAMPLE_RATE).toLong()
         live.collect { chunk ->
             emit(chunk)
+            val before = liveFed
             liveFed += chunk.size
-            if (liveFed >= grace && replayedLines.isNotEmpty()) replayedLines = emptySet()
+            if (before < grace && liveFed >= grace) scope.launch { if (runID == run) replayedLines = emptySet() }
         }
     }
 
