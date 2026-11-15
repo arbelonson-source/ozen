@@ -1175,7 +1175,9 @@
   "Deleted: %1. Undo is available.": "ተሰርዟል፦ %1። መመለስ ይቻላል።",
   "Replies will play on the phone’s speaker": "ምላሾቹ በስልኩ ድምጽ ማጉያ ይጫወታሉ",
   "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "ስልኩ ኦዜን እንዲያዳምጥ አልፈቀደም። እንደገና ለመሞከር «ካፕሽን ጀምር»ን ይንኩ።"
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "ስልኩ ኦዜን እንዲያዳምጥ አልፈቀደም። እንደገና ለመሞከር «ካፕሽን ጀምር»ን ይንኩ።",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "የደመና ንግግር መለያ አሁን አይገኝም። ለመቀጠል Ozenን ይክፈቱ።",
+  "The address or code is missing. Open Ozen to continue.": "አድራሻው ወይም ኮዱ ጠፍቷል። ለመቀጠል Ozenን ይክፈቱ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2353,7 +2355,9 @@
   "Deleted: %1. Undo is available.": "حُذف: %1. يمكنكم التراجع.",
   "Replies will play on the phone’s speaker": "ستُشغَّل الردود عبر مكبّر صوت الهاتف",
   "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "لم يسمح الهاتف لـ Ozen بالاستماع. اضغطوا على «بدء الترجمة النصية» للمحاولة مرة أخرى."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "لم يسمح الهاتف لـ Ozen بالاستماع. اضغطوا على «بدء الترجمة النصية» للمحاولة مرة أخرى.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "النسخ السحابي غير متاح الآن. افتحوا Ozen للمتابعة.",
+  "The address or code is missing. Open Ozen to continue.": "العنوان أو الرمز مفقود. افتحوا Ozen للمتابعة."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3531,7 +3535,9 @@
   "Deleted: %1. Undo is available.": "已删除：%1。可以撤销。",
   "Replies will play on the phone’s speaker": "回复将通过手机扬声器播放",
   "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "手机不允许 Ozen 收听。请点按“开始字幕”重试。"
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "手机不允许 Ozen 收听。请点按“开始字幕”重试。",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "云端语音识别目前不可用。打开 Ozen 以继续。",
+  "The address or code is missing. Open Ozen to continue.": "缺少地址或配对码。打开 Ozen 以继续。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4709,7 +4715,9 @@
   "Deleted: %1. Undo is available.": "Supprimé : %1. Vous pouvez annuler.",
   "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
   "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Transcription dans le cloud n’est pas disponible pour le moment. Ouvrez Ozen pour continuer.",
+  "The address or code is missing. Open Ozen to continue.": "L’adresse ou le code est manquant. Ouvrez Ozen pour continuer."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5887,7 +5895,9 @@
   "Deleted: %1. Undo is available.": "Gelöscht: %1. Rückgängig ist möglich.",
   "Replies will play on the phone’s speaker": "Antworten werden über den Lautsprecher des Telefons wiedergegeben",
   "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Das Telefon hat Ozen das Zuhören nicht erlaubt. Tippen Sie auf „Untertitel starten“, um es erneut zu versuchen."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Das Telefon hat Ozen das Zuhören nicht erlaubt. Tippen Sie auf „Untertitel starten“, um es erneut zu versuchen.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Cloud‑Transkription ist gerade nicht verfügbar. Öffnen Sie Ozen, um fortzufahren.",
+  "The address or code is missing. Open Ozen to continue.": "Die Adresse oder der Code fehlt. Öffnen Sie Ozen, um fortzufahren."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7065,7 +7075,9 @@
   "Deleted: %1. Undo is available.": "हटाया गया: %1। वापस लाया जा सकता है।",
   "Replies will play on the phone’s speaker": "जवाब फ़ोन के स्पीकर पर चलेंगे",
   "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "फ़ोन ने Ozen को सुनने नहीं दिया। दोबारा कोशिश करने के लिए “कैप्शन शुरू करें” पर टैप करें।"
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "फ़ोन ने Ozen को सुनने नहीं दिया। दोबारा कोशिश करने के लिए “कैप्शन शुरू करें” पर टैप करें।",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "क्लाउड ट्रांसक्रिप्शन अभी उपलब्ध नहीं है। जारी रखने के लिए Ozen खोलें।",
+  "The address or code is missing. Open Ozen to continue.": "पता या कोड ग़ायब है। जारी रखने के लिए Ozen खोलें।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8243,7 +8255,9 @@
   "Deleted: %1. Undo is available.": "Eliminado: %1. É possível desfazer.",
   "Replies will play on the phone’s speaker": "As respostas serão reproduzidas no altifalante do telemóvel",
   "To fix this, disconnect the headset or hearing aid.": "Para corrigir isto, desligue os auscultadores ou o aparelho auditivo.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "O telefone não deixou o Ozen ouvir. Toque em “Iniciar legendas” para tentar de novo."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "O telefone não deixou o Ozen ouvir. Toque em “Iniciar legendas” para tentar de novo.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "A transcrição na nuvem não está disponível neste momento. Abra o Ozen para continuar.",
+  "The address or code is missing. Open Ozen to continue.": "Falta o endereço ou o código. Abra o Ozen para continuar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9421,7 +9435,9 @@
   "Deleted: %1. Undo is available.": "Удалено: %1. Можно отменить.",
   "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
   "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Облачное распознавание: сейчас недоступно. Откройте Ozen, чтобы продолжить.",
+  "The address or code is missing. Open Ozen to continue.": "Отсутствует адрес или код. Откройте Ozen, чтобы продолжить."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10599,7 +10615,9 @@
   "Deleted: %1. Undo is available.": "Eliminado: %1. Se puede deshacer.",
   "Replies will play on the phone’s speaker": "Las respuestas sonarán en el altavoz del teléfono",
   "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecten los auriculares o el audífono.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "El teléfono no dejó que Ozen escuchara. Toque «Iniciar subtítulos» para intentarlo de nuevo."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "El teléfono no dejó que Ozen escuchara. Toque «Iniciar subtítulos» para intentarlo de nuevo.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcripción en la nube no está disponible en este momento. Abre Ozen para continuar.",
+  "The address or code is missing. Open Ozen to continue.": "Falta la dirección o el código. Abre Ozen para continuar."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11777,6 +11795,8 @@
   "Deleted: %1. Undo is available.": "Видалено: %1. Можна скасувати.",
   "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
   "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат.",
-  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Торкніться «Увімкнути субтитри», щоб спробувати ще раз."
+  "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Торкніться «Увімкнути субтитри», щоб спробувати ще раз.",
+  "Cloud transcription isn’t available right now. Open Ozen to continue.": "Хмарне розпізнавання: зараз недоступно. Відкрийте Ozen, щоб продовжити.",
+  "The address or code is missing. Open Ozen to continue.": "Відсутня адреса або код. Відкрийте Ozen, щоб продовжити."
  }
 }

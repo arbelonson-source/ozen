@@ -299,8 +299,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "Cloud transcription’s budget ran out. Open Ozen for details."
                 )
             case (_, .noInternet?) where failure.engineUnavailability?.cloudTimedOut == true:
-                let cloud = tr("התמלול בענן", "Cloud transcription")
-                return tr("%1 לא זמין כרגע", "%1 isn’t available right now", args: ["\(cloud)"]) + ". " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                return tr("התמלול בענן לא זמין כרגע. פתחו את אוזן כדי להמשיך.", "Cloud transcription isn’t available right now. Open Ozen to continue.")
             case (_, .noInternet?):
                 return tr(
                     "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
@@ -309,7 +308,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             case (_, .homeServerUnreachable?) where HomeServer.refusedPlainAddress(failure.engineUnavailability):
                 return HomeServer.plainAddressRefusedText()
             case (_, .homeServerUnreachable?) where HomeServer.missingAddress(failure.engineUnavailability):
-                return HomeServer.rejectionTitle(detail: HomeServer.noAddress) + ". " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                return tr("הכתובת או הקוד חסרים. פתחו את אוזן כדי להמשיך.", "The address or code is missing. Open Ozen to continue.")
             case (_, .homeServerUnreachable?):
                 return tr(
                     "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
