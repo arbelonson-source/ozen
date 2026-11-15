@@ -10,6 +10,7 @@ object FileTranscriptRecord {
         recordingSeconds: Double?,
         modelVariant: String?,
         id: UUID = UUID.randomUUID(),
+        languageCode: String? = null,
     ): TranscriptSessionRecord {
         val startedAt = finishedAt - maxOf(recordingSeconds ?: 0.0, lines.maxOfOrNull { it.endSeconds } ?: 0.0)
         return TranscriptSessionRecord(
@@ -23,6 +24,7 @@ object FileTranscriptRecord {
                 SavedSegment(UUID.randomUUID(), it.text.trim(), null, null, startedAt + it.startSeconds, isCommitted = true)
             },
             title = title(fileName),
+            languageCode = languageCode,
         )
     }
 

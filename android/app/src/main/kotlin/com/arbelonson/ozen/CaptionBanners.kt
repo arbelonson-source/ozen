@@ -385,7 +385,7 @@ internal fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capt
             IconBadge(Icons.Rounded.ChatBubble)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
-                Text(CaptionLayout.directed(recent.title ?: recent.preview, languageCode), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(CaptionLayout.directed(recent.title ?: recent.preview, recent.languageCode(languageCode)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
             }
         }

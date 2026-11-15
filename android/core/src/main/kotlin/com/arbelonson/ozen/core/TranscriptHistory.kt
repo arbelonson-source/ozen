@@ -142,7 +142,21 @@ data class TranscriptSessionRecord(
     val segments: List<SavedSegment>,
     /** A name the reader gave the conversation ("bikur etzel harofe" - "visit to the doctor"). */
     val title: String? = null,
+    /**
+     * The language the conversation was spoken in (the spoken-language
+     * setting when it was first saved). Number highlights and the reading
+     * direction of its lines follow it, not whatever the setting says by
+     * the time it is opened again. Conversations saved before it existed
+     * have none.
+     */
+    val languageCode: String? = null,
 ) {
+    /**
+     * The language to show and export this conversation in: its own, or
+     * the current setting for one saved before the language was kept.
+     */
+    fun languageCode(orCurrent: String): String = languageCode ?: orCurrent
+
     /**
      * The details line under a saved conversation: what wrote it, and
      * through which microphone. The record keeps the technical model id
@@ -187,6 +201,7 @@ data class TranscriptSessionRecord(
         inputName?.let { put("inputName", it) }
         put("segments", JsonArray(segments.map { it.toJsonObject() }))
         title?.let { put("title", it) }
+        languageCode?.let { put("languageCode", it) }
     }.toString()
 
     companion object {
@@ -207,6 +222,7 @@ data class TranscriptSessionRecord(
             modelVariant: String?,
             inputName: String?,
             starred: Set<UUID> = emptySet(),
+            languageCode: String? = null,
         ): TranscriptSessionRecord {
             val saved = from.mapNotNull { segment ->
                 if (historyTrimmed(segment.text).isEmpty()) {
@@ -233,6 +249,7 @@ data class TranscriptSessionRecord(
                 modelVariant = modelVariant,
                 inputName = inputName,
                 segments = saved,
+                languageCode = languageCode,
             )
         }
 
@@ -258,6 +275,8 @@ data class TranscriptSessionRecord(
                     container.optional("segments")?.asHistoryArray()?.mapNotNull { entry -> lenientHistory { SavedSegment.fromJsonElement(entry) } }
                 } ?: emptyList(),
                 title = lenientHistory { container.optional("title")?.asHistoryString() },
+                // A value the reader cannot make sense of reads as none.
+                languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() },
             )
         }
     }
@@ -277,8 +296,13 @@ data class StarredLine(
     val engine: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit,
     /** And with which of the phone's models, whose cutoffs can be its own. */
     val model: String? = null,
+    /** The language the conversation was spoken in, when it kept one. */
+    val languageCode: String? = null,
 ) {
     val id: UUID get() = segment.id
+
+    /** See [TranscriptSessionRecord.languageCode]. */
+    fun languageCode(orCurrent: String): String = languageCode ?: orCurrent
 
     /** Whether the line carried the question mark on screen. */
     val isUncertain: Boolean get() = CaptionConfidence.isUncertain(segment, engine, model)
@@ -333,6 +357,8 @@ data class TranscriptSessionSummary(
      * this is the closest thing to one.
      */
     val lastLineAt: Double? = null,
+    /** See [TranscriptSessionRecord.languageCode]. */
+    val languageCode: String? = null,
 ) {
     /**
      * Up to the last line when the conversation was never closed: the
@@ -345,6 +371,9 @@ data class TranscriptSessionSummary(
             return maxOf(0.0, end - startedAt)
         }
 
+    /** See [TranscriptSessionRecord.languageCode]. */
+    fun languageCode(orCurrent: String): String = languageCode ?: orCurrent
+
     internal fun toJsonObject(): JsonObject = buildJsonObject {
         put("id", historyUuidText(id))
         put("startedAt", historyNumber(startedAt))
@@ -356,6 +385,7 @@ data class TranscriptSessionSummary(
         put("starredCount", starredCount)
         title?.let { put("title", it) }
         lastLineAt?.let { put("lastLineAt", historyNumber(it)) }
+        languageCode?.let { put("languageCode", it) }
     }
 
     companion object {
@@ -379,6 +409,7 @@ data class TranscriptSessionSummary(
                 starredCount = record.segments.count { it.isStarred },
                 title = record.title,
                 lastLineAt = record.segments.maxOfOrNull { it.startTimestamp },
+                languageCode = record.languageCode,
             )
         }
 
@@ -395,6 +426,7 @@ data class TranscriptSessionSummary(
                 starredCount = container.required("starredCount").asHistoryInt(),
                 title = container.optional("title")?.asHistoryString(),
                 lastLineAt = container.optional("lastLineAt")?.asHistoryDouble(),
+                languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() },
             )
         }
 
@@ -591,7 +623,7 @@ class TranscriptHistoryStore(
             if (toSave.title == null) toSave = toSave.copy(title = remembered.title)
             val engine = remembered.engine
             if (engine != null) {
-                toSave = toSave.copy(engine = engine, modelVariant = remembered.modelVariant, inputName = remembered.inputName)
+                toSave = toSave.copy(engine = engine, modelVariant = remembered.modelVariant, inputName = remembered.inputName, languageCode = remembered.languageCode)
             }
         } else {
             val data = readConversation(file)
@@ -610,7 +642,7 @@ class TranscriptHistoryStore(
                 // and judged its uncertain lines by them.
                 val source = lenientHistory { savedSource(data) }
                 if (source != null) {
-                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName)
+                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName, languageCode = source.languageCode)
                 }
             } else if (toSave.title == null) {
                 toSave = toSave.copy(title = cachedSummary(file)?.title)
@@ -641,6 +673,7 @@ class TranscriptHistoryStore(
         val engine: TranscriptionEngineKind?,
         val modelVariant: String?,
         val inputName: String?,
+        val languageCode: String?,
         val modifiedAt: Long,
         val size: Long,
     )
@@ -662,7 +695,7 @@ class TranscriptHistoryStore(
     private fun remember(saved: TranscriptSessionRecord, file: File) = synchronized(memory) {
         val modifiedAt = file.lastModified()
         if (modifiedAt == 0L) return@synchronized
-        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, modifiedAt, file.length())
+        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, saved.languageCode, modifiedAt, file.length())
     }
 
     private fun forget(id: UUID) = synchronized(memory) {
@@ -678,7 +711,7 @@ class TranscriptHistoryStore(
         true
     }
 
-    private class SavedSource(val engine: TranscriptionEngineKind?, val modelVariant: String?, val inputName: String?)
+    private class SavedSource(val engine: TranscriptionEngineKind?, val modelVariant: String?, val inputName: String?, val languageCode: String?)
 
     private fun savedTitle(data: ByteArray): String? =
         parseHistoryBytes(data).asHistoryObject().optional("title")?.asHistoryString()
@@ -689,6 +722,7 @@ class TranscriptHistoryStore(
             engine = lenientHistory { container.optional("engine")?.asHistoryEngine() },
             modelVariant = container.optional("modelVariant")?.asHistoryString(),
             inputName = container.optional("inputName")?.asHistoryString(),
+            languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() },
         )
     }
 
@@ -868,7 +902,7 @@ class TranscriptHistoryStore(
             .flatMap { record ->
                 record.segments
                     .filter { it.isStarred }
-                    .map { StarredLine(record.id, record.startedAt, it, record.title, record.engine, record.modelVariant) }
+                    .map { StarredLine(record.id, record.startedAt, it, record.title, record.engine, record.modelVariant, record.languageCode) }
             }
 
     /**
@@ -1324,7 +1358,9 @@ class TranscriptHistoryStore(
          * conversation shared in winter keeps the clock times it was said at.
          * With [marksUncertain], a line the engine was unsure of says so.
          */
-        fun exportText(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean = false, decimalComma: Boolean = false): String {
+        fun exportText(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean = false, decimalComma: Boolean = false, currentLanguageCode: String = "he"): String {
+            val language = record.languageCode(currentLanguageCode)
+            val comma = record.languageCode?.let { NumberText.usesDecimalComma(UILanguage.match(it) ?: UILanguage.Hebrew) } ?: decimalComma
             val formatted = record.segments.map { segment ->
                 val time = formattedClockTime(segment.startTimestamp, utcOffsetAt(segment.startTimestamp))
                 val star = if (segment.isStarred) "★ " else ""
@@ -1355,7 +1391,7 @@ class TranscriptHistoryStore(
                 emptyList()
             } else {
                 record.segments.zip(formatted)
-                    .filter { NumberEmphasis.hasListableNumber(it.first.text, "he", decimalComma) }
+                    .filter { NumberEmphasis.hasListableNumber(it.first.text, language, comma) }
                     .take(NUMBERS_BLOCK_LIMIT)
                     .map { it.second }
             }
@@ -1378,9 +1414,10 @@ class TranscriptHistoryStore(
             utcOffsetAt: (Double) -> Int,
             marksUncertain: Boolean,
             decimalComma: Boolean = false,
+            currentLanguageCode: String = "he",
         ): String? {
             val out = StringBuilder()
-            val written = exportAll(records.sortedBy { it.startedAt }.asSequence(), utcOffsetAt, marksUncertain, decimalComma, out)
+            val written = exportAll(records.sortedBy { it.startedAt }.asSequence(), utcOffsetAt, marksUncertain, decimalComma, out, currentLanguageCode)
             return if (written) out.toString() else null
         }
 
@@ -1397,12 +1434,13 @@ class TranscriptHistoryStore(
             marksUncertain: Boolean,
             decimalComma: Boolean,
             out: Appendable,
+            currentLanguageCode: String = "he",
         ): Boolean {
             var first = true
             for (record in records) {
                 out.append(if (first) "${tr("כל השיחות מתוך אוזן", "All conversations from Ozen")}\n\n" else "\n\n──────────\n\n")
                 first = false
-                out.append(exportText(record, utcOffsetAt, marksUncertain, decimalComma))
+                out.append(exportText(record, utcOffsetAt, marksUncertain, decimalComma, currentLanguageCode))
             }
             return !first
         }

@@ -175,6 +175,7 @@ public final class LiveCaptionViewModel {
         let engine: TranscriptionEngineKind
         let modelVariant: String?
         let inputName: String?
+        let languageCode: String
     }
     private var autosaveTask: Task<Void, Never>?
     /// Whether captions were listening the last time history looked.
@@ -1196,7 +1197,8 @@ public final class LiveCaptionViewModel {
             engine: session.engine,
             modelVariant: session.modelVariant,
             inputName: session.inputName,
-            starred: starredSegmentIDs
+            starred: starredSegmentIDs,
+            languageCode: session.languageCode
         )
         saveInBackground(record)
     }
@@ -2439,7 +2441,8 @@ public final class LiveCaptionViewModel {
             engine: transcribingSettings.engine,
             modelVariant: transcribingSettings.modelDescription,
             inputName: selectedInput?.portName,
-            starred: starredSegmentIDs
+            starred: starredSegmentIDs,
+            languageCode: settings.languageCode
         )
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {
@@ -2623,7 +2626,8 @@ public final class LiveCaptionViewModel {
                     endedAt: endedAt,
                     engine: transcribingSettings.engine,
                     modelVariant: transcribingSettings.modelDescription,
-                    inputName: selectedInput?.portName
+                    inputName: selectedInput?.portName,
+                    languageCode: settings.languageCode
                 ))
             }
         }

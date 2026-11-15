@@ -241,7 +241,7 @@ struct HistoryView: View {
         NavigationLink {
             HistoryDetailView(viewModel: viewModel, sessionID: session.id, searchQuery: query, onHistoryChanged: reload)
         } label: {
-            SessionRow(session: session, languageCode: viewModel.settings.languageCode, isSearchResult: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            SessionRow(session: session, languageCode: session.languageCode(orCurrent: viewModel.settings.languageCode), isSearchResult: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .accessibilityIdentifier("conversationRow")
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -315,7 +315,7 @@ struct HistoryView: View {
             if !sessions.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
                     ShareLink(
-                        item: AllConversationsExport(store: viewModel.historyStore, marksUncertain: viewModel.display.markUncertainLines),
+                        item: AllConversationsExport(store: viewModel.historyStore, marksUncertain: viewModel.display.markUncertainLines, currentLanguageCode: viewModel.settings.languageCode),
                         preview: SharePreview(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))
                     ) {
                         Label(tr("שיתוף כל השיחות", "Share all conversations"), systemImage: "square.and.arrow.up")
@@ -361,7 +361,7 @@ struct HistoryView: View {
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: { session in
-            Text(session.title ?? CaptionLayout.directed(session.preview, languageCode: viewModel.settings.languageCode))
+            Text(session.title ?? CaptionLayout.directed(session.preview, languageCode: session.languageCode(orCurrent: viewModel.settings.languageCode)))
         }
         .confirmationDialog(tr("למחוק את כל השיחות השמורות?", "Delete all saved conversations?"), isPresented: $confirmingDeleteAll, titleVisibility: .visible) {
             Button(tr("מחיקת הכול", "Delete all"), role: .destructive) {

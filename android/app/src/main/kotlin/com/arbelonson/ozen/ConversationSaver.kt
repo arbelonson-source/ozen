@@ -108,6 +108,7 @@ class ConversationSaver(
             modelVariant = using.modelDescription,
             inputName = inputName(),
             starred = starred.toSet(),
+            languageCode = using.languageCode,
         )
         val written = if (inBackground) {
             writer.saveInBackground(record)
@@ -142,6 +143,7 @@ class ConversationSaver(
                     modelVariant = record.modelVariant,
                     inputName = record.inputName,
                     starred = starred.toSet(),
+                    languageCode = record.languageCode,
                 ),
             )
         }

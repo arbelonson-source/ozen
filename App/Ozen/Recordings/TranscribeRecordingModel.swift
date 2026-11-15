@@ -227,7 +227,8 @@ final class TranscribeRecordingModel {
                 lines: lines,
                 finishedAt: now().timeIntervalSince1970,
                 recordingSeconds: ready.durationSeconds,
-                modelVariant: model.variant
+                modelVariant: model.variant,
+                languageCode: ready.language.engineLanguageCode
             )
             do {
                 history = try host.saveRecord(record) ? .saved(record.id) : .failed
