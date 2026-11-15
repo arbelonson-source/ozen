@@ -1167,7 +1167,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል፤ እንደገና ያወርደዋል።",
   "Tap to download it again": "እንደገና ለማውረድ ይንኩ",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen “%1” ከመጨረሱ በፊት ተዘግቷል። እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።",
-  "This recording was cut short: Ozen was closed before it finished.": "ይህ ቅጂ ተቋርጧል፤ Ozen ከመጨረሱ በፊት ተዘግቷል።"
+  "This recording was cut short: Ozen was closed before it finished.": "ይህ ቅጂ ተቋርጧል፤ Ozen ከመጨረሱ በፊት ተዘግቷል።",
+  "The text written so far is saved in History.": "እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2337,7 +2338,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen وستنزّله من جديد.",
   "Tap to download it again": "المسوا لتنزيله مجددًا",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "أُغلق Ozen قبل أن ينتهي تحويل «%1». النص الذي كُتب حتى ذلك الحين محفوظ في السجل.",
-  "This recording was cut short: Ozen was closed before it finished.": "توقف تحويل هذا التسجيل قبل اكتماله، لأن Ozen أُغلق قبل أن ينتهي."
+  "This recording was cut short: Ozen was closed before it finished.": "توقف تحويل هذا التسجيل قبل اكتماله، لأن Ozen أُغلق قبل أن ينتهي.",
+  "The text written so far is saved in History.": "النص الذي كُتب حتى الآن محفوظ في السجل."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3507,7 +3509,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "这部手机上的语音模型已损坏，Ozen 已将其删除，并会重新下载。",
   "Tap to download it again": "点按重新下载",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "在“%1”转写完成之前，Ozen 已被关闭。到那时为止写下的文字已保存在历史记录中。",
-  "This recording was cut short: Ozen was closed before it finished.": "这段录音的转写中途中断：Ozen 在转写完成之前已被关闭。"
+  "This recording was cut short: Ozen was closed before it finished.": "这段录音的转写中途中断：Ozen 在转写完成之前已被关闭。",
+  "The text written so far is saved in History.": "到目前为止写下的文字已保存在历史记录中。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4677,7 +4680,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau.",
   "Tap to download it again": "Touchez pour le télécharger de nouveau",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen a été fermé avant la fin de « %1 ». Le texte écrit jusque-là est enregistré dans l’historique.",
-  "This recording was cut short: Ozen was closed before it finished.": "Cet enregistrement a été interrompu : Ozen a été fermé avant la fin."
+  "This recording was cut short: Ozen was closed before it finished.": "Cet enregistrement a été interrompu : Ozen a été fermé avant la fin.",
+  "The text written so far is saved in History.": "Le texte écrit jusque-là est enregistré dans l’historique."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5847,7 +5851,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt und lädt es erneut herunter.",
   "Tap to download it again": "Zum erneuten Laden tippen",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen wurde beendet, bevor „%1“ fertig war. Der bis dahin geschriebene Text ist im Verlauf gespeichert.",
-  "This recording was cut short: Ozen was closed before it finished.": "Diese Aufnahme wurde abgebrochen: Ozen wurde beendet, bevor sie fertig war."
+  "This recording was cut short: Ozen was closed before it finished.": "Diese Aufnahme wurde abgebrochen: Ozen wurde beendet, bevor sie fertig war.",
+  "The text written so far is saved in History.": "Der bisher geschriebene Text ist im Verlauf gespeichert."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7017,7 +7022,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया और फिर से डाउनलोड करेगा।",
   "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "“%1” पूरा होने से पहले Ozen बंद हो गया। तब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।",
-  "This recording was cut short: Ozen was closed before it finished.": "यह रिकॉर्डिंग अधूरी रह गई: पूरी होने से पहले Ozen बंद हो गया।"
+  "This recording was cut short: Ozen was closed before it finished.": "यह रिकॉर्डिंग अधूरी रह गई: पूरी होने से पहले Ozen बंद हो गया।",
+  "The text written so far is saved in History.": "अब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8187,7 +8193,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o e vai transferi-lo de novo.",
   "Tap to download it again": "Toque para o transferir novamente",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "O Ozen foi fechado antes de “%1” terminar. O texto escrito até então está guardado no histórico.",
-  "This recording was cut short: Ozen was closed before it finished.": "Esta gravação foi interrompida: o Ozen foi fechado antes de terminar."
+  "This recording was cut short: Ozen was closed before it finished.": "Esta gravação foi interrompida: o Ozen foi fechado antes de terminar.",
+  "The text written so far is saved in History.": "O texto escrito até agora está guardado no histórico."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9357,7 +9364,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Речевая модель на этом телефоне была повреждена, поэтому Ozen удалил её и загрузит заново.",
   "Tap to download it again": "Нажмите, чтобы загрузить её снова",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрылся, не дождавшись конца расшифровки «%1». Текст, написанный к этому моменту, сохранён в истории.",
-  "This recording was cut short: Ozen was closed before it finished.": "Расшифровка этой записи оборвалась: Ozen закрылся до её завершения."
+  "This recording was cut short: Ozen was closed before it finished.": "Расшифровка этой записи оборвалась: Ozen закрылся до её завершения.",
+  "The text written so far is saved in History.": "Текст, написанный к этому моменту, сохранён в истории."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10527,7 +10535,8 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó y lo descargará de nuevo.",
   "Tap to download it again": "Toca para descargarlo de nuevo",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen se cerró antes de que terminara «%1». El texto escrito hasta entonces está guardado en el historial.",
-  "This recording was cut short: Ozen was closed before it finished.": "Esta grabación quedó cortada: Ozen se cerró antes de que terminara."
+  "This recording was cut short: Ozen was closed before it finished.": "Esta grabación quedó cortada: Ozen se cerró antes de que terminara.",
+  "The text written so far is saved in History.": "El texto escrito hasta ahora está guardado en el historial."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11697,6 +11706,7 @@
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Мовну модель на цьому телефоні було пошкоджено, тому Ozen видалив її й завантажить знову.",
   "Tap to download it again": "Натисніть, щоб завантажити її знову",
   "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрився, не дочекавшись кінця розшифрування «%1». Текст, написаний до цього моменту, збережено в історії.",
-  "This recording was cut short: Ozen was closed before it finished.": "Розшифрування цього запису обірвалося: Ozen закрився до його завершення."
+  "This recording was cut short: Ozen was closed before it finished.": "Розшифрування цього запису обірвалося: Ozen закрився до його завершення.",
+  "The text written so far is saved in History.": "Текст, написаний до цього моменту, збережено в історії."
  }
 }

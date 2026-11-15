@@ -80,7 +80,10 @@ class FileTranscriber(
         interrupted.value = null
     }
 
+    private var textKept = false
+
     init {
+        scope.launch { shown.collect { busyNotice.follow(it) } }
         scope.launch(Dispatchers.IO) {
             captions.fileKeeper.recoverInterrupted()?.let { interrupted.value = it.name ?: tr("הקלטה", "Recording") }
         }
@@ -160,9 +163,9 @@ class FileTranscriber(
             } catch (stopped: CancellationException) {
                 throw stopped
             } catch (problem: Problem) {
-                shown.value = FileTranscription.Failed(name, problem.kind)
+                shown.value = FileTranscription.Failed(name, problem.kind, textKept)
             } catch (failure: Exception) {
-                shown.value = FileTranscription.Failed(name, FileTranscriptionProblem.Unexpected)
+                shown.value = FileTranscription.Failed(name, FileTranscriptionProblem.Unexpected, textKept)
             } finally {
                 captions.recordingTranscriptionDone()
             }
@@ -220,6 +223,7 @@ class FileTranscriber(
         }
         var scorer: SileroVoiceScorer? = null
         var kept = false
+        textKept = false
         captions.fileKeeper.begin(name, ready.durationSeconds, model.variant, ready.language.languageCode)
         val passes = Executors.newSingleThreadExecutor { Thread(it, "ozen-recording-pass") }
         try {
@@ -233,6 +237,11 @@ class FileTranscriber(
             kept = true
             if (history !is HistorySave.Failed) captions.fileKeeper.finished()
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
+        } catch (stopped: CancellationException) {
+            throw stopped
+        } catch (failure: Exception) {
+            textKept = withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.keepCutShort() }
+            throw failure
         } finally {
             if (!kept) withContext(NonCancellable + Dispatchers.IO) { captions.fileKeeper.discard() }
             scorer?.close()

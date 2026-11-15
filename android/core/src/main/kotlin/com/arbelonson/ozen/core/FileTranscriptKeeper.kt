@@ -85,6 +85,9 @@ class FileTranscriptKeeper(
         marker.delete()
     }
 
+    /** The run failed (not stopped) after lines were saved: they stay as a cut-short conversation. */
+    fun keepCutShort(): Boolean = recoverInterrupted() != null
+
     fun recoverInterrupted(): Interrupted? {
         val text = runCatching { marker.readText().trim() }.getOrNull() ?: return null
         val kept = runCatching { UUID.fromString(text) }.getOrNull()
