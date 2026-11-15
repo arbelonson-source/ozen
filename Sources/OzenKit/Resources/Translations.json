@@ -1165,7 +1165,9 @@
   "Star removed": "ኮከቡ ተወግዷል",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል፤ እንደገና ያወርደዋል።",
-  "Tap to download it again": "እንደገና ለማውረድ ይንኩ"
+  "Tap to download it again": "እንደገና ለማውረድ ይንኩ",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen “%1” ከመጨረሱ በፊት ተዘግቷል። እስካሁን የተጻፈው ጽሑፍ በታሪክ ውስጥ ተቀምጧል።",
+  "This recording was cut short: Ozen was closed before it finished.": "ይህ ቅጂ ተቋርጧል፤ Ozen ከመጨረሱ በፊት ተዘግቷል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2333,7 +2335,9 @@
   "Star removed": "أُزيلت النجمة",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen وستنزّله من جديد.",
-  "Tap to download it again": "المسوا لتنزيله مجددًا"
+  "Tap to download it again": "المسوا لتنزيله مجددًا",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "أُغلق Ozen قبل أن ينتهي تحويل «%1». النص الذي كُتب حتى ذلك الحين محفوظ في السجل.",
+  "This recording was cut short: Ozen was closed before it finished.": "توقف تحويل هذا التسجيل قبل اكتماله، لأن Ozen أُغلق قبل أن ينتهي."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3501,7 +3505,9 @@
   "Star removed": "已取消星标",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "这部手机上的语音模型已损坏，Ozen 已将其删除，并会重新下载。",
-  "Tap to download it again": "点按重新下载"
+  "Tap to download it again": "点按重新下载",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "在“%1”转写完成之前，Ozen 已被关闭。到那时为止写下的文字已保存在历史记录中。",
+  "This recording was cut short: Ozen was closed before it finished.": "这段录音的转写中途中断：Ozen 在转写完成之前已被关闭。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4669,7 +4675,9 @@
   "Star removed": "Étoile retirée",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau.",
-  "Tap to download it again": "Touchez pour le télécharger de nouveau"
+  "Tap to download it again": "Touchez pour le télécharger de nouveau",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen a été fermé avant la fin de « %1 ». Le texte écrit jusque-là est enregistré dans l’historique.",
+  "This recording was cut short: Ozen was closed before it finished.": "Cet enregistrement a été interrompu : Ozen a été fermé avant la fin."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5837,7 +5845,9 @@
   "Star removed": "Stern entfernt",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt und lädt es erneut herunter.",
-  "Tap to download it again": "Zum erneuten Laden tippen"
+  "Tap to download it again": "Zum erneuten Laden tippen",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen wurde beendet, bevor „%1“ fertig war. Der bis dahin geschriebene Text ist im Verlauf gespeichert.",
+  "This recording was cut short: Ozen was closed before it finished.": "Diese Aufnahme wurde abgebrochen: Ozen wurde beendet, bevor sie fertig war."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7005,7 +7015,9 @@
   "Star removed": "तारा हटाया गया",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया और फिर से डाउनलोड करेगा।",
-  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें"
+  "Tap to download it again": "फिर से डाउनलोड करने के लिए टैप करें",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "“%1” पूरा होने से पहले Ozen बंद हो गया। तब तक लिखा गया टेक्स्ट इतिहास में सहेजा गया है।",
+  "This recording was cut short: Ozen was closed before it finished.": "यह रिकॉर्डिंग अधूरी रह गई: पूरी होने से पहले Ozen बंद हो गया।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8173,7 +8185,9 @@
   "Star removed": "Estrela removida",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o e vai transferi-lo de novo.",
-  "Tap to download it again": "Toque para o transferir novamente"
+  "Tap to download it again": "Toque para o transferir novamente",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "O Ozen foi fechado antes de “%1” terminar. O texto escrito até então está guardado no histórico.",
+  "This recording was cut short: Ozen was closed before it finished.": "Esta gravação foi interrompida: o Ozen foi fechado antes de terminar."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9341,7 +9355,9 @@
   "Star removed": "Звёздочка убрана",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Речевая модель на этом телефоне была повреждена, поэтому Ozen удалил её и загрузит заново.",
-  "Tap to download it again": "Нажмите, чтобы загрузить её снова"
+  "Tap to download it again": "Нажмите, чтобы загрузить её снова",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрылся, не дождавшись конца расшифровки «%1». Текст, написанный к этому моменту, сохранён в истории.",
+  "This recording was cut short: Ozen was closed before it finished.": "Расшифровка этой записи оборвалась: Ozen закрылся до её завершения."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10509,7 +10525,9 @@
   "Star removed": "Estrella quitada",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó y lo descargará de nuevo.",
-  "Tap to download it again": "Toca para descargarlo de nuevo"
+  "Tap to download it again": "Toca para descargarlo de nuevo",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen se cerró antes de que terminara «%1». El texto escrito hasta entonces está guardado en el historial.",
+  "This recording was cut short: Ozen was closed before it finished.": "Esta grabación quedó cortada: Ozen se cerró antes de que terminara."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11677,6 +11695,8 @@
   "Star removed": "Зірочку прибрано",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі.",
   "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Мовну модель на цьому телефоні було пошкоджено, тому Ozen видалив її й завантажить знову.",
-  "Tap to download it again": "Натисніть, щоб завантажити її знову"
+  "Tap to download it again": "Натисніть, щоб завантажити її знову",
+  "Ozen was closed before “%1” finished. The text written so far is saved in History.": "Ozen закрився, не дочекавшись кінця розшифрування «%1». Текст, написаний до цього моменту, збережено в історії.",
+  "This recording was cut short: Ozen was closed before it finished.": "Розшифрування цього запису обірвалося: Ozen закрився до його завершення."
  }
 }

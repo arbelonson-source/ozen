@@ -144,7 +144,26 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
     var choosingModel by rememberSaveable { mutableStateOf(false) }
     var stoppingCaptions by rememberSaveable { mutableStateOf(false) }
     val model = ready.model
+    val interrupted by transcriber.interruptedNote.collectAsStateWithLifecycle()
+    var interruptedName by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(interrupted) {
+        interrupted?.let {
+            interruptedName = it
+            transcriber.interruptedNoteShown()
+        }
+    }
     OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
+        interruptedName?.let {
+            Text(
+                tr(
+                    "אוזן נסגרה לפני שההקלטה ״%1״ הסתיימה. הטקסט שנכתב עד אז נשמר בהיסטוריה.",
+                    "Ozen was closed before “%1” finished. The text written so far is saved in History.",
+                    listOf(it),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag("transcribe-interrupted"),
+            )
+        }
         Text(ready.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
         ready.durationSeconds?.let { Text(tr("אורך: %1", "Length: %1", listOf(TranscriptFormats.clock(it)))) }
         ChoiceRow(tr("שפה", "Language"), ready.language.nativeName, "transcribe-language") { choosingLanguage = true }
