@@ -59,8 +59,7 @@ struct CloudHangingConnectionTests {
         try? await Task.sleep(for: .milliseconds(300))
         #expect(pipeline.isCoveringForCloud)
         http.blackHole = false
-        #expect(await eventually { !pipeline.isCoveringForCloud && pipeline.activeEngineKind == .cloud })
-        #expect(pipeline.phase == .listening)
+        #expect(await eventually { !pipeline.isCoveringForCloud && pipeline.activeEngineKind == .cloud && pipeline.phase == .listening })
     }
 
     @Test("a refusal with an answer in it still follows the old path: every round is tried before the phone takes over")

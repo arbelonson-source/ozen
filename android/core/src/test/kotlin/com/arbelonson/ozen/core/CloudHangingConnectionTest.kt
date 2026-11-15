@@ -70,8 +70,7 @@ class CloudHangingConnectionTest {
         delay(300)
         assertTrue(rig.captions.isCoveringForCloud)
         rig.http.blackHole = false
-        assertTrue(eventually { !rig.captions.isCoveringForCloud && rig.captions.activeEngineKind == TranscriptionEngineKind.Cloud })
-        assertEquals(PipelinePhase.Listening, rig.captions.phase)
+        assertTrue(eventually { !rig.captions.isCoveringForCloud && rig.captions.activeEngineKind == TranscriptionEngineKind.Cloud && rig.captions.phase == PipelinePhase.Listening })
     }
 
     @Test
