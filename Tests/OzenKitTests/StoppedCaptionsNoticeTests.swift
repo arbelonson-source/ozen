@@ -383,4 +383,13 @@ struct CaptionPipelinePhaseChangeTests {
             #expect(body("unauthorized") == "The computer didn’t accept the pairing code. Open Ozen and scan its QR code again.")
         }
     }
+
+    @Test("a phone with no saved pairing code says so, since no code was sent to be refused")
+    func missingPairingCodeHasItsOwnWords() {
+        let why = EngineUnavailability(kind: .homeServerRejected, detail: HomeServer.noCode)
+        let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: why)
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(failure)).body == "No pairing code for the home computer is saved on this phone. Open Ozen and scan its QR code.")
+        }
+    }
 }
