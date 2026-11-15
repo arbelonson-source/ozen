@@ -8,6 +8,19 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+private class MismatchOnFirstSend : HomeServerSocket {
+    override suspend fun send(text: String): Unit = throw java.io.IOException(PinnedTrustManager.MISMATCH)
+    override suspend fun send(data: ByteArray) {}
+    override suspend fun receive(): String = throw java.io.IOException(PinnedTrustManager.MISMATCH)
+    override suspend fun ping() {}
+    override suspend fun close() {}
+}
+
+private class LazyConnector(private val socket: HomeServerSocket) : HomeServerConnecting {
+    override suspend fun open(url: URI): HomeServerSocket = socket
+    override suspend fun openPinned(url: URI, certificatePin: String): HomeServerSocket = socket
+}
+
 class HomeServerPinTest {
     private val pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
     private val link = "ozen://pair?address=wss%3A%2F%2F192.168.1.20%3A8766&code=example-code-123&pin=$pin"
@@ -107,13 +120,39 @@ class HomeServerEnginePinTest {
     }
 
     @Test
-    fun `a certificate that did not match is an unreachable computer and the reason is kept for the journal`() = kotlinx.coroutines.test.runTest {
+    fun `a certificate that did not match needs the QR code scanned again and the reason is kept for the journal`() = kotlinx.coroutines.test.runTest {
         val connector = PinRecordingConnector(
             ScriptedSocket(SCRIPTED_READY, emptyList(), testScheduler.timeSource),
             java.io.IOException(PinnedTrustManager.MISMATCH),
         )
         val why = assertNotNull(engine(connector, "wss://192.168.1.20:8766", pin).checkAvailability("he").unavailability)
-        assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, why.kind)
+        assertEquals(EngineUnavailability.Kind.HomeServerRejected, why.kind)
         assertTrue(why.detail.contains("certificate did not match"), why.detail)
+    }
+
+    @Test
+    fun `a mismatch buried in the cause chain still needs the QR code scanned again`() = kotlinx.coroutines.test.runTest {
+        val connector = PinRecordingConnector(
+            ScriptedSocket(SCRIPTED_READY, emptyList(), testScheduler.timeSource),
+            java.io.IOException("wrapped", javax.net.ssl.SSLException("tls", java.io.IOException(PinnedTrustManager.MISMATCH))),
+        )
+        val why = assertNotNull(engine(connector, "wss://192.168.1.20:8766", pin).checkAvailability("he").unavailability)
+        assertEquals(EngineUnavailability.Kind.HomeServerRejected, why.kind)
+    }
+
+    @Test
+    fun `any other connect failure is still an unreachable computer`() = kotlinx.coroutines.test.runTest {
+        val connector = PinRecordingConnector(
+            ScriptedSocket(SCRIPTED_READY, emptyList(), testScheduler.timeSource),
+            java.io.IOException("connection refused"),
+        )
+        val why = assertNotNull(engine(connector, "wss://192.168.1.20:8766", pin).checkAvailability("he").unavailability)
+        assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, why.kind)
+    }
+
+    @Test
+    fun `a mismatch that only shows on the first send, as the real connector does it, needs the QR code scanned again`() = kotlinx.coroutines.test.runTest {
+        val why = assertNotNull(engine(LazyConnector(MismatchOnFirstSend()), "wss://192.168.1.20:8766", pin).checkAvailability("he").unavailability)
+        assertEquals(EngineUnavailability.Kind.HomeServerRejected, why.kind)
     }
 }

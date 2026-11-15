@@ -23,6 +23,9 @@ public enum HomeServer {
     public static let setupDownload = URL(string: "https://github.com/arbelonson-source/ozen/releases/latest/download/\(setupFileName)")!
     static let noAddress = "no valid server address"
     static let noCode = "no pairing code"
+    /// The computer's certificate is no longer the one in the QR code: only
+    /// scanning the code again helps, so it is a rejection, not a lost link.
+    static let pairingChanged = "certificate did not match"
     static let needsEncryption = "plain ws:// address outside the home network"
 
     /// An address typed in Settings but never saved with Return or the
