@@ -569,7 +569,8 @@ class TranscriptHistoryStore(
     /** Test-only: runs between an edit's read of a conversation file and its write. */
     internal var betweenPatchReadAndWrite: (() -> Unit)? = null
 
-    private val lock: Any = lockForFolder(directory)
+    private val shared = sharedStateForFolder(directory)
+    private val lock: Any = shared.lock
 
     internal val conversationReads = AtomicInteger()
     internal val cacheRefreshes = AtomicInteger()
@@ -687,6 +688,7 @@ class TranscriptHistoryStore(
         val languageCode: String?,
         val modifiedAt: Long,
         val size: Long,
+        val version: Long,
     )
 
     private val memory = object : LinkedHashMap<UUID, Remembered>(16, 0.75f, true) {
@@ -696,7 +698,7 @@ class TranscriptHistoryStore(
 
     private fun remembered(id: UUID, file: File): Remembered? = synchronized(memory) {
         val entry = memory[id] ?: return null
-        if (file.lastModified() != entry.modifiedAt || file.length() != entry.size) {
+        if (file.lastModified() != entry.modifiedAt || file.length() != entry.size || shared.version(id) != entry.version) {
             memory.remove(id)
             return null
         }
@@ -706,10 +708,11 @@ class TranscriptHistoryStore(
     private fun remember(saved: TranscriptSessionRecord, file: File) = synchronized(memory) {
         val modifiedAt = file.lastModified()
         if (modifiedAt == 0L) return@synchronized
-        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, saved.languageCode, modifiedAt, file.length())
+        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, saved.languageCode, modifiedAt, file.length(), shared.version(saved.id))
     }
 
     private fun forget(id: UUID) = synchronized(memory) {
+        shared.bump(id)
         memory.remove(id)
     }
 
@@ -1053,6 +1056,7 @@ class TranscriptHistoryStore(
     }
 
     fun deleteAll(): Unit = synchronized(lock) {
+        shared.bumpAll()
         synchronized(memory) { memory.clear() }
         for (file in recordFiles()) Files.delete(file.toPath())
         // A save the system cut short (the app killed between writing the
@@ -1164,12 +1168,37 @@ class TranscriptHistoryStore(
         }
     }
 
-    companion object {
-        private val folderLocks = HashMap<String, Any>()
+    /**
+     * What every store on one folder shares: the lock, and a count of the writes
+     * made to each conversation file. A store's autosave memory of a file is
+     * trusted only while the count is what it was when the entry was made: a
+     * rename through another store to a title of the same length, within the
+     * file clock's resolution, leaves the file's date and size as they were,
+     * and the count is then the only thing that shows the change.
+     */
+    private class FolderState {
+        val lock = Any()
+        private val counts = HashMap<UUID, Long>()
+        private var epoch = 0L
 
-        /** One lock per conversation folder, shared by every store on it. */
-        private fun lockForFolder(folder: File): Any = synchronized(folderLocks) {
-            folderLocks.getOrPut(folder.absoluteFile.normalize().path) { Any() }
+        @Synchronized fun version(id: UUID): Long = epoch * VERSION_EPOCH_STEP + (counts[id] ?: 0L)
+
+        @Synchronized fun bump(id: UUID) {
+            counts[id] = (counts[id] ?: 0L) + 1
+        }
+
+        @Synchronized fun bumpAll() {
+            epoch++
+        }
+    }
+
+    companion object {
+        private const val VERSION_EPOCH_STEP = 1L shl 32
+        private val folderStates = HashMap<String, FolderState>()
+
+        /** One lock and one edit counter per conversation folder, shared by every store on it. */
+        private fun sharedStateForFolder(folder: File): FolderState = synchronized(folderStates) {
+            folderStates.getOrPut(folder.absoluteFile.normalize().path) { FolderState() }
         }
 
         /**

@@ -64,6 +64,26 @@ class TranscriptHistoryEditRaceTest {
     }
 
     @Test
+    fun `a rename to a same-length title with the file date and size unchanged is not written back over`() = withFolder { folder ->
+        val id = UUID.randomUUID()
+        val autosaving = TranscriptHistoryStore(folder)
+        val editing = TranscriptHistoryStore(folder)
+        val saved = record(id, listOf(line("one"), line("two")))
+        autosaving.save(saved)
+        editing.rename(id, "Alpha")
+        autosaving.save(saved)
+        val file = File(folder, "${id.toString().uppercase()}.json")
+        val seenModified = file.lastModified()
+        val seenSize = file.length()
+        editing.rename(id, "Bravo")
+        assertTrue(file.setLastModified(seenModified))
+        assertEquals(seenSize, file.length())
+        assertEquals(seenModified, file.lastModified())
+        autosaving.save(saved)
+        assertEquals("Bravo", raw(folder, id)["title"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     fun `a star does not lose a line the autosave adds meanwhile`() = withFolder { folder ->
         val id = UUID.randomUUID()
         val editing = TranscriptHistoryStore(folder)

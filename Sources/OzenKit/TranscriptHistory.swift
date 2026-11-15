@@ -487,7 +487,7 @@ extension TranscriptSessionSummary {
 public struct TranscriptHistoryStore: Sendable {
     private let directoryURL: URL
     private let now: @Sendable () -> Date
-    private let memory = TranscriptAutosaveMemory()
+    private let memory: TranscriptAutosaveMemory
     private let lock: NSRecursiveLock
 
     /// Test-only: runs between an edit's read of a conversation file and its
@@ -519,6 +519,7 @@ public struct TranscriptHistoryStore: Sendable {
         self.directoryURL = directoryURL
         self.now = now
         self.lock = TranscriptStoreLocks.lock(forFolder: directoryURL)
+        self.memory = TranscriptAutosaveMemory(edits: TranscriptStoreLocks.edits(forFolder: directoryURL))
     }
 
     private var summariesURL: URL {
@@ -1403,11 +1404,14 @@ public struct TranscriptHistoryStore: Sendable {
     }
 }
 
-/// One lock per conversation folder, shared by every store that points at it,
-/// so an edit's read-patch-write and the live autosave take turns.
+/// One lock and one edit counter per conversation folder, shared by every
+/// store that points at it, so an edit's read-patch-write and the live
+/// autosave take turns, and an edit through any store makes every store's
+/// autosave memory of that file untrusted.
 enum TranscriptStoreLocks {
     private static let guardLock = NSLock()
     nonisolated(unsafe) private static var locks: [String: NSRecursiveLock] = [:]
+    nonisolated(unsafe) private static var counters: [String: TranscriptFolderEdits] = [:]
 
     static func lock(forFolder url: URL) -> NSRecursiveLock {
         let key = url.standardizedFileURL.path
@@ -1416,6 +1420,16 @@ enum TranscriptStoreLocks {
         if let existing = locks[key] { return existing }
         let made = NSRecursiveLock()
         locks[key] = made
+        return made
+    }
+
+    static func edits(forFolder url: URL) -> TranscriptFolderEdits {
+        let key = url.standardizedFileURL.path
+        guardLock.lock()
+        defer { guardLock.unlock() }
+        if let existing = counters[key] { return existing }
+        let made = TranscriptFolderEdits()
+        counters[key] = made
         return made
     }
 }
