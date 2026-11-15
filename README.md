@@ -188,7 +188,8 @@ Open a section for the details.
     in a heavier weight and a second color, whether written in digits or
     in words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim),
     "twice" (pa'amayim), "once a day" (pa'am be-yom), "in two weeks"
-    (be'od shvu'ayim)).
+    (be'od shvu'ayim)). Number words are marked when the captions are in
+    Hebrew or in English ("three pills at ten thirty").
   - Long stretches of speech broken into short paragraphs at sentence
     ends.
   - The screen stays awake while listening (and locks as usual after a
@@ -282,7 +283,10 @@ Open a section for the details.
   everyday word it hides in ("Li" stays quiet on "sheli", mine; "Ben" on
   "lavan", white; "Sarah" on "kshera", kosher; "Leah" on "mele'ah", full),
   nor on a word still being said ("Tal" stays quiet on "ha-tel..." until it
-  turns out to be "ha-telefon", the phone). The suggested "medicine" and "doctor" also match
+  turns out to be "ha-telefon", the phone). In French and Italian a name after
+  l', d' or dell' still matches ("d'Olga"), in German a name with an s
+  ("Annes Haus") does, and in Amharic a name with either of its two
+  short endings (the object ending and "also") does. The suggested "medicine" and "doctor" also match
   "the medicines" and a woman doctor. Said over and over at the table, it
   buzzes at most once every 15 seconds, while every line it's in stays
   highlighted.
@@ -396,9 +400,11 @@ Open a section for the details.
   harofe)), list who took part, and open with a summary: length, how much
   each person said, speaking pace, longest turn, and every line with a
   time, an amount or a phone number in it, each a tap from where it was
-  said. Phone numbers in captions, including the 1-700 and 1-800 numbers
-  health funds and pharmacies give out, are a tap from a call (star
-  numbers such as *2700 stay text: iOS won't dial them from a link). A
+  said. Phone numbers in captions stay on one line and are a tap from a
+  call: Israeli ones, including the 1-700 and 1-800 numbers health funds and
+  pharmacies give out, and ones with a country code or in the North American
+  form ("+1 415 555 2671", "(415) 555-2671"). Star
+  numbers such as *2700 stay text: iOS won't dial them from a link. A
   number is only linked when it has the right length for its prefix, so
   a date, an hour or a digit said next to it is never dialed with it.
   Holding a line copies just that line, to paste a phone number or
@@ -574,8 +580,7 @@ Open a section for the details.
   home computer loads the general model while such a phone is connected.
   The suggested alert names are offered as said in the spoken language, and
   a lone English "you" is kept when the model is sure of it. Amharic
-  captions are weak, as the general model handles it poorly, and tappable
-  phone numbers are Israeli formats.
+  captions are weak, as the general model handles it poorly.
 - **Diagnostics screen** with every pipeline counter (audio chunks, tokens,
   caption lag, restarts, speaker clusters), free space, memory use, a
   timeline of the last failures, retries, microphone stalls, phone calls
