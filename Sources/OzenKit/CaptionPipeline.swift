@@ -2158,6 +2158,9 @@ public final class CaptionPipeline {
             // and asking afterwards gave the voice to whichever line had
             // started meanwhile, leaving the speaker's own line unnamed.
             let heardDuring = stabilizer.segments.last(where: { !$0.isCommitted })?.id
+            // With no line open, the lines that exist now: one that is not
+            // among them began after this audio was heard.
+            let linesBefore: Set<UUID> = heardDuring == nil ? Set(stabilizer.segments.map(\.id)) : []
             let computed = await Task.detached(priority: .userInitiated) {
                 embedder.embed(samples: window, sampleRate: sampleRate)
             }.value
@@ -2173,32 +2176,47 @@ public final class CaptionPipeline {
             speakerClusters = clusterer.clusters
 
             guard let currentUtteranceID = heardDuring else {
-                // Heard before any line was open: the line about to start
-                // takes this voice. A window an open line claimed is that
-                // line's speaker, not the next one's; passing it on named
-                // a short reply by someone else after the person asking.
-                recentSpeechCluster = (clusterID, now())
+                // Heard before any line was open. A line that opened while
+                // the embedding ran, and has no speaker yet, takes this
+                // voice (the earliest such line); a slow first embedding
+                // used to leave a short first line unnamed. Otherwise the
+                // line about to start takes it. A window an open line
+                // claimed is that line's speaker, not the next one's;
+                // passing it on named a short reply by someone else after
+                // the person asking.
+                if let opened = segments.first(where: {
+                    !linesBefore.contains($0.id) && $0.speakerClusterID == nil
+                        && utteranceClusterAssignments[$0.id] == nil && !correctedUtterances.contains($0.id)
+                }) {
+                    give(embedding, clusterID: clusterID, toLine: opened.id)
+                } else {
+                    recentSpeechCluster = (clusterID, now())
+                }
                 continue
             }
-            if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
-                utteranceEmbeddingOrder.append(currentUtteranceID)
-                if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
-                    let evicted = utteranceEmbeddingOrder.removeFirst()
-                    utteranceEmbeddings[evicted] = nil
-                    utteranceClusterAssignments[evicted] = nil
-                }
+            give(embedding, clusterID: clusterID, toLine: currentUtteranceID)
+        }
+    }
+
+    private func give(_ embedding: [Float], clusterID: Int, toLine currentUtteranceID: UUID) {
+        if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
+            utteranceEmbeddingOrder.append(currentUtteranceID)
+            if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
+                let evicted = utteranceEmbeddingOrder.removeFirst()
+                utteranceEmbeddings[evicted] = nil
+                utteranceClusterAssignments[evicted] = nil
             }
-            // A line the user moved to another person stays there.
-            if correctedUtterances.contains(currentUtteranceID) { continue }
-            utteranceClusterAssignments[currentUtteranceID] = clusterID
-            // Writing an unchanged value still tells every observer the
-            // transcript changed and redraws the caption list, every 1.5 s
-            // of speech; only write when the speaker actually changed.
-            if let index = segments.lastIndex(where: { $0.id == currentUtteranceID }),
-               segments[index].speakerClusterID != clusterID {
-                segments[index].speakerClusterID = clusterID
-                onCaptionsChanged?()
-            }
+        }
+        // A line the user moved to another person stays there.
+        if correctedUtterances.contains(currentUtteranceID) { return }
+        utteranceClusterAssignments[currentUtteranceID] = clusterID
+        // Writing an unchanged value still tells every observer the
+        // transcript changed and redraws the caption list, every 1.5 s
+        // of speech; only write when the speaker actually changed.
+        if let index = segments.lastIndex(where: { $0.id == currentUtteranceID }),
+           segments[index].speakerClusterID != clusterID {
+            segments[index].speakerClusterID = clusterID
+            onCaptionsChanged?()
         }
     }
 
