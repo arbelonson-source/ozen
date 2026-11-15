@@ -42,6 +42,10 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
     static let restartSpacingSeconds: TimeInterval = 15
 
     public func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation> {
+        observations(audio: audio, availability: { _ in })
+    }
+
+    public func observations(audio: AsyncStream<[Float]>, availability: @escaping @Sendable (Bool) -> Void) -> AsyncStream<SoundObservation> {
         let forwardingConfidence = forwardingConfidence
         let windowSeconds = windowSeconds
         return AsyncStream { continuation in
@@ -54,7 +58,7 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
                 // conversation; a new analyzer picks up from the next chunk,
                 // so a doorbell later in the evening still gets through.
                 var session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
-                var budget = RestartBudget(limit: Self.maximumRestarts, windowSeconds: Self.restartWindowSeconds, minimumSpacingSeconds: Self.restartSpacingSeconds)
+                var supervisor = SoundClassifierSupervisor(budget: RestartBudget(limit: Self.maximumRestarts, windowSeconds: Self.restartWindowSeconds, minimumSpacingSeconds: Self.restartSpacingSeconds), firstLoadIsFree: false)
                 var framePosition: AVAudioFramePosition = 0
                 for await chunk in audio {
                     if Task.isCancelled { break }
@@ -62,17 +66,26 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
                     // the audio the old one held, so none of it is
                     // classified, on its own or joined to what comes next.
                     if chunk.isEmpty {
+                        supervisor.audioGap()
                         session?.analyzer.removeAllRequests()
                         session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
                         framePosition = 0
                         continue
                     }
-                    if session == nil || session?.observer.hasFailed == true {
-                        guard budget.spend(at: ProcessInfo.processInfo.systemUptime) else { continue }
+                    let working = session != nil && session?.observer.hasFailed != true
+                    let uptime = ProcessInfo.processInfo.systemUptime
+                    switch supervisor.step(hasWorkingClassifier: working, at: uptime) {
+                    case .skip:
+                        if let change = supervisor.takeChange() { availability(change) }
+                        continue
+                    case .restart:
                         session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
                         framePosition = 0
-                        guard session != nil else { continue }
+                        if session == nil { supervisor.restartGaveNoClassifier() }
+                    case .classify:
+                        break
                     }
+                    if let change = supervisor.takeChange() { availability(change) }
                     guard let current = session, let buffer = Self.pcmBuffer(from: chunk, format: format) else { continue }
                     // Synchronous and CPU-bound: this is exactly why the
                     // whole loop runs on a detached utility-priority task

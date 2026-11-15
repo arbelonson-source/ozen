@@ -1,7 +1,9 @@
 package com.arbelonson.ozen
 
 import android.content.Context
+import android.os.SystemClock
 import com.arbelonson.ozen.core.RestartBudget
+import com.arbelonson.ozen.core.SoundClassifierSupervisor
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SoundEventDetecting
 import com.arbelonson.ozen.core.SoundObservation
@@ -16,41 +18,63 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class YamnetSoundDetector(private val context: Context) : SoundEventDetecting {
-    override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> = flow {
-        val labels = context.assets.open(LABELS).bufferedReader().use { it.readLines() }
-        val indices = YamnetSounds.indices(labels)
+    override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> = observations(audio) {}
+
+    override fun observations(audio: Flow<FloatArray>, availability: (Boolean) -> Unit): Flow<SoundObservation> = flow {
         val windows = SoundWindows()
-        val scores = Array(1) { FloatArray(labels.size) }
-        val budget = RestartBudget(MAXIMUM_RESTARTS, RESTART_WINDOW_SECONDS, RESTART_SPACING_SECONDS)
-        var interpreter: Interpreter? = null
+        val supervisor = SoundClassifierSupervisor(RestartBudget(MAXIMUM_RESTARTS, RESTART_WINDOW_SECONDS, RESTART_SPACING_SECONDS))
+        var classifier: Classifier? = null
         try {
             audio.collect { chunk ->
+                if (chunk.isEmpty()) supervisor.audioGap()
                 for (window in windows.add(chunk)) {
                     val now = System.currentTimeMillis() / 1_000.0
-                    val model = interpreter ?: (if (budget.spend(now)) load() else null)?.also { interpreter = it } ?: continue
+                    when (supervisor.step(classifier != null, SystemClock.elapsedRealtime() / 1_000.0)) {
+                        SoundClassifierSupervisor.Step.Skip -> {
+                            supervisor.takeChange()?.let(availability)
+                            continue
+                        }
+                        SoundClassifierSupervisor.Step.Restart -> {
+                            classifier = load()
+                            if (classifier == null) supervisor.restartGaveNoClassifier()
+                        }
+                        SoundClassifierSupervisor.Step.Classify -> Unit
+                    }
+                    supervisor.takeChange()?.let(availability)
+                    val current = classifier ?: continue
                     try {
-                        model.run(window, scores)
-                    } catch (error: RuntimeException) {
-                        model.close()
-                        interpreter = null
+                        current.interpreter.run(window, current.scores)
+                    } catch (error: Throwable) {
+                        if (error is VirtualMachineError && error !is OutOfMemoryError) throw error
+                        current.interpreter.close()
+                        classifier = null
                         continue
                     }
-                    val candidates = YamnetSounds.candidates(scores[0], indices)
+                    val candidates = YamnetSounds.candidates(current.scores[0], current.indices)
                     for (observation in SoundEventCatalog.matchingObservations(candidates, FORWARDING_CONFIDENCE, now)) emit(observation)
                 }
             }
         } finally {
-            interpreter?.close()
+            classifier?.interpreter?.close()
         }
     }.flowOn(Dispatchers.Default)
 
-    private fun load(): Interpreter? = try {
-        val bytes = context.assets.open(MODEL).use { it.readBytes() }
-        val model = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder()).put(bytes)
-        model.rewind()
-        Interpreter(model, Interpreter.Options().setNumThreads(1))
-    } catch (error: Exception) {
-        null
+    private class Classifier(val interpreter: Interpreter, val indices: Map<String, List<Int>>, val scores: Array<FloatArray>)
+
+    private fun load(): Classifier? {
+        var interpreter: Interpreter? = null
+        return try {
+            val labels = context.assets.open(LABELS).bufferedReader().use { it.readLines() }
+            val bytes = context.assets.open(MODEL).use { it.readBytes() }
+            val model = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder()).put(bytes)
+            model.rewind()
+            interpreter = Interpreter(model, Interpreter.Options().setNumThreads(1))
+            Classifier(interpreter, YamnetSounds.indices(labels), Array(1) { FloatArray(labels.size) })
+        } catch (error: Throwable) {
+            if (error is VirtualMachineError && error !is OutOfMemoryError) throw error
+            interpreter?.close()
+            null
+        }
     }
 
     companion object {

@@ -24,6 +24,7 @@ class StoppedCaptionsNoticeTest {
         byCall: Boolean = false,
         callEnded: Boolean = false,
         soundsOnly: Boolean = false,
+        soundAlertsNotWorking: Boolean = false,
     ): StoppedCaptionsNotice.Cause? = StoppedCaptionsNotice.cause(
         phase = phase,
         retryScheduled = retryScheduled,
@@ -31,6 +32,7 @@ class StoppedCaptionsNoticeTest {
         callEndedDuringInterruption = callEnded,
         interruptedByCall = byCall,
         soundsOnlyChosen = soundsOnly,
+        soundAlertsNotWorking = soundAlertsNotWorking,
     )
 
     private fun failed(failure: PipelineFailure) = StoppedCaptionsNotice.Cause.Failed(failure)
@@ -301,6 +303,58 @@ class StoppedCaptionsNoticeTest {
         assertIs<StoppedCaptionsNotice.Update.Post>(
             notice.update(StoppedCaptionsNotice.Cause.EndedByPhone, appIsActive = false, isEnabled = true),
         )
+    }
+
+    @Test
+    fun `sound alerts that can't work are a cause while captions run, are retried or wait, and not otherwise`() {
+        val notWorking = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        assertEquals(notWorking, cause(PipelinePhase.Listening, soundAlertsNotWorking = true))
+        assertEquals(notWorking, cause(PipelinePhase.Idle, soundsOnly = true, soundAlertsNotWorking = true))
+        assertEquals(notWorking, cause(PipelinePhase.Failed(glitch), retryScheduled = true, soundAlertsNotWorking = true))
+        assertEquals(notWorking, cause(PipelinePhase.Failed(engineFailure(EngineUnavailability.Kind.WaitingForWiFi)), soundAlertsNotWorking = true))
+        assertEquals(failed(glitch), cause(PipelinePhase.Failed(glitch), soundAlertsNotWorking = true))
+        assertNull(cause(PipelinePhase.Listening, interrupted = true, byCall = true, soundAlertsNotWorking = true))
+        assertNull(cause(PipelinePhase.Listening))
+    }
+
+    @Test
+    fun `the not-working notice goes out after a minute of it not working, once, and is cancelled when sound alerts work again or the app opens`() {
+        val notice = StoppedCaptionsNotice()
+        val notWorking = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        assertEquals(60.0, StoppedCaptionsNotice.SOUND_ALERTS_DELAY_SECONDS)
+        notice.update(notWorking, appIsActive = true, isEnabled = true)
+        assertNull(notice.update(notWorking, appIsActive = false, isEnabled = false))
+        val scheduled = notice.update(notWorking, appIsActive = false, isEnabled = true)
+        if (scheduled !is StoppedCaptionsNotice.Update.Schedule) fail("expected a notification to schedule")
+        assertEquals(60.0, scheduled.afterSeconds)
+        assertEquals(StoppedCaptionsNotice.IDENTIFIER, scheduled.content.identifier)
+        assertTrue(scheduled.content.isUrgent)
+        assertNull(notice.update(notWorking, appIsActive = false, isEnabled = true))
+        assertEquals(
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(null, appIsActive = false, isEnabled = true),
+        )
+        assertIs<StoppedCaptionsNotice.Update.Schedule>(
+            notice.update(notWorking, appIsActive = false, isEnabled = true),
+            "a new stop should be told again",
+        )
+        assertEquals(
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(notWorking, appIsActive = true, isEnabled = true),
+        )
+    }
+
+    @Test
+    fun `the not-working notice says sounds may be missed and that Ozen keeps trying`() {
+        val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking)
+        assertEquals("ההתראות על צלילים לא פועלות", content.title)
+        assertTrue(content.body.contains("ממשיכה לנסות"))
+        Localization.withLanguage(UILanguage.English) {
+            val english = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking)
+            assertEquals("Sound alerts aren’t working", english.title)
+            assertTrue(english.body.contains("keeps trying"))
+            assertTrue(english.body.contains("doorbell"))
+        }
     }
 }
 

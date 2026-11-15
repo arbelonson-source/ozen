@@ -51,7 +51,7 @@ class ListeningRecorder(
         }
     }
 
-    fun phaseChanged(phase: PipelinePhase, stopped: StoppedCaptionsNotice.Cause?, soundsOnly: Boolean = false) = phaseChanged(phase, recovering = stopped == null, soundsOnly = soundsOnly)
+    fun phaseChanged(phase: PipelinePhase, stopped: StoppedCaptionsNotice.Cause?, soundsOnly: Boolean = false) = phaseChanged(phase, recovering = stopped == null || stopped == StoppedCaptionsNotice.Cause.SoundAlertsNotWorking, soundsOnly = soundsOnly)
 
     fun keepAlive() {
         val current = record ?: return

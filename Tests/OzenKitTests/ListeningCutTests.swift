@@ -149,6 +149,16 @@ struct ListeningCutTests {
         }
     }
 
+    @Test("sound alerts that cannot work are not a stop: a failure that retries by itself keeps the record, a reported one still ends it")
+    func soundAlertsNotWorkingKeepsTheRecord() {
+        let recorder = recorder()
+        recorder.phaseChanged(.listening, stopped: nil)
+        recorder.phaseChanged(.failed(failure), stopped: .soundAlertsNotWorking)
+        #expect(store.value != nil)
+        recorder.phaseChanged(.failed(failure), stopped: .failed(failure))
+        #expect(store.value == nil)
+    }
+
     @Test("steps of a start and a failure that retries by itself keep the record")
     func keepsRecord() {
         let steps: [(PipelinePhase, Bool)] = [

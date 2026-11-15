@@ -217,6 +217,18 @@ public protocol SoundEventDetecting: Sendable {
     /// An empty chunk marks a gap in the audio (sound alerts were off): the
     /// detector forgets the audio it still holds.
     func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation>
+
+    /// Same, and `availability` is told false when the classifier can't be
+    /// made to work (its restarts are used up, or a restart gave nothing),
+    /// and true again once one has worked for a while. A detector that
+    /// can't fail need not override it.
+    func observations(audio: AsyncStream<[Float]>, availability: @escaping @Sendable (Bool) -> Void) -> AsyncStream<SoundObservation>
+}
+
+public extension SoundEventDetecting {
+    func observations(audio: AsyncStream<[Float]>, availability: @escaping @Sendable (Bool) -> Void) -> AsyncStream<SoundObservation> {
+        observations(audio: audio)
+    }
 }
 
 /// Passes audio to the sound classifier only while sound alerts are on,

@@ -2375,6 +2375,24 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun soundAlertsThatCannotWorkShowABannerWithoutACloseButtonThatGoesWhenTheyWorkAgain() {
+        try {
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.soundAlertsNotWorking(true)
+            }
+            compose.onNodeWithText("Sound alerts aren’t working").assertExists()
+            compose.onNodeWithText("Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.").assertExists()
+            compose.onNode(hasContentDescription("Close") and hasAnyAncestor(hasText("Sound alerts aren’t working"))).assertDoesNotExist()
+
+            compose.runOnUiThread { CaptionState.soundAlertsNotWorking(false) }
+            compose.onNodeWithText("Sound alerts aren’t working").assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun aLowBatteryWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val instrumentation = InstrumentationRegistry.getInstrumentation()

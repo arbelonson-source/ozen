@@ -103,6 +103,8 @@ data class CaptionScreenState(
     val routedElsewhere: RoutedElsewhere? = null,
     /** The system ended the sharing of the phone's own sound and the microphone is back; said until she puts it away. */
     val phoneSoundStopped: Boolean = false,
+    /** Sound alerts are on but the classifier can't be made to work; said for as long as that lasts. */
+    val soundAlertsNotWorking: Boolean = false,
     /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
     val recentConversation: TranscriptSessionSummary? = null,
     /**
@@ -381,6 +383,10 @@ object CaptionState {
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
     fun speaking(on: Boolean) {
         state.value = state.value.copy(speaking = on)
+    }
+
+    fun soundAlertsNotWorking(notWorking: Boolean) {
+        state.value = state.value.copy(soundAlertsNotWorking = notWorking)
     }
 
     fun phoneSoundStopped(show: Boolean) {

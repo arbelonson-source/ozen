@@ -69,6 +69,7 @@ import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.SavingTroubleNotice
+import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
@@ -155,6 +156,18 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         "",
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
+}
+
+/** Sound alerts are on but the classifier can't be made to work. It stays up for as long as that lasts: a close button would let it be forgotten while a smoke alarm goes unheard. */
+@Composable
+internal fun SoundAlertsNotWorkingBanner() {
+    NoticeBanner(
+        Icons.Rounded.Warning,
+        NoticeTone.Emergency,
+        StoppedCaptionsNotice.soundAlertsNotWorkingTitle(),
+        StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
+    )
 }
 
 /** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, the close button puts it away. */

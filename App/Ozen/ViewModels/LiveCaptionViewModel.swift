@@ -350,6 +350,9 @@ public final class LiveCaptionViewModel {
         pipeline.onKeywordHits = { [weak self] hits, segment in
             self?.alertRaised(keywords: hits, in: segment)
         }
+        pipeline.onSoundAlertsAvailabilityChange = { [weak self] in
+            self?.checkCaptionsStillRunning()
+        }
         pipeline.onPhaseChange = { [weak self] phase in
             self?.stepReached(phase)
             // A failure's automatic retry is lined up right after its phase
@@ -699,7 +702,8 @@ public final class LiveCaptionViewModel {
             systemInterrupted: isInterruptedBySystem,
             interruptedByCall: interruptedByCall,
             callEndedDuringInterruption: callEndedDuringInterruption,
-            soundsOnlyChosen: pipeline.soundsOnlyChosen
+            soundsOnlyChosen: pipeline.soundsOnlyChosen,
+            soundAlertsNotWorking: pipeline.soundAlertsNotWorking
         )
         switch stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground) {
         case .post(let content)?:
@@ -713,15 +717,15 @@ public final class LiveCaptionViewModel {
         case nil:
             break
         }
-        updateListeningRecord(failureIsRecovering: cause == nil)
+        updateListeningRecord(stopped: cause)
     }
 
     /// Feeds the record of listening what the pipeline is doing now. A
     /// failure that retries by itself, or waits for Wi-Fi, keeps it; one
     /// reported with the stopped-captions notice ends it like a stop.
-    private func updateListeningRecord(failureIsRecovering: Bool) {
+    private func updateListeningRecord(stopped: StoppedCaptionsNotice.Cause?) {
         guard let listeningRecorder else { return }
-        listeningRecorder.phaseChanged(pipeline.phase, recovering: failureIsRecovering, soundsOnly: pipeline.soundsOnlyChosen)
+        listeningRecorder.phaseChanged(pipeline.phase, stopped: stopped, soundsOnly: pipeline.soundsOnlyChosen)
         if listeningRecorder.isRecording {
             guard listeningKeepAliveTask == nil else { return }
             listeningKeepAliveTask = Task { @MainActor [weak self] in
