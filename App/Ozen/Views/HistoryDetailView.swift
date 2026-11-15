@@ -101,6 +101,7 @@ struct HistoryDetailView: View {
                             previous: index > 0 ? record.segments[index - 1] : nil,
                             slots: slots,
                             showsTime: timeMarks.contains(segment.id),
+                            recordingStart: record.fromRecording ? record.startedAt : nil,
                             markUncertain: viewModel.display.markUncertainLines,
                             engine: record.engine,
                             model: record.modelVariant,
@@ -520,6 +521,7 @@ private struct SavedLineRow: View {
     let previous: SavedSegment?
     let slots: SpeakerColorSlots
     let showsTime: Bool
+    let recordingStart: TimeInterval?
     let markUncertain: Bool
     let engine: TranscriptionEngineKind
     let model: String?
@@ -583,7 +585,8 @@ private struct SavedLineRow: View {
     }
 
     private var timeText: String {
-        Date(timeIntervalSince1970: segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened)
+        if let recordingStart { return TranscriptFormats.clock(segment.startTimestamp - recordingStart) }
+        return Date(timeIntervalSince1970: segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened)
     }
 
     /// VoiceOver hears the time the screen shows above the line, and no

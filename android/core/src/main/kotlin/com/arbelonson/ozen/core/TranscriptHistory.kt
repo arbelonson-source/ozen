@@ -152,7 +152,19 @@ data class TranscriptSessionRecord(
     val languageCode: String? = null,
     /** A recording that was being turned into text when Ozen was closed: it ends where the text had got to. */
     val cutShort: Boolean = false,
+    /**
+     * A recording that was turned into text, not a conversation heard live:
+     * its lines say how far into the recording they were, not what time it
+     * was when the transcription ran. Records saved before this existed read
+     * as live conversations.
+     */
+    val fromRecording: Boolean = false,
 ) {
+    /** How a line's time reads: the time into the recording, or the clock time of a live conversation. */
+    fun timeText(segment: SavedSegment, utcOffsetSeconds: Int): String =
+        if (fromRecording) TranscriptFormats.clock(segment.startTimestamp - startedAt)
+        else TranscriptHistoryStore.formattedClockTime(segment.startTimestamp, utcOffsetSeconds)
+
     /**
      * The language to show and export this conversation in: its own, or
      * the current setting for one saved before the language was kept.
@@ -205,6 +217,7 @@ data class TranscriptSessionRecord(
         title?.let { put("title", it) }
         languageCode?.let { put("languageCode", it) }
         if (cutShort) put("cutShort", true)
+        if (fromRecording) put("fromRecording", true)
     }.toString()
 
     companion object {
@@ -281,6 +294,7 @@ data class TranscriptSessionRecord(
                 // A value the reader cannot make sense of reads as none.
                 languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(::plausibleLanguageCode),
                 cutShort = lenientHistory { container.optional("cutShort")?.asHistoryBoolean() } ?: false,
+                fromRecording = lenientHistory { container.optional("fromRecording")?.asHistoryBoolean() } ?: false,
             )
         }
 
@@ -1438,7 +1452,7 @@ class TranscriptHistoryStore(
             val language = record.languageCode(currentLanguageCode)
             val comma = record.languageCode?.let { NumberText.usesDecimalComma(UILanguage.match(it) ?: UILanguage.Hebrew) } ?: decimalComma
             val formatted = record.segments.map { segment ->
-                val time = formattedClockTime(segment.startTimestamp, utcOffsetAt(segment.startTimestamp))
+                val time = record.timeText(segment, utcOffsetAt(segment.startTimestamp))
                 val star = if (segment.isStarred) "★ " else ""
                 // As on the caption screen: pasted into a chat, "050 123
                 // 4567" in a Hebrew line would read "4567 123 050".

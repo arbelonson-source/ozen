@@ -32,7 +32,8 @@ public enum FileTranscriptRecord {
             inputName: nil,
             segments: segments,
             title: title(from: fileName),
-            languageCode: languageCode
+            languageCode: languageCode,
+            fromRecording: true
         )
     }
 
