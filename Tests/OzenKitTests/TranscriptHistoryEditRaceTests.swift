@@ -109,6 +109,29 @@ struct TranscriptHistoryEditRaceTests {
         try store.replaceText(segmentID: saved.segments[0].id, inSession: id, with: "x")
         #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(id.uuidString).json").path))
     }
+
+    @Test("a rename to a same-length title, with the file's date and size unchanged, is not written back over")
+    func renameSurvivesSameSizeSameDate() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let id = UUID()
+        let file = dir.appendingPathComponent("\(id.uuidString).json")
+        let autosaving = TranscriptHistoryStore(directoryURL: dir)
+        let editing = TranscriptHistoryStore(directoryURL: dir)
+        let saved = record(id: id, texts: ["one", "two"])
+        try autosaving.save(saved)
+        try editing.rename(id: id, title: "Alpha")
+        try autosaving.save(saved)
+        let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        let seenModified = try #require(attributes[.modificationDate] as? Date)
+        let seenSize = try #require(attributes[.size] as? NSNumber)
+        try editing.rename(id: id, title: "Bravo")
+        try FileManager.default.setAttributes([.modificationDate: seenModified], ofItemAtPath: file.path)
+        let after = try FileManager.default.attributesOfItem(atPath: file.path)
+        #expect((after[.size] as? NSNumber) == seenSize)
+        try autosaving.save(saved)
+        #expect(try raw(dir, id)["title"] as? String == "Bravo")
+    }
 }
 
 private final class PendingSave: @unchecked Sendable {
