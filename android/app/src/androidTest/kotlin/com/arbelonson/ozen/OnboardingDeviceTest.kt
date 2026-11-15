@@ -344,6 +344,26 @@ class OnboardingDeviceTest {
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
     }
 
+    // Android 13 shows no second dialog after a refusal, so the only way to
+    // allow notifications later is the phone's own settings, as on the iPhone.
+    @Test
+    fun refusedNotificationsOfferAButtonToThePhonesSettingsAndApprovedOnesDoNot() {
+        repeat(4) { compose.onNodeWithText("Next").performClick() }
+        compose.runOnUiThread {
+            compose.activity.microphoneAnswer.value = true
+            compose.activity.notificationsAnswer.value = null
+        }
+        compose.waitUntil(5_000) { shown("Approve notifications") }
+        compose.onNodeWithTag("onboarding-open-notification-settings").assertDoesNotExist()
+        compose.runOnUiThread { compose.activity.notificationsAnswer.value = false }
+        compose.waitUntil(5_000) { shown("No notifications. This can be changed in Settings.") }
+        compose.onNodeWithTag("onboarding-open-notification-settings").assertExists()
+        compose.onNodeWithText("Open phone settings").assertExists()
+        compose.runOnUiThread { compose.activity.notificationsAnswer.value = true }
+        compose.waitUntil(5_000) { shown("✓ Notifications approved") }
+        compose.onNodeWithTag("onboarding-open-notification-settings").assertDoesNotExist()
+    }
+
     private fun microphonePageAfterARefusal(systemWouldAskAgain: Boolean) {
         repeat(4) { compose.onNodeWithText("Next").performClick() }
         compose.onNodeWithText("✓ Microphone approved").assertExists()
@@ -599,6 +619,7 @@ class OnboardingDeviceTest {
                     onApproveMicrophone = {},
                     onApproveNotifications = {},
                     onOpenPhoneSettings = {},
+                    onOpenNotificationSettings = {},
                     onSpokenLanguage = {},
                     phoneModels = models,
                     onAddName = {},
