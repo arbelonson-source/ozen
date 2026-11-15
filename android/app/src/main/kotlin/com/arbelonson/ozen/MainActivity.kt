@@ -135,6 +135,7 @@ import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
@@ -611,6 +612,7 @@ private fun OzenApp(
                                 },
                                 onHistory = { showingHistory = true },
                                 languageCode = current.languageCode,
+                                spokenLanguageNote = SpokenLanguageNote.text(current.spokenLanguage),
                                 onStar = { app.captions.toggleStar(it) },
                                 onOpen = { conversation, line ->
                                     app.captions.saveBeforeReading()
@@ -862,6 +864,7 @@ private fun CaptionScreen(
     onSettings: () -> Unit,
     onHistory: () -> Unit,
     languageCode: String,
+    spokenLanguageNote: String?,
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFixWord: (UUID, String, String, Boolean) -> Boolean,
@@ -1238,6 +1241,16 @@ private fun CaptionScreen(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.widthIn(max = 360.dp),
                             )
+                            // Set up weeks ago, or by a helper, Amharic is otherwise never warned about.
+                            spokenLanguageNote?.let {
+                                Text(
+                                    text = it,
+                                    color = look.pendingText,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.widthIn(max = 360.dp),
+                                )
+                            }
                             val recent = state.recentConversation
                             loadCrashCard?.invoke()
                             listeningCutCard?.invoke()
