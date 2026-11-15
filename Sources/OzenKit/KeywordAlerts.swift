@@ -782,6 +782,22 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
             .map(\.match)
     }
 
+    private static let commonSurnames = Set("王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤")
+    private static let longerWordPairs: Set<String> = ["明星"]
+
+    // A name inside a longer Chinese word or a different person's name is not
+    // a call. The rule is identical on both phones; when unsure it matches.
+    private static func isWholeChineseName(_ target: [Character], in line: [Character], at position: Int) -> Bool {
+        if position > 0, let first = target.first, !commonSurnames.contains(first), commonSurnames.contains(line[position - 1]) {
+            return false
+        }
+        let end = position + target.count
+        if end < line.count, let last = target.last, longerWordPairs.contains(String([last, line[end]])) {
+            return false
+        }
+        return true
+    }
+
     private static func substringMatches(of phrase: String, in normalizedWords: [String]) -> [(text: String, wordIndex: Int)] {
         var line: [Character] = []
         var starts: [(offset: Int, index: Int)] = []
@@ -794,7 +810,8 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         var hits: [(text: String, wordIndex: Int)] = []
         var position = 0
         while !target.isEmpty, position + target.count <= line.count {
-            if Array(line[position..<position + target.count]) == target {
+            if Array(line[position..<position + target.count]) == target,
+               isWholeChineseName(target, in: line, at: position) {
                 hits.append((phrase, starts.last { $0.offset <= position }?.index ?? 0))
                 position += target.count
             } else {

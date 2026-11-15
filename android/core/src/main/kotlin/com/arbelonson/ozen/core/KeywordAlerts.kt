@@ -853,6 +853,18 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
     }
 
     companion object {
+        private val commonSurnames = "王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤".toSet()
+        private val longerWordPairs = setOf("明星")
+
+        // A name inside a longer Chinese word or a different person's name is
+        // not a call. The rule is identical on both phones; when unsure it matches.
+        private fun isWholeChineseName(phrase: String, line: CharSequence, position: Int): Boolean {
+            if (position > 0 && phrase.first() !in commonSurnames && line[position - 1] in commonSurnames) return false
+            val end = position + phrase.length
+            if (end < line.length && "" + phrase.last() + line[end] in longerWordPairs) return false
+            return true
+        }
+
         private fun substringMatches(phrase: String, normalizedWords: List<String>): List<Pair<String, Int>> {
             val line = StringBuilder()
             val starts = mutableListOf<Pair<Int, Int>>()
@@ -866,7 +878,9 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
             if (phrase.isEmpty()) return hits
             var position = line.indexOf(phrase)
             while (position >= 0) {
-                hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
+                if (isWholeChineseName(phrase, line, position)) {
+                    hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
+                }
                 position = line.indexOf(phrase, position + phrase.length)
             }
             return hits

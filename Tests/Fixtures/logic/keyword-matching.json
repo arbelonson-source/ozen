@@ -927,6 +927,116 @@
   {
    "alerts": [
     {
+     "phrase": "小明"
+    }
+   ],
+   "text": "小明星今天来了",
+   "note": "inside the different word 明星 (star)",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "张小明你好",
+   "note": "preceded by the surname 张: a different person",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "张小明"
+    }
+   ],
+   "text": "张小明你好",
+   "note": "the saved phrase itself starts with a surname",
+   "matches": [
+    {
+     "phrase": "张小明",
+     "matchedText": "张小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "小明，你过来一下",
+   "note": "punctuation after the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "我和小明去吃饭",
+   "note": "a non-surname character before the name",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "小明明天来",
+   "note": "明天 (tomorrow) after the name: a real call is not skipped",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "小明明",
+   "note": "repeated last character",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "老师"
+    }
+   ],
+   "text": "王老师你好",
+   "note": "surname 王 before a phrase that does not start with a surname: read as a person's name; accepted trade-off",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
      "phrase": "राहुल"
     }
    ],
