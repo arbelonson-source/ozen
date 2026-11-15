@@ -4776,6 +4776,29 @@ struct CaptionPipelineStorageTests {
         #expect(!pipeline.isListeningForSoundsOnly)
     }
 
+    @Test("alerts off through a retry that fails again, then on, open the microphone again")
+    func fallbackReopensAfterARetryUnderOff() async {
+        let (pipeline, _, _) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        await pipeline.retry()
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("captions that fail while alerts are off, then alerts on, open the microphone")
+    func fallbackOpensWhenAlertsComeOnAfterTheFailure() async {
+        let (pipeline, _, _) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        var settings = AppSettings.default
+        settings.soundAlerts = SoundAlertPreferences(isEnabled: false)
+        await pipeline.start(settings: settings)
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .notEnoughStorage)
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
     @Test("sound alerts switched off while only sounds are listened for give the classifier no more sound")
     func soundsOnlyStopsWithTheSwitch() async {
         let detector = FakeSoundDetector()

@@ -541,8 +541,7 @@ class CaptionPipeline(
     /** What the screen says: chosen, and not switched off between two tries. */
     val soundsOnlyShown: Boolean get() = soundsOnlyChosen && soundPolicy.preferences.isEnabled
 
-    private var soundsOnlyOpens = 0
-    private var fallbackSwitchedOff: Pair<UUID, PipelineFailure>? = null
+    private val soundsOnlyOpening = ArrayList<UUID>()
 
     /**
      * Sounds alone were chosen, and the microphone stopped and would not
@@ -2114,12 +2113,13 @@ class CaptionPipeline(
             return
         }
         if (!preferences.isEnabled) {
-            // Listening ends with the switch. Between tries there is nothing
-            // to end: the choice stays, so turning the alerts on again opens
-            // the microphone, and no timer opens it meanwhile.
-            if (isListeningForSoundsOnly) stop() else cancelSoundsOnlyRetry()
+            // Listening ends with the switch, but the choice stays, so turning
+            // the alerts on again opens the microphone, and no timer opens it
+            // meanwhile.
+            cancelSoundsOnlyRetry()
+            stopListeningForSounds()
             onPhaseChange?.invoke(phase)
-        } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null && soundsOnlyOpens == 0) {
+        } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null && runID !in soundsOnlyOpening) {
             scope.launch { resumeSoundsOnly() }
         }
     }
@@ -2127,27 +2127,22 @@ class CaptionPipeline(
     /**
      * The microphone kept for sounds while captions wait (see
      * [listenForSoundsMeanwhile]) goes with the switch too: nothing else
-     * uses it then. Switching on again reopens it for the same wait only.
+     * uses it then. Switching on again reopens it whenever the failure
+     * still holds the fallback (a retry or a wait lined up), whether it was
+     * open before or not. After Stop the phase is not a failure.
      */
     private fun switchFallbackSounds(on: Boolean) {
         val failure = phase.failure
         if (!on) {
             if (!isListeningForSoundsOnly || failure == null) return
             stopListeningForSounds()
-            fallbackSwitchedOff = runID to failure
             onPhaseChange?.invoke(phase)
             return
         }
-        val off = fallbackSwitchedOff ?: return
-        if (off.first != runID || failure == null || failure != off.second) {
-            fallbackSwitchedOff = null
-            return
-        }
-        if (!isListeningForSoundsOnly) listenForSoundsMeanwhile(failure)
-        if (isListeningForSoundsOnly) {
-            fallbackSwitchedOff = null
-            onPhaseChange?.invoke(phase)
-        }
+        if (failure == null || isListeningForSoundsOnly) return
+        if (retryToken == null && homeServerRecheck == null && cloudRecheck == null && !comesBackWithoutTimer(failure)) return
+        listenForSoundsMeanwhile(failure)
+        if (isListeningForSoundsOnly) onPhaseChange?.invoke(phase)
     }
 
     // endregion
@@ -3357,6 +3352,7 @@ class CaptionPipeline(
      * live ones, for a pipeline that never started.
      */
     suspend fun listenForSoundsOnly(settings: AppSettings? = null) {
+        if (runID in soundsOnlyOpening) return
         if (settings != null) {
             settingsInUse = settings.copy()
             soundPolicy.preferences = settings.soundAlerts
@@ -3394,7 +3390,7 @@ class CaptionPipeline(
      */
     private suspend fun resumeSoundsOnly() {
         if (!soundsOnlyChosen || isListeningForSoundsOnly || systemInterrupted || isRecordingVoice) return
-        if (!soundPolicy.preferences.isEnabled || soundsOnlyOpens > 0) return
+        if (!soundPolicy.preferences.isEnabled || runID in soundsOnlyOpening) return
         openSoundsOnly(retrying = true)
     }
 
@@ -3404,11 +3400,12 @@ class CaptionPipeline(
      * can hold the microphone a moment after a call.
      */
     private suspend fun openSoundsOnly(retrying: Boolean) {
-        soundsOnlyOpens += 1
+        val run = runID
+        soundsOnlyOpening.add(run)
         try {
             openSoundsOnlyOnce(retrying)
         } finally {
-            soundsOnlyOpens -= 1
+            soundsOnlyOpening.remove(run)
         }
     }
 
@@ -3743,7 +3740,6 @@ class CaptionPipeline(
 
     private fun tearDownSession() {
         runID = UUID.randomUUID()
-        fallbackSwitchedOff = null
         statsData.soundDetectionRunning = false
         currentEngine = null
         recentSpeechCluster = null

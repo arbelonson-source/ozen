@@ -106,6 +106,28 @@ class CaptionPipelineStorageTest {
     }
 
     @Test
+    fun `alerts off through a retry that fails again, then on, open the microphone again`() = runTest {
+        val (pipeline, _, _) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        pipeline.retry()
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
+    fun `captions that fail while alerts are off, then alerts on, open the microphone`() = runTest {
+        val (pipeline, _, _) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
+        val off = AppSettings.default.apply { soundAlerts = SoundAlertPreferences(isEnabled = false) }
+        pipeline.start(off)
+        assertEquals(EngineUnavailability.Kind.NotEnoughStorage, pipeline.phase.failure?.engineUnavailability?.kind)
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
     fun `sound alerts switched off while only sounds are listened for give the classifier no more sound`() = runTest {
         val detector = FakeSoundDetector()
         val (pipeline, _, audio) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = detector)
