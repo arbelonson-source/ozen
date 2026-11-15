@@ -66,10 +66,14 @@ class ScreenReaderCardsDeviceTest {
         compose.runOnUiThread { compose.activity.setContent { Column(Modifier) { content() } } }
     }
 
-    private fun summary() = TranscriptSessionSummary(
-        id = UUID.randomUUID(), startedAt = 1_000.0, endedAt = 1_060.0, segmentCount = 3,
-        preview = "See you on Tuesday", engine = TranscriptionEngineKind.WhisperKit,
-    )
+    // Thirty and a half minutes ago: the card's "minutes ago" wording stays the same for the half minute either side of the test.
+    private fun summary(): TranscriptSessionSummary {
+        val end = secondsNow() - 1_830.0
+        return TranscriptSessionSummary(
+            id = UUID.randomUUID(), startedAt = end - 60.0, endedAt = end, segmentCount = 3,
+            preview = "See you on Tuesday", engine = TranscriptionEngineKind.WhisperKit,
+        )
+    }
 
     @Test
     fun aLighterModelOfferIsSaidOnceWhenItAppearsAndNotWhenItComesBack() {
