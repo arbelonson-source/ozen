@@ -8,6 +8,41 @@ public enum PhoneNumbers {
         public var url: URL? { URL(string: "tel:" + dialable) }
     }
 
+    /// The number as a screen reader should say it, for the Call action:
+    /// each digit on its own, so it can be checked against what was said
+    /// (a bare "+972501234567" can be read as one number in the billions),
+    /// with a comma between groups for a pause. The groups are the ones
+    /// written in the caption; a run of more than four digits is cut into
+    /// threes, the last taking a spare digit. A "+" stays on the first digit.
+    public static func spokenForm(_ match: Match, in text: String) -> String {
+        let written = asciiDigits(String(text[match.range]))
+        var runs: [String] = []
+        var run = ""
+        for character in written {
+            if character.isASCII, character.isNumber {
+                run.append(character)
+            } else if !run.isEmpty {
+                runs.append(run)
+                run = ""
+            }
+        }
+        if !run.isEmpty { runs.append(run) }
+        let groups = runs.flatMap(spokenGroups)
+        let spoken = groups.map { $0.map(String.init).joined(separator: " ") }.joined(separator: ", ")
+        return written.hasPrefix("+") ? "+" + spoken : spoken
+    }
+
+    private static func spokenGroups(_ run: String) -> [String] {
+        var rest = Substring(run)
+        var groups: [String] = []
+        while rest.count > 4 {
+            groups.append(String(rest.prefix(3)))
+            rest = rest.dropFirst(3)
+        }
+        if !rest.isEmpty { groups.append(String(rest)) }
+        return groups
+    }
+
     public static func matches(in text: String) -> [Match] {
         guard let pattern, let servicePattern else { return [] }
         let read = asciiDigits(text)

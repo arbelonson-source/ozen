@@ -104,7 +104,7 @@ struct CaptionRow: View {
             if segment.isSettled {
                 ForEach(PhoneNumbers.matches(in: segment.text), id: \.dialable) { phone in
                     if let url = phone.url {
-                        Button(tr("להתקשר ל־%1", "Call %1", args: ["\(phone.dialable)"])) { openURL(url) }
+                        Button(tr("להתקשר ל־%1", "Call %1", args: ["\(PhoneNumbers.spokenForm(phone, in: segment.text))"])) { openURL(url) }
                     }
                 }
             }

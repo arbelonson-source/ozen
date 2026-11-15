@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
@@ -370,7 +371,7 @@ private fun CaptionLineRow(
             } + listOf(
                 CustomAccessibilityAction(problem) { onMarkProblem(); true },
             ) + line.phones.map { phone ->
-                CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
+                CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(PhoneNumbers.spokenForm(phone, line.spoken)))) { uris.openUri(phone.url); true }
             },
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
