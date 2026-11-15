@@ -215,6 +215,11 @@ struct PhasePresentationTests {
         #expect(shown(missing, .cloud).title != CloudKeyCheck.rejected.message)
         #expect(covering(.cloudKeyNeeded, rejected.detail, .cloud).detail?.hasPrefix(CloudKeyCheck.rejected.message) == true)
         #expect(covering(.cloudKeyNeeded, missing.detail, .cloud).detail?.hasPrefix(CloudKeyCheck.rejected.message) == false)
+        let slow = shown(CloudSpeechError.timedOut.unavailability, .cloud)
+        let offline = shown(CloudSpeechError.offline.unavailability, .cloud)
+        #expect(slow.title == shown(CloudSpeechError.rateLimited.unavailability, .cloud).title)
+        #expect(slow.title != offline.title)
+        #expect(slow.action == .retry)
     }
 
     @Test("a short hint stays in the status button; a long one gets its own line rather than being cut off")

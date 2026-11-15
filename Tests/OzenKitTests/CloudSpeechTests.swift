@@ -183,7 +183,12 @@ struct CloudSpeechTests {
         #expect(CloudSpeechError.keyRejected.unavailability.cloudKeyWasRejected)
         #expect(!CloudSpeechError.keyMissing.unavailability.cloudKeyWasRejected)
         #expect(!CloudSpeechError.outOfCredit.unavailability.cloudKeyWasRejected)
-        #expect(CloudSpeechError.timedOut.unavailability.kind == .temporarilyUnavailable)
+        let slow = CloudSpeechError.timedOut.unavailability
+        #expect(slow.cloudTimedOut && slow.kind == .noInternet)
+        #expect(!CloudSpeechError.offline.unavailability.cloudTimedOut)
+        var chosen = AppSettings.default
+        chosen.engine = .cloud
+        #expect(CloudCover.phoneSettings(replacing: chosen, after: PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: slow))?.engine == .whisperKit)
         #expect(CloudSpeechError.offline.unavailability.kind == .noInternet)
     }
 

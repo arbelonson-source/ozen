@@ -34,6 +34,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudSpeechError
 import com.arbelonson.ozen.core.cloudKeyWasRejected
+import com.arbelonson.ozen.core.cloudTimedOut
 import com.arbelonson.ozen.core.DamagedModelNotice
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
@@ -675,7 +676,15 @@ class PhasePresentation private constructor(
                     action = Action.OpenEngineSettings,
                 )
 
-                EngineUnavailability.Kind.NoInternet -> PhasePresentation(
+                EngineUnavailability.Kind.NoInternet -> if (engineFailure.cloudTimedOut) {
+                    PhasePresentation(
+                        title = tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(engineName)),
+                        detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                        systemImage = "clock",
+                        tint = PhaseTint.Attention,
+                        action = Action.Retry,
+                    )
+                } else PhasePresentation(
                     title = tr("אין חיבור לאינטרנט", "No internet connection"),
                     detail = tr("התמלול בענן צריך חיבור לאינטרנט · הקישו כדי לנסות שוב", "Cloud transcription needs the internet · Tap to try again"),
                     systemImage = "wifi.slash",

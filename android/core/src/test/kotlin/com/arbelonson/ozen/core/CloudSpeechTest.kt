@@ -315,7 +315,13 @@ class CloudSpeechTest {
         assertTrue(CloudSpeechError.KeyRejected.unavailability.cloudKeyWasRejected)
         assertFalse(CloudSpeechError.KeyMissing.unavailability.cloudKeyWasRejected)
         assertFalse(CloudSpeechError.OutOfCredit.unavailability.cloudKeyWasRejected)
-        assertEquals(EngineUnavailability.Kind.TemporarilyUnavailable, CloudSpeechError.TimedOut.unavailability.kind)
+        val slow = CloudSpeechError.TimedOut.unavailability
+        assertTrue(slow.cloudTimedOut)
+        assertEquals(EngineUnavailability.Kind.NoInternet, slow.kind)
+        assertFalse(CloudSpeechError.Offline.unavailability.cloudTimedOut)
+        val failure = PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", slow)
+        val chosen = AppSettings.default.copy().also { it.engine = TranscriptionEngineKind.Cloud }
+        assertEquals(TranscriptionEngineKind.WhisperKit, CloudCover.phoneSettings(chosen, failure)?.engine)
         assertEquals(EngineUnavailability.Kind.NoInternet, CloudSpeechError.Offline.unavailability.kind)
     }
 }

@@ -298,6 +298,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "נגמר הקרדיט לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                     "Cloud transcription’s budget ran out. Open Ozen for details."
                 )
+            case (_, .noInternet?) where failure.engineUnavailability?.cloudTimedOut == true:
+                let cloud = tr("התמלול בענן", "Cloud transcription")
+                return tr("%1 לא זמין כרגע", "%1 isn’t available right now", args: ["\(cloud)"]) + ". " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             case (_, .noInternet?):
                 return tr(
                     "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",

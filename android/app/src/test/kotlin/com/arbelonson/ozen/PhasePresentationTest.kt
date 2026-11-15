@@ -685,5 +685,9 @@ class PhasePresentationTest {
         val keyNeeded = EngineUnavailability.Kind.CloudKeyNeeded
         assertTrue(covering(keyNeeded, rejected.detail, cloud).detail!!.startsWith(CloudKeyCheck.Rejected.message))
         assertFalse(covering(keyNeeded, missing.detail, cloud).detail!!.startsWith(CloudKeyCheck.Rejected.message))
+        val slow = shown(CloudSpeechError.TimedOut.unavailability, cloud)
+        assertEquals(shown(CloudSpeechError.RateLimited.unavailability, cloud).title, slow.title)
+        assertNotEquals(shown(CloudSpeechError.Offline.unavailability, cloud).title, slow.title)
+        assertEquals(Action.Retry, slow.action)
     }
 }

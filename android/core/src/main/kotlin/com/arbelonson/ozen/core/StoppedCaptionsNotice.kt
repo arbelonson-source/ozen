@@ -339,6 +339,11 @@ class StoppedCaptionsNotice {
                         "נגמר הקרדיט לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                         "Cloud transcription’s budget ran out. Open Ozen for details.",
                     )
+                    why == EngineUnavailability.Kind.NoInternet && failure.engineUnavailability?.cloudTimedOut == true -> {
+                        val cloud = tr("התמלול בענן", "Cloud transcription")
+                        tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(cloud)) + ". " +
+                            tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                    }
                     why == EngineUnavailability.Kind.NoInternet -> tr(
                         "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
                         "There’s no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone’s own speech recognition.",

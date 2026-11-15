@@ -451,6 +451,16 @@ struct CaptionPipelinePhaseChangeTests {
         }
     }
 
+    @Test("a cloud that did not answer in time is not called a lost internet")
+    func slowCloudIsNotNoInternet() {
+        let slow = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.timedOut.unavailability)
+        let offline = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.offline.unavailability)
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(slow)).body == "Cloud transcription isn’t available right now. Open Ozen to continue.")
+            #expect(StoppedCaptionsNotice.content(for: .failed(offline)).body.hasPrefix("There’s no internet"))
+        }
+    }
+
     @Test("a delivered not-working notice survives a recovery, but not sound alerts being turned off, paused or stopped")
     func deliveredNoticeIsWithdrawnWhenSoundAlertsAreNoLongerMeantToRun() {
         var kept = StoppedCaptionsNotice()

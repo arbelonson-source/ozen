@@ -235,6 +235,7 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
         }
     }
 
+    public static let timedOutDetail = "the cloud service did not answer in time"
     public static let keyRejectedDetail = "the cloud service turned the key down"
 
     public var unavailability: EngineUnavailability {
@@ -243,7 +244,7 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
         case .keyRejected: return EngineUnavailability(kind: .cloudKeyNeeded, detail: Self.keyRejectedDetail)
         case .outOfCredit: return EngineUnavailability(kind: .cloudOutOfCredit, detail: "the cloud key is out of credit")
         case .offline: return EngineUnavailability(kind: .noInternet, detail: "no connection to the cloud service")
-        case .timedOut: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service did not answer in time")
+        case .timedOut: return EngineUnavailability(kind: .noInternet, detail: Self.timedOutDetail)
         case .rateLimited: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service's rate limit")
         case .serverTrouble(let status): return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service answered \(status)")
         case .badReply: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "unreadable reply from the cloud service")
@@ -252,6 +253,11 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
 }
 
 extension EngineUnavailability {
+    /// The cloud service did not answer in time. The phone still takes over at once, as for a lost connection, but the internet may be fine.
+    public var cloudTimedOut: Bool {
+        kind == .noInternet && detail == CloudSpeechError.timedOutDetail
+    }
+
     /// The cloud service turned the key down, as opposed to there being no key.
     public var cloudKeyWasRejected: Bool {
         kind == .cloudKeyNeeded && detail == CloudSpeechError.keyRejectedDetail

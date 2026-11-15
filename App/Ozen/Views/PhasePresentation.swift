@@ -421,6 +421,8 @@ struct PhasePresentation {
                 tint: .orange,
                 action: .openEngineSettings
             )
+        case .noInternet where engineFailure?.cloudTimedOut == true:
+            self.init(title: tr("%1 לא זמין כרגע", "%1 isn’t available right now", args: ["\(engineName)"]), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "clock", tint: .orange, action: .retry)
         case .noInternet:
             self.init(
                 title: tr("אין חיבור לאינטרנט", "No internet connection"),
@@ -431,7 +433,7 @@ struct PhasePresentation {
             )
         case .homeServerUnreachable where HomeServer.missingAddress(engineFailure):
             self.init(
-                title: HomeServer.rejectionTitle(detail: HomeServer.noAddress),
+                title: HomeServer.rejectionTitle(detail: engineFailure?.detail),
                 detail: tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
                 systemImage: "key",
                 tint: .orange,
