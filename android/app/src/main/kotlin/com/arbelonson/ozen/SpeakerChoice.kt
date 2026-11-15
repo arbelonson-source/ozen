@@ -11,8 +11,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.SpeakingOutput
 
 internal object SpeakerChoice {
-    @Volatile var chosen = false
-        private set
+    @Volatile internal var chosen = false
     private var routed = false
     private var callAttributes = false
     private var devicesSeen: Set<Int>? = null
@@ -23,18 +22,26 @@ internal object SpeakerChoice {
         chosen = canChoose
     }
 
-        fun outputs(audio: AudioManager): List<SpeakingOutput> {
-        val devices = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY }
-        val ids = devices.map { it.id }.toSet()
-        if (devicesSeen != null && devicesSeen != ids) chosen = false
-        devicesSeen = ids
+    fun outputs(audio: AudioManager): List<SpeakingOutput> {
+        val devices = connected(audio)
         if (chosen) return listOf(SpeakingOutput(SpeakingOutput.Kind.PhoneSpeaker, ""))
         return outputsFor(devices.map { Device(it.type, it.productName?.toString().orEmpty()) })
     }
 
+    private fun connected(audio: AudioManager): List<AudioDeviceInfo> {
+        val devices = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY }
+        observe(devices.map { it.id }.toSet())
+        return devices
+    }
+
+    internal fun observe(ids: Set<Int>) {
+        if (devicesSeen != null && devicesSeen != ids) chosen = false
+        devicesSeen = ids
+    }
+
     internal data class Device(val type: Int, val name: String)
 
-        internal fun outputsFor(devices: List<Device>): List<SpeakingOutput> {
+    internal fun outputsFor(devices: List<Device>): List<SpeakingOutput> {
         val external = devices.mapNotNull { device -> kindOf(device)?.let { SpeakingOutput(it, device.name) } }
         return external.ifEmpty { listOf(SpeakingOutput(SpeakingOutput.Kind.PhoneSpeaker, "")) }
     }
@@ -54,6 +61,7 @@ internal object SpeakerChoice {
 
     fun beforeSpeaking(context: Context, engine: TextToSpeech) {
         val audio = context.getSystemService(AudioManager::class.java)
+        if (audio != null) connected(audio)
         val routedNow = if (chosen && audio != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             engine.setAudioAttributes(attributes(AudioAttributes.USAGE_VOICE_COMMUNICATION))
             callAttributes = true

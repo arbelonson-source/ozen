@@ -16,22 +16,26 @@ public enum SpeakingOutputRoute {
 
     public static func useSpeaker() {
         startWatchingDevices()
-        chosenSpeaker = true
-        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
+        let session = AVAudioSession.sharedInstance()
+        setPlayingCategory(session)
+        chosenSpeaker = (try? session.overrideOutputAudioPort(.speaker)) != nil
+    }
+
+    private static func setPlayingCategory(_ session: AVAudioSession) {
+        guard session.category != .playAndRecord else { return }
+        try? session.setCategory(
+            .playAndRecord,
+            mode: .default,
+            options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker]
+        )
     }
 
     static func prepareToSpeak() {
         let session = AVAudioSession.sharedInstance()
-        if session.category != .playAndRecord {
-            try? session.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker]
-            )
-        }
+        setPlayingCategory(session)
         guard chosenSpeaker else { return }
         try? session.setActive(true)
-        try? session.overrideOutputAudioPort(.speaker)
+        if (try? session.overrideOutputAudioPort(.speaker)) == nil { chosenSpeaker = false }
     }
 
     private static func kind(of port: AVAudioSessionPortDescription) -> SpeakingOutput.Kind {

@@ -60,4 +60,15 @@ class SpeakingRouteTest {
         val earpieceOnly = SpeakerChoice.outputsFor(listOf(SpeakerChoice.Device(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE, "")))
         assertNull(SpeakingRoute.notice(earpieceOnly))
     }
+
+    @Test
+    fun `a device coming or going ends the speaker choice, and the same devices keep it`() {
+        SpeakerChoice.chosen = false
+        SpeakerChoice.observe(setOf(1, 2))
+        SpeakerChoice.chosen = true
+        SpeakerChoice.observe(setOf(1, 2))
+        assertEquals(true, SpeakerChoice.chosen)
+        SpeakerChoice.observe(setOf(1, 2, 3))
+        assertEquals(false, SpeakerChoice.chosen)
+    }
 }
