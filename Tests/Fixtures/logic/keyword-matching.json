@@ -1,5 +1,5 @@
 {
- "about": "Cases for name and word alert matching (KeywordAlertMatcher), run by both OzenKitTests (Swift) and core KeywordMatchingSharedCasesTest (Kotlin). alerts: the saved alerts (isEnabled defaults to true). text: one caption line. live: matched as live text, whose last word may still be cut off. matches: in order, each found alert's phrase, the text as it appeared, and the index of its first word. knownDifference: skipped on both sides with the note printed. note: what the case is about.",
+ "about": "Cases for name and word alert matching (KeywordAlertMatcher), run by both OzenKitTests (Swift) and core KeywordMatchingSharedCasesTest (Kotlin). alerts: the saved alerts (isEnabled defaults to true). text: one caption line. language: the caption language the matcher is told (empty when absent). live: matched as live text, whose last word may still be cut off. matches: in order, each found alert's phrase, the text as it appeared, and the index of its first word. knownDifference: skipped on both sides with the note printed. note: what the case is about.",
  "cases": [
   {
    "alerts": [
@@ -946,6 +946,435 @@
     }
    ],
    "text": "दवाई ले लो",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anne"
+    }
+   ],
+   "text": "c'est l'Anne",
+   "language": "fr",
+   "note": "elided article before a name",
+   "matches": [
+    {
+     "phrase": "Anne",
+     "matchedText": "l'Anne",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anne"
+    }
+   ],
+   "text": "c'est d'Anne",
+   "language": "fr",
+   "note": "elided article before a name",
+   "matches": [
+    {
+     "phrase": "Anne",
+     "matchedText": "d'Anne",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "l’Olga est là",
+   "language": "fr-FR",
+   "note": "elided article before a name, typographic apostrophe",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "l’Olga",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "d'Olga",
+   "language": "fr",
+   "note": "elided article before a name",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "d'Olga",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anna"
+    }
+   ],
+   "text": "la casa dell'Anna",
+   "language": "it",
+   "note": "elided article before a name",
+   "matches": [
+    {
+     "phrase": "Anna",
+     "matchedText": "dell'Anna",
+     "wordIndex": 2
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Mon"
+    }
+   ],
+   "text": "c'mon now",
+   "language": "en",
+   "note": "English contraction is not an elided article",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dan"
+    }
+   ],
+   "text": "d'Arcy est là",
+   "language": "fr",
+   "note": "other name after d'",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Arcy"
+    }
+   ],
+   "text": "d'Arcy est là",
+   "language": "fr",
+   "note": "elided article before a name",
+   "matches": [
+    {
+     "phrase": "Arcy",
+     "matchedText": "d'Arcy",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "D’Arcy"
+    }
+   ],
+   "text": "d'Arcy est là",
+   "language": "fr",
+   "note": "name saved with its own apostrophe still matches",
+   "matches": [
+    {
+     "phrase": "D’Arcy",
+     "matchedText": "d'Arcy",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "Danas coat",
+   "language": "en",
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anne"
+    }
+   ],
+   "text": "Annes Haus",
+   "language": "de",
+   "note": "Latin name with s",
+   "matches": [
+    {
+     "phrase": "Anne",
+     "matchedText": "Annes",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dan"
+    }
+   ],
+   "text": "Dans coat",
+   "language": "en",
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Ann"
+    }
+   ],
+   "text": "Anns coat",
+   "language": "en",
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Ann"
+    }
+   ],
+   "text": "the Annual report",
+   "language": "en",
+   "note": "a longer word is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "Danaher said",
+   "language": "en",
+   "note": "a longer word is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anne"
+    }
+   ],
+   "text": "Annas Haus",
+   "language": "en",
+   "note": "a different name is not this name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Anne"
+    }
+   ],
+   "text": "Annas Haus",
+   "language": "de",
+   "note": "a different name is not this name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dan"
+    }
+   ],
+   "text": "Dans la maison",
+   "language": "fr",
+   "note": "in French dans means in",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "les Danas",
+   "language": "fr",
+   "note": "no s form in French",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "las Danas",
+   "language": "es",
+   "note": "no s form in Spanish",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "as Danas",
+   "language": "pt",
+   "note": "no s form in Portuguese",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Al"
+    }
+   ],
+   "text": "als er kam",
+   "language": "de",
+   "note": "two-letter names take no s",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "Danas coat",
+   "note": "language unknown: no s form",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "አበበ"
+    }
+   ],
+   "text": "አበበን ጠራሁ",
+   "language": "am",
+   "note": "Amharic suffix object",
+   "matches": [
+    {
+     "phrase": "አበበ",
+     "matchedText": "አበበን",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "አበበ"
+    }
+   ],
+   "text": "አበበም መጣ",
+   "language": "am",
+   "note": "Amharic suffix also",
+   "matches": [
+    {
+     "phrase": "አበበ",
+     "matchedText": "አበበም",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "አበበ"
+    }
+   ],
+   "text": "ለአበበም ንገረው",
+   "language": "am",
+   "note": "Amharic suffix behind a prefix",
+   "matches": [
+    {
+     "phrase": "አበበ",
+     "matchedText": "ለአበበም",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "ሰላም"
+    }
+   ],
+   "text": "ሰላምታ አቀረበ",
+   "language": "am",
+   "note": "greeting is not peace",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "ሰላም"
+    }
+   ],
+   "text": "ሰላሙ ጠፋ",
+   "language": "am",
+   "note": "another ending is not matched",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "c'est d'Olga",
+   "language": "FR-FR",
+   "note": "language tags are case-insensitive",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "d'Olga",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Olga"
+    }
+   ],
+   "text": "il a dit 'd'Olga' hier",
+   "language": "fr",
+   "note": "elided article inside quotes",
+   "matches": [
+    {
+     "phrase": "Olga",
+     "matchedText": "d'Olga",
+     "wordIndex": 3
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Jean"
+    }
+   ],
+   "text": "she wore jeans",
+   "language": "en",
+   "note": "a plural word is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Bill"
+    }
+   ],
+   "text": "pay the bills",
+   "language": "en",
+   "note": "a plural word is not the name",
    "matches": []
   }
  ]

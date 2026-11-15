@@ -272,7 +272,7 @@ object HebrewText {
      * Chinese are left alone too: a name may come out there as typed.
      */
     fun isInOtherLetters(phrase: String, captionLanguage: String): Boolean {
-        val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key) }?.value ?: return false
+        val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key, ignoreCase = true) }?.value ?: return false
         val hasTheirs = phrase.codePoints().anyMatch { point -> Character.isAlphabetic(point) && letters.any { point in it } }
         return !hasTheirs && phrase.codePoints().anyMatch { Character.isAlphabetic(it) }
     }
@@ -389,9 +389,63 @@ object HebrewText {
      */
     val amharicAttachedPrefixes: Set<String> = setOf("ለ", "በ", "ከ", "የ")
 
+    /**
+     * The two endings an Amharic name or noun takes in a sentence: the object
+     * marker "-ን" (as the one being called or seen) and "-ም" ("also").
+     * Matched after the stem, alone or behind a prefix. A closed pair, so
+     * "ሰላምታ" ("greeting") is never "ሰላም" ("peace").
+     */
+    val amharicAttachedSuffixes: Set<String> = setOf("ን", "ም")
+
     internal fun hasAmharicPrefix(word: String, stem: String): Boolean {
         if (graphemesOf(stem).size < 3 || !stem.codePoints().allMatch { it in 0x1200..0x137F || it in 0x2D80..0x2DDF || it in 0xAB00..0xAB2F }) return false
-        return amharicAttachedPrefixes.any { word == it + stem }
+        for (prefix in amharicAttachedPrefixes + "") {
+            for (suffix in amharicAttachedSuffixes + "") {
+                if (prefix.isEmpty() && suffix.isEmpty()) continue
+                if (word == prefix + stem + suffix) return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Languages whose speech elides a short article or preposition onto a name
+     * with an apostrophe: French "l'Anne", "d'Olga", Italian "dell'Anna". The
+     * apostrophe is dropped by normalize, which fused the two into "lanne".
+     * Only these closed lists, and only in these caption languages: English
+     * "c'mon" and "s'more" must not read as names.
+     */
+    val elidedWords: Map<String, Set<String>> = mapOf(
+        "fr" to setOf("l", "d", "j", "m", "t", "s", "n", "c", "qu", "jusqu", "lorsqu", "puisqu"),
+        "it" to setOf("l", "d", "c", "m", "t", "s", "v", "un", "dell", "all", "dall", "nell", "sull", "quell", "quest", "coll"),
+    )
+
+    private const val APOSTROPHES = "'\u2019\u02BC"
+
+    /**
+     * The part of [rawWord] after a listed elided word and its apostrophe
+     * ("Anne" from "l'Anne"), or null when the word has none or the caption
+     * language has no such list.
+     */
+    fun withoutElidedWord(rawWord: String, captionLanguage: String): String? {
+        val listed = elidedWords.entries.firstOrNull { captionLanguage.startsWith(it.key, ignoreCase = true) }?.value ?: return null
+        val mark = rawWord.withIndex().firstOrNull { it.index > 0 && it.value in APOSTROPHES }?.index ?: -1
+        if (mark < 0 || normalize(rawWord.substring(0, mark)) !in listed) return null
+        val rest = rawWord.substring(mark + 1)
+        return rest.takeIf { normalize(it).isNotEmpty() }
+    }
+
+    /**
+     * A name with "s" glued on ("Annes Haus"): German writes the genitive of a
+     * name without an apostrophe. Only for German captions and a name of three
+     * letters or more written in Latin letters. English writes it "Dana's",
+     * which already matches, while a plain s there is a plural ("Jean" on
+     * "jeans", "Bill" on "bills"); in French, Spanish or Portuguese "Dan" + s
+     * is "dans" ("in"). A name like "Al" + s is German "als".
+     */
+    fun isLatinNameWithS(word: String, name: String, captionLanguage: String): Boolean {
+        if (!captionLanguage.startsWith("de", ignoreCase = true) || graphemesOf(name).size < 3 || word != name + "s" || name.endsWith("s")) return false
+        return name.codePoints().allMatch { it in 0x61..0x24F } && everydayWordsNotNames[name]?.contains(word) != true
     }
 
     /**
@@ -656,7 +710,7 @@ object HebrewText {
  * spelling of a phrase's word still matches; see
  * [HebrewText.isAffectionateVariant].
  */
-data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
+data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLanguage: String = "") {
     /**
      * The matches on a line still being written. A live pass that stops
      * mid-word ends on the model's ellipsis ("hatel..." on its way to
@@ -669,14 +723,14 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
     fun matchesInLiveText(text: String): List<KeywordMatch> = matches(droppingCutOffWord(text))
 
     fun matches(text: String): List<KeywordMatch> {
-        val rawWords = splitOnKeywordWhitespace(HebrewText.separatingJoiners(text))
-        if (rawWords.isEmpty()) return emptyList()
+        val captionRaw = splitOnKeywordWhitespace(HebrewText.separatingJoiners(text))
+        if (captionRaw.isEmpty()) return emptyList()
         // Normalizing word-by-word (rather than normalizing the whole string
         // and re-splitting) keeps this array the same length as `rawWords`, so
         // a word's index always means the same thing on both sides even when a
         // word is pure punctuation and normalizes to the empty string.
-        val normalizedWords = rawWords.map { HebrewText.normalizeCaptionWord(it) }
-        val trimmedWords = rawWords.map { trimmingEdgePunctuation(it) }
+        val captionNormalized = captionRaw.map { HebrewText.normalizeCaptionWord(it) }
+        val trimmedWords = captionRaw.map { trimmingEdgePunctuation(it) }
 
         val unordered = mutableListOf<Pair<KeywordMatch, Int>>()
         val repeatedInOneWord = HashSet<Int>()
@@ -687,6 +741,18 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             if (phraseWords.isEmpty()) continue
+
+            // "l'Anne" is the article and the name: for this alert the word
+            // reads as the name, unless the saved phrase itself has the fused
+            // spelling (a name like "D'Arcy").
+            val rawWords = captionRaw.toMutableList()
+            val normalizedWords = captionNormalized.toMutableList()
+            for (index in rawWords.indices) {
+                if (normalizedWords[index] in phraseWords) continue
+                val rest = HebrewText.withoutElidedWord(rawWords[index], captionLanguage) ?: continue
+                rawWords[index] = rest
+                normalizedWords[index] = HebrewText.normalizeCaptionWord(rest)
+            }
 
             // Chinese captions have no spaces: a whole sentence is one
             // "word", so a saved word is looked for inside it.
@@ -708,7 +774,9 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
                 }
             } else if (phraseWords.size == 1) {
                 for (index in normalizedWords.indices) {
-                    if (!HebrewText.isNameCaseForm(normalizedWords[index], phraseWords[0])) continue
+                    if (!HebrewText.isNameCaseForm(normalizedWords[index], phraseWords[0]) &&
+                        !HebrewText.isLatinNameWithS(normalizedWords[index], phraseWords[0], captionLanguage)
+                    ) continue
                     unordered.add(KeywordMatch(alert.id, alert.phrase, trimmedWords[index], index) to sequence)
                     sequence += 1
                 }

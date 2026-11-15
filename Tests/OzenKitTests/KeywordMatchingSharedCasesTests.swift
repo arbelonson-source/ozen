@@ -12,6 +12,7 @@ struct KeywordMatchingSharedCasesTests {
         let alerts: [Alert]
         let text: String
         let live: Bool?
+        let language: String?
         let matches: [Match]
         let knownDifference: String?
     }
@@ -42,7 +43,7 @@ struct KeywordMatchingSharedCasesTests {
                 continue
             }
             checked += 1
-            let matcher = KeywordAlertMatcher(alerts: item.alerts.map { KeywordAlert(phrase: $0.phrase, isEnabled: $0.isEnabled ?? true) })
+            let matcher = KeywordAlertMatcher(alerts: item.alerts.map { KeywordAlert(phrase: $0.phrase, isEnabled: $0.isEnabled ?? true) }, captionLanguage: item.language ?? "")
             let found = item.live == true ? matcher.matches(inLiveText: item.text) : matcher.matches(in: item.text)
             let actual = found.map { Match(phrase: $0.phrase, matchedText: $0.matchedText, wordIndex: $0.wordIndex) }
             #expect(actual == item.matches, "text: \(item.text)")

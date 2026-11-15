@@ -758,7 +758,7 @@ class CaptionPipeline(
             } else {
                 settings.speakerSimilarityThreshold
             }
-        keywordMatcher = KeywordAlertMatcher(settings.keywordAlerts)
+        keywordMatcher = KeywordAlertMatcher(settings.keywordAlerts, settings.languageCode)
         soundPolicy.preferences = settings.soundAlerts
 
         phase = PipelinePhase.RequestingMicrophonePermission
@@ -1348,7 +1348,7 @@ class CaptionPipeline(
      * toggled here changes which alert phrases belong in its hint list.
      */
     fun setKeywordAlerts(alerts: List<KeywordAlert>) {
-        keywordMatcher = KeywordAlertMatcher(alerts)
+        keywordMatcher = KeywordAlertMatcher(alerts, keywordMatcher.captionLanguage)
         settingsInUse?.keywordAlerts = alerts
         // Switching back from a cover starts again from what was covered:
         // without this, a word added meanwhile stopped firing.
