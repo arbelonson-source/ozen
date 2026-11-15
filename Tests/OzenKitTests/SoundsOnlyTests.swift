@@ -353,6 +353,24 @@ struct SoundsOnlyTests {
         await stale.value
     }
 
+    @Test("a second tap while the microphone is still being opened waits for the first and ends nothing", .timeLimit(.minutes(1)))
+    func secondTapWhileOpeningIsIgnored() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        let first = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        audio.holdPrepare = false
+        await pipeline.listenForSoundsOnly()
+        audio.holdPrepare = true
+        audio.releasePrepare()
+        await first.value
+        #expect(audio.calls.filter { $0 == "prepareSession" }.count == 1)
+        #expect(audio.endSessionCalls == 0)
+        #expect(pipeline.isListeningForSoundsOnly)
+    }
+
     @Test("starting captions after sound alerts gave up clears the stopped flag", .timeLimit(.minutes(1)))
     func startingClearsStoppedFlag() async {
         let audio = FakeAudioCapturer()

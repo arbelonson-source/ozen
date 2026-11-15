@@ -3118,6 +3118,7 @@ public final class CaptionPipeline {
     /// From listening, paused or idle; not during a call or a voice sample.
     /// Starting captions again (or stopping) ends it.
     public func listenForSoundsOnly() async {
+        guard !soundsOnlyOpening.contains(runID) else { return }
         soundsOnlyAttempts = 0
         await listenForSoundsOnly(retrying: false)
     }
