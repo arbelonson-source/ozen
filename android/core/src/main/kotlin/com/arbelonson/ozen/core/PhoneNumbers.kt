@@ -26,7 +26,30 @@ object PhoneNumbers {
                 found.add(Match(phones.start(), phones.end(), digits))
             }
         }
+        for (item in abroad(read)) {
+            if (found.none { it.start < item.end && item.start < it.end }) found.add(item)
+        }
         return found.sortedBy { it.start }
+    }
+
+    /**
+     * Numbers written for other countries: "+" and a country code (8 to 15
+     * digits in all; +972 stays with the Israeli rules above), and North
+     * American numbers in the 3-3-4 grouping with separators. Short local
+     * numbers, dates, times, amounts and card numbers are not matched.
+     */
+    private fun abroad(read: String): List<Match> {
+        val found = ArrayList<Match>()
+        val international = internationalPattern.matcher(read)
+        while (international.find()) {
+            val digits = digitsOf(international.group())
+            if (digits.length in 8..15 && !digits.startsWith("972")) found.add(Match(international.start(), international.end(), "+$digits"))
+        }
+        val northAmerican = northAmericanPattern.matcher(read)
+        while (northAmerican.find()) {
+            found.add(Match(northAmerican.start(), northAmerican.end(), digitsOf(northAmerican.group())))
+        }
+        return found
     }
 
     /**
@@ -47,5 +70,15 @@ object PhoneNumbers {
 
     private val servicePattern: Pattern = unicodePattern(
         """(?<![\d+*])1[- \u00A0\u202F\u2011]?(?:700|800|801|599)(?:[- \u00A0\u202F\u2011]?\d){6}(?![-\u2011\u00A0\u202F]?\d)""",
+    )
+
+    private const val SEPARATOR = """[-\u2011\u00A0\u202F .]"""
+
+    private val internationalPattern: Pattern = unicodePattern(
+        """(?<![\d+])\+[1-9](?:$SEPARATOR?\d)*(?:$SEPARATOR?\(\d{2,5}\)(?:$SEPARATOR?\d)*)?(?!$SEPARATOR?\d)""",
+    )
+
+    private val northAmericanPattern: Pattern = unicodePattern(
+        """(?<![\d+*])(?<!\d$SEPARATOR)(?:1$SEPARATOR)?(?:\([2-9]\d\d\)$SEPARATOR?|[2-9]\d\d$SEPARATOR)[2-9]\d\d$SEPARATOR\d{4}(?!$SEPARATOR?\d)""",
     )
 }
