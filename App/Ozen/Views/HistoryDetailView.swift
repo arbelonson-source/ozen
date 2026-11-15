@@ -28,6 +28,8 @@ struct HistoryDetailView: View {
     /// reading from where the jump was made.
     @AccessibilityFocusState private var focusedLineID: UUID?
     @State private var focusTask: Task<Void, Never>?
+    /// The share text, built once per loaded record and export setting.
+    @State private var exportedText: String?
     @State private var confirmingDelete = false
     @State private var deleteError: String?
     @State private var starRefused = false
@@ -39,6 +41,19 @@ struct HistoryDetailView: View {
     /// The jumps to a line land without a long animated scroll, as on the
     /// caption screen.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private struct ExportKey: Equatable, Sendable {
+        let record: TranscriptSessionRecord
+        let marksUncertain: Bool
+        let languageCode: String
+        let timeZone: String
+    }
+
+    private var exportKey: ExportKey? {
+        record.map {
+            ExportKey(record: $0, marksUncertain: viewModel.display.markUncertainLines, languageCode: viewModel.settings.languageCode, timeZone: TimeZone.current.identifier)
+        }
+    }
 
     private var isSearch: Bool {
         !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -221,17 +236,19 @@ struct HistoryDetailView: View {
         }
         if let record {
             ToolbarItem(placement: .primaryAction) {
-                ShareLink(
-                    item: TranscriptHistoryStore.exportText(
-                        record,
-                        utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
-                        marksUncertain: viewModel.display.markUncertainLines,
-                        currentLanguageCode: viewModel.settings.languageCode
-                    ),
-                    subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
-                    message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
-                ) {
-                    Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
+                if let exportedText {
+                    ShareLink(
+                        item: exportedText,
+                        subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
+                        message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
+                    ) {
+                        Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
+                    }
+                } else {
+                    Button {} label: {
+                        Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(true)
                 }
             }
             ToolbarItem(placement: .secondaryAction) {
@@ -267,6 +284,20 @@ struct HistoryDetailView: View {
         .onAppear { viewModel.historyOpened(sessionID) }
         .onDisappear { viewModel.historyClosed(sessionID) }
         .toolbar { toolbarContent }
+        .task(id: exportKey) {
+            exportedText = nil
+            guard let key = exportKey else { return }
+            let text = await Task.detached(priority: .userInitiated) {
+                TranscriptHistoryStore.exportText(
+                    key.record,
+                    utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
+                    marksUncertain: key.marksUncertain,
+                    currentLanguageCode: key.languageCode
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            exportedText = text
+        }
         .sheet(item: $fixingLine) { line in
             FixWordSheet(text: line.text, languageCode: record?.languageCode(orCurrent: viewModel.settings.languageCode) ?? viewModel.settings.languageCode, notSaved: tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.")) { fix, always in
                 let changed = viewModel.applyWordFix(fix, always: always, lineID: line.id, text: line.text, sessionID: sessionID)

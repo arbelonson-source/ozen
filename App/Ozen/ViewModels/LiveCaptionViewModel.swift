@@ -1777,12 +1777,14 @@ public final class LiveCaptionViewModel {
         let onScreen = Set([historySessionID] + closedHistorySessions.map(\.id)).union(openedHistoryIDs)
         let writer = historyWriter
         let clips = problemAudio
-        return await Task.detached(priority: .utility) {
+        let deleted = await Task.detached(priority: .utility) {
             if let cutoff = retention.cutoff(now: now) {
                 clips?.deleteClips(olderThan: cutoff)
             }
             return writer.deleteExpiredNow(retention: retention, now: now, protecting: onScreen)
         }.value
+        if deleted > 0 { ExportScratchFolder.standard.clear() }
+        return deleted
     }
 
     // MARK: - Keyword alerts
@@ -2600,6 +2602,7 @@ public final class LiveCaptionViewModel {
         // saving to the record that is still there. Nothing can queue an
         // autosave in between, since this runs on the main actor.
         try historyWriter.deleteNow(id: id)
+        ExportScratchFolder.standard.clear()
         closedHistorySessions.removeAll { $0.id == id }
         if recentConversation?.id == id { recentConversation = nil }
         if id == historySessionID {
@@ -2630,6 +2633,7 @@ public final class LiveCaptionViewModel {
     /// Deletes every saved conversation, including the one in progress.
     public func deleteAllConversations() throws {
         try historyWriter.deleteAllNow()
+        ExportScratchFolder.standard.clear()
         recentConversation = nil
         problemAudio?.deleteAll()
         deleteMarkedCaptionLines()

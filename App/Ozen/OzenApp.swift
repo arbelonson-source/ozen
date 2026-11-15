@@ -26,6 +26,7 @@ struct OzenApp: App {
     init() {
         DeviceWord.brand = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
         RecordingFiles.sweepCopies()
+        ExportScratchFolder.standard.clear()
         RecordingFiles.sweepInboxes()
         #if DEBUG
         if let variant = Self.screenshotVariant {
