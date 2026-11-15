@@ -9,6 +9,7 @@ private func makeSoundsPipeline(
     built: BuiltEngines = BuiltEngines(),
     detector: FakeSoundDetector = FakeSoundDetector(),
     audio: FakeAudioCapturer = FakeAudioCapturer(),
+    audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
     now: @escaping @Sendable () -> TimeInterval = { Date().timeIntervalSince1970 }
 ) -> CaptionPipeline {
     CaptionPipeline(
@@ -21,6 +22,7 @@ private func makeSoundsPipeline(
         embedder: FakeEmbedder(),
         soundDetector: detector,
         recovery: .disabled,
+        audioWatchdog: audioWatchdog,
         now: now
     )
 }
@@ -200,6 +202,85 @@ struct SoundsOnlyTests {
         #expect(BatteryAdvisor.watches(.paused, soundsOnly: true))
         #expect(BatteryAdvisor.watches(.idle, soundsOnly: true))
         #expect(!BatteryAdvisor.watches(.paused))
+    }
+
+    @Test("a microphone that goes silent in sounds-only is started again and counted, like a lost capture", .timeLimit(.minutes(1)))
+    func silentMicrophoneIsRestarted() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        let before = audio.calls.filter { $0 == "startCapture" }.count
+
+        #expect(await eventually { pipeline.stats.audioStalls == 1 })
+        #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == before + 1 })
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("a second silence soon after ends sounds-only, so the screen stops saying it is on", .timeLimit(.minutes(1)))
+    func secondSilenceEndsIt() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+
+        #expect(await eventually { pipeline.stats.audioStalls == 2 })
+        #expect(await eventually { !pipeline.soundsOnlyChosen })
+        #expect(!pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("audio that keeps arriving, even quiet, is never a stall", .timeLimit(.minutes(1)))
+    func audioArrivingIsFine() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        for _ in 0..<30 {
+            audio.push([Float](repeating: 0, count: 1_024))
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(pipeline.stats.audioStalls == 0)
+        #expect(pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("a call holding the microphone is not a stall in sounds-only", .timeLimit(.minutes(1)))
+    func callIsNotAStall() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        pipeline.systemInterruptionChanged(active: true)
+        try await Task.sleep(for: .seconds(1.5))
+        #expect(pipeline.stats.audioStalls == 0)
+    }
+
+    @Test("a slow recovery of the audio session is not a stall: sounds-only stays on and starts nothing", .timeLimit(.minutes(1)))
+    func slowRecoveryIsNotAStall() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        let before = audio.calls.filter { $0 == "startCapture" }.count
+        audio.isRecoveringSession = true
+        try await Task.sleep(for: .seconds(2))
+        #expect(pipeline.stats.audioStalls == 0)
+        #expect(pipeline.soundsOnlyChosen)
+        #expect(audio.calls.filter { $0 == "startCapture" }.count == before)
+
+        audio.isRecoveringSession = false
+        #expect(await eventually { pipeline.stats.audioStalls == 1 })
+    }
+
+    @Test("the same for captions: a recovery under way is not six silent seconds", .timeLimit(.minutes(1)))
+    func slowRecoveryIsNotACaptionsStall() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        audio.isRecoveringSession = true
+        await pipeline.start(settings: .default)
+        try await Task.sleep(for: .seconds(2))
+        #expect(pipeline.stats.audioStalls == 0)
+        #expect(pipeline.phase.isListening)
     }
 }
 

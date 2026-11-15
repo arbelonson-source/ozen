@@ -351,6 +351,7 @@ public final class CaptionPipeline {
     /// the microphone for a while; this brings the sounds back after.
     public private(set) var soundsOnlyChosen = false
     private var staleCommitTask: Task<Void, Never>?
+    private var soundsOnlyWatchTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
     /// The newest voice print heard for each recent line, so a line the
     /// user says belongs to someone else can seed that person's cluster.
@@ -2305,7 +2306,7 @@ public final class CaptionPipeline {
     /// audio engine: the same thing a manual stop and start would do.
     private func checkAudioIsArriving() {
         guard phase.isListening else { return }
-        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted) else { return }
+        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted || audio.isRecoveringSession) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s", inputName: countPickFailure())
@@ -3016,10 +3017,12 @@ public final class CaptionPipeline {
     private func beginSoundsOnly(from source: AsyncStream<[Float]>) {
         guard let soundDetector else { return }
         let run = runID
-        let fan = AudioFanOut(source: source, count: 1)
+        let arrivals = ArrivalCounter()
+        let fan = AudioFanOut(source: source, count: 1, onChunk: { [arrivals] _ in arrivals.increment() })
         fanOut = fan
         isListeningForSoundsOnly = true
         stats.soundDetectionRunning = true
+        if soundsOnlyChosen { watchForSilentMicrophone(counting: arrivals, run: run) }
         let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0]), availability: soundAvailabilityReporter())
         soundTask = Task { [weak self] in
             for await observation in observations {
@@ -3031,6 +3034,29 @@ public final class CaptionPipeline {
             // sounds off.
             guard let self, self.runID == run, !Task.isCancelled else { return }
             self.stats.soundDetectionRunning = false
+        }
+    }
+
+    /// The same stall watch captions have. Nothing else listens in
+    /// sounds-only, and the microphone can die without a word (the audio
+    /// system starting over, a headset gone): a night of sound alerts then
+    /// went on "listening" to nothing. A stall takes the path of a lost
+    /// capture (`soundsOnlyCaptureLost`): start once more, and when that
+    /// does not hold either, end sounds-only so the screen says so. The
+    /// "sound alerts not working" report is about the classifier failing,
+    /// not the microphone, so it is not the one to use here.
+    private func watchForSilentMicrophone(counting arrivals: ArrivalCounter, run: UUID) {
+        soundsOnlyWatchTask?.cancel()
+        var watchdog = audioWatchdog
+        watchdog.reset()
+        soundsOnlyWatchTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(AudioStallWatchdog.tickSeconds))
+                guard let self, !Task.isCancelled, self.runID == run, self.isListeningForSoundsOnly else { return }
+                if watchdog.tick(chunksReceived: arrivals.value, systemInterrupted: self.systemInterrupted || self.audio.isRecoveringSession) {
+                    self.soundsOnlyCaptureLost(run: run)
+                }
+            }
         }
     }
 
@@ -3142,6 +3168,8 @@ public final class CaptionPipeline {
     private func stopListeningForSounds() {
         guard isListeningForSoundsOnly else { return }
         isListeningForSoundsOnly = false
+        soundsOnlyWatchTask?.cancel()
+        soundsOnlyWatchTask = nil
         soundTask?.cancel()
         soundTask = nil
         soundClassifierUnavailable = false
@@ -3301,6 +3329,8 @@ public final class CaptionPipeline {
         soundClassifierUnavailable = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
+        soundsOnlyWatchTask?.cancel()
+        soundsOnlyWatchTask = nil
         staleCommitTask?.cancel()
         staleCommitTask = nil
         fanOut?.cancel()
