@@ -1534,7 +1534,7 @@ class CaptionSession(
 
     private fun tell(word: HeardWord) {
         buzz(AlertVibration.keyword)
-        if (ScreenReader.isOn(context)) announce(tr("נאמר: %1", "Said: %1", listOf(word.said)))
+        if (ScreenReader.isOn(context)) announce(HeardWordAnnouncement.text(word, pipeline.segments, settings.current.value.display.showSpeakerNames, pipeline::displayName))
     }
 
     private val held = mutableListOf<String>()

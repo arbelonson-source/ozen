@@ -336,6 +336,13 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            // The one warning that a smoke alarm may go unheard: first after
+            // the sounds heard just now (which last seconds), so at large
+            // text it is never pushed below the visible part.
+            if viewModel.pipeline.soundAlertsNotWorking {
+                SoundAlertsNotWorkingBanner()
+                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let hit = visibleKeywordHit {
                 KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit)) {
                     withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
@@ -371,10 +378,6 @@ struct LiveCaptionView: View {
                     withAnimation { viewModel.dismissRoutedElsewhere() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
-            }
-            if viewModel.pipeline.soundAlertsNotWorking {
-                SoundAlertsNotWorkingBanner()
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let cut = viewModel.listeningCut {
                 ListeningCutBanner(text: cut.text()) {
