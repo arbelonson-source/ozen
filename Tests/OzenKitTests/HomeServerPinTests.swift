@@ -188,6 +188,21 @@ struct HomeServerPinTests {
         }
     }
 
+    @Test("a computer that answered wrongly has one plain message, never \"check that it is on\"")
+    func answeredWronglyWords() {
+        let wrong = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "server said busy")
+        let down = EngineUnavailability(kind: .homeServerUnreachable, detail: "no answer")
+        #expect(HomeServer.answeredWrongly(wrong))
+        #expect(!HomeServer.answeredWrongly(down) && !HomeServer.answeredWrongly(nil))
+        #expect(!HomeServer.answeredWrongly(EngineUnavailability(kind: .homeServerRejected, detail: wrong.detail)))
+        Localization.$override.withValue(.english) {
+            let text = "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again."
+            #expect(HomeServer.answeredWronglyText() == text)
+            #expect(HomeServer.addressCoverDetail(detail: wrong.detail) == text + " · Tap to pause")
+            #expect(HomeServer.addressCoverDetail(detail: "no answer") == nil)
+        }
+    }
+
     @Test("saving the address or the pairing code has words to announce")
     func savedWords() {
         Localization.$override.withValue(.english) {

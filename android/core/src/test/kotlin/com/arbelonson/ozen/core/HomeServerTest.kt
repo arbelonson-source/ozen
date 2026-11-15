@@ -387,6 +387,21 @@ class HomeServerTest {
     }
 
     @Test
+    fun `a computer that answered wrongly has one plain message, never check that it is on`() {
+        val wrong = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy")
+        val down = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no answer")
+        assertTrue(HomeServer.answeredWrongly(wrong))
+        assertFalse(HomeServer.answeredWrongly(down) || HomeServer.answeredWrongly(null))
+        assertFalse(HomeServer.answeredWrongly(EngineUnavailability(EngineUnavailability.Kind.HomeServerRejected, wrong.detail)))
+        Localization.withLanguage(UILanguage.English) {
+            val text = "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again."
+            assertEquals(text, HomeServer.answeredWronglyText())
+            assertEquals("$text · Tap to pause", HomeServer.addressCoverDetail(wrong.detail))
+            assertNull(HomeServer.addressCoverDetail("no answer"))
+        }
+    }
+
+    @Test
     fun `no saved address and a refused plain address each have their own words, never check that it is on`() {
         val none = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
         val plain = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION)

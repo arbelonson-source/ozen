@@ -485,9 +485,9 @@ class HomeServerEngine(
                     if (message.code == "unauthorized") {
                         throw EngineUnavailability.homeServerRejected("pairing code refused ${message.detail}")
                     } else {
-                        throw EngineUnavailability.homeServerUnreachable("server said ${message.code} ${message.detail}")
+                        throw EngineUnavailability.homeServerUnreachable("${HomeServer.ANSWERED_WRONGLY_PREFIX}server said ${message.code} ${message.detail}")
                     }
-                else -> throw EngineUnavailability.homeServerUnreachable("unexpected reply")
+                else -> throw EngineUnavailability.homeServerUnreachable("${HomeServer.ANSWERED_WRONGLY_PREFIX}unexpected reply")
             }
         } catch (error: CancellationException) {
             withContext(NonCancellable) { socket.close() }

@@ -400,6 +400,30 @@ struct HomeServerEngineTests {
         }
     }
 
+    @Test("a computer that answered with an error code or something else is told apart from one that did not answer, and is still retried")
+    func answeredWronglyIsNamed() async {
+        for reply in [
+            #"{"type":"error","code":"bad_request","detail":"hello expected"}"#,
+            #"{"type":"error","code":"busy","detail":""}"#,
+            #"{"type":"report_saved","name":"report.txt"}"#,
+            "not json",
+        ] {
+            let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "he")
+            #expect(HomeServer.answeredWrongly(availability.unavailability), "\(reply)")
+            #expect(availability.unavailability?.kind == .homeServerUnreachable, "\(reply)")
+            #expect(AutoRecoveryPolicy.schedule(for: PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)) == .glitch, "\(reply)")
+            var chosen = AppSettings.default
+            chosen.engine = .homeServer
+            let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)
+            #expect(CloudCover.phoneSettings(replacing: chosen, after: failure)?.engine == .whisperKit, "\(reply)")
+        }
+        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        #expect(!HomeServer.answeredWrongly(silent.unavailability))
+        #expect(!HomeServer.answeredWrongly(await engine(nil).checkAvailability(languageCode: "he").unavailability))
+        let refused = await engine(ScriptedSocket(helloReply: #"{"type":"error","code":"unauthorized","detail":""}"#)).checkAvailability(languageCode: "he")
+        #expect(!HomeServer.answeredWrongly(refused.unavailability))
+    }
+
     @Test("a connection that stops answering pings is given up on within seconds, even in silence; one that answers is kept")
     func deadPathIsDropped() async throws {
         func run(answering: Bool) async throws -> (Error?, Int) {

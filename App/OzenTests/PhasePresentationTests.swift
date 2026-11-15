@@ -471,6 +471,19 @@ struct PhasePresentationTests {
         }
     }
 
+    @Test("a computer that answered wrongly is named on the screen and in the cover line, and still retried")
+    func answeredWronglyOnScreen() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "server said busy")
+        let shown = PhasePresentation(phase: failure(why), engine: .homeServer, interruptedBySystem: false)
+        #expect(shown.title == HomeServer.answeredWronglyText())
+        #expect(shown.action == .retry)
+        let covering = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .homeServer, coverReason: .homeServerUnreachable, coverDetail: why.detail)
+        #expect(covering.detail == HomeServer.addressCoverDetail(detail: why.detail))
+        let backup = PhasePresentation(phase: failure(why), engine: .homeServer, interruptedBySystem: false, offerBackup: true)
+        #expect(backup.action == .openBackupSettings)
+        #expect(backup.detail?.contains("check") != true)
+    }
+
     @Test("the engine error names the language being captioned, never Hebrew for someone captioning in Spanish")
     func engineErrorNamesTheSpokenLanguage() {
         let why = failure(EngineUnavailability(kind: .languageNotSupportedOnDevice, detail: ""))

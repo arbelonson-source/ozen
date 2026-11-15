@@ -437,6 +437,8 @@ class PhasePresentation private constructor(
                     title = result.title,
                     detail = if (scheduledRetry != null) {
                         tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
+                    } else if (HomeServer.answeredWrongly(failure.engineUnavailability)) {
+                        tr("הקישו כדי להוסיף גיבוי בטלפון", "Tap to add a backup on the phone")
                     } else {
                         HomeServer.unreachableBackupDetail()
                     },
@@ -698,6 +700,14 @@ class PhasePresentation private constructor(
                         systemImage = "key",
                         tint = PhaseTint.Attention,
                         action = Action.OpenEngineSettings,
+                    )
+                } else if (HomeServer.answeredWrongly(engineFailure)) {
+                    PhasePresentation(
+                        title = HomeServer.answeredWronglyText(),
+                        detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                        systemImage = "desktopcomputer.trianglebadge.exclamationmark",
+                        tint = PhaseTint.Attention,
+                        action = Action.Retry,
                     )
                 } else if (HomeServer.refusedPlainAddress(engineFailure)) {
                     PhasePresentation(

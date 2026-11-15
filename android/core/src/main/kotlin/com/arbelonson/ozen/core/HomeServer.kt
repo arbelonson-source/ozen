@@ -50,6 +50,13 @@ object HomeServer {
      */
     internal const val PAIRING_CHANGED = "certificate did not match"
     const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
+
+    /**
+     * The computer is on and answered, but with an error code or something
+     * the phone does not understand: a detail starting like this says so,
+     * and the rest says what came back.
+     */
+    const val ANSWERED_WRONGLY_PREFIX = "the computer answered, but not as expected: "
     const val END = """{"type":"end"}"""
 
     /**
@@ -156,14 +163,28 @@ object HomeServer {
         tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
 
     /**
+     * The computer answered, but with an error code or a reply the phone does not understand: it is
+     * on and awake, so checking that it is on would send her the wrong way. A retry may still work
+     * once the computer's Ozen is restarted, so it is retried like a computer that did not answer.
+     */
+    fun answeredWrongly(why: EngineUnavailability?): Boolean =
+        why?.kind == EngineUnavailability.Kind.HomeServerUnreachable && why.detail.startsWith(ANSWERED_WRONGLY_PREFIX)
+
+    /** What the caption screen, the cover line and the notice say about a computer that answered wrongly. */
+    fun answeredWronglyText(): String =
+        tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+
+    /**
      * What the caption screen says while the phone carries on by itself because the address never
-     * allowed asking the computer; null for a computer that simply did not answer.
+     * allowed asking the computer, or the computer answered wrongly; null for a computer that
+     * simply did not answer.
      */
     fun addressCoverDetail(detail: String?): String? {
         val pause = tr("הקישו כדי להשהות", "Tap to pause")
-        return when (detail) {
-            NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
-            NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
+        return when {
+            detail == NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
+            detail == NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
+            detail != null && detail.startsWith(ANSWERED_WRONGLY_PREFIX) -> answeredWronglyText() + " · " + pause
             else -> null
         }
     }

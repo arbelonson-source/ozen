@@ -27,6 +27,10 @@ public enum HomeServer {
     /// scanning the code again helps, so it is a rejection, not a lost link.
     static let pairingChanged = "certificate did not match"
     static let needsEncryption = "plain ws:// address outside the home network"
+    /// The computer is on and answered, but with an error code or something
+    /// the phone does not understand: a detail starting like this says so,
+    /// and the rest says what came back.
+    static let answeredWronglyPrefix = "the computer answered, but not as expected: "
 
     /// An address typed in Settings but never saved with Return or the
     /// button, worth saving as Settings closes: going back used to drop it,
@@ -139,12 +143,23 @@ public enum HomeServer {
         tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
     }
 
-    /// What the caption screen says while the phone carries on by itself because the address never allowed asking the computer; nil for a computer that simply did not answer.
+    /// The computer answered, but with an error code or a reply the phone does not understand: it is on and awake, so checking that it is on would send her the wrong way. A retry may still work once the computer's Ozen is restarted, so it is retried like a computer that did not answer.
+    public static func answeredWrongly(_ why: EngineUnavailability?) -> Bool {
+        why?.kind == .homeServerUnreachable && why?.detail.hasPrefix(answeredWronglyPrefix) == true
+    }
+
+    /// What the caption screen, the cover line and the notice say about a computer that answered wrongly.
+    public static func answeredWronglyText() -> String {
+        tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+    }
+
+    /// What the caption screen says while the phone carries on by itself because the address never allowed asking the computer, or the computer answered wrongly; nil for a computer that simply did not answer.
     public static func addressCoverDetail(detail: String?) -> String? {
         let pause = tr("הקישו כדי להשהות", "Tap to pause")
         switch detail {
         case noAddress: return rejectionTitle(detail: noAddress) + " · " + pause
         case needsEncryption: return plainAddressRefusedText() + " · " + pause
+        case let detail? where detail.hasPrefix(answeredWronglyPrefix): return answeredWronglyText() + " · " + pause
         default: return nil
         }
     }

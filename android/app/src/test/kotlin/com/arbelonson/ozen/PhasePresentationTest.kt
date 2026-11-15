@@ -419,6 +419,23 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a computer that answered wrongly is named on the screen and in the cover line, and still retried`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy")
+        val shown = present(failure(why), TranscriptionEngineKind.HomeServer)
+        assertEquals(HomeServer.answeredWronglyText(), shown.title)
+        assertEquals(Action.Retry, shown.action)
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer,
+            coverReason = EngineUnavailability.Kind.HomeServerUnreachable, coverDetail = why.detail,
+        )
+        assertEquals(HomeServer.addressCoverDetail(why.detail), covering.detail)
+        val backup = present(failure(why), TranscriptionEngineKind.HomeServer, offerBackup = true)
+        assertEquals(Action.OpenBackupSettings, backup.action)
+        assertFalse(backup.detail?.contains("check") == true, "${backup.detail}")
+    }
+
+    @Test
     fun `a short hint stays in the status button, a long one gets its own line rather than being cut off`() {
         val listening = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit)
         val paused = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit)

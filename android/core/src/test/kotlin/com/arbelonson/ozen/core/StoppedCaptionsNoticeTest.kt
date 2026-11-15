@@ -506,6 +506,17 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `a computer that answered wrongly is not described as one that did not answer`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "unexpected reply")
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again. Open Ozen to continue.",
+                StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why))).body,
+            )
+        }
+    }
+
+    @Test
     fun `a phone with no saved address does not tell her to check that the computer is on`() {
         val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
         Localization.withLanguage(UILanguage.English) {

@@ -423,9 +423,9 @@ public actor HomeServerEngine: TranscriptionEngine {
             case .refused(let code, let detail)? where code == "unauthorized":
                 throw EngineUnavailability.homeServerRejected("pairing code refused \(detail)")
             case .refused(let code, let detail)?:
-                throw EngineUnavailability.homeServerUnreachable("server said \(code) \(detail)")
+                throw EngineUnavailability.homeServerUnreachable("\(HomeServer.answeredWronglyPrefix)server said \(code) \(detail)")
             default:
-                throw EngineUnavailability.homeServerUnreachable("unexpected reply")
+                throw EngineUnavailability.homeServerUnreachable("\(HomeServer.answeredWronglyPrefix)unexpected reply")
             }
         } catch {
             await socket.close()

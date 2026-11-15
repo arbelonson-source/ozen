@@ -244,7 +244,9 @@ struct PhasePresentation {
                     title: title,
                     detail: scheduledRetry != nil
                         ? tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
-                        : HomeServer.unreachableBackupDetail(localNetworkHint: true),
+                        : HomeServer.answeredWrongly(failure.engineUnavailability)
+                            ? tr("הקישו כדי להוסיף גיבוי בטלפון", "Tap to add a backup on the phone")
+                            : HomeServer.unreachableBackupDetail(localNetworkHint: true),
                     systemImage: systemImage,
                     tint: .orange,
                     isBusy: scheduledRetry != nil,
@@ -429,6 +431,14 @@ struct PhasePresentation {
                 systemImage: "key",
                 tint: .orange,
                 action: .openEngineSettings
+            )
+        case .homeServerUnreachable where HomeServer.answeredWrongly(engineFailure):
+            self.init(
+                title: HomeServer.answeredWronglyText(),
+                detail: tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                systemImage: "desktopcomputer.trianglebadge.exclamationmark",
+                tint: .orange,
+                action: .retry
             )
         case .homeServerUnreachable where HomeServer.refusedPlainAddress(engineFailure):
             // The phone itself refuses a plain ws:// address out on the

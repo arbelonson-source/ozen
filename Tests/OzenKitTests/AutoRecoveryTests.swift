@@ -34,6 +34,15 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .homeServerUnreachable)) == .glitch)
     }
 
+    @Test("a computer that answered wrongly is retried like one that did not answer")
+    func answeredWronglyStillRetried() {
+        let wrong = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "server said busy")
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: wrong) == .glitch)
+    }
+
     @Test("a microphone another app holds is retried on a slow tail, not given up on")
     func microphoneTail() {
         for kind in [PipelineFailure.Kind.audioSessionFailed, .noAudioInputs] {

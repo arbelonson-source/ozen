@@ -30,6 +30,12 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `a computer that answered wrongly is retried like one that did not answer`() {
+        val wrong = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy"))
+        assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(wrong))
+    }
+
+    @Test
     fun `a plain ws address out on the internet is not retried on a timer, which cannot change the address`() {
         val plain = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(plain))
