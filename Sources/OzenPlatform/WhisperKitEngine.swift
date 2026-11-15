@@ -198,7 +198,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 case .unverified:
                     break
                 case .verified:
-                    removedDamaged = await store.removeIfDamaged(variant: variant)
+                    removedDamaged = await store.removeIfDamaged(variant: variant, allowCellular: allowCellular)
                     guard removedDamaged else { throw error }
                 default:
                     throw error

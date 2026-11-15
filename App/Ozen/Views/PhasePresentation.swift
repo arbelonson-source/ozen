@@ -461,7 +461,7 @@ struct PhasePresentation {
     }
 
     private static var damagedModelRemoved: String {
-        tr("המודל של הדיבור בטלפון הזה נפגם, ולכן הוסר. הוא יורד שוב כשיש Wi‑Fi.", "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.")
+        tr("המודל של הדיבור בטלפון הזה נפגם, ולכן הוסר, והוא יורד מחדש.", "The speech model on this phone was damaged, so Ozen removed it and will download it again.")
     }
 
     /// "450 MB", or "1.3 GB" once it's that big, in the same decimal

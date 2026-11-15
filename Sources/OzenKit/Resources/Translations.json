@@ -1154,7 +1154,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "ኦዘን አሁን ድምፆችን መለየት አልቻለም፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። መተግበሪያው መሞከሩን ይቀጥላል።",
   "Star removed": "ኮከቡ ተወግዷል",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "አንድሮይድ ሲጠይቅ «መተግበሪያውን በሚጠቀሙበት ጊዜ» የሚለውን ይምረጡ። «በዚህ ጊዜ ብቻ» በሌሊት የድምፅ ማንቂያዎችን ያቆማል።",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል። Wi-Fi ሲኖር እንደገና ይወርዳል።"
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "በዚህ ስልክ ላይ ያለው የንግግር ሞዴል ተበላሽቶ ስለነበር Ozen አስወግዶታል፤ እንደገና ያወርደዋል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2311,7 +2311,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "تعذّر على Ozen التعرّف على الأصوات الآن، وقد يفوتكم رنين جرس الباب أو جهاز إنذار أو بكاء طفل. يواصل التطبيق المحاولة.",
   "Star removed": "أُزيلت النجمة",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "عندما يسألكم أندرويد، اختاروا «أثناء استخدام التطبيق». «هذه المرة فقط» توقف تنبيهات الصوت أثناء الليل.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen. سيُنزَّل مجددًا عند توفر Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "كان نموذج الكلام على هذا الهاتف تالفًا، فأزالته Ozen وستنزّله من جديد."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3468,7 +3468,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen 目前无法识别声音，因此你可能会错过门铃、警报或婴儿的哭声。应用会继续尝试。",
   "Star removed": "已取消星标",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "当 Android 询问时，请选择“仅在使用该应用时允许”。选择“仅此一次”会让夜间的声音提醒停止。",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "这部手机上的语音模型已损坏，Ozen 已将其删除。连接 Wi-Fi 后会重新下载。"
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "这部手机上的语音模型已损坏，Ozen 已将其删除，并会重新下载。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4625,7 +4625,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen n’arrive pas à reconnaître les sons pour le moment : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. L’application continue d’essayer.",
   "Star removed": "Étoile retirée",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quand Android vous le demande, choisissez « Lorsque l’appli est active ». « Uniquement cette fois » arrête les alertes sonores pendant la nuit.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "Le modèle vocal de ce téléphone était endommagé, Ozen l’a donc supprimé. Il se télécharge de nouveau en Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Le modèle vocal de ce téléphone était endommagé : Ozen l’a supprimé et va le télécharger de nouveau."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5782,7 +5782,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen kann gerade keine Geräusche erkennen, deshalb könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Die App versucht es weiter.",
   "Star removed": "Stern entfernt",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Wenn Android fragt, wählen Sie „Nur bei Nutzung der App“. „Nur dieses Mal“ beendet die Klanghinweise während der Nacht.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt. Es wird erneut heruntergeladen, sobald WLAN verfügbar ist."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Das Sprachmodell auf diesem Telefon war beschädigt, deshalb hat Ozen es entfernt und lädt es erneut herunter."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -6938,7 +6938,7 @@
   "Sound alerts aren’t working": "आवाज़ के अलर्ट काम नहीं कर रहे",
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen अभी आवाज़ें पहचान नहीं पा रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की आवाज़ का पता न चले। ऐप कोशिश करता रहेगा।",
   "Star removed": "तारा हटाया गया",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया। Wi-Fi मिलने पर वह फिर से डाउनलोड होगा।",
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "इस फ़ोन पर बोली का मॉडल ख़राब हो गया था, इसलिए Ozen ने उसे हटा दिया और फिर से डाउनलोड करेगा।",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "जब Android पूछे, तो “ऐप्लिकेशन के इस्तेमाल के दौरान” चुनें। “सिर्फ़ इस बार” चुनने पर रात में आवाज़ के अलर्ट बंद हो जाते हैं।"
  },
  "portuguese": {
@@ -8096,7 +8096,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "O Ozen não consegue reconhecer sons neste momento, por isso pode perder uma campainha, um alarme ou o choro de um bebé. A aplicação continua a tentar.",
   "Star removed": "Estrela removida",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Quando o Android perguntar, escolha a primeira opção. A segunda, “apenas desta vez”, termina os avisos de sons durante a noite.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o. É transferido de novo quando houver Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "O modelo de fala deste telemóvel estava danificado, por isso o Ozen removeu-o e vai transferi-lo de novo."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9253,7 +9253,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Сейчас Ozen не может распознавать звуки, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Приложение продолжает попытки.",
   "Star removed": "Звёздочка убрана",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Когда Android спросит, выберите «При использовании приложения». Вариант «Только в этот раз» отключает звуковые оповещения ночью.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "Речевая модель на этом телефоне была повреждена, поэтому её удалили из Ozen. Она загрузится заново при подключении к Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Речевая модель на этом телефоне была повреждена, поэтому Ozen удалил её и загрузит заново."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10410,7 +10410,7 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Ozen no puede reconocer sonidos en este momento, así que podrías perderte un timbre, una alarma o el llanto de un bebé. La aplicación sigue intentándolo.",
   "Star removed": "Estrella quitada",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Cuando Android pregunte, elige «Mientras la app está en uso». «Solo esta vez» detiene las alertas de sonido durante la noche.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó. Se descargará de nuevo con Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "El modelo de voz de este teléfono estaba dañado, así que Ozen lo eliminó y lo descargará de nuevo."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11567,6 +11567,6 @@
   "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.": "Зараз Ozen не може розпізнавати звуки, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Застосунок продовжує спроби.",
   "Star removed": "Зірочку прибрано",
   "When Android asks, choose “While using the app”. “Only this time” stops sound alerts during the night.": "Коли Android запитає, оберіть «Під час використання додатка». Варіант «Лише цього разу» вимикає звукові сповіщення вночі.",
-  "The speech model on this phone was damaged, so Ozen removed it. It downloads again on Wi-Fi.": "Мовну модель на цьому телефоні було пошкоджено, тому її видалено з Ozen. Вона завантажиться знову, коли буде Wi-Fi."
+  "The speech model on this phone was damaged, so Ozen removed it and will download it again.": "Мовну модель на цьому телефоні було пошкоджено, тому Ozen видалив її й завантажить знову."
  }
 }
