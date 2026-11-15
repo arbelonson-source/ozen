@@ -206,7 +206,11 @@ address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
   port 8766 over TLS and accepts only that certificate, so the sound, the
   code and the names list can't be read on the Wi-Fi. On Linux with a
   firewall, let port 8766 in the same way as 8765 (`--tls-port 0` turns the
-  encrypted port off). Phones paired before this keep working on the plain
+  encrypted port off). If the encrypted port can't open, the program logs
+  an error and the pairing page says why (another program is using port
+  8766: close it and start Ozen again; the `cryptography` library is
+  missing: run `setup.sh` again); phones paired to it can't connect until
+  then, and `python pairing.py` makes the page again. Phones paired before this keep working on the plain
   port until they scan the code again.
 - **From anywhere, no app on the phone:** Tailscale Funnel gives the
   server a public `wss://` address with a real certificate:

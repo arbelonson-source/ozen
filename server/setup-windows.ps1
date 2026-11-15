@@ -114,7 +114,7 @@ if ($LASTEXITCODE -ne 0) {
         "Free some space or check the internet, then run this setup again. The phone keeps writing captions by itself.") 'Warning'
     exit 1
 }
-Copy-Item (Join-Path $here 'ozen_server.py'), (Join-Path $here 'try_server.py'), (Join-Path $here 'pairing.py'), (Join-Path $here 'lan_tls.py') $Dir -Force
+Copy-Item (Join-Path $here 'ozen_server.py'), (Join-Path $here 'try_server.py'), (Join-Path $here 'pairing.py'), (Join-Path $here 'lan_tls.py'), (Join-Path $here 'link_status.py') $Dir -Force
 
 $codeFile = Join-Path $Dir 'pairing-code'
 if (-not (Test-Path $codeFile)) {
