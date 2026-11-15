@@ -73,6 +73,15 @@ class StoppedCaptionsNotice {
 
     /** When the away notice for sound alerts was scheduled, while it waits. */
     private var soundAlertsScheduledAt: Double? = null
+    private var soundAlertsScheduledDelay = 0.0
+
+    /**
+     * The away notice for sound alerts went out and is being kept through
+     * recoveries, so a phone that flaps all night buzzes once, not every
+     * cycle. [soundAlertsRecoveredAt] is null while they are down.
+     */
+    private var soundAlertsDelivered = false
+    private var soundAlertsRecoveredAt: Double? = null
 
     /** Stretches of sound alerts not working that were waiting on the away notice: (end, seconds). */
     private val soundAlertsStretches = mutableListOf<Pair<Double, Double>>()
@@ -95,6 +104,7 @@ class StoppedCaptionsNotice {
         firstUpdate = false
         if (cause == null) {
             toldCause = null
+            if (keepsDeliveredNotice(now)) return null
             return withdrawIfPosted(sweep = first, now = now)
         }
         val changed = toldCause?.let { !sameStop(it, cause) } ?: false
@@ -106,6 +116,13 @@ class StoppedCaptionsNotice {
             toldCause = null
             if (!isEnabled) return withdrawIfPosted(sweep = false, now = now)
         }
+        if (isEnabled && cause == Cause.SoundAlertsNotWorking && soundAlertsDelivered &&
+            (soundAlertsRecoveredAt?.let { now - it <= SOUND_ALERTS_WINDOW_SECONDS } ?: true)
+        ) {
+            soundAlertsRecoveredAt = null
+            toldCause = cause
+            return null
+        }
         if (!isEnabled || toldCause != null) return null
         val old = withdrawIfPosted(sweep = false, now = now)
         posted = true
@@ -114,6 +131,7 @@ class StoppedCaptionsNotice {
             postedAsSchedule = true
             val delay = if (cause == Cause.SoundAlertsNotWorking) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
             soundAlertsScheduledAt = if (cause == Cause.SoundAlertsNotWorking) now else null
+            soundAlertsScheduledDelay = delay
             Update.Schedule(content(cause), delay)
         } else {
             postedAsSchedule = false
@@ -152,7 +170,26 @@ class StoppedCaptionsNotice {
         return maxOf(SOUND_ALERTS_MINIMUM_DELAY_SECONDS, minOf(SOUND_ALERTS_DELAY_SECONDS, SOUND_ALERTS_DELAY_SECONDS - used))
     }
 
+    /**
+     * Sound alerts work again. A notice that already went out stays until
+     * they have worked for the whole window; otherwise it is dropped as usual.
+     */
+    private fun keepsDeliveredNotice(now: Double): Boolean {
+        val since = soundAlertsScheduledAt
+        if (!soundAlertsDelivered && posted && since != null && now - since >= soundAlertsScheduledDelay) {
+            soundAlertsDelivered = true
+            soundAlertsScheduledAt = null
+            soundAlertsRecoveredAt = null
+        }
+        if (!soundAlertsDelivered) return false
+        val recovered = soundAlertsRecoveredAt ?: now
+        soundAlertsRecoveredAt = recovered
+        return now - recovered <= SOUND_ALERTS_WINDOW_SECONDS
+    }
+
     private fun withdrawIfPosted(sweep: Boolean, now: Double): Update? {
+        soundAlertsDelivered = false
+        soundAlertsRecoveredAt = null
         if (!posted && !sweep) return null
         if (posted) soundAlertsScheduledAt?.let {
             soundAlertsStretches.add(now to maxOf(0.0, now - it))

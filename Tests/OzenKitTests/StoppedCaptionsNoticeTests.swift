@@ -335,6 +335,27 @@ struct StoppedCaptionsNoticeTests {
         #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 95)) == StoppedCaptionsNotice.soundAlertsMinimumDelay)
     }
 
+    @Test("an hour of sound alerts failing 50 seconds and working 20 delivers one notice, not one per cycle")
+    func soundAlertsFlappingForAnHourIsOneNotice() {
+        var notice = StoppedCaptionsNotice()
+        var schedules = 0
+        var withdrawals = 0
+        var now: TimeInterval = 0
+        while now < 3600 {
+            for (cause, length) in [(StoppedCaptionsNotice.Cause.soundAlertsNotWorking, 50.0), (nil, 20.0)] {
+                switch notice.update(for: cause, appIsActive: false, isEnabled: true, now: now) {
+                case .schedule?, .post?, .replace?: schedules += 1
+                case .cancelScheduled?, .withdraw?: withdrawals += 1
+                case nil: break
+                }
+                now += length
+            }
+        }
+        #expect(schedules == 2)  // the first 50 s stretch is under a minute and is dropped; the second one delivers
+        #expect(withdrawals == 1)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: now + StoppedCaptionsNotice.soundAlertsWindow + 1) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+    }
+
     @Test("one short blip of sound alerts failing does not bring the notice forward, and a long gap forgets old failures")
     func soundAlertsBlipAndWindow() {
         var notice = StoppedCaptionsNotice()
