@@ -70,6 +70,7 @@ class FileTranscriber(
     private val work = FileTranscriptionJob(shown, scope, Dispatchers.Default)
 
     internal val busyNotice = BusyNotice()
+    internal val replacement = ShareReplacement<Uri>()
 
     private val interrupted = MutableStateFlow<String?>(null)
 
@@ -84,7 +85,7 @@ class FileTranscriber(
     private var leftForRecovery = false
 
     init {
-        scope.launch { shown.collect { busyNotice.follow(it) } }
+        scope.launch { shown.collect { busyNotice.follow(it); replacement.follow(it) } }
         scope.launch(Dispatchers.IO) {
             captions.fileKeeper.recoverInterrupted()?.let { interrupted.value = it.name ?: tr("הקלטה", "Recording") }
         }
@@ -92,7 +93,17 @@ class FileTranscriber(
 
     val busy: Boolean get() = shown.value is FileTranscription.Working
 
+    /** A file shared over finished text that nothing else holds is held and asked about first. */
     fun open(uri: Uri): Boolean {
+        if (!replacement.arrive(uri, shown.value)) return true
+        return openNow(uri)
+    }
+
+    fun replaceWithShared() {
+        replacement.replace()?.let { openNow(it) }
+    }
+
+    private fun openNow(uri: Uri): Boolean {
         if (!busyNotice.accept(busy)) return false
         source = uri
         name = displayName(uri)
