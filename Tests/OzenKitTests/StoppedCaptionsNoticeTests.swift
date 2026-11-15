@@ -319,6 +319,34 @@ struct StoppedCaptionsNoticeTests {
         #expect(notice.update(for: .soundAlertsNotWorking, appIsActive: true, isEnabled: true) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
     }
 
+    private func scheduledDelay(_ update: StoppedCaptionsNotice.Update?) -> TimeInterval? {
+        guard case .schedule(_, let delay)? = update else { return nil }
+        return delay
+    }
+
+    @Test("sound alerts that fail 50 seconds, work 20, and fail again are still told: the minute counts across the gaps")
+    func soundAlertsFlappingIsStillTold() {
+        var notice = StoppedCaptionsNotice()
+        let down = StoppedCaptionsNotice.Cause.soundAlertsNotWorking
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 0)) == 60)
+        #expect(notice.update(for: nil, appIsActive: false, isEnabled: true, now: 50) == .cancelScheduled(identifier: StoppedCaptionsNotice.identifier))
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 70)) == 10)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 75)
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 95)) == StoppedCaptionsNotice.soundAlertsMinimumDelay)
+    }
+
+    @Test("one short blip of sound alerts failing does not bring the notice forward, and a long gap forgets old failures")
+    func soundAlertsBlipAndWindow() {
+        var notice = StoppedCaptionsNotice()
+        let down = StoppedCaptionsNotice.Cause.soundAlertsNotWorking
+        _ = notice.update(for: down, appIsActive: false, isEnabled: true, now: 0)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 5)
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: 30)) == 55)
+        _ = notice.update(for: nil, appIsActive: false, isEnabled: true, now: 35)
+        let later = 35 + StoppedCaptionsNotice.soundAlertsWindow + 1
+        #expect(scheduledDelay(notice.update(for: down, appIsActive: false, isEnabled: true, now: later)) == 60)
+    }
+
     @Test("the not-working notice says sounds may be missed and that Ozen keeps trying")
     func soundAlertsNotWorkingWording() {
         Localization.$override.withValue(.english) {
