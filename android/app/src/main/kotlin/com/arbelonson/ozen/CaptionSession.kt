@@ -823,6 +823,7 @@ class CaptionSession(
         scope.cancel()
         CameraLight.watch(context.applicationContext, false) {}
         lightScope.cancel()
+        otherAppNotice.cancel()
         retryAwake.keepAwake(null)
         downloadAwake.keepAwake(null)
     }
@@ -850,22 +851,21 @@ class CaptionSession(
     private fun applyNoticeUpdate(update: StoppedCaptionsNotice.Update) {
         when (update) {
             is StoppedCaptionsNotice.Update.Post -> {
-                otherAppNotice?.cancel()
+                otherAppNotice.cancel()
                 if (!notifier.post(update.content)) stoppedCaptions.postFailed()
             }
             is StoppedCaptionsNotice.Update.Withdraw -> {
-                otherAppNotice?.cancel()
+                otherAppNotice.cancel()
                 notifier.withdraw(update.identifier)
             }
             is StoppedCaptionsNotice.Update.Schedule -> {
-                otherAppNotice?.cancel()
-                otherAppNotice = scope.launch {
-                    delay((update.afterSeconds * 1000).toLong())
+                otherAppNotice.cancel()
+                otherAppNotice.schedule(update.afterSeconds) {
                     if (!notifier.post(update.content)) stoppedCaptions.postFailed()
                 }
             }
             is StoppedCaptionsNotice.Update.Cancel -> {
-                otherAppNotice?.cancel()
+                otherAppNotice.cancel()
                 notifier.withdraw(update.identifier)
             }
             is StoppedCaptionsNotice.Update.Replace -> {
@@ -876,7 +876,7 @@ class CaptionSession(
     }
 
     /** Waits out the minute before telling her another app has the microphone. */
-    private var otherAppNotice: Job? = null
+    private val otherAppNotice = DelayedPost(scope, KeptAwake.of(context, "ozen:away-notice"))
 
     private fun stoppedCause(): StoppedCaptionsNotice.Cause? =
         if (restartRefused) {
