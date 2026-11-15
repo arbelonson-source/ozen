@@ -4731,6 +4731,51 @@ struct CaptionPipelineStorageTests {
         #expect(pipeline.isListeningForSoundsOnly)
     }
 
+    @Test("sound alerts switched off while sounds are the fallback of a failure close the microphone, and on again reopen it")
+    func fallbackClosesWithTheSwitch() async {
+        let (pipeline, _, audio) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        #expect(pipeline.isListeningForSoundsOnly)
+        #expect(!pipeline.soundsOnlyChosen)
+        var phaseChanges = 0
+        pipeline.onPhaseChange = { _ in phaseChanges += 1 }
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(!pipeline.stats.soundDetectionRunning)
+        #expect(!pipeline.soundsOnlyShown)
+        #expect(audio.calls.last == "stopCapture")
+        #expect(phaseChanges == 1)
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .notEnoughStorage)
+    }
+
+    @Test("a microphone that fails to open when alerts come back is tried again by the next switch on")
+    func fallbackReopenRetriesAfterAFailedOpen() async {
+        let (pipeline, _, audio) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        audio.startError = TestError()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        audio.startError = nil
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("alerts switched off in the fallback, then Stop, do not reopen the microphone when they come back")
+    func fallbackSwitchedOffThenStopStaysClosed() async {
+        let (pipeline, _, _) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        pipeline.stop()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!pipeline.isListeningForSoundsOnly)
+    }
+
     @Test("sound alerts switched off while only sounds are listened for give the classifier no more sound")
     func soundsOnlyStopsWithTheSwitch() async {
         let detector = FakeSoundDetector()

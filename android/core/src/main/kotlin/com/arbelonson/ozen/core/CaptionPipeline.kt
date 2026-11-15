@@ -538,6 +538,7 @@ class CaptionPipeline(
     val soundsOnlyShown: Boolean get() = soundsOnlyChosen && soundPolicy.preferences.isEnabled
 
     private var soundsOnlyOpens = 0
+    private var fallbackSwitchedOff: Pair<UUID, PipelineFailure>? = null
 
     /**
      * Sounds alone were chosen, and the microphone stopped and would not
@@ -2102,7 +2103,10 @@ class CaptionPipeline(
         settingsInUse?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
         onSoundAlertsAvailabilityChange?.invoke()
-        if (!soundsOnlyChosen) return
+        if (!soundsOnlyChosen) {
+            switchFallbackSounds(preferences.isEnabled)
+            return
+        }
         if (!preferences.isEnabled) {
             // Listening ends with the switch. Between tries there is nothing
             // to end: the choice stays, so turning the alerts on again opens
@@ -2111,6 +2115,32 @@ class CaptionPipeline(
             onPhaseChange?.invoke(phase)
         } else if (!isListeningForSoundsOnly && soundsOnlyRetryTask == null && soundsOnlyOpens == 0) {
             scope.launch { resumeSoundsOnly() }
+        }
+    }
+
+    /**
+     * The microphone kept for sounds while captions wait (see
+     * [listenForSoundsMeanwhile]) goes with the switch too: nothing else
+     * uses it then. Switching on again reopens it for the same wait only.
+     */
+    private fun switchFallbackSounds(on: Boolean) {
+        val failure = phase.failure
+        if (!on) {
+            if (!isListeningForSoundsOnly || failure == null) return
+            stopListeningForSounds()
+            fallbackSwitchedOff = runID to failure
+            onPhaseChange?.invoke(phase)
+            return
+        }
+        val off = fallbackSwitchedOff ?: return
+        if (off.first != runID || failure == null || failure != off.second) {
+            fallbackSwitchedOff = null
+            return
+        }
+        if (!isListeningForSoundsOnly) listenForSoundsMeanwhile(failure)
+        if (isListeningForSoundsOnly) {
+            fallbackSwitchedOff = null
+            onPhaseChange?.invoke(phase)
         }
     }
 
@@ -3706,6 +3736,7 @@ class CaptionPipeline(
 
     private fun tearDownSession() {
         runID = UUID.randomUUID()
+        fallbackSwitchedOff = null
         statsData.soundDetectionRunning = false
         currentEngine = null
         recentSpeechCluster = null
