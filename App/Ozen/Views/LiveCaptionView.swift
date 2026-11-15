@@ -343,6 +343,10 @@ struct LiveCaptionView: View {
                 SoundAlertsNotWorkingBanner()
                     .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if viewModel.awayAlertsBlocked {
+                AwayAlertsBlockedBanner()
+                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let hit = visibleKeywordHit {
                 KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit)) {
                     withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
@@ -404,6 +408,7 @@ struct LiveCaptionView: View {
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
             || viewModel.pipeline.soundAlertsNotWorking
+            || viewModel.awayAlertsBlocked
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
 

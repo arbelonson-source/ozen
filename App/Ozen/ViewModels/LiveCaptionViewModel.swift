@@ -116,9 +116,29 @@ public final class LiveCaptionViewModel {
     /// Whether iOS shows Ozen's notifications (nil: never asked), looked
     /// at as the app leaves the screen.
     private let notificationsAllowed: (@MainActor () async -> Bool?)?
-    /// Ozen's notifications were turned off when the app last left the
-    /// screen: a word's notification then reaches nobody.
-    @ObservationIgnored private var notificationsBlocked = false
+    /// Ozen's notifications were off at the last look (on opening, on coming
+    /// back and on leaving the screen): a word's notification then reaches
+    /// nobody, and the caption screen says so.
+    public private(set) var notificationsBlocked = false
+    /// Only the newest look at the permission may set the answer.
+    @ObservationIgnored private var notificationsRefreshGeneration = 0
+
+    /// Away alerts are on, yet the phone's notifications for Ozen are off.
+    public var awayAlertsBlocked: Bool {
+        AwayAlertsNotice.blocked(awayAlertsOn: notifyWhenInBackground, notificationsAllowed: !notificationsBlocked)
+    }
+
+    /// Looks again at whether iOS shows Ozen's notifications.
+    public func refreshNotificationsAllowed() {
+        guard let notificationsAllowed else { return }
+        notificationsRefreshGeneration += 1
+        let generation = notificationsRefreshGeneration
+        Task {
+            let blocked = await notificationsAllowed() != true
+            guard generation == notificationsRefreshGeneration else { return }
+            notificationsBlocked = blocked
+        }
+    }
     /// Tells her when captions stop while the phone is put away.
     private var stoppedCaptions = StoppedCaptionsNotice()
     /// Keeps a small record on disk while captions listen, so a launch
@@ -542,15 +562,14 @@ public final class LiveCaptionViewModel {
             withdrawDeliveredAlerts?()
             awayCatchUp.screenReturned(at: now)
             batteryCleared()
+            refreshNotificationsAllowed()
             // Coming back from installing or removing the Hebrew voice in
             // iOS Settings: without this, hasHebrewVoice stays whatever it
             // was at launch until the app relaunches.
             synthesizer?.refreshVoice()
         } else {
             awayCatchUp.screenLeft(at: now)
-            if let notificationsAllowed {
-                Task { notificationsBlocked = await notificationsAllowed() != true }
-            }
+            refreshNotificationsAllowed()
         }
         lockScreen?.appActivityChanged(isActive: isActive)
         // Captions that failed with the app open were on screen for her to

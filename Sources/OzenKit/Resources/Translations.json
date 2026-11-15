@@ -1,5 +1,7 @@
 {
  "amharic": {
+  "Notifications are off": "ማሳወቂያዎች ጠፍተዋል",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Ozen በስክሪኑ ላይ ካልሆነ ማንቂያዎች አይደርሱዎትም። የስልኩን ቅንብሮች ለመክፈት ይንኩ።",
   "Flash the camera light": "የካሜራውን መብራት ብልጭ ማድረግ",
   "This phone has no camera light": "ይህ ስልክ የካሜራ መብራት የለውም",
   "The camera light is in use right now. Try again after closing the camera.": "የካሜራው መብራት አሁን በጥቅም ላይ ነው። ካሜራውን ከዘጉ በኋላ እንደገና ይሞክሩ።",
@@ -1153,6 +1155,8 @@
   "Star removed": "ኮከቡ ተወግዷል"
  },
  "arabic": {
+  "Notifications are off": "الإشعارات متوقفة",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "لن تصلكم التنبيهات عندما لا يكون Ozen على الشاشة. المسوا لفتح إعدادات الهاتف.",
   "Flash the camera light": "وميض ضوء الكاميرا",
   "This phone has no camera light": "لا يوجد ضوء كاميرا في هذا الهاتف",
   "The camera light is in use right now. Try again after closing the camera.": "ضوء الكاميرا قيد الاستخدام الآن. حاولوا مرة أخرى بعد إغلاق الكاميرا.",
@@ -2306,6 +2310,8 @@
   "Star removed": "أُزيلت النجمة"
  },
  "chineseSimplified": {
+  "Notifications are off": "通知已关闭",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Ozen 不在屏幕上时，你收不到提醒。点按即可打开手机设置。",
   "Flash the camera light": "让相机手电筒闪烁",
   "This phone has no camera light": "这部手机没有相机手电筒",
   "The camera light is in use right now. Try again after closing the camera.": "相机手电筒正在使用中。关闭相机后再试一次。",
@@ -3459,6 +3465,8 @@
   "Star removed": "已取消星标"
  },
  "french": {
+  "Notifications are off": "Les notifications sont désactivées",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Les alertes ne vous parviendront pas quand Ozen n’est pas à l’écran. Touchez pour ouvrir les réglages du téléphone.",
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
   "This phone has no camera light": "Ce téléphone n’a pas de lampe d’appareil photo",
   "The camera light is in use right now. Try again after closing the camera.": "La lampe de l’appareil photo est utilisée en ce moment. Réessayez après avoir fermé l’appareil photo.",
@@ -4612,6 +4620,8 @@
   "Star removed": "Étoile retirée"
  },
  "german": {
+  "Notifications are off": "Benachrichtigungen sind aus",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Warnungen erreichen Sie nicht, wenn Ozen nicht auf dem Bildschirm ist. Tippen Sie, um die Telefoneinstellungen zu öffnen.",
   "Flash the camera light": "Mit dem Kameralicht blinken",
   "This phone has no camera light": "Dieses Telefon hat kein Kameralicht",
   "The camera light is in use right now. Try again after closing the camera.": "Das Kameralicht wird gerade verwendet. Versuchen Sie es nach dem Schließen der Kamera erneut.",
@@ -5765,6 +5775,8 @@
   "Star removed": "Stern entfernt"
  },
  "hindi": {
+  "Notifications are off": "सूचनाएँ बंद हैं",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "जब Ozen स्क्रीन पर नहीं होगा, तब अलर्ट आप तक नहीं पहुँचेंगे। फ़ोन की सेटिंग्स खोलने के लिए टैप करें।",
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
   "This phone has no camera light": "इस फ़ोन में कैमरे की लाइट नहीं है",
   "The camera light is in use right now. Try again after closing the camera.": "कैमरे की लाइट अभी इस्तेमाल में है। कैमरा बंद करने के बाद फिर से कोशिश करें।",
@@ -6918,6 +6930,8 @@
   "Star removed": "तारा हटाया गया"
  },
  "portuguese": {
+  "Notifications are off": "As notificações estão desativadas",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Os alertas não chegarão até si quando o Ozen não estiver no ecrã. Toque para abrir as definições do telefone.",
   "Flash the camera light": "Fazer piscar a luz da câmara",
   "This phone has no camera light": "Este telemóvel não tem luz da câmara",
   "The camera light is in use right now. Try again after closing the camera.": "A luz da câmara está a ser usada neste momento. Tente novamente depois de fechar a câmara.",
@@ -8071,6 +8085,8 @@
   "Star removed": "Estrela removida"
  },
  "russian": {
+  "Notifications are off": "Уведомления отключены",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Оповещения не дойдут до вас, когда Ozen не на экране. Нажмите, чтобы открыть настройки телефона.",
   "Flash the camera light": "Мигать фонариком камеры",
   "This phone has no camera light": "На этом телефоне нет фонарика камеры",
   "The camera light is in use right now. Try again after closing the camera.": "Фонарик камеры сейчас занят. Попробуйте снова, когда закроете камеру.",
@@ -9224,6 +9240,8 @@
   "Star removed": "Звёздочка убрана"
  },
  "spanish": {
+  "Notifications are off": "Las notificaciones están desactivadas",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Las alertas no te llegarán cuando Ozen no esté en la pantalla. Toca para abrir los ajustes del teléfono.",
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
   "This phone has no camera light": "Este teléfono no tiene linterna de cámara",
   "The camera light is in use right now. Try again after closing the camera.": "La linterna de la cámara está en uso ahora mismo. Vuelve a intentarlo después de cerrar la cámara.",
@@ -10377,6 +10395,8 @@
   "Star removed": "Estrella quitada"
  },
  "ukrainian": {
+  "Notifications are off": "Сповіщення вимкнено",
+  "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.": "Сповіщення не дійдуть до вас, коли Ozen не на екрані. Торкніться, щоб відкрити налаштування телефона.",
   "Flash the camera light": "Блимати ліхтариком камери",
   "This phone has no camera light": "На цьому телефоні немає ліхтарика камери",
   "The camera light is in use right now. Try again after closing the camera.": "Ліхтарик камери зараз зайнятий. Спробуйте ще раз, коли закриєте камеру.",

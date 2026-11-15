@@ -1117,6 +1117,7 @@ struct SettingsView: View {
                         Task {
                             let allowed = await AlertNotifier.shared.requestAuthorization()
                             notificationsBlocked = !allowed
+                            viewModel.refreshNotificationsAllowed()
                         }
                     }
                 }

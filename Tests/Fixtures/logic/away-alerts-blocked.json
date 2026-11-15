@@ -1,0 +1,11 @@
+{
+ "about": "Cases for AwayAlertsNotice.blocked, whether the caption screen warns that the phone's notifications for Ozen are off while the alerts for when Ozen is away are on, and the English words of that warning. Read by OzenKitTests (AwayAlertsNoticeTests, Swift) and core AwayAlertsNoticeTest (Kotlin).",
+ "title": "Notifications are off",
+ "detail": "Alerts won’t reach you when Ozen isn’t on the screen. Tap to open the phone’s settings.",
+ "cases": [
+  {"awayAlertsOn": true, "notificationsAllowed": false, "blocked": true},
+  {"awayAlertsOn": true, "notificationsAllowed": true, "blocked": false},
+  {"awayAlertsOn": false, "notificationsAllowed": false, "blocked": false},
+  {"awayAlertsOn": false, "notificationsAllowed": true, "blocked": false}
+ ]
+}

@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.AwayAlertsNotice
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionLayout
@@ -167,6 +168,20 @@ internal fun SoundAlertsNotWorkingBanner() {
         StoppedCaptionsNotice.soundAlertsNotWorkingTitle(),
         StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+/** Away alerts are on but the phone's notifications for Ozen are off: nothing reaches her while the phone is put away. It stays up for as long as that lasts; a tap opens the phone's notification settings, as the iPhone's does. */
+@Composable
+internal fun AwayAlertsBlockedBanner(onOpenSettings: () -> Unit) {
+    NoticeBanner(
+        Icons.Rounded.Warning,
+        NoticeTone.Emergency,
+        AwayAlertsNotice.title(),
+        AwayAlertsNotice.detail(),
+        Modifier
+            .clickable(role = Role.Button, onClick = onOpenSettings)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
 
