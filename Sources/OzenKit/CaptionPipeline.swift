@@ -240,14 +240,16 @@ public final class CaptionPipeline {
     /// would otherwise load a second model beside it, as a voice sample
     /// holds them for the microphone.
     public func beginRecordingTranscription() {
-        isTranscribingRecording = true
+        recordingTranscriptions += 1
         if !phase.isListening, !phase.isTransitioning { engineCache.removeAll() }
     }
 
     /// The recording is done or was cancelled: a retry that came due
     /// meanwhile runs now.
     public func endRecordingTranscription() {
-        isTranscribingRecording = false
+        guard recordingTranscriptions > 0 else { return }
+        recordingTranscriptions -= 1
+        guard recordingTranscriptions == 0 else { return }
         getWaitingModelReadyIfAllowed()
         guard let held = retryAfterTranscription else { return }
         retryAfterTranscription = nil
@@ -431,7 +433,10 @@ public final class CaptionPipeline {
     /// settings it was asked with; it runs when the recording ends.
     private struct HeldRetry { let settings: AppSettings? }
     private var retryAfterRecording: HeldRetry?
-    public private(set) var isTranscribingRecording = false
+    private var recordingTranscriptions = 0
+    /// Whether any recording is being turned into text: with two running,
+    /// the first to end leaves this true.
+    public var isTranscribingRecording: Bool { recordingTranscriptions > 0 }
     private var retryAfterTranscription: HeldRetry?
     private var restartAfterRecording: AppSettings?
     /// The audio session was to be handed back while a voice sample was

@@ -138,3 +138,13 @@ struct FileTranscriptionGateTests {
         #expect(reports.all.first { $0.stage == .downloading }?.fraction == 0.5)
     }
 }
+
+@Suite("A file shared while another is transcribed")
+struct SecondShareTests {
+    @Test("is refused with the plain sentence while one runs, and let in when none does")
+    func refusedOnlyWhileRunning() {
+        #expect(FileTranscriptionProblem.forNewShare(isTranscribing: true) == .anotherRunning)
+        #expect(FileTranscriptionProblem.forNewShare(isTranscribing: false) == nil)
+        #expect(FileTranscriptionProblem.anotherRunning.message.isEmpty == false)
+    }
+}
