@@ -72,13 +72,15 @@ public enum DamagedModelCheck {
         guard !expected.isEmpty else { return false }
         let stamp = checkedMemo.flatMap { _ in checkedStamp(folder: folder, expected: expected, fileManager: fileManager) }
         if let checkedMemo, let stamp, (try? String(contentsOf: checkedMemo, encoding: .utf8)) == stamp { return false }
-        var hashFailed = false
+        var hashed = 0
         let counted: (URL) throws -> String = { url in
-            do { return try sha256(url) } catch { hashFailed = true; throw error }
+            let value = try sha256(url)
+            hashed += 1
+            return value
         }
         guard !damagedPaths(in: folder, expected: expected, fileManager: fileManager, sha256: counted).isEmpty else {
             // Remembered only when every file was really read and matched.
-            if let checkedMemo, let stamp, !hashFailed { try? stamp.write(to: checkedMemo, atomically: true, encoding: .utf8) }
+            if let checkedMemo, let stamp, hashed == expected.filter({ $0.sha256 != nil }).count { try? stamp.write(to: checkedMemo, atomically: true, encoding: .utf8) }
             return false
         }
         if let checkedMemo { try? fileManager.removeItem(at: checkedMemo) }
@@ -100,7 +102,7 @@ public enum DamagedModelCheck {
             guard let attributes = try? fileManager.attributesOfItem(atPath: folder.appendingPathComponent(file.path).path),
                   let size = (attributes[.size] as? NSNumber)?.int64Value,
                   let modified = attributes[.modificationDate] as? Date else { return nil }
-            lines.append("\(file.path)|\(size)|\(modified.timeIntervalSince1970)|\(file.sha256?.lowercased() ?? "")")
+            lines.append("\(file.path)|\(file.size)|\(size)|\(modified.timeIntervalSince1970)|\(file.sha256?.lowercased() ?? "")")
         }
         return lines.joined(separator: "\n")
     }

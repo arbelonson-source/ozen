@@ -42,7 +42,7 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         lock.lock()
         try {
             if (!file.isFile) return false
-            val memo = CheckedModelMemo(file, source.sha256)
+            val memo = CheckedModelMemo(file, source.sha256, source.bytes)
             if (memo.isKnownGood()) return false
             if (!damaged()) {
                 memo.rememberGood()

@@ -64,4 +64,27 @@ struct CheckedModelOnceTests {
         #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, checkedMemo: model.memo) { _ in throw Unreadable() } == false)
         #expect(!FileManager.default.fileExists(atPath: model.memo.path))
     }
+
+    private final class FailsAfterFirstRead: FileManager, @unchecked Sendable {
+        private var seen = Set<String>()
+        override func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any] {
+            if !seen.insert(path).inserted { throw CocoaError(.fileReadUnknown) }
+            return try super.attributesOfItem(atPath: path)
+        }
+    }
+
+    @Test func aFileThatWasNotHashedIsNotRemembered() throws {
+        let model = try makeModel()
+        let manager = FailsAfterFirstRead()
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, checkedMemo: model.memo, fileManager: manager, sha256: { _ in "" }) == false)
+        #expect(!FileManager.default.fileExists(atPath: model.memo.path))
+    }
+
+    @Test func aChangedPublishedSizeIsCheckedAgain() throws {
+        let model = try makeModel()
+        let sizeOnly = [ExpectedModelFile(path: "weight.bin", size: 13)]
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: sizeOnly, checkedMemo: model.memo) { _ in "" } == false)
+        let longer = [ExpectedModelFile(path: "weight.bin", size: 14)]
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: longer, checkedMemo: model.memo) { _ in "" })
+    }
 }

@@ -72,4 +72,11 @@ class CheckedModelOnceTest {
         file.writeBytes(data.copyOf(data.size - 1))
         assertTrue(PhoneModelDownloader(file, other, fetcher).removeIfDamaged())
     }
+
+    @Test
+    fun `a changed published size is checked again even for an unchanged file`() {
+        file.writeBytes(data)
+        assertFalse(PhoneModelDownloader(file, source, fetcher).removeIfDamaged())
+        assertTrue(PhoneModelDownloader(file, source.copy(bytes = data.size + 1L), fetcher).removeIfDamaged())
+    }
 }
