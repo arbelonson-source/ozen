@@ -61,7 +61,7 @@
       "el", "la", "los", "las", "este", "esta", "ese", "esa", "aquel", "aquella", "ningún", "ninguna",
       "ninguno", "algún", "alguna", "alguno", "cada", "otro", "otra", "todo", "toda", "cualquier", "sin", "ni"
     ],
-    "onceWords": [],
+    "onceWords": ["vez"],
     "repeatLinks": ["al", "por", "cada"],
     "repeatUnits": ["veces"],
     "periods": [

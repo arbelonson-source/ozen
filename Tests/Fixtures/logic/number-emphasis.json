@@ -951,6 +951,11 @@
    {"kind": "emphasized", "input": "Сорока сидит на ветке", "language": "ru", "expected": []},
    {"kind": "emphasized", "input": "Пол в комнате холодный", "language": "ru", "expected": []},
    {"kind": "listable", "input": "Две таблетки", "language": "ru", "expected": true},
-   {"kind": "listable", "input": "Нас было две", "language": "ru", "expected": false}
+   {"kind": "listable", "input": "Нас было две", "language": "ru", "expected": false},
+   {"kind": "emphasized", "input": "Tome una pastilla una vez al día", "language": "es", "expected": ["una pastilla", "una vez al día"]},
+   {"kind": "emphasized", "input": "Tome una vez por semana", "language": "es", "expected": ["una vez por semana"]},
+   {"kind": "emphasized", "input": "Tome una vez cada ocho horas", "language": "es", "expected": ["una vez cada ocho horas"]},
+   {"kind": "emphasized", "input": "Había una vez", "language": "es", "expected": []},
+   {"kind": "emphasized", "input": "Una vez fui a Madrid", "language": "es", "expected": []}
  ]
 }

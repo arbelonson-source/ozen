@@ -614,6 +614,9 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 if (previous != null && previous in profile.notACountBefore) continue
                 val again = repeatedAfter(position, coreEnd(position)) ?: continue
                 start = word.coreStart
+                if (previous != null && previous in profile.ambiguous && joinsNext(position - 1, coreEnd(position - 1))) {
+                    start = words[position - 1].coreStart
+                }
                 last = again.first
                 end = again.second
             } else if (isNumber(position)) {

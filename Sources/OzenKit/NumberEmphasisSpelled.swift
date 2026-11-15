@@ -104,7 +104,12 @@ extension NumberEmphasis {
                 if profile.onceWords.contains(core) {
                     if let previous, profile.notACountBefore.contains(previous) { continue }
                     guard let again = repeated(after: position, wordEnd(position)) else { continue }
-                    span = (start, again.last, again.end)
+                    var spanStart = start
+                    if let previous, profile.ambiguous.contains(previous), joinsNext(position - 1, wordEnd(position - 1)),
+                       let oneStart = words[position - 1].coreRange?.lowerBound {
+                        spanStart = oneStart
+                    }
+                    span = (spanStart, again.last, again.end)
                 } else if isNumber(position) {
                     var last = runEnd(from: position)
                     var end = wordEnd(last)
