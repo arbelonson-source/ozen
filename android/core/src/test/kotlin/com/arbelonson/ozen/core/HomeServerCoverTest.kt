@@ -216,6 +216,26 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `with no saved address or a refused plain address, sound alerts keep listening, and switching them off and on reopens the microphone`() = runTest {
+        for (detail in listOf("no valid server address", HomeServer.NEEDS_ENCRYPTION)) {
+            val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, detail))
+            val phone = FakeEngine(kind = phoneKind)
+            phone.pendingDownload = 819
+            val captions = serverPipeline(server, phone, recovery = oneQuickRetry(), soundDetector = FakeSoundDetector())
+            val settings = serverSettings()
+            settings.soundAlerts = settings.soundAlerts.copy(isEnabled = true)
+            captions.start(settings)
+            assertTrue(eventually { captions.phase is PipelinePhase.Failed && captions.scheduledRetry == null }, detail)
+            assertTrue(eventually { captions.isListeningForSoundsOnly && captions.stats.soundDetectionRunning }, detail)
+            captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+            assertFalse(captions.isListeningForSoundsOnly, detail)
+            captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+            assertTrue(eventually { captions.isListeningForSoundsOnly }, detail)
+            captions.stop()
+        }
+    }
+
+    @Test
     fun `stopped captions ask the computer sooner than covered ones look to switch back - nothing is captioned meanwhile`() = runTest {
         val server = unreachableServer()
         val phone = FakeEngine(kind = phoneKind)

@@ -1083,6 +1083,30 @@ struct HomeServerCoverTests {
         #expect(captions.scheduledRetry == nil)
     }
 
+    @Test("with no saved address or a refused plain address, sound alerts keep listening, and switching them off and on reopens the microphone", arguments: [HomeServer.noAddress, HomeServer.needsEncryption])
+    func soundsWhileTheAddressNeedsFixing(detail: String) async {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, detail))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            soundDetector: FakeSoundDetector(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
+        )
+        var settings = serverSettings
+        settings.soundAlerts.isEnabled = true
+        await captions.start(settings: settings)
+        #expect(await eventually { captions.phase.failure != nil && captions.scheduledRetry == nil })
+        #expect(await eventually { captions.isListeningForSoundsOnly && captions.stats.soundDetectionRunning })
+        captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        #expect(!captions.isListeningForSoundsOnly)
+        captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { captions.isListeningForSoundsOnly })
+        captions.stop()
+    }
+
     @Test("stopped captions ask the computer sooner than covered ones look to switch back: nothing is captioned meanwhile")
     func stoppedCaptionsAskSooner() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
