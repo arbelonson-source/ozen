@@ -316,9 +316,54 @@ public enum HebrewText {
     /// Ethiopic letters or more, for the same reason as Arabic.
     public static let amharicAttachedPrefixes: Set<String> = ["ለ", "በ", "ከ", "የ"]
 
+    /// The two endings an Amharic name or noun takes in a sentence: the
+    /// object marker "-ን" ("አበበን", "Abebe", as the one being called or seen)
+    /// and "-ም" ("also"). Matched after the stem, alone or behind a prefix.
+    /// A closed pair, so "ሰላምታ" ("greeting") is never "ሰላም" ("peace").
+    public static let amharicAttachedSuffixes: Set<String> = ["ን", "ም"]
+
     static func hasAmharicPrefix(_ word: String, leaving stem: String) -> Bool {
         guard stem.count >= 3, stem.unicodeScalars.allSatisfy({ (0x1200...0x137F).contains($0.value) || (0x2D80...0x2DDF).contains($0.value) || (0xAB00...0xAB2F).contains($0.value) }) else { return false }
-        return amharicAttachedPrefixes.contains { word == $0 + stem }
+        for prefix in amharicAttachedPrefixes.union([""]) {
+            for suffix in amharicAttachedSuffixes.union([""]) where !(prefix.isEmpty && suffix.isEmpty) && word == prefix + stem + suffix {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Languages whose speech elides a short article or preposition onto a
+    /// name with an apostrophe: French "l'Anne", "d'Olga", Italian
+    /// "dell'Anna". The apostrophe is dropped by `normalize`, which fused the
+    /// two into "lanne". Only these closed lists, and only in these caption
+    /// languages: English "c'mon" and "s'more" must not read as names.
+    static let elidedWords: [String: Set<String>] = [
+        "fr": ["l", "d", "j", "m", "t", "s", "n", "c", "qu", "jusqu", "lorsqu", "puisqu"],
+        "it": ["l", "d", "c", "m", "t", "s", "v", "un", "dell", "all", "dall", "nell", "sull", "quell", "quest", "coll"],
+    ]
+
+    static let apostrophes: Set<Character> = ["'", "\u{2019}", "\u{02BC}"]
+
+    /// The part of `rawWord` after a listed elided word and its apostrophe
+    /// ("Anne" from "l'Anne"), or nil when the word has none or the caption
+    /// language has no such list.
+    static func withoutElidedWord(_ rawWord: String, captionLanguage: String) -> String? {
+        guard let listed = elidedWords.first(where: { captionLanguage.hasPrefix($0.key) })?.value,
+              let mark = rawWord.firstIndex(where: apostrophes.contains),
+              listed.contains(normalize(String(rawWord[..<mark])))
+        else { return nil }
+        let rest = String(rawWord[rawWord.index(after: mark)...])
+        return normalize(rest).isEmpty ? nil : rest
+    }
+
+    /// A name with "s" glued on ("Danas", German "Annes Haus"), the way
+    /// English and German speak a possessive or a plural of a name. Only in
+    /// these two caption languages and only for a name of three letters or
+    /// more written in Latin letters: in French, Spanish or Portuguese "Dan"
+    /// + s is "dans" ("in"), and a name like "Al" + s is German "als".
+    static func isLatinNameWithS(_ word: String, of name: String, captionLanguage: String) -> Bool {
+        guard ["en", "de"].contains(where: captionLanguage.hasPrefix), name.count >= 3, word == name + "s", !name.hasSuffix("s") else { return false }
+        return name.unicodeScalars.allSatisfy { (0x61...0x24F).contains($0.value) } && everydayWordsNotNames[name]?.contains(word) != true
     }
 
     /// Short names that, with a prefix glued on, spell an everyday word far
@@ -567,9 +612,13 @@ public enum HebrewText {
 /// `HebrewText.isAffectionateVariant`.
 public struct KeywordAlertMatcher: Sendable, Equatable {
     public var alerts: [KeywordAlert]
+    /// The caption language (for example "fr-FR"), which decides the
+    /// language-specific forms a name takes; empty when unknown.
+    public var captionLanguage: String
 
-    public init(alerts: [KeywordAlert]) {
+    public init(alerts: [KeywordAlert], captionLanguage: String = "") {
         self.alerts = alerts
+        self.captionLanguage = captionLanguage
     }
 
     /// The matches on a line still being written. A live pass that stops
@@ -593,15 +642,15 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     }
 
     public func matches(in text: String) -> [KeywordMatch] {
-        let rawWords = HebrewText.separatingJoiners(text).split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        guard !rawWords.isEmpty else { return [] }
+        let captionRaw = HebrewText.separatingJoiners(text).split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard !captionRaw.isEmpty else { return [] }
         // Normalizing word-by-word (rather than normalizing the whole
         // string and re-splitting) keeps this array the same length as
         // `rawWords`, so a word's index always means the same thing on
         // both sides even when a word is pure punctuation and normalizes
         // to the empty string.
-        let normalizedWords = rawWords.map(HebrewText.normalizeCaptionWord)
-        let trimmedWords = rawWords.map(Self.trimmingEdgePunctuation)
+        let captionNormalized = captionRaw.map(HebrewText.normalizeCaptionWord)
+        let trimmedWords = captionRaw.map(Self.trimmingEdgePunctuation)
 
         var unordered: [(match: KeywordMatch, sequence: Int)] = []
         var repeatedInOneWord = Set<Int>()
@@ -611,6 +660,17 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             guard !phraseWords.isEmpty else { continue }
+
+            // "l'Anne" is the article and the name: for this alert the word
+            // reads as the name, unless the saved phrase itself has the fused
+            // spelling (a name like "D'Arcy").
+            var rawWords = captionRaw
+            var normalizedWords = captionNormalized
+            for index in rawWords.indices where !phraseWords.contains(normalizedWords[index]) {
+                guard let rest = HebrewText.withoutElidedWord(rawWords[index], captionLanguage: captionLanguage) else { continue }
+                rawWords[index] = rest
+                normalizedWords[index] = HebrewText.normalizeCaptionWord(rest)
+            }
 
             if HebrewText.containsHan(alert.phrase) {
                 for hit in Self.substringMatches(of: phraseWords.joined(separator: " "), in: normalizedWords) {
@@ -631,7 +691,8 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
                     sequence += 1
                 }
             } else if phraseWords.count == 1 {
-                for index in normalizedWords.indices where HebrewText.isNameCaseForm(normalizedWords[index], of: phraseWords[0]) {
+                for index in normalizedWords.indices where HebrewText.isNameCaseForm(normalizedWords[index], of: phraseWords[0])
+                    || HebrewText.isLatinNameWithS(normalizedWords[index], of: phraseWords[0], captionLanguage: captionLanguage) {
                     let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
                     unordered.append((match, sequence))
                     sequence += 1

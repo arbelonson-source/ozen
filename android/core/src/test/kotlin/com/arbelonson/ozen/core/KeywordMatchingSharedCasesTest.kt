@@ -31,7 +31,7 @@ class KeywordMatchingSharedCasesTest {
                 val alert = it.jsonObject
                 KeywordAlert(phrase = alert.getValue("phrase").jsonPrimitive.content, isEnabled = alert["isEnabled"]?.jsonPrimitive?.boolean ?: true)
             }
-            val matcher = KeywordAlertMatcher(alerts)
+            val matcher = KeywordAlertMatcher(alerts, item["language"]?.jsonPrimitive?.contentOrNull ?: "")
             val found = if (item["live"]?.jsonPrimitive?.boolean == true) matcher.matchesInLiveText(line) else matcher.matches(line)
             val expected = item.getValue("matches").jsonArray.map {
                 val match = it.jsonObject

@@ -122,6 +122,66 @@ class CaptionPipelineAlertTest {
     }
 
     @Test
+    fun `a name cut off with an ellipsis and then completed buzzes once, on the completing update`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(settingsWithAlert("Dana"))
+        val id = UUID.randomUUID()
+
+        engine.emit(token(id, "Dan…"))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.text == "Dan…" })
+        assertTrue(pipeline.keywordHits.isEmpty())
+        engine.emit(token(id, "Dana"))
+        assertTrue(eventually { pipeline.keywordHits.size == 1 })
+        engine.emit(token(id, "Dana is here", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertEquals(1, pipeline.keywordHits.size)
+    }
+
+    @Test
+    fun `a name that grows from Da to Dana buzzes once`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(settingsWithAlert("Dana"))
+        val id = UUID.randomUUID()
+
+        engine.emit(token(id, "Da"))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.text == "Da" })
+        assertTrue(pipeline.keywordHits.isEmpty())
+        engine.emit(token(id, "Dana"))
+        assertTrue(eventually { pipeline.keywordHits.size == 1 })
+        engine.emit(token(id, "Dana come", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertEquals(1, pipeline.keywordHits.size)
+    }
+
+    @Test
+    fun `a name heard live and then the same finished line buzzes once in all`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(settingsWithAlert("Dana"))
+        val id = UUID.randomUUID()
+
+        engine.emit(token(id, "Dana"))
+        assertTrue(eventually { pipeline.keywordHits.size == 1 })
+        engine.emit(token(id, "Dana", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertEquals(1, pipeline.keywordHits.size)
+    }
+
+    @Test
+    fun `a French line with the name after an elided article buzzes, so the caption language reaches the matcher`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = settingsWithAlert("Olga")
+        settings.languageCode = "fr"
+        pipeline.start(settings)
+
+        engine.emit(token(UUID.randomUUID(), "c'est le sac d'Olga"))
+        assertTrue(eventually { pipeline.keywordHits.size == 1 })
+    }
+
+    @Test
     fun `changing the keyword list takes effect without a restart, and clearing the transcript clears hits`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

@@ -2809,6 +2809,73 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.keywordHits.count == 1)
     }
 
+    @Test("a name cut off with an ellipsis and then completed buzzes once, on the completing update")
+    func nameCutOffThenCompletedBuzzesOnce() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.keywordAlerts = [KeywordAlert(phrase: "Dana")]
+        await pipeline.start(settings: settings)
+        let id = UUID()
+
+        engine.emit(token(id, "Dan…"))
+        #expect(await eventually { pipeline.segments.first?.text == "Dan…" })
+        #expect(pipeline.keywordHits.isEmpty)
+        engine.emit(token(id, "Dana"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+        engine.emit(token(id, "Dana is here", final: true))
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        #expect(pipeline.keywordHits.count == 1)
+    }
+
+    @Test("a name that grows from Da to Dana buzzes once")
+    func nameGrowingFromShortStubBuzzesOnce() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.keywordAlerts = [KeywordAlert(phrase: "Dana")]
+        await pipeline.start(settings: settings)
+        let id = UUID()
+
+        engine.emit(token(id, "Da"))
+        #expect(await eventually { pipeline.segments.first?.text == "Da" })
+        #expect(pipeline.keywordHits.isEmpty)
+        engine.emit(token(id, "Dana"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+        engine.emit(token(id, "Dana come", final: true))
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        #expect(pipeline.keywordHits.count == 1)
+    }
+
+    @Test("a name heard live and then the same finished line buzzes once in all")
+    func liveNameThenFinishedLineBuzzesOnce() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.keywordAlerts = [KeywordAlert(phrase: "Dana")]
+        await pipeline.start(settings: settings)
+        let id = UUID()
+
+        engine.emit(token(id, "Dana"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+        engine.emit(token(id, "Dana", final: true))
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        #expect(pipeline.keywordHits.count == 1)
+    }
+
+    @Test("a French line with the name after an elided article buzzes, so the caption language reaches the matcher")
+    func elidedNameInFrenchBuzzes() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.languageCode = "fr"
+        settings.keywordAlerts = [KeywordAlert(phrase: "Olga")]
+        await pipeline.start(settings: settings)
+
+        engine.emit(token(UUID(), "c'est le sac d'Olga"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+    }
+
     @Test("changing the keyword list takes effect without a restart, and clearing the transcript clears hits")
     func keywordListChanges() async {
         let engine = FakeEngine()

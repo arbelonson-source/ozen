@@ -552,7 +552,7 @@ public final class CaptionPipeline {
         clusterer.similarityThreshold = settings.speakerSimilarityThreshold == AppSettings.default.speakerSimilarityThreshold
             ? embedder.recommendedSimilarityThreshold
             : settings.speakerSimilarityThreshold
-        keywordMatcher = KeywordAlertMatcher(alerts: settings.keywordAlerts)
+        keywordMatcher = KeywordAlertMatcher(alerts: settings.keywordAlerts, captionLanguage: settings.languageCode)
         soundPolicy.preferences = settings.soundAlerts
 
         phase = .requestingMicrophonePermission
@@ -1053,7 +1053,7 @@ public final class CaptionPipeline {
     /// Also re-primes the running engine, since a word added, removed or
     /// toggled here changes which alert phrases belong in its hint list.
     public func setKeywordAlerts(_ alerts: [KeywordAlert]) {
-        keywordMatcher = KeywordAlertMatcher(alerts: alerts)
+        keywordMatcher = KeywordAlertMatcher(alerts: alerts, captionLanguage: keywordMatcher.captionLanguage)
         activeSettings?.keywordAlerts = alerts
         // Switching back from a cover starts again from what was covered:
         // without this, a word added meanwhile stopped firing.
