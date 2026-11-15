@@ -103,4 +103,34 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.map(\.text).count == 1)
         #expect(pipeline.segments.first?.text.hasPrefix("half line") == true)
     }
+
+    @Test("a line the failing engine itself marked cut off is not shown twice: the replay's overlap is trimmed as before")
+    func engineMarkedCutOffLineIsNotDoubled() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 5, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts…", isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        #expect(pipeline.segments.map(\.text) == ["line B starts…", "and ends"])
+    }
+
+    @Test("more than eight half lines inside the replayed audio are all replaced")
+    func manyHalfLinesAreAllReplaced() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 5, level: 0.2)
+        for number in 1...10 {
+            cloud.emit(TranscriptToken(utteranceID: UUID(), text: "open \(number)", isFinal: false, timestamp: 1_000))
+        }
+        #expect(await eventually { pipeline.segments.count == 10 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "everything again", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.last?.text == "everything again" })
+        #expect(pipeline.segments.map(\.text) == ["everything again"])
+    }
 }

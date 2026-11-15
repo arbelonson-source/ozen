@@ -3785,6 +3785,7 @@ class CaptionPipeline(
             begin = maxOf(begin, heard.position - (REPLAY_MARGIN_SECONDS * SAMPLE_RATE).toLong())
             pendingReplayDedupe = comparableWords(heard.text)
         }
+        val tailEnd = recentAudio.totalAppended
         val tail = recentAudio.tail(begin, (REPLAY_MAX_SECONDS * SAMPLE_RATE).toInt())
         val detector = EnergyVoiceDetector()
         val step = (SAMPLE_RATE / 10).toInt()
@@ -3794,12 +3795,10 @@ class CaptionPipeline(
             return
         }
         pendingReplay = tail
-        val windowStart = recentAudio.totalAppended - tail.size
+        val windowStart = tailEnd - tail.size
         val slack = if (windowStart > begin) (REPLAY_MARGIN_SECONDS * SAMPLE_RATE).toLong() else 0L
-        pendingReplayedLines = segments.takeLast(8).filter { segment ->
-            val heardAt = utteranceFirstHeard[segment.id]
-            segment.isCommitted && heardAt != null && heardAt >= windowStart + slack
-        }.map { it.id }.toSet()
+        val inside = utteranceFirstHeard.filterValues { it >= windowStart + slack }.keys
+        pendingReplayedLines = segments.filter { it.isCommitted && it.id in inside }.map { it.id }.toSet()
     }
 
     /**

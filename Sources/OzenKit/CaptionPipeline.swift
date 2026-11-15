@@ -2510,7 +2510,7 @@ public final class CaptionPipeline {
             begin = max(begin, heard.position - Int(Self.replayMarginSeconds * rate))
             pendingReplayDedupe = Self.comparableWords(heard.text)
         }
-        let tail = recentAudio.tail(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
+        let (tail, tailEnd) = recentAudio.tailAndEnd(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
         var detector = EnergyVoiceDetector()
         var heardSpeech = false
         var index = 0
@@ -2525,13 +2525,10 @@ public final class CaptionPipeline {
             return
         }
         pendingReplay = tail
-        let windowStart = recentAudio.totalAppended - tail.count
+        let windowStart = tailEnd - tail.count
         let slack = windowStart > begin ? Int(Self.replayMarginSeconds * rate) : 0
-        pendingReplayedLines = Set(segments.suffix(8).compactMap { segment in
-            guard segment.isCommitted, let heardAt = utteranceFirstHeard[segment.id],
-                  heardAt >= windowStart + slack else { return nil }
-            return segment.id
-        })
+        let inside = Set(utteranceFirstHeard.filter { $0.value >= windowStart + slack }.keys)
+        pendingReplayedLines = Set(segments.filter { $0.isCommitted && inside.contains($0.id) }.map(\.id))
     }
 
     /// The lines the engine that failed never finished were kept, cut off,

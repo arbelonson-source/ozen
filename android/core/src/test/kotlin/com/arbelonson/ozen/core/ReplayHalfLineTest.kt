@@ -109,4 +109,32 @@ class ReplayHalfLineTest {
         assertEquals(1, rig.captions.segments.size)
         assertTrue(rig.captions.segments.first().text.startsWith("half line"))
     }
+
+    @Test
+    fun `a line the failing engine itself marked cut off is not shown twice`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(5.0, 0.2f)
+        rig.cloud.emit(token("line B starts…", true))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.dropAndReplay()
+
+        rig.phone.emit(token("line B starts and ends", true))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+        assertEquals(listOf("line B starts…", "and ends"), rig.captions.segments.map { it.text })
+    }
+
+    @Test
+    fun `more than eight half lines inside the replayed audio are all replaced`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(5.0, 0.2f)
+        for (number in 1..10) rig.cloud.emit(token("open $number", false))
+        assertTrue(eventually { rig.captions.segments.size == 10 })
+        rig.dropAndReplay()
+
+        rig.phone.emit(token("everything again", true))
+        assertTrue(eventually { rig.captions.segments.last().text == "everything again" })
+        assertEquals(listOf("everything again"), rig.captions.segments.map { it.text })
+    }
 }
