@@ -23,7 +23,7 @@ import Foundation
 public struct StoppedCaptionsNotice: Sendable, Equatable {
     public enum Cause: Sendable, Equatable {
         /// Failed, and nothing is going to retry.
-        case failed(PipelineFailure)
+        case failed(PipelineFailure, FailureContext = FailureContext())
         /// The call is over, but the microphone didn't come back.
         case callEnded
         /// Something other than a call has the microphone.
@@ -32,6 +32,17 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         case soundAlertsNotWorking
         /// Sounds alone were listened for, and the microphone stopped and did not come back.
         case soundAlertsStopped
+    }
+
+    /// What the notice needs to name a failure the way the caption screen does.
+    public struct FailureContext: Sendable, Equatable {
+        public var engine: TranscriptionEngineKind?
+        public var spokenLanguage: UILanguage
+
+        public init(engine: TranscriptionEngineKind? = nil, spokenLanguage: UILanguage = .hebrew) {
+            self.engine = engine
+            self.spokenLanguage = spokenLanguage
+        }
     }
 
     public indirect enum Update: Sendable, Equatable {
@@ -108,7 +119,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         callEndedDuringInterruption: Bool,
         soundsOnlyChosen: Bool = false,
         soundAlertsNotWorking: Bool = false,
-        soundsOnlyStopped: Bool = false
+        soundsOnlyStopped: Bool = false,
+        engine: TranscriptionEngineKind? = nil,
+        spokenLanguage: UILanguage = .hebrew
     ) -> Cause? {
         if systemInterrupted {
             // A failure during the call is retried once the call gives the
@@ -121,7 +134,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         guard let failure = phase.failure, !retryScheduled else { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
         // Starts by itself as soon as the phone is on Wi-Fi.
         if failure.engineUnavailability?.kind == .waitingForWiFi { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
-        return .failed(failure)
+        return .failed(failure, FailureContext(engine: engine, spokenLanguage: spokenLanguage))
     }
 
     /// What to do with the phone's notifications given the current `cause`.
@@ -266,7 +279,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                 "אחרי שיחת הטלפון הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
                 "After the call, captions didn’t come back on their own. Open Ozen to continue."
             )
-        case .failed(let failure):
+        case .failed(let failure, let context):
             switch (failure.kind, failure.engineUnavailability?.kind) {
             case (.microphonePermissionDenied, _), (_, .permissionDenied?):
                 return tr(
@@ -329,7 +342,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "The computer didn’t accept the pairing code. Open Ozen and scan its QR code again."
                 )
             default:
-                return tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                return Self.namedProblem(failure, context) ?? Self.openOzenToContinue
             }
         }
     }

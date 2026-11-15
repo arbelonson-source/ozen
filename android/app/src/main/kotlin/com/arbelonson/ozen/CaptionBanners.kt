@@ -70,6 +70,7 @@ import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.SavingTroubleNotice
+import com.arbelonson.ozen.core.CaptionProblemText
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -178,10 +179,7 @@ internal fun StartRefusedBanner() {
         Icons.Rounded.Warning,
         NoticeTone.Emergency,
         tr("הכתוביות נעצרו", "Captions stopped"),
-        tr(
-            "הטלפון לא איפשר לאוזן להאזין. לחצו על התחלת כתוביות כדי לנסות שוב.",
-            "The phone wouldn’t let Ozen listen. Tap Start captions to try again.",
-        ),
+        CaptionProblemText.startRefused(),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }

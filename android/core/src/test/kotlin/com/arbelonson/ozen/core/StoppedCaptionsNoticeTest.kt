@@ -407,9 +407,12 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
-    fun `when the phone ended the app and it cannot listen again the notice tells her to open Ozen`() {
+    fun `when the phone ended the app and it cannot listen again the notice says the phone refused and what to tap`() {
         val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.EndedByPhone)
-        assertEquals(tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue."), content.body)
+        assertEquals(
+            tr("הטלפון לא איפשר לאוזן להאזין. לחצו על התחלת כתוביות כדי לנסות שוב.", "The phone wouldn’t let Ozen listen. Tap Start captions to try again."),
+            content.body,
+        )
         assertEquals(StoppedCaptionsNotice.IDENTIFIER, content.identifier)
         assertTrue(content.isUrgent)
         val notice = StoppedCaptionsNotice()

@@ -25,7 +25,12 @@ package com.arbelonson.ozen.core
 class StoppedCaptionsNotice {
     sealed class Cause {
         /** Failed, and nothing is going to retry. */
-        data class Failed(val failure: PipelineFailure) : Cause()
+        data class Failed(
+            val failure: PipelineFailure,
+            /** What the caption screen names the failure by: the engine in use and the language she speaks. */
+            val engine: TranscriptionEngineKind? = null,
+            val spokenLanguage: UILanguage = UILanguage.Hebrew,
+        ) : Cause()
 
         /** The call is over, but the microphone didn't come back. */
         data object CallEnded : Cause()
@@ -245,8 +250,10 @@ class StoppedCaptionsNotice {
             interruptedByCall: Boolean = false,
             soundsOnlyChosen: Boolean = false,
             soundAlertsNotWorking: Boolean = false,
+            engine: TranscriptionEngineKind? = null,
+            spokenLanguage: UILanguage = UILanguage.Hebrew,
         ): Cause? {
-            val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen)
+            val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen, engine, spokenLanguage)
             if (stop == null && soundAlertsNotWorking && !systemInterrupted) return Cause.SoundAlertsNotWorking
             return stop
         }
@@ -259,6 +266,8 @@ class StoppedCaptionsNotice {
             soundsOnlyStopped: Boolean,
             interruptedByCall: Boolean,
             soundsOnlyChosen: Boolean,
+            engine: TranscriptionEngineKind?,
+            spokenLanguage: UILanguage,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
@@ -272,7 +281,7 @@ class StoppedCaptionsNotice {
             if (failure == null || retryScheduled) return null
             // Starts by itself as soon as the phone is on Wi-Fi.
             if (failure.engineUnavailability?.kind == EngineUnavailability.Kind.WaitingForWiFi) return null
-            return Cause.Failed(failure)
+            return Cause.Failed(failure, engine, spokenLanguage)
         }
 
         internal fun content(cause: Cause): AlertNotificationContent = AlertNotificationContent(
@@ -295,13 +304,32 @@ class StoppedCaptionsNotice {
             "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.",
         )
 
+        private fun openOzenToContinue(): String = tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+
+        /** What the caption screen says went wrong, for the failures that screen names itself. */
+        private fun namedProblem(failure: PipelineFailure, cause: Cause.Failed): String? = when (failure.kind) {
+            PipelineFailure.Kind.AudioSessionFailed -> CaptionProblemText.microphoneNotResponding(failure.inputName)
+            PipelineFailure.Kind.TranscriptionStopped -> CaptionProblemText.transcriptionStopped()
+            PipelineFailure.Kind.EngineUnavailable -> when (failure.engineUnavailability?.kind) {
+                EngineUnavailability.Kind.LanguageNotSupportedOnDevice -> CaptionProblemText.languageNotAvailable(cause.engine, cause.spokenLanguage)
+                EngineUnavailability.Kind.ModelDownloadFailed -> CaptionProblemText.modelDownloadFailed()
+                EngineUnavailability.Kind.ModelDamaged -> DamagedModelNotice.text()
+                EngineUnavailability.Kind.ModelNotOnDevice -> CaptionProblemText.modelNotOnDevice()
+                EngineUnavailability.Kind.ModelLoadFailed -> CaptionProblemText.modelLoadFailed()
+                EngineUnavailability.Kind.TemporarilyUnavailable -> CaptionProblemText.temporarilyUnavailable(cause.engine)
+                EngineUnavailability.Kind.Other, null -> CaptionProblemText.unavailable(cause.engine)
+                else -> null
+            }
+            else -> null
+        }
+
         private fun body(cause: Cause): String = when (cause) {
             Cause.SoundAlertsNotWorking -> soundAlertsNotWorkingDetail()
             Cause.OtherAppHasMicrophone -> tr(
                 "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",
                 "Another app is using the microphone, so captions and sound alerts are paused. Open Ozen to bring them back.",
             )
-            Cause.EndedByPhone -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+            Cause.EndedByPhone -> CaptionProblemText.startRefused()
             Cause.SoundAlertsStopped -> tr(
                 "המיקרופון הפסיק לפעול ולא חזר. פתחו את אוזן כדי להפעיל שוב את ההתראות על צלילים.",
                 "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.",
@@ -363,7 +391,7 @@ class StoppedCaptionsNotice {
                         "המחשב לא קיבל את קוד הצימוד. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
                         "The computer didn’t accept the pairing code. Open Ozen and scan its QR code again.",
                     )
-                    else -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                    else -> namedProblem(failure, cause)?.let { "$it ${openOzenToContinue()}" } ?: openOzenToContinue()
                 }
             }
         }

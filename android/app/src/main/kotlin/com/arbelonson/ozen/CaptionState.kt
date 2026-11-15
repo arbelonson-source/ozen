@@ -23,6 +23,7 @@ import com.arbelonson.ozen.core.SpeechResume
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -145,12 +146,14 @@ data class CaptionScreenState(
     val modelGettingReady: Boolean = false,
     /** For a few seconds after that model took over from the built-in recognition. */
     val modelJustReady: Boolean = false,
+    /** The language she speaks, which a failure naming what the engine lacks says. */
+    val spokenLanguage: UILanguage = UILanguage.Hebrew,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
             coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
-            builtInOffered, modelGettingReady, modelJustReady, coverDetail,
+            builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -229,6 +232,7 @@ object CaptionState {
         builtInOffered: Boolean = false,
         modelGettingReady: Boolean = false,
         modelJustReady: Boolean = false,
+        spokenLanguage: UILanguage = UILanguage.Hebrew,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         // Cleared captions come as an empty list, not through clear(): no
@@ -268,6 +272,7 @@ object CaptionState {
             builtInOffered = builtInOffered,
             modelGettingReady = modelGettingReady,
             modelJustReady = modelJustReady,
+            spokenLanguage = spokenLanguage,
             lineCount = segments.size,
             lines = shown.mapIndexed { at, it ->
                 val shape = shaped[at]

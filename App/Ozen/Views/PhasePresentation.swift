@@ -309,15 +309,13 @@ struct PhasePresentation {
             )
 
         case .audioSessionFailed:
-            let title = failure.inputName.map { tr("המיקרופון \u{2068}%1\u{2069} לא מגיב", "%1 isn’t responding", args: ["\($0)"]) }
-                ?? tr("המיקרופון לא מגיב", "The microphone isn’t responding")
-            self.init(title: title, detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
+            self.init(title: CaptionProblemText.microphoneNotResponding(inputName: failure.inputName), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
 
         case .noAudioInputs:
             self.init(title: tr("לא נמצא מיקרופון", "No microphone found"), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "mic.slash", tint: .red, action: .retry)
 
         case .transcriptionStopped:
-            self.init(title: tr("התמלול נעצר", "Transcription stopped"), detail: tr("הקישו כדי להמשיך", "Tap to continue"), systemImage: "exclamationmark.triangle", tint: .orange, action: .retry)
+            self.init(title: CaptionProblemText.transcriptionStopped, detail: tr("הקישו כדי להמשיך", "Tap to continue"), systemImage: "exclamationmark.triangle", tint: .orange, action: .retry)
 
         case .engineUnavailable:
             self.init(engineFailure: failure.engineUnavailability, engine: engine, spokenLanguage: spokenLanguage)
@@ -325,13 +323,6 @@ struct PhasePresentation {
     }
 
     private init(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage) {
-        let engineName: String
-        switch engine {
-        case .appleSpeech: engineName = tr("זיהוי הדיבור של אפל", "Apple’s speech recognition")
-        case .cloud: engineName = tr("התמלול בענן", "Cloud transcription")
-        case .homeServer: engineName = tr("המחשב בבית", "The home computer")
-        case .whisperKit, .none: engineName = tr("זיהוי הדיבור בטלפון", "The phone’s speech recognition")
-        }
         switch engineFailure?.kind {
         case .permissionDenied:
             self.init(
@@ -343,7 +334,7 @@ struct PhasePresentation {
             )
         case .languageNotSupportedOnDevice:
             self.init(
-                title: tr("%1 לא זמין בשפה %2 במכשיר הזה", "%1 isn’t available in %2 on this device", args: ["\(engineName)", "\(spokenLanguage.spokenName)"]),
+                title: CaptionProblemText.languageNotAvailable(engine: engine, language: spokenLanguage),
                 detail: tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
                 systemImage: "globe",
                 tint: .red,
@@ -351,7 +342,7 @@ struct PhasePresentation {
             )
         case .modelDownloadFailed:
             self.init(
-                title: engineFailure?.modelWasRemoved == true ? Self.damagedModelRemoved : tr("הורדת המודל נכשלה", "Downloading the model failed"),
+                title: CaptionProblemText.modelDownloadFailed(modelWasRemoved: engineFailure?.modelWasRemoved == true),
                 detail: tr("בדקו את החיבור לאינטרנט והקישו כדי לנסות שוב", "Check the internet connection and tap to try again"),
                 systemImage: "wifi.exclamationmark",
                 tint: .red,
@@ -377,7 +368,7 @@ struct PhasePresentation {
             )
         case .modelLoadFailed:
             self.init(
-                title: tr("טעינת המודל נכשלה", "Loading the model failed"),
+                title: CaptionProblemText.modelLoadFailed,
                 detail: tr("הקישו כדי לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
                 systemImage: "cpu",
                 tint: .red,
@@ -443,9 +434,9 @@ struct PhasePresentation {
                 action: .openEngineSettings
             )
         case .temporarilyUnavailable:
-            self.init(title: tr("%1 לא זמין כרגע", "%1 isn’t available right now", args: ["\(engineName)"]), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "clock", tint: .orange, action: .retry)
+            self.init(title: CaptionProblemText.temporarilyUnavailable(engine: engine), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "clock", tint: .orange, action: .retry)
         case .other, .none:
-            self.init(title: tr("%1 לא זמין", "%1 isn’t available", args: ["\(engineName)"]), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
+            self.init(title: CaptionProblemText.unavailable(engine: engine), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
         }
     }
 
@@ -461,9 +452,7 @@ struct PhasePresentation {
         }
     }
 
-    private static var damagedModelRemoved: String {
-        tr("מודל הדיבור בטלפון הזה נפגם, ולכן אוזן הסירה אותו ותוריד אותו שוב.", "The speech model on this phone was damaged, so Ozen removed it and will download it again.")
-    }
+    private static var damagedModelRemoved: String { CaptionProblemText.damagedModelRemoved }
 
     /// "450 MB", or "1.3 GB" once it's that big, in the same decimal
     /// units as the model list and the Settings app, written in Ozen's
