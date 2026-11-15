@@ -63,4 +63,18 @@ struct StoppedCaptionsNoticeReasonTests {
         expectNamed(body(engineFailure(.temporarilyUnavailable)), tr("%1 לא זמין כרגע", "%1 isn’t available right now", args: [phone]))
         expectNamed(body(engineFailure(.other)), tr("%1 לא זמין", "%1 isn’t available", args: [phone]))
     }
+
+    @Test("the cause and what to do are two sentences, a title getting its full stop and a sentence not getting a second one")
+    func wholeBody() {
+        let stopped = PipelineFailure(kind: .transcriptionStopped, detail: "")
+        let damaged = engineFailure(.modelDownloadFailed, removed: true)
+        Localization.$override.withValue(.hebrew) {
+            #expect(body(stopped) == "התמלול נעצר. פתחו את אוזן כדי להמשיך.")
+            #expect(body(damaged) == "מודל הדיבור בטלפון הזה נפגם, ולכן אוזן הסירה אותו ותוריד אותו שוב. פתחו את אוזן כדי להמשיך.")
+        }
+        Localization.$override.withValue(.english) {
+            #expect(body(stopped) == "Transcription stopped. Open Ozen to continue.")
+            #expect(body(damaged) == "The speech model on this phone was damaged, so Ozen removed it and will download it again. Open Ozen to continue.")
+        }
+    }
 }

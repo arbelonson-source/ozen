@@ -75,4 +75,18 @@ class StoppedCaptionsNoticeReasonTest {
             content.body,
         )
     }
+
+    @Test
+    fun `the cause and what to do are two sentences, a title getting its full stop and a sentence not getting a second one`() {
+        val stopped = PipelineFailure(PipelineFailure.Kind.TranscriptionStopped, "")
+        val damaged = engineFailure(EngineUnavailability.Kind.ModelDamaged)
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("התמלול נעצר. פתחו את אוזן כדי להמשיך.", body(stopped))
+            assertEquals("מודל הדיבור בטלפון הזה נפגם, ולכן אוזן הסירה אותו ותוריד אותו שוב. פתחו את אוזן כדי להמשיך.", body(damaged))
+        }
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Transcription stopped. Open Ozen to continue.", body(stopped))
+            assertEquals("The speech model on this phone was damaged, so Ozen removed it and will download it again. Open Ozen to continue.", body(damaged))
+        }
+    }
 }

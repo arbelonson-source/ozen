@@ -4,33 +4,43 @@ extension StoppedCaptionsNotice {
     static var openOzenToContinue: String { tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.") }
 
     static func namedProblem(_ failure: PipelineFailure, _ context: FailureContext) -> String? {
-        let problem: String
+        let problem: Problem
         switch failure.kind {
         case .audioSessionFailed:
-            problem = CaptionProblemText.microphoneNotResponding(inputName: failure.inputName)
+            problem = .title(CaptionProblemText.microphoneNotResponding(inputName: failure.inputName))
         case .transcriptionStopped:
-            problem = CaptionProblemText.transcriptionStopped
+            problem = .title(CaptionProblemText.transcriptionStopped)
         case .engineUnavailable:
             guard let named = engineProblem(failure.engineUnavailability, context) else { return nil }
             problem = named
         default:
             return nil
         }
-        return problem + " " + openOzenToContinue
+        switch problem {
+        case .title(let title): return tr("%1. פתחו את אוזן כדי להמשיך.", "%1. Open Ozen to continue.", args: ["\(title)"])
+        case .sentence(let sentence): return sentence + " " + openOzenToContinue
+        }
     }
 
-    private static func engineProblem(_ unavailability: EngineUnavailability?, _ context: FailureContext) -> String? {
+    private enum Problem {
+        case title(String)
+        case sentence(String)
+    }
+
+    private static func engineProblem(_ unavailability: EngineUnavailability?, _ context: FailureContext) -> Problem? {
         switch unavailability?.kind {
         case .languageNotSupportedOnDevice?:
-            CaptionProblemText.languageNotAvailable(engine: context.engine, language: context.spokenLanguage)
+            .title(CaptionProblemText.languageNotAvailable(engine: context.engine, language: context.spokenLanguage))
+        case .modelDownloadFailed? where unavailability?.modelWasRemoved == true:
+            .sentence(CaptionProblemText.damagedModelRemoved)
         case .modelDownloadFailed?:
-            CaptionProblemText.modelDownloadFailed(modelWasRemoved: unavailability?.modelWasRemoved == true)
+            .title(CaptionProblemText.modelDownloadFailed(modelWasRemoved: false))
         case .modelLoadFailed?:
-            CaptionProblemText.modelLoadFailed
+            .title(CaptionProblemText.modelLoadFailed)
         case .temporarilyUnavailable?:
-            CaptionProblemText.temporarilyUnavailable(engine: context.engine)
+            .title(CaptionProblemText.temporarilyUnavailable(engine: context.engine))
         case .other?, nil:
-            CaptionProblemText.unavailable(engine: context.engine)
+            .title(CaptionProblemText.unavailable(engine: context.engine))
         default:
             nil
         }

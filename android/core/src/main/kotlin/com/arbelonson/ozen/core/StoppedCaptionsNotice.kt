@@ -306,18 +306,22 @@ class StoppedCaptionsNotice {
 
         private fun openOzenToContinue(): String = tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
 
-        /** What the caption screen says went wrong, for the failures that screen names itself. */
+        private fun titled(title: String): String = tr("%1. פתחו את אוזן כדי להמשיך.", "%1. Open Ozen to continue.", listOf(title))
+
+        private fun sentence(text: String): String = "$text ${openOzenToContinue()}"
+
+        /** What the caption screen says went wrong, then what to do, for the failures that screen names itself. */
         private fun namedProblem(failure: PipelineFailure, cause: Cause.Failed): String? = when (failure.kind) {
-            PipelineFailure.Kind.AudioSessionFailed -> CaptionProblemText.microphoneNotResponding(failure.inputName)
-            PipelineFailure.Kind.TranscriptionStopped -> CaptionProblemText.transcriptionStopped()
+            PipelineFailure.Kind.AudioSessionFailed -> titled(CaptionProblemText.microphoneNotResponding(failure.inputName))
+            PipelineFailure.Kind.TranscriptionStopped -> titled(CaptionProblemText.transcriptionStopped())
             PipelineFailure.Kind.EngineUnavailable -> when (failure.engineUnavailability?.kind) {
-                EngineUnavailability.Kind.LanguageNotSupportedOnDevice -> CaptionProblemText.languageNotAvailable(cause.engine, cause.spokenLanguage)
-                EngineUnavailability.Kind.ModelDownloadFailed -> CaptionProblemText.modelDownloadFailed()
-                EngineUnavailability.Kind.ModelDamaged -> DamagedModelNotice.text()
-                EngineUnavailability.Kind.ModelNotOnDevice -> CaptionProblemText.modelNotOnDevice()
-                EngineUnavailability.Kind.ModelLoadFailed -> CaptionProblemText.modelLoadFailed()
-                EngineUnavailability.Kind.TemporarilyUnavailable -> CaptionProblemText.temporarilyUnavailable(cause.engine)
-                EngineUnavailability.Kind.Other, null -> CaptionProblemText.unavailable(cause.engine)
+                EngineUnavailability.Kind.LanguageNotSupportedOnDevice -> titled(CaptionProblemText.languageNotAvailable(cause.engine, cause.spokenLanguage))
+                EngineUnavailability.Kind.ModelDownloadFailed -> titled(CaptionProblemText.modelDownloadFailed())
+                EngineUnavailability.Kind.ModelDamaged -> sentence(DamagedModelNotice.text())
+                EngineUnavailability.Kind.ModelNotOnDevice -> titled(CaptionProblemText.modelNotOnDevice())
+                EngineUnavailability.Kind.ModelLoadFailed -> titled(CaptionProblemText.modelLoadFailed())
+                EngineUnavailability.Kind.TemporarilyUnavailable -> titled(CaptionProblemText.temporarilyUnavailable(cause.engine))
+                EngineUnavailability.Kind.Other, null -> titled(CaptionProblemText.unavailable(cause.engine))
                 else -> null
             }
             else -> null
@@ -391,7 +395,7 @@ class StoppedCaptionsNotice {
                         "המחשב לא קיבל את קוד הצימוד. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
                         "The computer didn’t accept the pairing code. Open Ozen and scan its QR code again.",
                     )
-                    else -> namedProblem(failure, cause)?.let { "$it ${openOzenToContinue()}" } ?: openOzenToContinue()
+                    else -> namedProblem(failure, cause) ?: openOzenToContinue()
                 }
             }
         }
