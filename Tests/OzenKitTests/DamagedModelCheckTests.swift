@@ -76,6 +76,27 @@ struct DamagedModelCheckTests {
         #expect(exists(model.folder))
     }
 
+    @Test func aModelIsNotRemovedTwiceWhileTheRepairedMarkerExists() throws {
+        let model = try makeModel(weights: "good wei")
+        let marker = model.partial.deletingLastPathComponent().appendingPathComponent("m.damaged-removed")
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, repairedMarker: marker, sha256: hex))
+        #expect(exists(marker))
+        let again = try makeModel(weights: "good wei")
+        try FileManager.default.moveItem(at: again.folder, to: model.folder)
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, repairedMarker: marker, sha256: hex) == false)
+        #expect(exists(model.folder))
+    }
+
+    @Test func listedFilesTheDownloadNeverFetchedAreNotCountedAsDamaged() throws {
+        let model = try makeModel(weights: "good weights!")
+        let json = """
+        [{"type":"file","path":"m/AudioEncoder.mlmodelc/coremldata.bin","size":4},
+         {"type":"file","path":"m/README.md","size":900}]
+        """
+        let files = DamagedModelCheck.expected(fromHubListing: Data(json.utf8), folderName: "m", presentIn: model.folder)
+        #expect(files?.map(\.path) == ["AudioEncoder.mlmodelc/coremldata.bin"])
+    }
+
     @Test func releasePackagesAreLeftOutBecauseTheyAreCompiledAway() {
         let manifest = ReleaseModelManifest(files: [
             ReleaseModelFile(path: "Enc.mlpackage/Data/weight.bin", asset: "a", size: 9, sha256: String(repeating: "a", count: 64)),

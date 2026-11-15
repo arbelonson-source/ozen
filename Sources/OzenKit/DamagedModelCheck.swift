@@ -39,18 +39,27 @@ public enum DamagedModelCheck {
     /// Removes the model folder (its completion marker goes with it) and
     /// the hub's half-fetched leftovers, but only when at least one file
     /// differs from what was published. Nothing to compare against, or
-    /// everything matching, leaves the model alone.
+    /// everything matching, leaves the model alone. A model already removed
+    /// once is never removed again while `repairedMarker` exists, so a load
+    /// failure with another cause cannot make it download over and over.
     public static func removeIfDamaged(
         folder: URL,
         partialFolder: URL,
         expected: [ExpectedModelFile],
+        repairedMarker: URL? = nil,
         fileManager: FileManager = .default,
         sha256: (URL) throws -> String
     ) -> Bool {
+        if let repairedMarker, fileManager.fileExists(atPath: repairedMarker.path) { return false }
         guard !expected.isEmpty,
               !damagedPaths(in: folder, expected: expected, fileManager: fileManager, sha256: sha256).isEmpty
         else { return false }
-        return (try? ModelDiskSpace.delete(folder, partialFolder: partialFolder, fileManager: fileManager)) != nil
+        guard (try? ModelDiskSpace.delete(folder, partialFolder: partialFolder, fileManager: fileManager)) != nil else { return false }
+        if let repairedMarker {
+            try? fileManager.createDirectory(at: repairedMarker.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? Data(ISO8601DateFormatter().string(from: Date()).utf8).write(to: repairedMarker)
+        }
+        return true
     }
 
     /// A release model's files, minus the Core ML packages: those are
@@ -63,7 +72,10 @@ public enum DamagedModelCheck {
     }
 
     /// The hub's file listing of one model folder (`.../tree/main/<folder>?recursive=true`).
-    public static func expected(fromHubListing data: Data, folderName: String) -> [ExpectedModelFile]? {
+    /// Only files the download fetched are compared: with `presentIn`, a
+    /// listed file that is not on the phone is left out, so a file the
+    /// download never fetches cannot make a good model look damaged.
+    public static func expected(fromHubListing data: Data, folderName: String, presentIn folder: URL? = nil, fileManager: FileManager = .default) -> [ExpectedModelFile]? {
         struct Entry: Decodable {
             struct LFS: Decodable { var oid: String }
             var type: String
@@ -75,7 +87,9 @@ public enum DamagedModelCheck {
         let prefix = folderName + "/"
         let files = entries.compactMap { entry -> ExpectedModelFile? in
             guard entry.type == "file", entry.path.hasPrefix(prefix), let size = entry.size else { return nil }
-            return ExpectedModelFile(path: String(entry.path.dropFirst(prefix.count)), size: size, sha256: entry.lfs?.oid)
+            let relative = String(entry.path.dropFirst(prefix.count))
+            if let folder, !fileManager.fileExists(atPath: folder.appendingPathComponent(relative).path) { return nil }
+            return ExpectedModelFile(path: relative, size: size, sha256: entry.lfs?.oid)
         }
         return files.isEmpty ? nil : files
     }

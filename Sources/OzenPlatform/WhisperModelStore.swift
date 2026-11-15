@@ -121,11 +121,17 @@ public struct WhisperModelStore: Sendable {
     public func removeIfDamaged(variant: String) async -> Bool {
         let folder = folder(for: variant)
         let partial = partialFolder(for: variant)
+        let marker = repairedMarker(for: variant)
         guard let expected = await expectedFiles(variant: variant, folder: folder) else { return false }
         return await Task.detached(priority: .utility) {
             let fetcher = URLSessionReleaseFileFetcher()
-            return DamagedModelCheck.removeIfDamaged(folder: folder, partialFolder: partial, expected: expected, sha256: fetcher.sha256(of:))
+            return DamagedModelCheck.removeIfDamaged(folder: folder, partialFolder: partial, expected: expected, repairedMarker: marker, sha256: fetcher.sha256(of:))
         }.value
+    }
+
+    /// Kept outside the model folder, which is what gets removed.
+    private func repairedMarker(for variant: String) -> URL {
+        modelsRoot.appendingPathComponent(WhisperModelCatalog.folderName(for: variant) + ".damaged-removed")
     }
 
     private func expectedFiles(variant: String, folder: URL) async -> [ExpectedModelFile]? {
@@ -142,7 +148,7 @@ public struct WhisperModelStore: Sendable {
             guard let (data, response) = try? await URLSession.shared.data(for: request),
                   (response as? HTTPURLResponse)?.statusCode == 200
             else { return nil }
-            return DamagedModelCheck.expected(fromHubListing: data, folderName: name)
+            return DamagedModelCheck.expected(fromHubListing: data, folderName: name, presentIn: folder)
         }
     }
 
@@ -173,6 +179,7 @@ public struct WhisperModelStore: Sendable {
     public func delete(variant: String) async throws {
         await cancelDownload(variant: variant)
         try ModelDiskSpace.delete(folder(for: variant), partialFolder: partialFolder(for: variant))
+        try? FileManager.default.removeItem(at: repairedMarker(for: variant))
     }
 
     /// Stops a download of `variant` still running, if any, and returns
