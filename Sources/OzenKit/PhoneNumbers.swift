@@ -108,7 +108,7 @@ public enum PhoneNumbers {
     }
 
     private static let callWordPattern = try? NSRegularExpression(
-        pattern: #"\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:(?:\s+[\w']+){0,3}\s+(?:me|us|him|her|them|at|on|is|are|to)|(?:\s+(?-i:[A-Z])[\w'.]*){1,2})?\s*[:,]?\s*$"#,
+        pattern: #"\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:(?:\s+[\w']+){0,3}\s+(?:me|us|him|her|them|at|on|is|are|to)|(?:\s+(?-i:\p{Lu})[\w'.]*){1,2})?\s*[:,]?\s*$"#,
         options: .caseInsensitive
     )
 
