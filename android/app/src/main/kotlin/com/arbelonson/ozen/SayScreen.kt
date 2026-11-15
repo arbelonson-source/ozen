@@ -202,6 +202,7 @@ internal fun SayScreen(
                 )
                 VoiceNotices(voiceNotices)
                 MediaVolumeNotice()
+                SpeakingRouteNotice()
                 Row(modifier = Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f).padding(start = 16.dp).semantics { heading() })
                     TextButton(

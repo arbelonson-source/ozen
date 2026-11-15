@@ -1,5 +1,6 @@
 import SwiftUI
 import OzenKit
+import OzenPlatform
 
 /// The other direction of the conversation: the reader types a reply (or
 /// taps one she uses all the time) and the phone says it. Captions pause
@@ -20,6 +21,11 @@ struct TypeToSpeakView: View {
     /// and Play then looks exactly as if it had worked.
     @State private var mediaVolume: Float?
     private var silentNotice: String? { mediaVolume.flatMap { SpeakingVolume.notice(outputVolume: $0) } }
+    /// Where replies would come out, read once a second like the volume: a
+    /// headset or hearing aid takes them, and the person in front of her
+    /// hears nothing.
+    @State private var outputs: [SpeakingOutput] = []
+    private var routeNotice: String? { SpeakingRoute.notice(outputs: outputs) }
     @FocusState private var isTyping: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -113,6 +119,10 @@ struct TypeToSpeakView: View {
             // isn't announced twice.
             .watchingMediaVolume(while: !showingBigText) { mediaVolume = $0 }
             .announcing(silentNotice ?? "", whenTurningTrue: silentNotice != nil)
+            .watchingSpeakingRoute { outputs = $0 }
+            .onChange(of: routeNotice) { _, notice in
+                if let notice { Announcement.post(notice) }
+            }
         }
         .presentationDetents([.medium, .large])
         .fullScreenCover(isPresented: $showingBigText) {
@@ -171,6 +181,13 @@ struct TypeToSpeakView: View {
 
             if let silentNotice {
                 MediaVolumeNotice(notice: silentNotice)
+            }
+
+            if let routeNotice {
+                SpeakingRouteNotice(notice: routeNotice) {
+                    SpeakingOutputRoute.useSpeaker()
+                    outputs = SpeakingOutputRoute.outputs()
+                }
             }
 
             if let lastTyped {
