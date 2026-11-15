@@ -725,7 +725,7 @@ struct SettingsView: View {
         case .connected:
             Label(text, systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.readable(.green))
-        case .codeRefused:
+        case .codeRefused, .pairingChanged:
             Label(text, systemImage: "key.slash")
                 .foregroundStyle(.readable(.red))
         case .unreachable:
@@ -746,6 +746,8 @@ struct SettingsView: View {
             tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", args: ["\(milliseconds)"])
         case .codeRefused:
             tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה־QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.")
+        case .pairingChanged:
+            HomeServer.pairingChangedText()
         case .unreachable:
             HomeServer.unreachableText(address: address, localNetworkHint: true)
         case .notSetUp:

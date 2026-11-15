@@ -90,6 +90,11 @@ public enum HomeServer {
         return a == 10 || (a == 192 && b == 168) || (a == 172 && (16...31).contains(b)) || (a == 169 && b == 254)
     }
 
+    /// What a connection test says when the computer's certificate is no longer the one in the QR code.
+    public static func pairingChangedText() -> String {
+        tr("הצימוד עם המחשב השתנה. סרקו שוב את קוד ה־QR שלו.", "The computer’s pairing changed. Scan its QR code again.")
+    }
+
     /// What a connection test that got no answer says. Paired at home, the
     /// saved address is often one only the home Wi‑Fi reaches; tested away
     /// from home it never answers, and "check that the computer is on" sent
@@ -297,6 +302,7 @@ public struct HomeServerPairing: Sendable, Equatable {
 public enum HomeServerCheck: Sendable, Equatable {
     case connected(milliseconds: Int)
     case codeRefused
+    case pairingChanged
     case unreachable
     case notSetUp
     case needsEncryptedAddress
@@ -307,7 +313,12 @@ public enum HomeServerCheck: Sendable, Equatable {
             self = .connected(milliseconds: max(0, Int((seconds * 1000).rounded())))
         case .unavailable(let why):
             switch why.kind {
-            case .homeServerRejected: self = why.detail == HomeServer.noCode ? .notSetUp : .codeRefused
+            case .homeServerRejected:
+                switch why.detail {
+                case HomeServer.noCode: self = .notSetUp
+                case HomeServer.pairingChanged: self = .pairingChanged
+                default: self = .codeRefused
+                }
             case .homeServerUnreachable:
                 switch why.detail {
                 case HomeServer.noAddress: self = .notSetUp

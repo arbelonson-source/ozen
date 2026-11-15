@@ -332,6 +332,15 @@ class HomeServerTest {
     }
 
     @Test
+    fun `a certificate that did not match is its own answer, with words that tell her to scan the QR code again`() {
+        val mismatch = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerRejected, HomeServer.PAIRING_CHANGED)
+        assertEquals(HomeServerCheck.PairingChanged, HomeServerCheck.of(mismatch, 0.1))
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("The computer’s pairing changed. Scan its QR code again.", HomeServer.pairingChangedText())
+        }
+    }
+
+    @Test
     fun `the check reads an availability as connected with the time it took, a refused code, no answer, or nothing set up yet`() {
         assertEquals(HomeServerCheck.Connected(42), HomeServerCheck.of(EngineAvailability.Available, 0.0424))
         val refused = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerRejected, "unauthorized")
