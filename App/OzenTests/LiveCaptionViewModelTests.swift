@@ -1588,6 +1588,30 @@ struct LiveCaptionViewModelBackgroundAlertTests {
         #expect(viewModel.claimAttentionForNewKeywordHits() != nil)
     }
 
+    @Test("an older answer about the notification permission, arriving last, does not undo a newer one")
+    func staleNotificationPermissionAnswerIsIgnored() async {
+        var asked = 0
+        var release: CheckedContinuation<Bool?, Never>?
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-stale-permission-\(UUID()).json"))
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder()),
+            notificationsAllowed: {
+                asked += 1
+                if asked == 1 { return await withCheckedContinuation { release = $0 } }
+                return false
+            }
+        )
+        viewModel.notifyWhenInBackground = true
+        viewModel.refreshNotificationsAllowed()
+        #expect(await eventually { release != nil })
+        viewModel.refreshNotificationsAllowed()
+        #expect(await eventually { viewModel.awayAlertsBlocked })
+        release?.resume(returning: true)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(viewModel.awayAlertsBlocked)
+    }
+
     @Test("a name said again while away, inside the notification's cooldown, doesn't buzz again on return")
     func awayKeywordRepeatedInsideCooldownNotReplayed() async {
         let engine = FakeEngine()
