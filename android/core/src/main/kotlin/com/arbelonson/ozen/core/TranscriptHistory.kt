@@ -276,9 +276,17 @@ data class TranscriptSessionRecord(
                 } ?: emptyList(),
                 title = lenientHistory { container.optional("title")?.asHistoryString() },
                 // A value the reader cannot make sense of reads as none.
-                languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() },
+                languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(::plausibleLanguageCode),
             )
         }
+
+        /**
+         * A language tag as the settings write it ("he", "en", "pt-BR"):
+         * letters and hyphens only, of a believable length. Anything else
+         * is damage.
+         */
+        internal fun plausibleLanguageCode(code: String): String? =
+            code.takeIf { it.length in 2..12 && it.all { c -> c.isLetter() || c == '-' } }
     }
 }
 
@@ -722,7 +730,7 @@ class TranscriptHistoryStore(
             engine = lenientHistory { container.optional("engine")?.asHistoryEngine() },
             modelVariant = container.optional("modelVariant")?.asHistoryString(),
             inputName = container.optional("inputName")?.asHistoryString(),
-            languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() },
+            languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(TranscriptSessionRecord.Companion::plausibleLanguageCode),
         )
     }
 

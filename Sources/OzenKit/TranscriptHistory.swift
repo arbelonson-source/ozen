@@ -186,7 +186,13 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         segments = container.lenientArray(of: SavedSegment.self, forKey: .segments) ?? []
         title = container.lenient(String.self, forKey: .title)
         // A value the reader cannot make sense of reads as none.
-        languageCode = container.lenient(String.self, forKey: .languageCode)
+        languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(Self.plausibleLanguageCode)
+    }
+
+    /// A language tag as the settings write it ("he", "en", "pt-BR"): letters
+    /// and hyphens only, of a believable length. Anything else is damage.
+    static func plausibleLanguageCode(_ code: String) -> String? {
+        (2...12).contains(code.count) && code.allSatisfy { $0.isLetter || $0 == "-" } ? code : nil
     }
 }
 
@@ -641,7 +647,7 @@ public struct TranscriptHistoryStore: Sendable {
             engine = container.lenient(TranscriptionEngineKind.self, forKey: .engine)
             modelVariant = container.lenient(String.self, forKey: .modelVariant)
             inputName = container.lenient(String.self, forKey: .inputName)
-            languageCode = container.lenient(String.self, forKey: .languageCode)
+            languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(TranscriptSessionRecord.plausibleLanguageCode)
         }
     }
 

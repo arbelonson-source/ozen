@@ -497,6 +497,7 @@ class CaptionSession(
         setSaveHistory = { on -> settings.change { it.saveHistory = on } },
         scope = scope,
         problemAudio = problemAudio,
+        spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
     )
     val savedConversations = object : SavedConversations {
         override fun list() = historyStore.listSummaries()

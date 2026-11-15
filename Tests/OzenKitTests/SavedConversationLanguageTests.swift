@@ -69,6 +69,17 @@ struct SavedConversationLanguageTests {
         #expect(loaded.segments.count == 1)
     }
 
+    @Test("an empty or garbled language reads as missing and the conversation stays")
+    func garbledValueLoads() throws {
+        for bad in ["", "e n!", "english-language-code"] {
+            var object = try jsonObject(of: record(language: "en"))
+            object["languageCode"] = bad
+            let loaded = try decode(object)
+            #expect(loaded.languageCode == nil, "value: \(bad)")
+            #expect(loaded.segments.count == 1)
+        }
+    }
+
     @Test("the record's own language wins over the current one")
     func ownLanguageWins() {
         #expect(record(language: "en").languageCode(orCurrent: "he") == "en")

@@ -59,6 +59,15 @@ class SavedConversationLanguageTest {
     }
 
     @Test
+    fun `an empty or garbled language reads as missing and the conversation stays`() {
+        for (bad in listOf("", "e n!", "english-language-code")) {
+            val loaded = TranscriptSessionRecord.fromJson(jsonWith(record(language = "en")) { it["languageCode"] = JsonPrimitive(bad) })
+            assertNull(loaded.languageCode, bad)
+            assertEquals(1, loaded.segments.size)
+        }
+    }
+
+    @Test
     fun `the record's own language wins over the current one`() {
         assertEquals("en", record(language = "en").languageCode(orCurrent = "he"))
     }

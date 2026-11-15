@@ -2409,6 +2409,13 @@ public final class LiveCaptionViewModel {
         pipeline.isCoveringForCloud ? (pipeline.activeSettings ?? settings) : settings
     }
 
+    /// The language the captions on screen were started in. A change of the
+    /// setting lands before the captions restart, and a save in between
+    /// must not label the old words with the new language.
+    private var spokenLanguageCode: String {
+        pipeline.activeSettings?.languageCode ?? settings.languageCode
+    }
+
     private var historyConversationStart: TimeInterval? {
         ConversationBreak.start(listeningSince: historySessionStartedAt, firstLineAt: currentHistorySegments.first?.startTimestamp)
     }
@@ -2442,7 +2449,7 @@ public final class LiveCaptionViewModel {
             modelVariant: transcribingSettings.modelDescription,
             inputName: selectedInput?.portName,
             starred: starredSegmentIDs,
-            languageCode: settings.languageCode
+            languageCode: spokenLanguageCode
         )
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {
@@ -2627,7 +2634,7 @@ public final class LiveCaptionViewModel {
                     engine: transcribingSettings.engine,
                     modelVariant: transcribingSettings.modelDescription,
                     inputName: selectedInput?.portName,
-                    languageCode: settings.languageCode
+                    languageCode: spokenLanguageCode
                 ))
             }
         }
