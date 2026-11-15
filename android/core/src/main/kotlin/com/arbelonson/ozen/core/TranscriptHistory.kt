@@ -589,17 +589,18 @@ class TranscriptHistoryStore(
      * finding the old files and rebuilds them. (v1 also held "speaker 2"
      * and "unknown speaker" labels; v3 had no lines as said, so a result's
      * preview showed "10:30" as "1030"; v4 left out a line whose optional
-     * value was damaged, which is kept now.)
+     * value was damaged, which is kept now; v5 kept Arabic spelling variants
+     * apart, which are folded together now.)
      */
     private fun searchTextFile(recordFile: File): File =
-        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v5.txt")
+        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v6.txt")
 
     /**
      * Search files of earlier formats hold the conversation's words too,
      * so deleting it deletes them.
      */
     private fun olderSearchTextFiles(recordFile: File): List<File> =
-        listOf("v1", "v2", "v3", "v4").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
+        listOf("v1", "v2", "v3", "v4", "v5").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
 
     /**
      * Saves a session, overwriting any earlier save with the same id -
@@ -1286,12 +1287,35 @@ class TranscriptHistoryStore(
          */
         private fun normalizedForSearch(text: String): String {
             val separated = HebrewText.separatingJoiners(joiningDigitGroups(text.replace("\n", " ")))
-            val withoutNiqqud = HebrewText.stripNiqqud(separated)
+            val withoutNiqqud = foldingArabicSpelling(HebrewText.stripNiqqud(separated))
             val result = StringBuilder(withoutNiqqud.length)
             withoutNiqqud.codePoints().forEach { scalar ->
                 if (isPunctuationOrSymbol(scalar)) result.append(' ') else result.appendCodePoint(scalar)
             }
             return result.toString().lowercase(Locale.ROOT)
+        }
+
+        /**
+         * Arabic spelling variants that people type one way and engines
+         * write another: harakat (U+064B..U+065F), the superscript alef
+         * (U+0670) and the stretching tatweel (U+0640) are dropped; hamza
+         * and madda alefs and the wasla alef become a plain alef, alef
+         * maqsura becomes ya, and ta marbuta becomes ha. Every folded letter
+         * is one letter for one letter, so line numbers and word boundaries
+         * are unchanged.
+         */
+        private fun foldingArabicSpelling(text: String): String {
+            val folded = StringBuilder(text.length)
+            text.codePoints().forEach { scalar ->
+                when (scalar) {
+                    in 0x064B..0x065F, 0x0670, 0x0640 -> Unit
+                    0x0623, 0x0625, 0x0622, 0x0671 -> folded.append('\u0627')
+                    0x0649 -> folded.append('\u064A')
+                    0x0629 -> folded.append('\u0647')
+                    else -> folded.appendCodePoint(scalar)
+                }
+            }
+            return folded.toString()
         }
 
         private fun isPunctuationOrSymbol(scalar: Int): Boolean = when (Character.getType(scalar).toByte()) {

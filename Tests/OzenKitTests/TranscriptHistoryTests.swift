@@ -1175,7 +1175,7 @@ struct TranscriptHistorySearchCacheTests {
         dir.appendingPathComponent("\(id.uuidString).json")
     }
 
-    private func searchFile(_ dir: URL, _ id: UUID, version: Int = 5) -> URL {
+    private func searchFile(_ dir: URL, _ id: UUID, version: Int = 6) -> URL {
         dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v\(version).txt")
     }
 
@@ -1188,7 +1188,7 @@ struct TranscriptHistorySearchCacheTests {
         try store.save(saved)
         let current = searchFile(dir, saved.id)
         try FileManager.default.removeItem(at: current)
-        let previous = searchFile(dir, saved.id, version: 4)
+        let previous = searchFile(dir, saved.id, version: 5)
         try Data("the dentist moved it to thursday".utf8).write(to: previous)
 
         #expect(store.search("dentist").map(\.id) == [saved.id])
@@ -1206,7 +1206,7 @@ struct TranscriptHistorySearchCacheTests {
         let current = searchFile(dir, saved.id)
         try FileManager.default.removeItem(at: current)
         try FileManager.default.createDirectory(at: current, withIntermediateDirectories: false)
-        let previous = searchFile(dir, saved.id, version: 4)
+        let previous = searchFile(dir, saved.id, version: 5)
         try Data("the dentist moved it to thursday".utf8).write(to: previous)
 
         _ = store.search("dentist")
@@ -1222,7 +1222,7 @@ struct TranscriptHistorySearchCacheTests {
         try store.save(saved)
         let older = searchFile(dir, saved.id, version: 3)
         try Data("the dentist moved it to thursday".utf8).write(to: older)
-        let previous = searchFile(dir, saved.id, version: 4)
+        let previous = searchFile(dir, saved.id, version: 5)
         try Data("the dentist moved it to thursday".utf8).write(to: previous)
 
         try store.delete(id: saved.id)
@@ -1366,6 +1366,18 @@ struct TranscriptHistoryMatchingLinesTests {
         #expect(TranscriptHistoryStore.matchingSegmentIDs(in: conversation, query: " תרופה ") == [lines[0].id, lines[2].id])
         #expect(TranscriptHistoryStore.matchingSegmentIDs(in: conversation, query: "שרה") == [lines[1].id])
         #expect(TranscriptHistoryStore.matchingSegmentIDs(in: conversation, query: "ASPIRIN") == [lines[3].id])
+    }
+
+    @Test("Arabic search picks the lines holding the plain-typed word")
+    func arabicMatchingLines() {
+        let lines = [
+            line("قال أحمد إن المَدْرَســة قريبة", "سارة"),
+            line("حسنا", "سارة"),
+            line("أين المدرسة؟", "منى"),
+        ]
+        let conversation = record(lines)
+        #expect(TranscriptHistoryStore.matchingSegmentIDs(in: conversation, query: "احمد") == [lines[0].id])
+        #expect(TranscriptHistoryStore.matchingSegmentIDs(in: conversation, query: "مدرسه") == [lines[0].id, lines[2].id])
     }
 
     @Test("with several words, the lines holding all of them; when no line does, the lines holding any")
@@ -1660,6 +1672,21 @@ struct TranscriptHistoryTitleTests {
         #expect(store.search("רופא").map(\.id) == [id])
     }
 
+    @Test("Arabic search ignores hamza forms, harakat, tatweel, alef maqsura and ta marbuta, in the search and in the saved lines")
+    func arabicSpellingVariants() throws {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let id = UUID()
+        try store.save(record(id: id, lines: ["قال أحمد إن المَدْرَســة قريبة", "ذهب إلى المستشفى"]))
+        #expect(store.search("احمد").map(\.id) == [id])
+        #expect(store.search("أحمد").map(\.id) == [id])
+        #expect(store.search("مدرسه").map(\.id) == [id])
+        #expect(store.search("المدرسة").map(\.id) == [id])
+        #expect(store.search("المستشفي").map(\.id) == [id])
+        #expect(store.search("الي").map(\.id) == [id])
+        #expect(store.search("سعيد").isEmpty)
+    }
+
     @Test("without the prepared search files (a copy restored from a backup) a conversation is still found by its name, and they are made again")
     func nameFoundWithoutSearchFiles() throws {
         let (store, dir) = makeStore()
@@ -1673,7 +1700,7 @@ struct TranscriptHistoryTitleTests {
         #expect(store.search("רופא").map(\.id) == [id])
         #expect(store.search("סבתא").isEmpty)
         let remade = try FileManager.default.contentsOfDirectory(atPath: prepared.path)
-        #expect(remade.contains { $0.hasSuffix(".search-v5.txt") })
+        #expect(remade.contains { $0.hasSuffix(".search-v6.txt") })
         #expect(store.search("רופא").map(\.id) == [id])
     }
 
@@ -1979,7 +2006,7 @@ struct TranscriptHistoryLenientReadTests {
         cached["summary"] = summary
         cached["format"] = 4
         try JSONSerialization.data(withJSONObject: cached).write(to: summaryFile)
-        let oldSearch = prepared.appendingPathComponent("\(id.uuidString).search-v5.txt")
+        let oldSearch = prepared.appendingPathComponent("\(id.uuidString).search-v6.txt")
         try Data("bravo two\ncharlie three\nbravo two\ncharlie three".utf8).write(to: oldSearch)
         let later = Date().addingTimeInterval(60)
         try FileManager.default.setAttributes([.modificationDate: later], ofItemAtPath: summaryFile.path)
