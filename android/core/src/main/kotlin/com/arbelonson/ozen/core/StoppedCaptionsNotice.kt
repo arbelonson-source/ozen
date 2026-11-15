@@ -132,7 +132,11 @@ class StoppedCaptionsNotice {
     }
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
-    fun postFailed() {
+    fun postFailed(now: Double = System.nanoTime() / 1e9) {
+        soundAlertsScheduledAt?.let {
+            soundAlertsStretches.add(now to maxOf(0.0, now - it))
+            soundAlertsScheduledAt = null
+        }
         posted = false
         toldCause = null
     }

@@ -207,6 +207,15 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `time waited on a notice that could not be shown still counts toward the minute`() {
+        val notice = StoppedCaptionsNotice()
+        val down = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        notice.update(down, appIsActive = false, isEnabled = true, now = 0.0)
+        notice.postFailed(now = 30.0)
+        assertEquals(30.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 31.0)))
+    }
+
+    @Test
     fun `the other-app notice says another app is using the microphone and what to do`() {
         val body = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone).body
         assertTrue(body.contains("אפליקציה אחרת"))
