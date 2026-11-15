@@ -1,5 +1,9 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.FileTranscriptionProblem
+import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -29,4 +33,38 @@ class BusyNoticeTest {
         notice.accept(busy = false)
         assertFalse(notice.shown.value)
     }
+
+    private val ready = FileTranscription.Ready("a.mp3", UILanguage.English, null, emptyList(), PhoneModelCatalog.all.first(), null, false)
+    private val failed = FileTranscription.Failed("a.mp3", FileTranscriptionProblem.Unexpected)
+
+    @Test
+    fun theNoticeStaysWhileTheFirstRecordingStillRuns() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        notice.follow(working())
+        assertTrue(notice.shown.value)
+    }
+
+    @Test
+    fun theNoticeGoesWhenTheRunFailsAndWhenAReadyPageIsShown() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        notice.follow(failed)
+        assertFalse(notice.shown.value)
+        notice.accept(busy = true)
+        notice.follow(ready)
+        assertFalse(notice.shown.value)
+    }
+
+    @Test
+    fun aNewRunStartingAfterATryAgainShowsNoOldNotice() {
+        val notice = BusyNotice()
+        notice.accept(busy = true)
+        notice.follow(failed)
+        notice.follow(ready)
+        notice.follow(working())
+        assertFalse(notice.shown.value)
+    }
+
+    private fun working() = FileTranscription.Working("a.mp3", UILanguage.English, PhoneModelCatalog.all.first(), FileTranscription.Working.Stage.Loading, null, null, emptyList())
 }

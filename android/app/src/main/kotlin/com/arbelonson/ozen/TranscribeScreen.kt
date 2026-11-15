@@ -107,6 +107,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         is FileTranscription.Failed -> OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
             Text(state.name, style = MaterialTheme.typography.titleMedium)
             Text(state.problem.message, modifier = Modifier.testTag("transcribe-problem"))
+            if (state.textKept) Text(tr("הטקסט שנכתב עד כה נשמר בהיסטוריה.", "The text written so far is saved in History."), modifier = Modifier.testTag("transcribe-kept"))
             Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (state.problem.canTryAgain) {
                 PrimaryButton(tr("נסו שוב", "Try again"), onClick = transcriber::retry, modifier = Modifier.fillMaxWidth().testTag(TRANSCRIBE_RETRY))
