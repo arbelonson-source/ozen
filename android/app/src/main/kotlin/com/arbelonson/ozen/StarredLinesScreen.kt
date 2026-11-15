@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.SharedKind
 import com.arbelonson.ozen.core.StarredConversation
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
@@ -234,5 +235,12 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
 }
 
 // Years of stars can outgrow a message as a long conversation does.
-private fun starredShareSheet(context: Context, lines: List<StarredLine>, marksUncertain: Boolean): Intent =
-    textShareSheet(context, tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen"), TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain))
+private fun starredShareSheet(context: Context, lines: List<StarredLine>, marksUncertain: Boolean): Intent {
+    val now = System.currentTimeMillis() / 1_000.0
+    return textShareSheet(
+        context,
+        tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen"),
+        TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain),
+        TranscriptHistoryStore.sharedFileName(SharedKind.Starred, null, now, localOffset(now)),
+    )
+}

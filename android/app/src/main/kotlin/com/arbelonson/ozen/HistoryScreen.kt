@@ -109,6 +109,7 @@ import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SharedKind
 import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
@@ -1216,7 +1217,7 @@ internal suspend fun shareOrSayFull(context: Context, sheet: () -> Intent?): Boo
 }
 
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
-    textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode), languageCode))
+    textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode), languageCode), TranscriptHistoryStore.sharedFileName(SharedKind.Conversation, record.title, record.startedAt, localOffset(record.startedAt)))
 
 /** Writes every saved conversation, oldest first, loading each one only when its turn comes. False when none could be written. */
 internal fun writeAllConversations(conversations: SavedConversations, marksUncertain: Boolean, languageCode: String, out: Appendable): Boolean {
@@ -1252,12 +1253,12 @@ internal fun allConversationsShareSheet(context: Context, conversations: SavedCo
 }
 
 /** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
-internal fun textShareSheet(context: Context, subject: String, text: String): Intent {
+internal fun textShareSheet(context: Context, subject: String, text: String, fileName: String = safeFileName(subject) + ".txt"): Intent {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, subject)
     if (text.length <= LONGEST_SHARED_TEXT) {
         send.putExtra(Intent.EXTRA_TEXT, text)
     } else {
-        val file = SharedFile.create(context.cacheDir, safeFileName(subject) + ".txt")
+        val file = SharedFile.create(context.cacheDir, fileName)
         file.writeText(text)
         val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
         send.putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

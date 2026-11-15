@@ -1543,6 +1543,40 @@ class TranscriptHistoryStore(
         }
 
         /**
+         * "Visit to the doctor 2023-11-14 22-13-20.txt": the title (or what
+         * the file is), then the phone's own date and time, so two shares
+         * never carry the same name. Characters a file system forbids become
+         * "_", and a long title is cut before the time.
+         */
+        fun sharedFileName(kind: SharedKind, title: String?, at: Double, utcOffsetSeconds: Int): String {
+            val fallback = if (kind == SharedKind.Starred) tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen") else tr("שיחה מתוך אוזן", "Conversation from Ozen")
+            val clean = title.orEmpty().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trim()
+            val local = Math.floor(at).toLong() + utcOffsetSeconds
+            val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(at, utcOffsetSeconds))
+            val rest = Math.floorMod(local, 86_400L).toInt()
+            val day = "${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)}"
+            val time = "${twoDigits(rest / 3_600)}-${twoDigits(rest / 60 % 60)}-${twoDigits(rest % 60)}"
+            return "${clean.ifEmpty { fallback }} $day $time.txt"
+        }
+
+        private const val SHARED_TITLE_BYTES = 80
+
+        private fun cutToBytes(text: String, limit: Int): String {
+            var bytes = 0
+            val out = StringBuilder()
+            var index = 0
+            while (index < text.length) {
+                val point = text.codePointAt(index)
+                val size = String(Character.toChars(point)).toByteArray(Charsets.UTF_8).size
+                if (bytes + size > limit) break
+                bytes += size
+                out.appendCodePoint(point)
+                index += Character.charCount(point)
+            }
+            return out.toString()
+        }
+
+        /**
          * A long conversation shared as text opens with the lines that had a
          * time, an amount or a phone number in them (see `NumberEmphasis`), so
          * whoever reads it in a chat finds what the doctor said without
@@ -1748,3 +1782,5 @@ internal fun historyTrimmed(text: String): String {
     while (to > from && historyIsSpaceOrNewline(scalars[to - 1])) to--
     return String(scalars, from, to - from)
 }
+
+enum class SharedKind { Conversation, Starred }
