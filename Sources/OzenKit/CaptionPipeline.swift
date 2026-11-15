@@ -2306,7 +2306,7 @@ public final class CaptionPipeline {
     /// audio engine: the same thing a manual stop and start would do.
     private func checkAudioIsArriving() {
         guard phase.isListening else { return }
-        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted) else { return }
+        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted || audio.isRecoveringSession) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s", inputName: countPickFailure())
@@ -3053,7 +3053,7 @@ public final class CaptionPipeline {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(AudioStallWatchdog.tickSeconds))
                 guard let self, !Task.isCancelled, self.runID == run, self.isListeningForSoundsOnly else { return }
-                if watchdog.tick(chunksReceived: arrivals.value, systemInterrupted: self.systemInterrupted) {
+                if watchdog.tick(chunksReceived: arrivals.value, systemInterrupted: self.systemInterrupted || self.audio.isRecoveringSession) {
                     self.soundsOnlyCaptureLost(run: run)
                 }
             }

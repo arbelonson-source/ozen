@@ -58,6 +58,8 @@ public final class AVAudioInputManager: AudioCapturing {
     /// How many times the engine was built again after the audio system
     /// started over; read by the tests.
     private(set) var rebuildsAfterReset = 0
+    private var recoveriesRunning = 0
+    public var isRecoveringSession: Bool { recoveriesRunning > 0 }
 
     public convenience init() {
         self.init(retry: .standard, wait: { _ = try? await Task.sleep(for: .seconds($0)) }, activate: Self.activateForRecording)
@@ -162,6 +164,9 @@ public final class AVAudioInputManager: AudioCapturing {
     }
 
     public func stopCapture() {
+        // A rebuild still waiting for the session would put a new engine
+        // over whatever capture starts next.
+        resetRecovery?.cancel()
         if engine.isRunning || activeTap != nil {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
@@ -180,6 +185,7 @@ public final class AVAudioInputManager: AudioCapturing {
     public func endSession() {
         sessionPrepared = false
         released = true
+        resetRecovery?.cancel()
         let earlier = deactivation
         deactivation = Task.detached(priority: .userInitiated) {
             await earlier?.value
@@ -282,8 +288,10 @@ public final class AVAudioInputManager: AudioCapturing {
         guard sessionPrepared, !released else { return }
         resetRecovery?.cancel()
         let wanted = preferredInputUID
+        recoveriesRunning += 1
         resetRecovery = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { self.recoveriesRunning -= 1 }
             let back = await self.retry.run(sleep: self.wait) { [weak self] in
                 guard let self else { return true }
                 return (try? await self.prepareSession(preferredInputUID: wanted)) != nil
@@ -315,8 +323,10 @@ public final class AVAudioInputManager: AudioCapturing {
             onInterruption?(false)
             return
         }
+        recoveriesRunning += 1
         interruptionRecovery = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { self.recoveriesRunning -= 1 }
             let back = await self.retry.run(sleep: self.wait) { [weak self] in
                 guard let self else { return true }
                 return (try? await self.activateSession()) != nil

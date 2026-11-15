@@ -82,6 +82,44 @@ struct AVAudioInputManagerResetTests {
         #expect(activations.total == 5)
     }
 
+    @Test("while a reset is being recovered the manager says so, and says so no longer afterwards", .timeLimit(.minutes(1)))
+    func reportsRecoveryInProgress() async throws {
+        let activations = Activations()
+        let manager = AVAudioInputManager(
+            retry: AudioReactivationRetry(delays: [0.3]),
+            wait: { _ in try? await Task.sleep(for: .seconds(0.3)) },
+            activate: { try activations.next(); if activations.total == 2 { throw NSError(domain: "FakeSession", code: 1) } }
+        )
+        try await manager.prepareSession(preferredInputUID: nil)
+        #expect(!manager.isRecoveringSession)
+
+        NotificationCenter.default.post(name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+
+        #expect(await waitFor { manager.isRecoveringSession })
+        #expect(await waitFor { manager.rebuildsAfterReset == 1 })
+        #expect(await waitFor { !manager.isRecoveringSession })
+    }
+
+    @Test("stopping the capture cancels a late rebuild, so it cannot cut a fresh capture", .timeLimit(.minutes(1)))
+    func stopCancelsTheRebuild() async throws {
+        let activations = Activations()
+        let manager = AVAudioInputManager(
+            retry: AudioReactivationRetry(delays: [0.5, 0.5]),
+            wait: { _ in try? await Task.sleep(for: .seconds(0.5)) },
+            activate: { try activations.next(); if activations.total == 2 { throw NSError(domain: "FakeSession", code: 1) } }
+        )
+        try await manager.prepareSession(preferredInputUID: nil)
+        NotificationCenter.default.post(name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+        #expect(await waitFor { manager.isRecoveringSession })
+
+        manager.stopCapture()
+        try await Task.sleep(for: .seconds(1.5))
+
+        #expect(manager.rebuildsAfterReset == 0)
+        #expect(activations.total == 2)
+        #expect(!manager.isRecoveringSession)
+    }
+
     @Test("a reset with nothing prepared does nothing", .timeLimit(.minutes(1)))
     func idleResetIsIgnored() async throws {
         let activations = Activations()

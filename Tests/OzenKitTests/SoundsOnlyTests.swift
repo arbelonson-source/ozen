@@ -254,6 +254,34 @@ struct SoundsOnlyTests {
         try await Task.sleep(for: .seconds(1.5))
         #expect(pipeline.stats.audioStalls == 0)
     }
+
+    @Test("a slow recovery of the audio session is not a stall: sounds-only stays on and starts nothing", .timeLimit(.minutes(1)))
+    func slowRecoveryIsNotAStall() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        let before = audio.calls.filter { $0 == "startCapture" }.count
+        audio.isRecoveringSession = true
+        try await Task.sleep(for: .seconds(2))
+        #expect(pipeline.stats.audioStalls == 0)
+        #expect(pipeline.soundsOnlyChosen)
+        #expect(audio.calls.filter { $0 == "startCapture" }.count == before)
+
+        audio.isRecoveringSession = false
+        #expect(await eventually { pipeline.stats.audioStalls == 1 })
+    }
+
+    @Test("the same for captions: a recovery under way is not six silent seconds", .timeLimit(.minutes(1)))
+    func slowRecoveryIsNotACaptionsStall() async throws {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5), now: { 1_000 })
+        audio.isRecoveringSession = true
+        await pipeline.start(settings: .default)
+        try await Task.sleep(for: .seconds(2))
+        #expect(pipeline.stats.audioStalls == 0)
+        #expect(pipeline.phase.isListening)
+    }
 }
 
 private final class MemoryStore: ListeningRecordStore, @unchecked Sendable {

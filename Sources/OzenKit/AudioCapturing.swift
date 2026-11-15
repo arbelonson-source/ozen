@@ -32,6 +32,10 @@ public protocol AudioCapturing: AnyObject {
     /// change (AirPods reconnecting, a USB mic unplugged, ...).
     var onInputsChanged: (@MainActor () -> Void)? { get set }
     var onCaptureLost: (@MainActor () -> Void)? { get set }
+    /// `true` while the capturer is itself getting the session back (after
+    /// the audio system started over, or a call ended): audio is not
+    /// expected meanwhile, so the stall watch holds off.
+    var isRecoveringSession: Bool { get }
 
     func requestPermission() async -> AudioPermission
     /// Configures and activates the audio session and enumerates inputs.
@@ -52,4 +56,8 @@ public protocol AudioCapturing: AnyObject {
 extension AudioCapturing {
     public func endSession() {}
     public var inputInUse: String? { nil }
+}
+
+public extension AudioCapturing {
+    var isRecoveringSession: Bool { false }
 }
