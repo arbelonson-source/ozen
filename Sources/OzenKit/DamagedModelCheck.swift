@@ -31,9 +31,17 @@ public enum DamagedModelCheck {
         guard wrongSize.isEmpty else { return wrongSize.map(\.path) }
         return expected.compactMap { file in
             guard let published = file.sha256 else { return nil }
-            let actual = try? sha256(folder.appendingPathComponent(file.path))
-            return actual?.lowercased() == published.lowercased() ? nil : file.path
+            // A file that can't be read (locked phone, passing I/O error)
+            // proves nothing, so it never counts as damaged.
+            guard let actual = try? sha256(folder.appendingPathComponent(file.path)) else { return nil }
+            return actual.lowercased() == published.lowercased() ? nil : file.path
         }
+    }
+
+    /// Called once the fresh copy has loaded: later damage to it can be
+    /// repaired again.
+    public static func clearRepairedMarker(_ marker: URL, fileManager: FileManager = .default) {
+        try? fileManager.removeItem(at: marker)
     }
 
     /// Removes the model folder (its completion marker goes with it) and

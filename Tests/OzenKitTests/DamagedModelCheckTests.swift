@@ -87,6 +87,25 @@ struct DamagedModelCheckTests {
         #expect(exists(model.folder))
     }
 
+    @Test func aChecksumReadErrorKeepsTheModel() throws {
+        struct Unreadable: Error {}
+        let model = try makeModel(weights: "good weights!")
+        #expect(DamagedModelCheck.damagedPaths(in: model.folder, expected: model.expected) { _ in throw Unreadable() }.isEmpty)
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected) { _ in throw Unreadable() } == false)
+        #expect(exists(model.folder))
+    }
+
+    @Test func aLoadedFreshCopyCanBeRepairedAgain() throws {
+        let model = try makeModel(weights: "good wei")
+        let marker = model.partial.deletingLastPathComponent().appendingPathComponent("m.damaged-removed")
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, repairedMarker: marker, sha256: hex))
+        DamagedModelCheck.clearRepairedMarker(marker)
+        #expect(!exists(marker))
+        let again = try makeModel(weights: "good wei")
+        try FileManager.default.moveItem(at: again.folder, to: model.folder)
+        #expect(DamagedModelCheck.removeIfDamaged(folder: model.folder, partialFolder: model.partial, expected: model.expected, repairedMarker: marker, sha256: hex))
+    }
+
     @Test func listedFilesTheDownloadNeverFetchedAreNotCountedAsDamaged() throws {
         let model = try makeModel(weights: "good weights!")
         let json = """

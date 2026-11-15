@@ -110,6 +110,7 @@ public struct WhisperModelStore: Sendable {
 
     public func markLoaded(variant: String) {
         ModelLoadMarker.markLoaded(folder(for: variant), system: ProcessInfo.processInfo.operatingSystemVersionString)
+        DamagedModelCheck.clearRepairedMarker(repairedMarker(for: variant))
     }
 
     /// After a model with a completion marker failed to load: compares its
@@ -181,7 +182,7 @@ public struct WhisperModelStore: Sendable {
     public func delete(variant: String) async throws {
         await cancelDownload(variant: variant)
         try ModelDiskSpace.delete(folder(for: variant), partialFolder: partialFolder(for: variant))
-        try? FileManager.default.removeItem(at: repairedMarker(for: variant))
+        DamagedModelCheck.clearRepairedMarker(repairedMarker(for: variant))
     }
 
     /// Stops a download of `variant` still running, if any, and returns
