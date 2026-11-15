@@ -187,6 +187,7 @@ struct TypeToSpeakView: View {
                 SpeakingRouteNotice(notice: routeNotice) {
                     SpeakingOutputRoute.useSpeaker()
                     outputs = SpeakingOutputRoute.outputs()
+                    Announcement.post(SpeakingRoute.speakerChosenAnnouncement)
                 }
             }
 
@@ -289,7 +290,7 @@ private struct QuickPhrasesEditor: View {
                 viewModel.removeQuickPhrases(at: offsets)
                 let removed = viewModel.removedQuickPhrases.map(\.phrase).joined(separator: ", ")
                 if !removed.isEmpty {
-                    Announcement.post(tr("נמחק: %1", "Deleted: %1", args: ["\(removed)"]))
+                    Announcement.post(QuickPhraseUndo.deletedAnnouncement(removed))
                 }
             }
             .onMove { from, to in
@@ -326,9 +327,12 @@ private struct QuickPhrasesEditor: View {
             .accessibilityIdentifier("undoDeletedPhrase")
         }
         .task(id: viewModel.removedQuickPhrases) {
-            try? await Task.sleep(for: .seconds(8))
+            // With VoiceOver on, Undo waits for the next edit or for the screen to close.
+            guard let seconds = QuickPhraseUndo.keepSeconds(screenReaderOn: UIAccessibility.isVoiceOverRunning) else { return }
+            try? await Task.sleep(for: .seconds(seconds))
             if !Task.isCancelled { viewModel.forgetRemovedQuickPhrases() }
         }
+        .onDisappear { viewModel.forgetRemovedQuickPhrases() }
     }
 
     private func add() {

@@ -37,3 +37,23 @@ struct QuickPhraseUndoTests {
         #expect(QuickPhraseUndo.removed(at: [9], from: list).isEmpty)
     }
 }
+
+@Suite("How long a deleted quick phrase stays offered back, and what is said")
+struct QuickPhraseUndoScreenReaderTests {
+    @Test("without a screen reader Undo goes after eight seconds")
+    func sightedTimer() {
+        #expect(QuickPhraseUndo.keepSeconds(screenReaderOn: false) == 8)
+    }
+
+    @Test("with a screen reader Undo stays until the next edit or the screen closes")
+    func screenReaderKeeps() {
+        #expect(QuickPhraseUndo.keepSeconds(screenReaderOn: true) == nil)
+    }
+
+    @Test("the announcement says that Undo is available")
+    func announcementMentionsUndo() {
+        Localization.$override.withValue(.english) {
+            #expect(QuickPhraseUndo.deletedAnnouncement("Thanks") == "Deleted: Thanks. Undo is available.")
+        }
+    }
+}

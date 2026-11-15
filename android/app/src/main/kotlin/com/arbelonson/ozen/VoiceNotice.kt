@@ -95,11 +95,14 @@ internal fun SpeakingRouteNotice() {
         }
     }
     val notice = SpeakingRoute.notice(outputs) ?: return
-    Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    val context = LocalContext.current
+    val hint = if (SpeakerChoice.canChoose) null else SpeakingRoute.cannotChooseHint()
+    Text(listOfNotNull(notice, hint).joinToString(" "), color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     if (SpeakerChoice.canChoose) {
         TextButton(onClick = {
             SpeakerChoice.choose()
             outputs = SpeakerChoice.outputs(audio)
+            ScreenReader.said(context, SpeakingRoute.speakerChosenAnnouncement())
         }) { Text(SpeakingRoute.speakerButton()) }
     }
 }

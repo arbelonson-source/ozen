@@ -47,3 +47,21 @@ struct SpeakingRouteTests {
         }
     }
 }
+
+@Suite("What a screen reader hears about the speaker choice")
+struct SpeakingRouteScreenReaderTests {
+    @Test("choosing the phone's speaker is announced")
+    func chosenAnnouncement() {
+        Localization.$override.withValue(.english) {
+            #expect(SpeakingRoute.speakerChosenAnnouncement == "Replies will play on the phone’s speaker")
+        }
+    }
+
+    @Test("where the speaker cannot be chosen, the notice says how to fix it")
+    func cannotChooseHint() {
+        Localization.$override.withValue(.english) {
+            #expect(SpeakingRoute.cannotChooseHint == "To fix this, disconnect the headset or hearing aid.")
+        }
+    }
+}
+

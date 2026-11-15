@@ -1170,6 +1170,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "ይህ ቅጂ ተቋርጧል፤ Ozen ከመጨረሱ በፊት ተዘግቷል።",
   "Replies are playing through %1, so the other person may not hear them.": "ምላሾቹ በ%1 በኩል እየተጫወቱ ነው፤ ስለዚህ ከፊት ያለው ሰው ላይሰማቸው ይችላል።",
   "Use the phone’s speaker": "የስልኩን ድምጽ ማጉያ ይጠቀሙ",
+  "Deleted: %1. Undo is available.": "ተሰርዟል፦ %1። መመለስ ይቻላል።",
+  "Replies will play on the phone’s speaker": "ምላሾቹ በስልኩ ድምጽ ማጉያ ይጫወታሉ",
+  "To fix this, disconnect the headset or hearing aid.": "ይህን ለማስተካከል የጆሮ ማዳመጫውን ወይም የመስሚያ መርጃውን ያላቅቁ።",
   "headphones": "የጆሮ ማዳመጫ"
  },
  "arabic": {
@@ -2343,6 +2346,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "توقف تحويل هذا التسجيل قبل اكتماله، لأن Ozen أُغلق قبل أن ينتهي.",
   "Replies are playing through %1, so the other person may not hear them.": "يتم تشغيل الردود عبر %1، لذا قد لا يسمعها الشخص المقابل.",
   "Use the phone’s speaker": "استخدام مكبّر صوت الهاتف",
+  "Deleted: %1. Undo is available.": "حُذف: %1. يمكنكم التراجع.",
+  "Replies will play on the phone’s speaker": "ستُشغَّل الردود عبر مكبّر صوت الهاتف",
+  "To fix this, disconnect the headset or hearing aid.": "لحل هذا، افصلوا سماعة الرأس أو المعينة السمعية.",
   "headphones": "سماعات الرأس"
  },
  "chineseSimplified": {
@@ -3516,6 +3522,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "这段录音的转写中途中断：Ozen 在转写完成之前已被关闭。",
   "Replies are playing through %1, so the other person may not hear them.": "回复正通过%1播放，对方可能听不到。",
   "Use the phone’s speaker": "使用手机扬声器",
+  "Deleted: %1. Undo is available.": "已删除：%1。可以撤销。",
+  "Replies will play on the phone’s speaker": "回复将通过手机扬声器播放",
+  "To fix this, disconnect the headset or hearing aid.": "要解决此问题，请断开耳机或助听器。",
   "headphones": "耳机"
  },
  "french": {
@@ -4689,6 +4698,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Cet enregistrement a été interrompu : Ozen a été fermé avant la fin.",
   "Replies are playing through %1, so the other person may not hear them.": "Les réponses sont lues sur %1 : la personne en face risque de ne pas les entendre.",
   "Use the phone’s speaker": "Utiliser le haut-parleur du téléphone",
+  "Deleted: %1. Undo is available.": "Supprimé : %1. Vous pouvez annuler.",
+  "Replies will play on the phone’s speaker": "Les réponses seront lues sur le haut-parleur du téléphone",
+  "To fix this, disconnect the headset or hearing aid.": "Pour corriger cela, débranchez le casque ou l’appareil auditif.",
   "headphones": "un casque"
  },
  "german": {
@@ -5862,6 +5874,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Diese Aufnahme wurde abgebrochen: Ozen wurde beendet, bevor sie fertig war.",
   "Replies are playing through %1, so the other person may not hear them.": "Antworten werden über %1 abgespielt, daher hört die andere Person sie möglicherweise nicht.",
   "Use the phone’s speaker": "Lautsprecher des Telefons verwenden",
+  "Deleted: %1. Undo is available.": "Gelöscht: %1. Rückgängig ist möglich.",
+  "Replies will play on the phone’s speaker": "Antworten werden über den Lautsprecher des Telefons wiedergegeben",
+  "To fix this, disconnect the headset or hearing aid.": "Um das zu beheben, trennen Sie das Headset oder das Hörgerät.",
   "headphones": "Kopfhörer"
  },
  "hindi": {
@@ -7035,6 +7050,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "यह रिकॉर्डिंग अधूरी रह गई: पूरी होने से पहले Ozen बंद हो गया।",
   "Replies are playing through %1, so the other person may not hear them.": "जवाब %1 पर सुनाए जा रहे हैं, इसलिए सामने वाले को शायद सुनाई न दें।",
   "Use the phone’s speaker": "फ़ोन के स्पीकर का उपयोग करें",
+  "Deleted: %1. Undo is available.": "हटाया गया: %1। वापस लाया जा सकता है।",
+  "Replies will play on the phone’s speaker": "जवाब फ़ोन के स्पीकर पर चलेंगे",
+  "To fix this, disconnect the headset or hearing aid.": "इसे ठीक करने के लिए हेडसेट या सुनने का यंत्र हटा दें।",
   "headphones": "हेडफ़ोन"
  },
  "portuguese": {
@@ -8208,6 +8226,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Esta gravação foi interrompida: o Ozen foi fechado antes de terminar.",
   "Replies are playing through %1, so the other person may not hear them.": "As respostas estão a ser reproduzidas em %1, por isso a outra pessoa pode não as ouvir.",
   "Use the phone’s speaker": "Usar o altifalante do telemóvel",
+  "Deleted: %1. Undo is available.": "Excluído: %1. É possível desfazer.",
+  "Replies will play on the phone’s speaker": "As respostas serão reproduzidas no alto-falante do telefone",
+  "To fix this, disconnect the headset or hearing aid.": "Para corrigir isso, desconecte o fone de ouvido ou o aparelho auditivo.",
   "headphones": "auscultadores"
  },
  "russian": {
@@ -9381,6 +9402,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Расшифровка этой записи оборвалась: Ozen закрылся до её завершения.",
   "Replies are playing through %1, so the other person may not hear them.": "Ответы воспроизводятся через %1, поэтому собеседник может их не услышать.",
   "Use the phone’s speaker": "Использовать динамик телефона",
+  "Deleted: %1. Undo is available.": "Удалено: %1. Можно отменить.",
+  "Replies will play on the phone’s speaker": "Ответы будут звучать из динамика телефона",
+  "To fix this, disconnect the headset or hearing aid.": "Чтобы это исправить, отключите гарнитуру или слуховой аппарат.",
   "headphones": "наушники"
  },
  "spanish": {
@@ -10554,6 +10578,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Esta grabación quedó cortada: Ozen se cerró antes de que terminara.",
   "Replies are playing through %1, so the other person may not hear them.": "Las respuestas se están reproduciendo por %1, así que la otra persona puede no oírlas.",
   "Use the phone’s speaker": "Usar el altavoz del teléfono",
+  "Deleted: %1. Undo is available.": "Eliminado: %1. Se puede deshacer.",
+  "Replies will play on the phone’s speaker": "Las respuestas sonarán en el altavoz del teléfono",
+  "To fix this, disconnect the headset or hearing aid.": "Para solucionarlo, desconecten los auriculares o el audífono.",
   "headphones": "los auriculares"
  },
  "ukrainian": {
@@ -11727,6 +11754,9 @@
   "This recording was cut short: Ozen was closed before it finished.": "Розшифрування цього запису обірвалося: Ozen закрився до його завершення.",
   "Replies are playing through %1, so the other person may not hear them.": "Відповіді відтворюються через %1, тож співрозмовник може їх не почути.",
   "Use the phone’s speaker": "Використовувати динамік телефона",
+  "Deleted: %1. Undo is available.": "Видалено: %1. Можна скасувати.",
+  "Replies will play on the phone’s speaker": "Відповіді звучатимуть із динаміка телефона",
+  "To fix this, disconnect the headset or hearing aid.": "Щоб це виправити, відключіть гарнітуру або слуховий апарат.",
   "headphones": "навушники"
  }
 }
