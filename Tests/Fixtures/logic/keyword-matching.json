@@ -1097,14 +1097,8 @@
    ],
    "text": "Danas coat",
    "language": "en",
-   "note": "Latin name with s",
-   "matches": [
-    {
-     "phrase": "Dana",
-     "matchedText": "Danas",
-     "wordIndex": 0
-    }
-   ]
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
   },
   {
    "alerts": [
@@ -1131,14 +1125,8 @@
    ],
    "text": "Dans coat",
    "language": "en",
-   "note": "Latin name with s, plural may fire",
-   "matches": [
-    {
-     "phrase": "Dan",
-     "matchedText": "Dans",
-     "wordIndex": 0
-    }
-   ]
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
   },
   {
    "alerts": [
@@ -1148,14 +1136,8 @@
    ],
    "text": "Anns coat",
    "language": "en",
-   "note": "Latin name with s",
-   "matches": [
-    {
-     "phrase": "Ann",
-     "matchedText": "Anns",
-     "wordIndex": 0
-    }
-   ]
+   "note": "English writes the possessive with an apostrophe, so a plain s form is not the name",
+   "matches": []
   },
   {
    "alerts": [
@@ -1372,6 +1354,28 @@
      "wordIndex": 3
     }
    ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Jean"
+    }
+   ],
+   "text": "she wore jeans",
+   "language": "en",
+   "note": "a plural word is not the name",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Bill"
+    }
+   ],
+   "text": "pay the bills",
+   "language": "en",
+   "note": "a plural word is not the name",
+   "matches": []
   }
  ]
 }

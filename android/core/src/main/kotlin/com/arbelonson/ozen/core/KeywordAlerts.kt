@@ -436,14 +436,15 @@ object HebrewText {
     }
 
     /**
-     * A name with "s" glued on ("Danas", German "Annes Haus"), the way English
-     * and German speak a possessive or a plural of a name. Only in these two
-     * caption languages and only for a name of three letters or more written
-     * in Latin letters: in French, Spanish or Portuguese "Dan" + s is "dans"
-     * ("in"), and a name like "Al" + s is German "als".
+     * A name with "s" glued on ("Annes Haus"): German writes the genitive of a
+     * name without an apostrophe. Only for German captions and a name of three
+     * letters or more written in Latin letters. English writes it "Dana's",
+     * which already matches, while a plain s there is a plural ("Jean" on
+     * "jeans", "Bill" on "bills"); in French, Spanish or Portuguese "Dan" + s
+     * is "dans" ("in"). A name like "Al" + s is German "als".
      */
     fun isLatinNameWithS(word: String, name: String, captionLanguage: String): Boolean {
-        if (!(captionLanguage.startsWith("en", ignoreCase = true) || captionLanguage.startsWith("de", ignoreCase = true)) || graphemesOf(name).size < 3 || word != name + "s" || name.endsWith("s")) return false
+        if (!captionLanguage.startsWith("de", ignoreCase = true) || graphemesOf(name).size < 3 || word != name + "s" || name.endsWith("s")) return false
         return name.codePoints().allMatch { it in 0x61..0x24F } && everydayWordsNotNames[name]?.contains(word) != true
     }
 
