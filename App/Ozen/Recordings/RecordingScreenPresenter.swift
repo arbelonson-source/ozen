@@ -11,6 +11,7 @@ enum RecordingScreenPresenter {
         }
         do {
             let file = try await RecordingFiles.open(url)
+            await waitForDialogToClear()
             if let busy = FileTranscriptionProblem.forNewShare(isTranscribing: viewModel.pipeline.isTranscribingRecording) {
                 file.finish()
                 alert(busy.message)
@@ -23,8 +24,20 @@ enum RecordingScreenPresenter {
         }
     }
 
+    /// A confirmation dialog on top can't show a new screen and would be
+    /// closed by trying: the file is kept and shown once the dialog is gone.
+    private static func waitForDialogToClear() async {
+        guard topController() is UIAlertController else { return }
+        UIAccessibility.post(notification: .announcement, argument: tr("הקובץ ייפתח אחרי שהחלון הפתוח ייסגר.", "The file will open once the open dialog is closed."))
+        for _ in 0..<240 {
+            try? await Task.sleep(for: .milliseconds(500))
+            if !(topController() is UIAlertController) { return }
+        }
+    }
+
     private static func present(_ model: TranscribeRecordingModel, language: UILanguage) {
         guard let top = topController(), !(top is UIAlertController) else {
+            UIAccessibility.post(notification: .announcement, argument: tr("סגרו את החלון הפתוח ואז שתפו את הקובץ שוב.", "Close this screen first, then share the file again."))
             Task { await model.close() }
             return
         }
