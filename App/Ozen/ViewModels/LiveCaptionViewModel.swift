@@ -175,6 +175,7 @@ public final class LiveCaptionViewModel {
         let engine: TranscriptionEngineKind
         let modelVariant: String?
         let inputName: String?
+        let languageCode: String
     }
     private var autosaveTask: Task<Void, Never>?
     /// Whether captions were listening the last time history looked.
@@ -1200,7 +1201,8 @@ public final class LiveCaptionViewModel {
             engine: session.engine,
             modelVariant: session.modelVariant,
             inputName: session.inputName,
-            starred: starredSegmentIDs
+            starred: starredSegmentIDs,
+            languageCode: session.languageCode
         )
         saveInBackground(record)
     }
@@ -2411,6 +2413,19 @@ public final class LiveCaptionViewModel {
         pipeline.isCoveringForCloud ? (pipeline.activeSettings ?? settings) : settings
     }
 
+    /// The language the captions on screen were started in, read when the
+    /// conversation is first looked at (its listening starts) and then kept
+    /// for it. A change of the setting lands before the captions restart,
+    /// and a save in between must not label the old words with the new one.
+    @ObservationIgnored private var historyLanguage: (id: UUID, code: String)?
+
+    private var spokenLanguageCode: String {
+        if let kept = historyLanguage, kept.id == historySessionID { return kept.code }
+        let code = pipeline.activeSettings?.languageCode ?? settings.languageCode
+        historyLanguage = (historySessionID, code)
+        return code
+    }
+
     private var historyConversationStart: TimeInterval? {
         ConversationBreak.start(listeningSince: historySessionStartedAt, firstLineAt: currentHistorySegments.first?.startTimestamp)
     }
@@ -2443,7 +2458,8 @@ public final class LiveCaptionViewModel {
             engine: transcribingSettings.engine,
             modelVariant: transcribingSettings.modelDescription,
             inputName: selectedInput?.portName,
-            starred: starredSegmentIDs
+            starred: starredSegmentIDs,
+            languageCode: spokenLanguageCode
         )
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {
@@ -2627,7 +2643,8 @@ public final class LiveCaptionViewModel {
                     endedAt: endedAt,
                     engine: transcribingSettings.engine,
                     modelVariant: transcribingSettings.modelDescription,
-                    inputName: selectedInput?.portName
+                    inputName: selectedInput?.portName,
+                    languageCode: spokenLanguageCode
                 ))
             }
         }

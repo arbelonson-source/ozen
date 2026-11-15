@@ -83,6 +83,32 @@ class ConversationSaverTest {
     private fun saved() = writer.waitUntilIdle().let { store.listSummaries() }
 
     @Test
+    fun `a saved conversation keeps the language the captions were started in, not the setting that changed meanwhile`() {
+        val switched = ConversationSaver(
+            writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+            speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = {}, scope = scope,
+            now = { clock }, io = EmptyCoroutineContext, spokenLanguage = { "en" },
+        )
+        listening = true
+        switched.listeningChanged()
+        say("Take three pills")
+        listening = false
+        switched.listeningChanged()
+        writer.waitUntilIdle()
+        val record = assertNotNull(store.load(store.listSummaries().single().id))
+        assertEquals("en", record.languageCode)
+        assertEquals("he", settings.languageCode)
+    }
+
+    @Test
+    fun `a saved conversation has the setting's language when nothing says otherwise`() {
+        start()
+        say("Good morning")
+        stop()
+        assertEquals(settings.languageCode, assertNotNull(store.load(saved().single().id)).languageCode)
+    }
+
+    @Test
     fun `a conversation is saved when captions stop, ending then`() {
         start()
         say("Good morning")

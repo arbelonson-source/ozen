@@ -56,9 +56,9 @@ struct StarredLinesView: View {
                                                     .accessibilityLabel(tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "))
                                             }
                                             Text(
-                                                caption: CaptionLayout.displayText(line.segment.text, languageCode: viewModel.settings.languageCode),
+                                                caption: CaptionLayout.displayText(line.segment.text, languageCode: line.languageCode(orCurrent: viewModel.settings.languageCode)),
                                                 emphasizingNumbers: viewModel.display.emphasizeNumbers,
-                                                languageCode: viewModel.settings.languageCode,
+                                                languageCode: line.languageCode(orCurrent: viewModel.settings.languageCode),
                                                 size: lineSize,
                                                 numberColor: nil
                                             )
@@ -66,7 +66,7 @@ struct StarredLinesView: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(line.segment.text, languageCode: viewModel.settings.languageCode) ? .rightToLeft : .leftToRight)
+                                    .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(line.segment.text, languageCode: line.languageCode(orCurrent: viewModel.settings.languageCode)) ? .rightToLeft : .leftToRight)
                                     .accessibilityElement(children: .ignore)
                                     .accessibilityLabel(Text(CaptionSpeechText.label(
                                         whole: SavedLineSpeech.label(
@@ -75,7 +75,7 @@ struct StarredLinesView: View {
                                             uncertain: viewModel.display.markUncertainLines && line.isUncertain
                                         ),
                                         endingWith: line.segment.text,
-                                        languageCode: viewModel.settings.languageCode
+                                        languageCode: line.languageCode(orCurrent: viewModel.settings.languageCode)
                                     )))
                                 }
                                 .contextMenu {

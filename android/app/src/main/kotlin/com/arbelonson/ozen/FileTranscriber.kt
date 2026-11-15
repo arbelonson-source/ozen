@@ -207,7 +207,7 @@ class FileTranscriber(
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
             val transcript = transcribe(uri, model, scorer, linePass)
             val lines = transcript.lines.map { it.copy(text = WordFixes.apply(current.wordFixes, it.text)) }
-            val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant)
+            val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, languageCode = ready.language.languageCode)
             val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
         } finally {

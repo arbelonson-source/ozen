@@ -1,7 +1,7 @@
 import Foundation
 
 /// What the last save of each recent conversation wrote (its name and the
-/// engine and microphone of its first save), with the file's date and size
+/// engine, microphone and language of its first save), with the file's date and size
 /// then, and when its History caches were last rebuilt. Shared by every copy
 /// of one `TranscriptHistoryStore`; a file changed since, by anything, no
 /// longer matches its date and size and is read again.
@@ -11,6 +11,7 @@ final class TranscriptAutosaveMemory: @unchecked Sendable {
         let engine: TranscriptionEngineKind
         let modelVariant: String?
         let inputName: String?
+        let languageCode: String?
         let modifiedAt: Date
         let size: Int
     }
@@ -50,6 +51,7 @@ final class TranscriptAutosaveMemory: @unchecked Sendable {
             engine: record.engine,
             modelVariant: record.modelVariant,
             inputName: record.inputName,
+            languageCode: record.languageCode,
             modifiedAt: stamp.modifiedAt,
             size: stamp.size
         )

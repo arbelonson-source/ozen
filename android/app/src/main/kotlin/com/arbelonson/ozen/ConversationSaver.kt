@@ -40,6 +40,12 @@ class ConversationSaver(
     private val now: () -> Double = { System.currentTimeMillis() / 1_000.0 },
     private val io: CoroutineContext = Dispatchers.IO,
     private val problemAudio: ProblemAudioStore? = null,
+    /**
+     * The language the running captions were started in. A change of the
+     * setting reaches the settings before the captions restart, and a save
+     * in between must not label the old words with the new language.
+     */
+    private val spokenLanguage: (() -> String)? = null,
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -108,6 +114,7 @@ class ConversationSaver(
             modelVariant = using.modelDescription,
             inputName = inputName(),
             starred = starred.toSet(),
+            languageCode = spokenLanguage?.invoke() ?: using.languageCode,
         )
         val written = if (inBackground) {
             writer.saveInBackground(record)
@@ -142,6 +149,7 @@ class ConversationSaver(
                     modelVariant = record.modelVariant,
                     inputName = record.inputName,
                     starred = starred.toSet(),
+                    languageCode = record.languageCode,
                 ),
             )
         }

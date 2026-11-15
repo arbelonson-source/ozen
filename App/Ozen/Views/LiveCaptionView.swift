@@ -1253,7 +1253,7 @@ struct LiveCaptionView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", args: ["\(Self.minutesAgoText(minutes))"]))
                             .font(.headline)
-                        Text(CaptionLayout.directed(recent.title ?? recent.preview, languageCode: viewModel.settings.languageCode))
+                        Text(CaptionLayout.directed(recent.title ?? recent.preview, languageCode: recent.languageCode(orCurrent: viewModel.settings.languageCode)))
                             .font(.subheadline)
                             .lineLimit(2)
                             .opacity(0.8)

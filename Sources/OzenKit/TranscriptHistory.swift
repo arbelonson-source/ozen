@@ -84,6 +84,12 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     /// A name the reader gave the conversation ("bikur etzel harofe" — "visit
     /// to the doctor").
     public var title: String?
+    /// The language the conversation was spoken in (the spoken-language
+    /// setting when it was first saved). Number highlights and the reading
+    /// direction of its lines follow it, not whatever the setting says by
+    /// the time it is opened again. Conversations saved before it existed
+    /// have none.
+    public var languageCode: String?
 
     public init(
         id: UUID = UUID(),
@@ -93,7 +99,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         modelVariant: String?,
         inputName: String?,
         segments: [SavedSegment],
-        title: String? = nil
+        title: String? = nil,
+        languageCode: String? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -103,6 +110,13 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         self.inputName = inputName
         self.segments = segments
         self.title = title
+        self.languageCode = languageCode
+    }
+
+    /// The language to show and export this conversation in: its own, or
+    /// the current setting for one saved before the language was kept.
+    public func languageCode(orCurrent current: String) -> String {
+        languageCode ?? current
     }
 
     /// Converts a live in-memory transcript into a saveable record. A
@@ -119,7 +133,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         engine: TranscriptionEngineKind,
         modelVariant: String?,
         inputName: String?,
-        starred: Set<UUID> = []
+        starred: Set<UUID> = [],
+        languageCode: String? = nil
     ) -> TranscriptSessionRecord {
         let saved = segments.compactMap { segment -> SavedSegment? in
             guard !segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -144,12 +159,13 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
             engine: engine,
             modelVariant: modelVariant,
             inputName: inputName,
-            segments: saved
+            segments: saved,
+            languageCode: languageCode
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title
+        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode
     }
 
     // Decoding is tolerant of missing keys on the fields a later build
@@ -169,6 +185,18 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         // A damaged line is left out; the rest of the conversation loads.
         segments = container.lenientArray(of: SavedSegment.self, forKey: .segments) ?? []
         title = container.lenient(String.self, forKey: .title)
+        // A value the reader cannot make sense of reads as none.
+        languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(Self.plausibleLanguageCode)
+    }
+
+    /// A language tag as the settings write it ("he", "en", "pt-BR"): letters
+    /// in non-empty parts joined by hyphens, of a believable length. Anything
+    /// else is damage.
+    static func plausibleLanguageCode(_ code: String) -> String? {
+        let parts = code.split(separator: "-", omittingEmptySubsequences: false)
+        let wellFormed = (2...12).contains(code.count) && parts.count <= 4
+            && parts.allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isLetter) }
+        return wellFormed ? code : nil
     }
 }
 
@@ -222,19 +250,29 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     public let engine: TranscriptionEngineKind
     /// And with which of the phone's models, whose cutoffs can be its own.
     public let model: String?
+    /// The language the conversation was spoken in, when it kept one.
+    public let languageCode: String?
     public var id: UUID { segment.id }
+
+    /// The language to show this line in: its conversation's, or the
+    /// current setting when that conversation did not keep one.
+    public func languageCode(orCurrent current: String) -> String {
+        languageCode ?? current
+    }
+
     /// Whether the line carried the question mark on screen.
     public var isUncertain: Bool {
         CaptionConfidence.isUncertain(segment, engine: engine, model: model)
     }
 
-    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit, model: String? = nil) {
+    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit, model: String? = nil, languageCode: String? = nil) {
         self.sessionID = sessionID
         self.sessionStartedAt = sessionStartedAt
         self.segment = segment
         self.sessionTitle = sessionTitle
         self.engine = engine
         self.model = model
+        self.languageCode = languageCode
     }
 }
 
@@ -287,6 +325,8 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
     /// close (iOS ended the app in the background) has no end time, and
     /// this is the closest thing to one.
     public var lastLineAt: TimeInterval?
+    /// See `TranscriptSessionRecord.languageCode`.
+    public var languageCode: String?
 
     public init(
         id: UUID,
@@ -298,7 +338,8 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
         speakerNames: [String] = [],
         starredCount: Int = 0,
         title: String? = nil,
-        lastLineAt: TimeInterval? = nil
+        lastLineAt: TimeInterval? = nil,
+        languageCode: String? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -310,6 +351,7 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
         self.starredCount = starredCount
         self.title = title
         self.lastLineAt = lastLineAt
+        self.languageCode = languageCode
     }
 
     /// Up to the last line when the conversation was never closed: the
@@ -318,6 +360,11 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
     public var durationSeconds: TimeInterval? {
         guard let end = endedAt ?? lastLineAt else { return nil }
         return max(0, end - startedAt)
+    }
+
+    /// See `TranscriptSessionRecord.languageCode(orCurrent:)`.
+    public func languageCode(orCurrent current: String) -> String {
+        languageCode ?? current
     }
 }
 
@@ -341,7 +388,8 @@ extension TranscriptSessionSummary {
             speakerNames: Self.realNames(in: record.segments),
             starredCount: record.segments.filter(\.isStarred).count,
             title: record.title,
-            lastLineAt: record.segments.map(\.startTimestamp).max()
+            lastLineAt: record.segments.map(\.startTimestamp).max(),
+            languageCode: record.languageCode
         )
     }
 
@@ -544,6 +592,7 @@ public struct TranscriptHistoryStore: Sendable {
             record.engine = remembered.engine
             record.modelVariant = remembered.modelVariant
             record.inputName = remembered.inputName
+            record.languageCode = remembered.languageCode
         } else if let data = readConversation(at: url) {
             if record.title == nil {
                 // A save that skipped the caches leaves the summary older than
@@ -561,6 +610,7 @@ public struct TranscriptHistoryStore: Sendable {
                 record.engine = source.engine ?? record.engine
                 record.modelVariant = source.modelVariant
                 record.inputName = source.inputName
+                record.languageCode = source.languageCode
             }
         }
         memory.forget(url)
@@ -592,14 +642,16 @@ public struct TranscriptHistoryStore: Sendable {
         let engine: TranscriptionEngineKind?
         let modelVariant: String?
         let inputName: String?
+        let languageCode: String?
 
-        private enum CodingKeys: String, CodingKey { case engine, modelVariant, inputName }
+        private enum CodingKeys: String, CodingKey { case engine, modelVariant, inputName, languageCode }
 
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             engine = container.lenient(TranscriptionEngineKind.self, forKey: .engine)
             modelVariant = container.lenient(String.self, forKey: .modelVariant)
             inputName = container.lenient(String.self, forKey: .inputName)
+            languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(TranscriptSessionRecord.plausibleLanguageCode)
         }
     }
 
@@ -981,7 +1033,7 @@ public struct TranscriptHistoryStore: Sendable {
             .flatMap { record in
                 record.segments
                     .filter(\.isStarred)
-                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title, engine: record.engine, model: record.modelVariant) }
+                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title, engine: record.engine, model: record.modelVariant, languageCode: record.languageCode) }
             }
     }
 
@@ -1154,7 +1206,7 @@ public struct TranscriptHistoryStore: Sendable {
     /// As above, with the offset looked up per timestamp: a summer
     /// conversation shared in winter keeps the clock times it was said at.
     /// With `marksUncertain`, a line the engine was unsure of says so.
-    public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false) -> String {
+    public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false, currentLanguageCode: String = "he") -> String {
         let formatted = record.segments
             .map { segment in
                 let time = formattedClockTime(segment.startTimestamp, utcOffsetSeconds: offset(segment.startTimestamp))
@@ -1182,8 +1234,9 @@ public struct TranscriptHistoryStore: Sendable {
         let heading = namedHeading(title: record.title, date: date) ?? tr("שיחה מתאריך %1", "Conversation from %1", args: ["\(date)"])
         guard !formatted.isEmpty else { return heading }
         let transcript = formatted.joined(separator: "\n")
+        let language = record.languageCode(orCurrent: currentLanguageCode)
         let numbered = record.segments.count < numbersBlockMinimumLines ? [] : zip(record.segments, formatted)
-            .filter { NumberEmphasis.hasListableNumber($0.0.text, languageCode: "he") }
+            .filter { NumberEmphasis.hasListableNumber($0.0.text, languageCode: language) }
             .prefix(numbersBlockLimit)
             .map(\.1)
         guard !numbered.isEmpty else { return "\(heading)\n\n\(transcript)" }
@@ -1196,13 +1249,13 @@ public struct TranscriptHistoryStore: Sendable {
     /// a heading, then each conversation exactly as its own share text,
     /// oldest first, with a rule between neighbours and none after the
     /// last. `nil` when there is nothing to share.
-    public static func exportAllText(_ records: [TranscriptSessionRecord], utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool) -> String? {
+    public static func exportAllText(_ records: [TranscriptSessionRecord], utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool, currentLanguageCode: String = "he") -> String? {
         guard !records.isEmpty else { return nil }
         let oldestFirst = records.enumerated()
             .sorted { ($0.element.startedAt, $0.offset) < ($1.element.startedAt, $1.offset) }
             .map(\.element)
         let body = oldestFirst
-            .map { exportText($0, utcOffsetAt: offset, marksUncertain: marksUncertain) }
+            .map { exportText($0, utcOffsetAt: offset, marksUncertain: marksUncertain, currentLanguageCode: currentLanguageCode) }
             .joined(separator: "\n\n──────────\n\n")
         return "\(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))\n\n\(body)"
     }
@@ -1219,6 +1272,7 @@ public struct TranscriptHistoryStore: Sendable {
         load: (UUID) -> TranscriptSessionRecord?,
         utcOffsetAt offset: (TimeInterval) -> Int,
         marksUncertain: Bool,
+        currentLanguageCode: String = "he",
         write: (String) throws -> Void
     ) rethrows -> Bool {
         let oldestFirst = summaries.enumerated()
@@ -1228,7 +1282,7 @@ public struct TranscriptHistoryStore: Sendable {
         for id in oldestFirst {
             guard let record = load(id) else { continue }
             try write(wroteAny ? "\n\n──────────\n\n" : "\(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))\n\n")
-            try write(exportText(record, utcOffsetAt: offset, marksUncertain: marksUncertain))
+            try write(exportText(record, utcOffsetAt: offset, marksUncertain: marksUncertain, currentLanguageCode: currentLanguageCode))
             wroteAny = true
         }
         return wroteAny
@@ -1237,13 +1291,13 @@ public struct TranscriptHistoryStore: Sendable {
     /// The file of every saved conversation at `url`, written one
     /// conversation at a time (see the static `writeExportAll`). Returns
     /// false, leaving no file, when there is nothing to share.
-    public func writeExportAll(to url: URL, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool) throws -> Bool {
+    public func writeExportAll(to url: URL, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool, currentLanguageCode: String = "he") throws -> Bool {
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
         let wrote: Bool
         do {
             let handle = try FileHandle(forWritingTo: url)
             do {
-                wrote = try Self.writeExportAll(listSummaries(), load: { load(id: $0) }, utcOffsetAt: offset, marksUncertain: marksUncertain) {
+                wrote = try Self.writeExportAll(listSummaries(), load: { load(id: $0) }, utcOffsetAt: offset, marksUncertain: marksUncertain, currentLanguageCode: currentLanguageCode) {
                     try handle.write(contentsOf: Data($0.utf8))
                 }
             } catch {

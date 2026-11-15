@@ -64,7 +64,7 @@ struct HistoryDetailView: View {
                         segment: segment,
                         isUncertain: viewModel.display.markUncertainLines
                             && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant),
-                        languageCode: viewModel.settings.languageCode
+                        languageCode: record.languageCode(orCurrent: viewModel.settings.languageCode)
                     )
                 }
                 .accessibilityHint(tr("מעבר לשורה בשיחה", "Jump to this line in the conversation"))
@@ -107,7 +107,7 @@ struct HistoryDetailView: View {
                             fontSize: viewModel.display.fontSize,
                             emphasizeNumbers: viewModel.display.emphasizeNumbers,
                             isMatch: isMatch,
-                            languageCode: viewModel.settings.languageCode
+                            languageCode: record.languageCode(orCurrent: viewModel.settings.languageCode)
                         )
                         .listRowBackground(isMatch || segment.id == arrivedLineID ? Color.yellow.opacity(0.3) : nil)
                         .accessibilityFocused($focusedLineID, equals: segment.id)
@@ -224,7 +224,8 @@ struct HistoryDetailView: View {
                     item: TranscriptHistoryStore.exportText(
                         record,
                         utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
-                        marksUncertain: viewModel.display.markUncertainLines
+                        marksUncertain: viewModel.display.markUncertainLines,
+                        currentLanguageCode: viewModel.settings.languageCode
                     ),
                     subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
                     message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
@@ -266,7 +267,7 @@ struct HistoryDetailView: View {
         .onDisappear { viewModel.historyClosed(sessionID) }
         .toolbar { toolbarContent }
         .sheet(item: $fixingLine) { line in
-            FixWordSheet(text: line.text, languageCode: viewModel.settings.languageCode, notSaved: tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.")) { fix, always in
+            FixWordSheet(text: line.text, languageCode: record?.languageCode(orCurrent: viewModel.settings.languageCode) ?? viewModel.settings.languageCode, notSaved: tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.")) { fix, always in
                 let changed = viewModel.applyWordFix(fix, always: always, lineID: line.id, text: line.text, sessionID: sessionID)
                 onHistoryChanged()
                 Task { await refresh() }
@@ -383,7 +384,7 @@ struct HistoryDetailView: View {
                 matches = TranscriptHistoryStore.matchingSegmentIDs(in: loaded, query: query)
             }
             timeMarks = CaptionLayout.timeMarkedLineIDs(in: loaded.segments)
-            numberLineIDs = loaded.segments.filter { NumberEmphasis.hasListableNumber($0.text, languageCode: languageCode) }.map(\.id)
+            numberLineIDs = loaded.segments.filter { NumberEmphasis.hasListableNumber($0.text, languageCode: loaded.languageCode(orCurrent: languageCode)) }.map(\.id)
         }
     }
 

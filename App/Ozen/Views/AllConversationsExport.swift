@@ -6,6 +6,7 @@ import OzenKit
 struct AllConversationsExport: Transferable, Sendable {
     let store: TranscriptHistoryStore
     let marksUncertain: Bool
+    var currentLanguageCode = "he"
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .plainText) { export in
@@ -24,7 +25,8 @@ struct AllConversationsExport: Transferable, Sendable {
         let wrote = try store.writeExportAll(
             to: url,
             utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
-            marksUncertain: marksUncertain
+            marksUncertain: marksUncertain,
+            currentLanguageCode: currentLanguageCode
         )
         guard wrote else {
             try? FileManager.default.removeItem(at: folder)

@@ -380,7 +380,7 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingDeletionID = null },
             title = { Text(tr("למחוק את השיחה הזו?", "Delete this conversation?")) },
-            text = { DialogText(session.title ?: CaptionLayout.directed(session.preview, languageCode)) },
+            text = { DialogText(session.title ?: CaptionLayout.directed(session.preview, session.languageCode(languageCode))) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -597,6 +597,8 @@ private class OpenConversation(
     val stats: ConversationStats?,
     /** Who gets which colour, the same for the lines and the summary's bars. */
     val slots: SpeakerColorSlots = SpeakerColorSlots(emptyList()),
+    /** The language the conversation is shown in: its own, or the setting's when it has none. */
+    val languageCode: String = "he",
 ) {
     /** The name, the summary and the numbers come first in the list, before the lines a jump is aimed at. */
     val headerItems: Int get() = (if (record?.title != null) 1 else 0) + (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0) + 1
@@ -612,10 +614,11 @@ private fun opened(
     record = record,
     lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode, slots = slots) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
-    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, languageCode, usesDecimalComma(languageCode)) },
+    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, languageCode, usesDecimalComma(it.languageCode(languageCode))) },
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
     stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
     slots = slots,
+    languageCode = record?.languageCode(languageCode) ?: languageCode,
 )
 
 /**
@@ -739,7 +742,7 @@ internal fun ConversationScreen(
     fixingLine?.let { line ->
         FixWordDialog(
             line.text,
-            languageCode = languageCode,
+            languageCode = line.languageCode,
             error = tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.").takeIf { fixRejected },
             onSave = { heard, written, everyTime ->
                 if (!fixSaving) {
@@ -822,7 +825,7 @@ internal fun ConversationScreen(
                             shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats, shown.slots) } }
                             if (numbers != null) {
                                 item(key = "numbers") {
-                                    NumbersSection(numbers, languageCode, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
+                                    NumbersSection(numbers, shown.languageCode, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
                                         jumpTo(shown, said.id)
                                     }
                                 }
@@ -1054,7 +1057,7 @@ private fun NumbersSection(numbers: NumbersMentioned, languageCode: String, isUn
                     // The row's state says it once; the mark's own label would say it twice.
                     if (unsure) Box(Modifier.clearAndSetSemantics {}) { UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        captionText(CaptionLayout.directed(said.text, languageCode), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current, languageCode = LocalSpokenLanguage.current),
+                        captionText(CaptionLayout.directed(said.text, languageCode), emphasizeNumbers = true, numberColor = null, decimalComma = usesDecimalComma(languageCode), languageCode = languageCode),
                         style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     )
                 }
@@ -1115,7 +1118,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
                 Row {
                     if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = LocalDecimalComma.current, languageCode = LocalSpokenLanguage.current), style = MaterialTheme.typography.bodyLarge)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = usesDecimalComma(line.languageCode), languageCode = line.languageCode), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -1201,12 +1204,12 @@ internal suspend fun shareOrSayFull(context: Context, sheet: () -> Intent?): Boo
 }
 
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
-    textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
+    textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode), languageCode))
 
 /** Writes every saved conversation, oldest first, loading each one only when its turn comes. False when none could be written. */
 internal fun writeAllConversations(conversations: SavedConversations, marksUncertain: Boolean, languageCode: String, out: Appendable): Boolean {
     val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull { conversations.load(it.id) }
-    return TranscriptHistoryStore.exportAll(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode), out)
+    return TranscriptHistoryStore.exportAll(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode), out, languageCode)
 }
 
 /**

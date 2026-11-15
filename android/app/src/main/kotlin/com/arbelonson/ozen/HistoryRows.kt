@@ -42,7 +42,7 @@ data class ConversationRow(
             speakers = summary.speakerNames.takeIf { it.isNotEmpty() }?.let { names ->
                 names.take(3).joinToString(", ") + if (names.size > 3) tr(" ועוד", " and more") else ""
             },
-            preview = CaptionLayout.directed(summary.preview, languageCode),
+            preview = CaptionLayout.directed(summary.preview, summary.languageCode(languageCode)),
             lines = ConversationStats.linesText(summary.segmentCount),
             starred = summary.starredCount,
             starredSpoken = summary.starredCount.takeIf { it > 0 }?.let {
@@ -68,6 +68,8 @@ data class SavedLine(
     val cluster: Int? = null,
     /** Its speaker's colour among the conversation's people (see `SpeakerColorSlots`); null keeps the name's own. */
     val slot: Int? = null,
+    /** The language the line is shown in, which its numbers are picked out by: its conversation's, not the setting's. */
+    val languageCode: String = "he",
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
@@ -78,6 +80,7 @@ data class SavedLine(
             languageCode: String,
             slots: SpeakerColorSlots = slotsOf(record.segments),
         ): List<SavedLine> {
+            val language = record.languageCode(languageCode)
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
@@ -87,15 +90,16 @@ data class SavedLine(
                     id = segment.id,
                     time = time,
                     speaker = segment.speakerName.takeIf { CaptionLayout.showsSpeakerLabel(segment, previous) },
-                    text = CaptionLayout.displayText(segment.text, languageCode),
+                    text = CaptionLayout.displayText(segment.text, language),
                     spoken = SavedLineSpeech.label(segment, time, uncertain = unsure),
                     starred = segment.isStarred,
                     unsure = unsure,
                     copied = CaptionLayout.copiedText(segment.text),
                     phones = PhoneNumbers.matches(segment.text),
-                    rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
+                    rightToLeft = CaptionLayout.readsRightToLeft(segment.text, language),
                     cluster = segment.speakerClusterID,
                     slot = slots.slot(segment.speakerClusterID, segment.speakerName),
+                    languageCode = language,
                 )
             }
         }
@@ -116,6 +120,7 @@ data class SavedLine(
             slots: SpeakerColorSlots? = null,
         ): SavedLine {
             val segment = line.segment
+            val language = line.languageCode(languageCode)
             val time = clockTime(segment.startTimestamp, zone)
             val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
             val unsure = markUncertain && line.isUncertain
@@ -123,14 +128,15 @@ data class SavedLine(
                 id = segment.id,
                 time = time,
                 speaker = speaker,
-                text = CaptionLayout.displayText(segment.text, languageCode),
+                text = CaptionLayout.displayText(segment.text, language),
                 spoken = SavedLineSpeech.label(segment.copy(speakerName = speaker, isStarred = false), time, uncertain = unsure),
                 starred = true,
                 unsure = unsure,
                 copied = CaptionLayout.copiedText(segment.text),
-                rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
+                rightToLeft = CaptionLayout.readsRightToLeft(segment.text, language),
                 cluster = segment.speakerClusterID,
                 slot = slots?.slot(segment.speakerClusterID, segment.speakerName),
+                languageCode = language,
             )
         }
     }
@@ -243,7 +249,7 @@ class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
         const val LISTED = 12
 
         fun of(record: TranscriptSessionRecord, languageCode: String, decimalComma: Boolean = false): NumbersMentioned {
-            val numbered = record.segments.filter { NumberEmphasis.hasListableNumber(it.text, languageCode, decimalComma) }
+            val numbered = record.segments.filter { NumberEmphasis.hasListableNumber(it.text, record.languageCode(languageCode), decimalComma) }
             val more = numbered.size - LISTED
             return NumbersMentioned(
                 listed = numbered.take(LISTED),
