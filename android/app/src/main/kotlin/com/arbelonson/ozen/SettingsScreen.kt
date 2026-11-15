@@ -143,6 +143,9 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -618,8 +621,9 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     }
 
     SectionHeader(tr("תמלול בענן", "Cloud transcription"))
-    GroupLabel(tr("שירות", "Service"))
-    SettingsGroup(modifier = Modifier.selectableGroup()) {
+    val serviceLabel = tr("שירות", "Service")
+    GroupLabel(serviceLabel)
+    SettingsGroup(modifier = Modifier.selectableGroup().semantics { contentDescription = serviceLabel }) {
         for (provider in CloudProvider.entries) {
             item { ChoiceRow(provider.displayName, null, selected = provider == service) { engineSettings.chooseCloudService(provider) } }
         }
@@ -705,8 +709,9 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
         )
     }
     if (service == CloudProvider.OpenRouter) {
-        GroupLabel(tr("מודל", "Model"))
-        SettingsGroup(modifier = Modifier.selectableGroup()) {
+        val modelLabel = tr("מודל", "Model")
+        GroupLabel(modelLabel)
+        SettingsGroup(modifier = Modifier.selectableGroup().semantics { contentDescription = modelLabel }) {
             for (model in CloudSpeech.models) {
                 item { ChoiceRow(EngineSettings.cloudModelName(model), null, selected = model == current.chosenCloudModel) { engineSettings.chooseCloudModel(model) } }
             }
@@ -1166,7 +1171,7 @@ private fun AlertsSection(
                         Text(
                             tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
                         )
                         TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
                     } else {
@@ -1267,7 +1272,7 @@ private fun LockScreenBlockedNotice() {
         Text(
             tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."),
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
         )
         TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
     }
@@ -1281,6 +1286,8 @@ private fun LockScreenBlockedNotice() {
 @Composable
 private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
     val shown = hour.toString().padStart(2, '0') + ":00"
+    val earlier = tr("שעה מוקדמת יותר", "One hour earlier")
+    val later = tr("שעה מאוחרת יותר", "One hour later")
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1290,6 +1297,10 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
                 stateDescription = shown
                 progressBarRangeInfo = ProgressBarRangeInfo(hour.toFloat(), 0f..23f, steps = 22)
                 setProgress { target -> onChange(target.roundToInt().coerceIn(0, 23)); true }
+                customActions = listOf(
+                    CustomAccessibilityAction(earlier) { if (hour > 0) { onChange(hour - 1); true } else false },
+                    CustomAccessibilityAction(later) { if (hour < 23) { onChange(hour + 1); true } else false },
+                )
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1297,8 +1308,10 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(shown, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics { })
         }
-        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0) { Text("−", fontSize = 24.sp) }
-        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23) { Text("+", fontSize = 24.sp) }
+        // Reached by touch only; a screen reader uses the row's own adjust and actions, so the
+        // merged row has one control and no stray click on the first button.
+        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0, modifier = Modifier.clearAndSetSemantics { }) { Text("−", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23, modifier = Modifier.clearAndSetSemantics { }) { Text("+", fontSize = 24.sp) }
     }
 }
 
@@ -1383,6 +1396,7 @@ private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit
                 DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                     for (language in AppLanguage.entries) {
                         DropdownMenuItem(
+                            modifier = Modifier.semantics { selected = language == chosen },
                             text = { Text(languageName(language)) },
                             onClick = {
                                 open = false
@@ -1419,6 +1433,7 @@ private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> 
                 DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                     for (language in UILanguage.entries) {
                         DropdownMenuItem(
+                            modifier = Modifier.semantics { selected = language == chosen },
                             text = { Text(language.spokenName) },
                             onClick = {
                                 open = false
@@ -1593,7 +1608,7 @@ internal fun Footnote(text: String) {
 /** A small grey label over a group that has no header of its own, for example "Service". */
 @Composable
 private fun GroupLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, top = OzenSpacing.Unit))
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, top = OzenSpacing.Unit).semantics { heading() })
 }
 
 /**
@@ -1697,7 +1712,7 @@ private fun KeyCheckLine(check: CloudKeyCheck) {
 
 @Composable
 internal fun Warning(text: String, modifier: Modifier = Modifier) {
-    Text(text, color = MaterialTheme.colorScheme.error, modifier = modifier)
+    Text(text, color = MaterialTheme.colorScheme.error, modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 @Composable

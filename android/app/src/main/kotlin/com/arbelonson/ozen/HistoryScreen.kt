@@ -93,6 +93,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -509,6 +510,7 @@ private fun SavingSection(
                     DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
                         HistoryRetention.entries.forEach { choice ->
                             DropdownMenuItem(
+                                modifier = Modifier.semantics { selected = choice == retention },
                                 text = { Text(HistoryTexts.name(choice)) },
                                 onClick = {
                                     choosing = false
