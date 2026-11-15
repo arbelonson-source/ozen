@@ -393,9 +393,9 @@ private fun LinesList(
         if (lead != null) item { lead() }
         items(lines) { line ->
             // One stop for a screen reader, the time with its words, as on the iPhone.
-            val spokenTime = ConversationStats.spokenDuration(line.startSeconds) + "."
-            Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp).semantics { contentDescription = spokenTime })
+            val spoken = TranscriptFormats.spokenLine(line)
+            Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = spoken }.testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
                 Text(
                     captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null, languageCode = languageCode),
                     style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),

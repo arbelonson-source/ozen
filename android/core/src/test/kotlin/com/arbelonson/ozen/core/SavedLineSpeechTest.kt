@@ -74,4 +74,10 @@ class SpokenDurationTest {
         val time = ConversationStats.spokenDuration(segment.startTimestamp - 1_000)
         assertEquals("1 minute, 2 seconds. hello", SavedLineSpeech.label(segment, time, uncertain = false))
     }
+
+    @Test
+    fun `a transcribed line is read as one label, its position in words then its text`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("1 minute, 2 seconds. Good morning", TranscriptFormats.spokenLine(TranscribedLine(62.4, 65.0, "Good morning")))
+        assertEquals("0 seconds. First", TranscriptFormats.spokenLine(TranscribedLine(0.0, 1.0, "First")))
+    }
 }
