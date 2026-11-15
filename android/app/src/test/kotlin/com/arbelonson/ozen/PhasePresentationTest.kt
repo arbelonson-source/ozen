@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.TranslationTable
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudSpeechError
+import com.arbelonson.ozen.core.tr
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -47,12 +48,26 @@ class PhasePresentationTest {
         modelGettingReady: Boolean = false,
         modelJustReady: Boolean = false,
         coverDetail: String? = null,
+        spokenLanguage: UILanguage = UILanguage.Hebrew,
     ) = PhasePresentation(
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
         pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
         builtInOffered = builtInOffered, modelGettingReady = modelGettingReady, modelJustReady = modelJustReady,
-        coverDetail = coverDetail,
+        coverDetail = coverDetail, spokenLanguage = spokenLanguage,
     )
+
+    @Test
+    fun `a spoken language the engine lacks is named as chosen, not always Hebrew`() {
+        val phase = failure(unavailable(EngineUnavailability.Kind.LanguageNotSupportedOnDevice))
+        for (language in listOf(UILanguage.French, UILanguage.English, UILanguage.ChineseSimplified)) {
+            val title = present(phase, TranscriptionEngineKind.AppleSpeech, spokenLanguage = language).title
+            val engineName = tr("זיהוי הדיבור המובנה בטלפון", "The phone’s built-in recognition")
+            assertEquals(
+                tr("%1 לא זמין בשפה %2 במכשיר הזה", "%1 isn’t available in %2 on this device", listOf(engineName, language.spokenName)),
+                title,
+            )
+        }
+    }
 
     @Test
     fun `a call only promises captions back when it interrupted them, not ones she paused or stopped`() {

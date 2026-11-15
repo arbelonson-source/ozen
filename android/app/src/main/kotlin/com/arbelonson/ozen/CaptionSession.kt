@@ -934,6 +934,8 @@ class CaptionSession(
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
                 soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
+                engine = pipeline.activeEngineKind,
+                spokenLanguage = chosenSettings().spokenLanguage,
             )
         }
 
@@ -1052,6 +1054,7 @@ class CaptionSession(
             builtInOffered = builtInWhileWaitingOffer == BuiltInWhileWaiting.Offer.BuiltInOrCellularDownload,
             modelGettingReady = pipeline.waitingModelGettingReady,
             modelJustReady = SystemClock.elapsedRealtime() < modelReadyShownUntil,
+            spokenLanguage = transcribing.spokenLanguage,
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
@@ -1076,7 +1079,7 @@ class CaptionSession(
     }
 
     private fun stoppedText(phase: PipelinePhase): String {
-        val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry)
+        val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry, spokenLanguage = chosenSettings().spokenLanguage)
         return tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
     }
 

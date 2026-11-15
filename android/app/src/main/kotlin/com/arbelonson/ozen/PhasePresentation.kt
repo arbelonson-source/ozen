@@ -36,6 +36,7 @@ import com.arbelonson.ozen.core.CloudSpeechError
 import com.arbelonson.ozen.core.cloudKeyWasRejected
 import com.arbelonson.ozen.core.cloudTimedOut
 import com.arbelonson.ozen.core.DamagedModelNotice
+import com.arbelonson.ozen.core.CaptionProblemText
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
@@ -195,6 +196,7 @@ class PhasePresentation private constructor(
             modelGettingReady: Boolean = false,
             modelJustReady: Boolean = false,
             coverDetail: String? = null,
+            spokenLanguage: UILanguage = UILanguage.Hebrew,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -287,7 +289,7 @@ class PhasePresentation private constructor(
                         )
                     }
 
-                is PipelinePhase.Failed -> failed(phase.reason, engine, scheduledRetry, offerBackup, builtInOffered)
+                is PipelinePhase.Failed -> failed(phase.reason, engine, scheduledRetry, offerBackup, builtInOffered, spokenLanguage)
             }
         }
 
@@ -393,8 +395,9 @@ class PhasePresentation private constructor(
             scheduledRetry: ScheduledRetry?,
             offerBackup: Boolean,
             builtInOffered: Boolean,
+            spokenLanguage: UILanguage,
         ): PhasePresentation {
-            var result = presentingFailure(failure, engine)
+            var result = presentingFailure(failure, engine, spokenLanguage)
             if (scheduledRetry != null) {
                 // The pipeline is already on it. Say so, calmly, and keep the
                 // tap as "try right now" rather than the only way out.
@@ -534,7 +537,7 @@ class PhasePresentation private constructor(
             }
         }
 
-        private fun presentingFailure(failure: PipelineFailure, engine: TranscriptionEngineKind?): PhasePresentation =
+        private fun presentingFailure(failure: PipelineFailure, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage): PhasePresentation =
             when (failure.kind) {
                 PipelineFailure.Kind.MicrophonePermissionDenied -> PhasePresentation(
                     title = tr("אין גישה למיקרופון", "No microphone access"),
@@ -545,8 +548,7 @@ class PhasePresentation private constructor(
                 )
 
                 PipelineFailure.Kind.AudioSessionFailed -> PhasePresentation(
-                    title = failure.inputName?.let { tr("המיקרופון ⁨%1⁩ לא מגיב", "%1 isn’t responding", listOf(it)) }
-                        ?: tr("המיקרופון לא מגיב", "The microphone isn’t responding"),
+                    title = CaptionProblemText.microphoneNotResponding(failure.inputName),
                     detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Problem,
@@ -562,23 +564,17 @@ class PhasePresentation private constructor(
                 )
 
                 PipelineFailure.Kind.TranscriptionStopped -> PhasePresentation(
-                    title = tr("התמלול נעצר", "Transcription stopped"),
+                    title = CaptionProblemText.transcriptionStopped(),
                     detail = tr("הקישו כדי להמשיך", "Tap to continue"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Attention,
                     action = Action.Retry,
                 )
 
-                PipelineFailure.Kind.EngineUnavailable -> engineFailure(failure.engineUnavailability, engine)
+                PipelineFailure.Kind.EngineUnavailable -> engineFailure(failure.engineUnavailability, engine, spokenLanguage)
             }
 
-        private fun engineFailure(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?): PhasePresentation {
-            val engineName = when (engine) {
-                TranscriptionEngineKind.AppleSpeech -> tr("זיהוי הדיבור המובנה בטלפון", "The phone’s built-in recognition")
-                TranscriptionEngineKind.Cloud -> tr("התמלול בענן", "Cloud transcription")
-                TranscriptionEngineKind.HomeServer -> tr("המחשב בבית", "The home computer")
-                TranscriptionEngineKind.WhisperKit, null -> tr("זיהוי הדיבור בטלפון", "The phone’s speech recognition")
-            }
+        private fun engineFailure(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage): PhasePresentation {
             return when (engineFailure?.kind) {
                 EngineUnavailability.Kind.PermissionDenied -> PhasePresentation(
                     title = tr("אין אישור לזיהוי דיבור", "No speech recognition permission"),
@@ -589,7 +585,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.LanguageNotSupportedOnDevice -> PhasePresentation(
-                    title = tr("%1 לא זמין בעברית במכשיר הזה", "%1 isn’t available in Hebrew on this device", listOf(engineName)),
+                    title = CaptionProblemText.languageNotAvailable(engine, spokenLanguage),
                     detail = tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
                     systemImage = "globe",
                     tint = PhaseTint.Problem,
@@ -597,7 +593,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.ModelDownloadFailed -> PhasePresentation(
-                    title = tr("הורדת המודל נכשלה", "Downloading the model failed"),
+                    title = CaptionProblemText.modelDownloadFailed(),
                     detail = tr("בדקו את החיבור לאינטרנט והקישו כדי לנסות שוב", "Check the internet connection and tap to try again"),
                     systemImage = "wifi.exclamationmark",
                     tint = PhaseTint.Problem,
@@ -605,7 +601,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.ModelNotOnDevice -> PhasePresentation(
-                    title = tr("מודל הדיבור עוד לא הורד לטלפון", "The language model isn’t on this phone yet"),
+                    title = CaptionProblemText.modelNotOnDevice(),
                     detail = tr("בקשו עזרה ממי שהגדיר את הטלפון", "Ask whoever set up the phone for help"),
                     systemImage = "arrow.down.circle",
                     tint = PhaseTint.Problem,
@@ -637,7 +633,7 @@ class PhasePresentation private constructor(
                 }
 
                 EngineUnavailability.Kind.ModelLoadFailed -> PhasePresentation(
-                    title = tr("טעינת המודל נכשלה", "Loading the model failed"),
+                    title = CaptionProblemText.modelLoadFailed(),
                     detail = tr("הקישו כדי לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
                     systemImage = "cpu",
                     tint = PhaseTint.Problem,
@@ -678,7 +674,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.NoInternet -> if (engineFailure.cloudTimedOut) {
                     PhasePresentation(
-                        title = tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(engineName)),
+                        title = CaptionProblemText.temporarilyUnavailable(engine),
                         detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                         systemImage = "clock",
                         tint = PhaseTint.Attention,
@@ -730,7 +726,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.TemporarilyUnavailable -> PhasePresentation(
-                    title = tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(engineName)),
+                    title = CaptionProblemText.temporarilyUnavailable(engine),
                     detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "clock",
                     tint = PhaseTint.Attention,
@@ -738,7 +734,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.Other, null -> PhasePresentation(
-                    title = tr("%1 לא זמין", "%1 isn’t available", listOf(engineName)),
+                    title = CaptionProblemText.unavailable(engine),
                     detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Problem,
