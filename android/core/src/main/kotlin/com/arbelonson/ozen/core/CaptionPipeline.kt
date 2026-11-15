@@ -2133,10 +2133,15 @@ class CaptionPipeline(
             return
         }
         val off = fallbackSwitchedOff ?: return
-        fallbackSwitchedOff = null
-        if (off.first != runID || failure != off.second || isListeningForSoundsOnly) return
-        listenForSoundsMeanwhile(failure)
-        onPhaseChange?.invoke(phase)
+        if (off.first != runID || failure == null || failure != off.second) {
+            fallbackSwitchedOff = null
+            return
+        }
+        if (!isListeningForSoundsOnly) listenForSoundsMeanwhile(failure)
+        if (isListeningForSoundsOnly) {
+            fallbackSwitchedOff = null
+            onPhaseChange?.invoke(phase)
+        }
     }
 
     // endregion

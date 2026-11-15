@@ -4752,6 +4752,19 @@ struct CaptionPipelineStorageTests {
         #expect(pipeline.phase.failure?.engineUnavailability?.kind == .notEnoughStorage)
     }
 
+    @Test("a microphone that fails to open when alerts come back is tried again by the next switch on")
+    func fallbackReopenRetriesAfterAFailedOpen() async {
+        let (pipeline, _, audio) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        audio.startError = TestError()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(!pipeline.isListeningForSoundsOnly)
+        audio.startError = nil
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
     @Test("alerts switched off in the fallback, then Stop, do not reopen the microphone when they come back")
     func fallbackSwitchedOffThenStopStaysClosed() async {
         let (pipeline, _, _) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())

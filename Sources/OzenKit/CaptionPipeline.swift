@@ -1931,9 +1931,13 @@ public final class CaptionPipeline {
         } else if soundsOnlyChosen, !isListeningForSoundsOnly, soundsOnlyRetryTask == nil, !soundsOnlyOpening.contains(runID) {
             Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
         } else if let off = fallbackSwitchedOff {
-            fallbackSwitchedOff = nil
-            if off.run == runID, case .failed(let failure) = phase, failure == off.failure, !isListeningForSoundsOnly {
-                listenForSoundsMeanwhile(after: failure)
+            guard off.run == runID, case .failed(let failure) = phase, failure == off.failure else {
+                fallbackSwitchedOff = nil
+                return
+            }
+            if !isListeningForSoundsOnly { listenForSoundsMeanwhile(after: failure) }
+            if isListeningForSoundsOnly {
+                fallbackSwitchedOff = nil
                 onPhaseChange?(phase)
             }
         }

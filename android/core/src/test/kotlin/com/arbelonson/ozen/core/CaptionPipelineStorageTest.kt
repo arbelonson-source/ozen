@@ -82,6 +82,19 @@ class CaptionPipelineStorageTest {
     }
 
     @Test
+    fun `a microphone that fails to open when alerts come back is tried again by the next switch on`() = runTest {
+        val (pipeline, _, audio) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        audio.startError = RuntimeException("busy")
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertFalse(pipeline.isListeningForSoundsOnly)
+        audio.startError = null
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
     fun `alerts switched off in the fallback, then Stop, do not reopen the microphone when they come back`() = runTest {
         val (pipeline, _, _) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = FakeSoundDetector())
         pipeline.start(AppSettings.default)
