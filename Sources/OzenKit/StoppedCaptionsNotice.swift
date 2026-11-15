@@ -322,6 +322,10 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                 return HomeServer.plainAddressRefusedText()
             case (_, .homeServerUnreachable?) where HomeServer.missingAddress(failure.engineUnavailability):
                 return tr("הכתובת או הקוד חסרים. פתחו את אוזן כדי להמשיך.", "The address or code is missing. Open Ozen to continue.")
+            case (_, .homeServerUnreachable?) where HomeServer.languageNotCovered(failure.engineUnavailability):
+                return HomeServer.languageNotCoveredNoticeText()
+            case (_, .homeServerUnreachable?) where HomeServer.answeredWrongly(failure.engineUnavailability):
+                return HomeServer.answeredWronglyText() + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             case (_, .homeServerUnreachable?):
                 return tr(
                     "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",

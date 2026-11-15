@@ -3597,13 +3597,17 @@ class CaptionPipeline(
      * captions come back by themselves: on the next change of connection,
      * or when the app is opened again with room. So do captions stopped by
      * no saved home-computer address or by a plain ws:// one the phone
-     * refuses: saving an address in Settings restarts them. The microphone
-     * was off for sounds all that time, and a smoke alarm went unheard.
+     * refuses: saving an address in Settings restarts them. A computer
+     * that cannot caption the language is the same: no timer asks it again,
+     * and only a change of language or engine brings captions back. The
+     * microphone was off for sounds all that time, and a smoke alarm went
+     * unheard.
      */
     private fun comesBackWithoutTimer(failure: PipelineFailure): Boolean {
         if (HomeServer.missingAddress(failure.engineUnavailability) || HomeServer.refusedPlainAddress(failure.engineUnavailability)) return true
         val kind = failure.engineUnavailability?.kind ?: return false
-        return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage
+        return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage ||
+            HomeServer.languageNotCovered(failure.engineUnavailability)
     }
 
     private fun soundAvailabilityReporter(): (Boolean) -> Unit {
@@ -3659,6 +3663,7 @@ class CaptionPipeline(
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
             HomeServer.refusedPlainAddress(failure.engineUnavailability) ||
+            HomeServer.languageNotCovered(failure.engineUnavailability) ||
             HomeServer.missingAddress(failure.engineUnavailability) ||
             settingsInUse?.engine != TranscriptionEngineKind.HomeServer
         ) {

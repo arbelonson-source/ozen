@@ -188,6 +188,36 @@ struct HomeServerPinTests {
         }
     }
 
+    @Test("a computer that answered wrongly has one plain message, never \"check that it is on\"")
+    func answeredWronglyWords() {
+        let wrong = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "server said busy")
+        let down = EngineUnavailability(kind: .homeServerUnreachable, detail: "no answer")
+        #expect(HomeServer.answeredWrongly(wrong))
+        #expect(!HomeServer.answeredWrongly(down) && !HomeServer.answeredWrongly(nil))
+        #expect(!HomeServer.answeredWrongly(EngineUnavailability(kind: .homeServerRejected, detail: wrong.detail)))
+        Localization.$override.withValue(.english) {
+            let text = "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again."
+            #expect(HomeServer.answeredWronglyText() == text)
+            #expect(HomeServer.addressCoverDetail(detail: wrong.detail) == text + " · Tap to pause")
+            #expect(HomeServer.addressCoverDetail(detail: "no answer") == nil)
+        }
+    }
+
+    @Test("a computer that cannot caption the language says so, naming the language, and not that it did not answer")
+    func languageNotCoveredWords() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        #expect(HomeServer.languageNotCovered(why))
+        #expect(!HomeServer.languageNotCovered(EngineUnavailability(kind: .homeServerUnreachable, detail: "no answer")) && !HomeServer.languageNotCovered(nil))
+        #expect(!HomeServer.answeredWrongly(why))
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.languageNotCoveredTitle(language: .spanish) == "The home computer can’t caption \(UILanguage.spanish.spokenName)")
+            #expect(HomeServer.languageCoverDetail(detail: why.detail, language: .spanish) == "The home computer can’t caption \(UILanguage.spanish.spokenName), so the phone carries on by itself · Tap to pause")
+            #expect(HomeServer.languageCoverDetail(detail: "no answer", language: .spanish) == nil)
+            #expect(HomeServer.addressCoverDetail(detail: why.detail) == nil)
+            #expect(HomeServer.languageNotCoveredNoticeText() == "The home computer can’t caption this language. Open Ozen to continue.")
+        }
+    }
+
     @Test("saving the address or the pairing code has words to announce")
     func savedWords() {
         Localization.$override.withValue(.english) {

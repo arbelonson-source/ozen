@@ -266,7 +266,7 @@ class PhasePresentation private constructor(
                     isBusy = true,
                 )
 
-                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network, modelGettingReady, modelJustReady, coverDetail)
+                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network, modelGettingReady, modelJustReady, coverDetail, spokenLanguage)
 
                 PipelinePhase.Paused ->
                     if (pausedForSpeech) {
@@ -302,6 +302,7 @@ class PhasePresentation private constructor(
             modelGettingReady: Boolean,
             modelJustReady: Boolean,
             coverDetail: String?,
+            spokenLanguage: UILanguage,
         ): PhasePresentation {
             fun listening(detail: String, action: Action) = PhasePresentation(
                 title = tr("מאזינה", "Listening"),
@@ -319,6 +320,11 @@ class PhasePresentation private constructor(
                     coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&
                     HomeServer.addressCoverDetail(coverDetail) != null ->
                     listening(HomeServer.addressCoverDetail(coverDetail)!!, Action.Pause)
+
+                coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer &&
+                    coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&
+                    HomeServer.languageCoverDetail(coverDetail, spokenLanguage) != null ->
+                    listening(HomeServer.languageCoverDetail(coverDetail, spokenLanguage)!!, Action.Pause)
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
                     listening(
@@ -438,6 +444,8 @@ class PhasePresentation private constructor(
                     title = result.title,
                     detail = if (scheduledRetry != null) {
                         tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
+                    } else if (HomeServer.answeredWrongly(failure.engineUnavailability) || HomeServer.languageNotCovered(failure.engineUnavailability)) {
+                        tr("הקישו כדי להוסיף גיבוי בטלפון", "Tap to add a backup on the phone")
                     } else {
                         HomeServer.unreachableBackupDetail()
                     },
@@ -699,6 +707,22 @@ class PhasePresentation private constructor(
                         systemImage = "key",
                         tint = PhaseTint.Attention,
                         action = Action.OpenEngineSettings,
+                    )
+                } else if (HomeServer.languageNotCovered(engineFailure)) {
+                    PhasePresentation(
+                        title = HomeServer.languageNotCoveredTitle(spokenLanguage),
+                        detail = tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
+                        systemImage = "globe",
+                        tint = PhaseTint.Attention,
+                        action = Action.OpenEngineSettings,
+                    )
+                } else if (HomeServer.answeredWrongly(engineFailure)) {
+                    PhasePresentation(
+                        title = HomeServer.answeredWronglyText(),
+                        detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                        systemImage = "desktopcomputer.trianglebadge.exclamationmark",
+                        tint = PhaseTint.Attention,
+                        action = Action.Retry,
                     )
                 } else if (HomeServer.refusedPlainAddress(engineFailure)) {
                     PhasePresentation(

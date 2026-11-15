@@ -201,6 +201,22 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `a computer that cannot caption the language is not asked again on a timer, yet sound alerts keep listening`() = runTest {
+        val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE))
+        val phone = FakeEngine(kind = phoneKind)
+        phone.pendingDownload = 819
+        val captions = serverPipeline(server, phone, FakeAudioCapturer(), FakeSoundDetector(), oneQuickRetry())
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase is PipelinePhase.Failed && captions.stats.soundDetectionRunning })
+        delay(300.milliseconds)
+        assertEquals(1, server.prepareCount, "asked again about the same language")
+        assertNull(captions.scheduledRetry)
+        assertTrue(captions.isListeningForSoundsOnly)
+    }
+
+    @Test
     fun `no saved address is not asked again on a timer - only an address saved in Settings can help`() = runTest {
         val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, "no valid server address"))
         val phone = FakeEngine(kind = phoneKind)

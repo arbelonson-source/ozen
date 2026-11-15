@@ -50,6 +50,14 @@ object HomeServer {
      */
     internal const val PAIRING_CHANGED = "certificate did not match"
     const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
+
+    /**
+     * The computer is on and answered, but with an error code or something
+     * the phone does not understand: a detail starting like this says so,
+     * and the rest says what came back.
+     */
+    const val UNSUPPORTED_LANGUAGE = "the computer's model cannot caption this language"
+    const val ANSWERED_WRONGLY_PREFIX = "the computer answered, but not as expected: "
     const val END = """{"type":"end"}"""
 
     /**
@@ -156,14 +164,57 @@ object HomeServer {
         tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
 
     /**
+     * The computer answered, but with an error code or a reply the phone does not understand: it is
+     * on and awake, so checking that it is on would send her the wrong way. A retry may still work
+     * once the computer's Ozen is restarted, so it is retried like a computer that did not answer.
+     */
+    fun answeredWrongly(why: EngineUnavailability?): Boolean =
+        why?.kind == EngineUnavailability.Kind.HomeServerUnreachable && why.detail.startsWith(ANSWERED_WRONGLY_PREFIX)
+
+    /**
+     * The computer's model cannot caption the chosen language: restarting it or scanning its code
+     * again changes nothing, and a retry asks the same question, so only another language, another
+     * engine or a new model on the computer helps.
+     */
+    fun languageNotCovered(why: EngineUnavailability?): Boolean =
+        why?.kind == EngineUnavailability.Kind.HomeServerUnreachable && why.detail == UNSUPPORTED_LANGUAGE
+
+    /** The caption screen's headline for it. */
+    fun languageNotCoveredTitle(language: UILanguage): String =
+        tr("המחשב בבית לא יכול לתמלל בשפה %1", "The home computer can’t caption %1", listOf(language.spokenName))
+
+    /** What the stopped-captions notice says, which does not know the language. */
+    fun languageNotCoveredNoticeText(): String =
+        tr("המחשב בבית לא יכול לתמלל את השפה הזאת.", "The home computer can’t caption this language.") + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+
+    /**
+     * What the caption screen says while the phone carries on by itself because the computer cannot
+     * caption the language; null for any other cause.
+     */
+    fun languageCoverDetail(detail: String?, language: UILanguage): String? {
+        if (detail != UNSUPPORTED_LANGUAGE) return null
+        return tr(
+            "המחשב בבית לא יכול לתמלל בשפה %1, ממשיכים בזיהוי שבטלפון",
+            "The home computer can’t caption %1, so the phone carries on by itself",
+            listOf(language.spokenName),
+        ) + " · " + tr("הקישו כדי להשהות", "Tap to pause")
+    }
+
+    /** What the caption screen, the cover line and the notice say about a computer that answered wrongly. */
+    fun answeredWronglyText(): String =
+        tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+
+    /**
      * What the caption screen says while the phone carries on by itself because the address never
-     * allowed asking the computer; null for a computer that simply did not answer.
+     * allowed asking the computer, or the computer answered wrongly; null for a computer that
+     * simply did not answer.
      */
     fun addressCoverDetail(detail: String?): String? {
         val pause = tr("הקישו כדי להשהות", "Tap to pause")
-        return when (detail) {
-            NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
-            NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
+        return when {
+            detail == NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
+            detail == NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
+            detail != null && detail.startsWith(ANSWERED_WRONGLY_PREFIX) -> answeredWronglyText() + " · " + pause
             else -> null
         }
     }

@@ -419,6 +419,39 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a computer that answered wrongly is named on the screen and in the cover line, and still retried`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy")
+        val shown = present(failure(why), TranscriptionEngineKind.HomeServer)
+        assertEquals(HomeServer.answeredWronglyText(), shown.title)
+        assertEquals(Action.Retry, shown.action)
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer,
+            coverReason = EngineUnavailability.Kind.HomeServerUnreachable, coverDetail = why.detail,
+        )
+        assertEquals(HomeServer.addressCoverDetail(why.detail), covering.detail)
+        val backup = present(failure(why), TranscriptionEngineKind.HomeServer, offerBackup = true)
+        assertEquals(Action.OpenBackupSettings, backup.action)
+        assertFalse(backup.detail?.contains("check") == true, "${backup.detail}")
+    }
+
+    @Test
+    fun `a computer that cannot caption the language names it on the screen and in the cover line, and sends her to the engine settings`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE)
+        val shown = present(failure(why), TranscriptionEngineKind.HomeServer, spokenLanguage = UILanguage.Spanish)
+        assertEquals(HomeServer.languageNotCoveredTitle(UILanguage.Spanish), shown.title)
+        assertEquals(Action.OpenEngineSettings, shown.action)
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer,
+            coverReason = EngineUnavailability.Kind.HomeServerUnreachable, coverDetail = why.detail, spokenLanguage = UILanguage.Spanish,
+        )
+        assertEquals(HomeServer.languageCoverDetail(why.detail, UILanguage.Spanish), covering.detail)
+        val backup = present(failure(why), TranscriptionEngineKind.HomeServer, offerBackup = true, spokenLanguage = UILanguage.Spanish)
+        assertEquals(Action.OpenBackupSettings, backup.action)
+    }
+
+    @Test
     fun `no saved address keeps its advice and Settings button with a backup offered or a retry scheduled`() {
         val phase = failure(EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no valid server address"))
         val bare = present(phase, TranscriptionEngineKind.HomeServer)

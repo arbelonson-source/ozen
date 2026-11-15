@@ -34,6 +34,24 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .homeServerUnreachable)) == .glitch)
     }
 
+    @Test("a computer that answered wrongly is retried like one that did not answer")
+    func answeredWronglyStillRetried() {
+        let wrong = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "server said busy")
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: wrong) == .glitch)
+    }
+
+    @Test("a computer that cannot caption the language is not retried on a timer: the same question gets the same answer")
+    func unsupportedLanguageNotRetried() {
+        let why = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: why) == .never)
+    }
+
     @Test("no saved address is not retried on a timer, since only a new address helps")
     func missingAddressNotRetried() {
         let none = PipelineFailure(

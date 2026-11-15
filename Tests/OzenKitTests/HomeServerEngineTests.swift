@@ -400,6 +400,45 @@ struct HomeServerEngineTests {
         }
     }
 
+    @Test("a computer that answered with an error code or something else is told apart from one that did not answer, and is still retried")
+    func answeredWronglyIsNamed() async {
+        for reply in [
+            #"{"type":"error","code":"bad_request","detail":"hello expected"}"#,
+            #"{"type":"error","code":"busy","detail":""}"#,
+            #"{"type":"report_saved","name":"report.txt"}"#,
+            "not json",
+        ] {
+            let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "he")
+            #expect(HomeServer.answeredWrongly(availability.unavailability), "\(reply)")
+            #expect(availability.unavailability?.kind == .homeServerUnreachable, "\(reply)")
+            #expect(AutoRecoveryPolicy.schedule(for: PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)) == .glitch, "\(reply)")
+            var chosen = AppSettings.default
+            chosen.engine = .homeServer
+            let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)
+            #expect(CloudCover.phoneSettings(replacing: chosen, after: failure)?.engine == .whisperKit, "\(reply)")
+        }
+        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        #expect(!HomeServer.answeredWrongly(silent.unavailability))
+        #expect(!HomeServer.answeredWrongly(await engine(nil).checkAvailability(languageCode: "he").unavailability))
+        let refused = await engine(ScriptedSocket(helloReply: #"{"type":"error","code":"unauthorized","detail":""}"#)).checkAvailability(languageCode: "he")
+        #expect(!HomeServer.answeredWrongly(refused.unavailability))
+    }
+
+    @Test("a language the computer cannot caption has its own cause: not answered wrongly, not no answer, and no retry")
+    func unsupportedLanguageIsNamed() async {
+        let reply = #"{"type":"error","code":"unsupported_language","detail":""}"#
+        let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "xx")
+        #expect(HomeServer.languageNotCovered(availability.unavailability))
+        #expect(!HomeServer.answeredWrongly(availability.unavailability))
+        #expect(availability.unavailability?.kind == .homeServerUnreachable)
+        let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)
+        #expect(AutoRecoveryPolicy.schedule(for: failure) == .never)
+        var chosen = AppSettings.default
+        chosen.engine = .homeServer
+        #expect(CloudCover.phoneSettings(replacing: chosen, after: failure)?.engine == .whisperKit)
+        #expect(!HomeServer.languageNotCovered(await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he").unavailability))
+    }
+
     @Test("a connection that stops answering pings is given up on within seconds, even in silence; one that answers is kept")
     func deadPathIsDropped() async throws {
         func run(answering: Bool) async throws -> (Error?, Int) {
@@ -1105,6 +1144,28 @@ struct HomeServerCoverTests {
         captions.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
         #expect(await eventually { captions.isListeningForSoundsOnly })
         captions.stop()
+    }
+
+    @Test("a computer that cannot caption the language is not asked again on a timer, yet sound alerts keep listening")
+    func unsupportedLanguageNotAskedAgain() async throws {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, HomeServer.unsupportedLanguage))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            soundDetector: FakeSoundDetector(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
+        )
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.phase.failure != nil && captions.stats.soundDetectionRunning })
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(server.prepareCount == 1)
+        #expect(captions.scheduledRetry == nil)
+        #expect(captions.isListeningForSoundsOnly)
     }
 
     @Test("stopped captions ask the computer sooner than covered ones look to switch back: nothing is captioned meanwhile")

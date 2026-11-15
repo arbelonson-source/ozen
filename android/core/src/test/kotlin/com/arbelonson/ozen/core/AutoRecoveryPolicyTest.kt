@@ -30,6 +30,18 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `a computer that cannot caption the language is not retried on a timer - the same question gets the same answer`() {
+        val why = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE))
+        assertEquals(S.Never, AutoRecoveryPolicy.schedule(why))
+    }
+
+    @Test
+    fun `a computer that answered wrongly is retried like one that did not answer`() {
+        val wrong = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy"))
+        assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(wrong))
+    }
+
+    @Test
     fun `no saved address is not retried on a timer, since only a new address helps`() {
         val none = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, "no valid server address"))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(none))

@@ -157,6 +157,9 @@ struct PhasePresentation {
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerUnreachable && HomeServer.addressCoverDetail(detail: coverDetail) != nil:
             self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.addressCoverDetail(detail: coverDetail), systemImage: "waveform", tint: .green, action: .pause)
 
+        case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerUnreachable && HomeServer.languageCoverDetail(detail: coverDetail, language: spokenLanguage) != nil:
+            self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.languageCoverDetail(detail: coverDetail, language: spokenLanguage), systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud && coveredEngine == .homeServer:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
@@ -245,7 +248,9 @@ struct PhasePresentation {
                     title: title,
                     detail: scheduledRetry != nil
                         ? tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
-                        : HomeServer.unreachableBackupDetail(localNetworkHint: true),
+                        : HomeServer.answeredWrongly(failure.engineUnavailability) || HomeServer.languageNotCovered(failure.engineUnavailability)
+                            ? tr("הקישו כדי להוסיף גיבוי בטלפון", "Tap to add a backup on the phone")
+                            : HomeServer.unreachableBackupDetail(localNetworkHint: true),
                     systemImage: systemImage,
                     tint: .orange,
                     isBusy: scheduledRetry != nil,
@@ -430,6 +435,22 @@ struct PhasePresentation {
                 systemImage: "key",
                 tint: .orange,
                 action: .openEngineSettings
+            )
+        case .homeServerUnreachable where HomeServer.languageNotCovered(engineFailure):
+            self.init(
+                title: HomeServer.languageNotCoveredTitle(language: spokenLanguage),
+                detail: tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
+                systemImage: "globe",
+                tint: .orange,
+                action: .openEngineSettings
+            )
+        case .homeServerUnreachable where HomeServer.answeredWrongly(engineFailure):
+            self.init(
+                title: HomeServer.answeredWronglyText(),
+                detail: tr("הקישו כדי לנסות שוב", "Tap to try again"),
+                systemImage: "desktopcomputer.trianglebadge.exclamationmark",
+                tint: .orange,
+                action: .retry
             )
         case .homeServerUnreachable where HomeServer.refusedPlainAddress(engineFailure):
             // The phone itself refuses a plain ws:// address out on the

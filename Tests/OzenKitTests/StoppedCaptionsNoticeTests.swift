@@ -243,6 +243,31 @@ struct StoppedCaptionsNoticeTests {
         #expect(!body.contains("אין תשובה מהמחשב"))
     }
 
+    @Test("a computer that answered wrongly is not described as one that did not answer")
+    func answeredWronglyNotice() {
+        let wrong = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.answeredWronglyPrefix + "unexpected reply")
+        )
+        Localization.$override.withValue(.english) {
+            let body = StoppedCaptionsNotice.content(for: .failed(wrong)).body
+            #expect(body == "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again. Open Ozen to continue.")
+        }
+        #expect(!StoppedCaptionsNotice.content(for: .failed(wrong)).body.contains("אין תשובה מהמחשב"))
+    }
+
+    @Test("a computer that cannot caption the language says so, not that it did not answer")
+    func languageNotCoveredNotice() {
+        let why = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        )
+        #expect(StoppedCaptionsNotice.content(for: .failed(why)).body == HomeServer.languageNotCoveredNoticeText())
+        Localization.$override.withValue(.english) {
+            #expect(StoppedCaptionsNotice.content(for: .failed(why)).body == "The home computer can’t caption this language. Open Ozen to continue.")
+        }
+    }
+
     @Test("the message says what she can do about it")
     func wording() {
         let callEnded = StoppedCaptionsNotice.content(for: .callEnded).body
