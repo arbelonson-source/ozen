@@ -37,7 +37,7 @@ enum RecordingScreenPresenter {
 
     private static func present(_ model: TranscribeRecordingModel, language: UILanguage) {
         guard let top = topController(), !(top is UIAlertController) else {
-            UIAccessibility.post(notification: .announcement, argument: tr("סגרו את החלון הפתוח ואז שתפו את הקובץ שוב.", "Close this screen first, then share the file again."))
+            UIAccessibility.post(notification: .announcement, argument: tr("סגרו קודם את המסך הזה ואז שתפו את הקובץ שוב.", "Close this screen first, then share the file again."))
             Task { await model.close() }
             return
         }
