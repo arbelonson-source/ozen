@@ -71,6 +71,21 @@ class StoppedCaptionsNotice {
      */
     private var toldCause: Cause? = null
 
+    /** When the away notice for sound alerts was scheduled, while it waits. */
+    private var soundAlertsScheduledAt: Double? = null
+    private var soundAlertsScheduledDelay = 0.0
+
+    /**
+     * The away notice for sound alerts went out and is being kept through
+     * recoveries, so a phone that flaps all night buzzes once, not every
+     * cycle. [soundAlertsRecoveredAt] is null while they are down.
+     */
+    private var soundAlertsDelivered = false
+    private var soundAlertsRecoveredAt: Double? = null
+
+    /** Stretches of sound alerts not working that were waiting on the away notice: (end, seconds). */
+    private val soundAlertsStretches = mutableListOf<Pair<Double, Double>>()
+
     /** A fresh instance may follow a process Android killed after it posted. */
     private var firstUpdate = true
 
@@ -84,29 +99,39 @@ class StoppedCaptionsNotice {
      * in the notification shade for as long as the problem lasted. Putting
      * the phone away again doesn't post it a second time.
      */
-    fun update(cause: Cause?, appIsActive: Boolean, isEnabled: Boolean): Update? {
+    fun update(cause: Cause?, appIsActive: Boolean, isEnabled: Boolean, now: Double = System.nanoTime() / 1e9): Update? {
         val first = firstUpdate
         firstUpdate = false
         if (cause == null) {
             toldCause = null
-            return withdrawIfPosted(sweep = first)
+            if (keepsDeliveredNotice(now)) return null
+            return withdrawIfPosted(sweep = first, now = now)
         }
         val changed = toldCause?.let { !sameStop(it, cause) } ?: false
         if (appIsActive) {
             if (changed) toldCause = null
-            return withdrawIfPosted(sweep = first)
+            return withdrawIfPosted(sweep = first, now = now)
         }
         if (changed) {
             toldCause = null
-            if (!isEnabled) return withdrawIfPosted(sweep = false)
+            if (!isEnabled) return withdrawIfPosted(sweep = false, now = now)
+        }
+        if (isEnabled && cause == Cause.SoundAlertsNotWorking && soundAlertsDelivered &&
+            (soundAlertsRecoveredAt?.let { now - it <= SOUND_ALERTS_WINDOW_SECONDS } ?: true)
+        ) {
+            soundAlertsRecoveredAt = null
+            toldCause = cause
+            return null
         }
         if (!isEnabled || toldCause != null) return null
-        val old = withdrawIfPosted(sweep = false)
+        val old = withdrawIfPosted(sweep = false, now = now)
         posted = true
         toldCause = cause
         val new = if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
             postedAsSchedule = true
-            val delay = if (cause == Cause.SoundAlertsNotWorking) SOUND_ALERTS_DELAY_SECONDS else OTHER_APP_DELAY_SECONDS
+            val delay = if (cause == Cause.SoundAlertsNotWorking) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
+            soundAlertsScheduledAt = if (cause == Cause.SoundAlertsNotWorking) now else null
+            soundAlertsScheduledDelay = delay
             Update.Schedule(content(cause), delay)
         } else {
             postedAsSchedule = false
@@ -125,13 +150,51 @@ class StoppedCaptionsNotice {
     }
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
-    fun postFailed() {
+    fun postFailed(now: Double = System.nanoTime() / 1e9) {
+        soundAlertsScheduledAt?.let {
+            soundAlertsStretches.add(now to maxOf(0.0, now - it))
+            soundAlertsScheduledAt = null
+        }
         posted = false
         toldCause = null
     }
 
-    private fun withdrawIfPosted(sweep: Boolean): Update? {
+    /**
+     * The minute of sound alerts not working is counted over the last
+     * [SOUND_ALERTS_WINDOW_SECONDS], not from the latest failure: failing for
+     * 50 seconds, working for 20 and failing again leaves 10 seconds to go.
+     */
+    private fun soundAlertsDelayLeft(now: Double): Double {
+        soundAlertsStretches.removeAll { now - it.first > SOUND_ALERTS_WINDOW_SECONDS }
+        val used = soundAlertsStretches.sumOf { it.second }
+        return maxOf(SOUND_ALERTS_MINIMUM_DELAY_SECONDS, minOf(SOUND_ALERTS_DELAY_SECONDS, SOUND_ALERTS_DELAY_SECONDS - used))
+    }
+
+    /**
+     * Sound alerts work again. A notice that already went out stays until
+     * they have worked for the whole window; otherwise it is dropped as usual.
+     */
+    private fun keepsDeliveredNotice(now: Double): Boolean {
+        val since = soundAlertsScheduledAt
+        if (!soundAlertsDelivered && posted && since != null && now - since >= soundAlertsScheduledDelay) {
+            soundAlertsDelivered = true
+            soundAlertsScheduledAt = null
+            soundAlertsRecoveredAt = null
+        }
+        if (!soundAlertsDelivered) return false
+        val recovered = soundAlertsRecoveredAt ?: now
+        soundAlertsRecoveredAt = recovered
+        return now - recovered <= SOUND_ALERTS_WINDOW_SECONDS
+    }
+
+    private fun withdrawIfPosted(sweep: Boolean, now: Double): Update? {
+        soundAlertsDelivered = false
+        soundAlertsRecoveredAt = null
         if (!posted && !sweep) return null
+        if (posted) soundAlertsScheduledAt?.let {
+            soundAlertsStretches.add(now to maxOf(0.0, now - it))
+            soundAlertsScheduledAt = null
+        }
         val cancelling = posted && postedAsSchedule && !sweep
         posted = false
         return if (cancelling) Update.Cancel(IDENTIFIER) else Update.Withdraw(IDENTIFIER)
@@ -145,6 +208,16 @@ class StoppedCaptionsNotice {
 
         /** How long sound alerts have to keep failing before she is told while the app is away. */
         const val SOUND_ALERTS_DELAY_SECONDS = 60.0
+
+        /**
+         * Sound alerts that fail, recover and fail again count their time not
+         * working across this many seconds, so a phone that keeps flapping is
+         * still told instead of restarting the minute on every recovery.
+         */
+        const val SOUND_ALERTS_WINDOW_SECONDS = 600.0
+
+        /** The least wait before the away notice once the minute is already used up. */
+        const val SOUND_ALERTS_MINIMUM_DELAY_SECONDS = 5.0
 
         /**
          * Why captions are stopped for good right now, or null when they run,

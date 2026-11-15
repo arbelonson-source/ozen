@@ -51,6 +51,14 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// How long sound alerts have to keep failing before she is told while the app is away.
     public static let soundAlertsDelay: TimeInterval = 60
 
+    /// Sound alerts that fail, recover and fail again count their time not
+    /// working across this many seconds, so a phone that keeps flapping is
+    /// still told instead of restarting the minute on every recovery.
+    public static let soundAlertsWindow: TimeInterval = 600
+
+    /// The least wait before the away notice once the minute is already used up.
+    public static let soundAlertsMinimumDelay: TimeInterval = 5
+
     public static let identifier = "captions-stopped"
     /// A notice is sitting in Notification Center.
     private var posted = false
@@ -60,6 +68,22 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// app and seeing the status. Not told again until captions run, but a
     /// different cause is told by itself.
     private var toldCause: Cause?
+    /// When the away notice for sound alerts was scheduled, while it waits.
+    private var soundAlertsScheduledAt: TimeInterval?
+    private var soundAlertsScheduledDelay: TimeInterval = 0
+    /// The away notice for sound alerts went out and is being kept through
+    /// recoveries, so a phone that flaps all night buzzes once, not every
+    /// cycle. `soundAlertsRecoveredAt` is nil while they are down.
+    private var soundAlertsDelivered = false
+    private var soundAlertsRecoveredAt: TimeInterval?
+    /// Stretches of sound alerts not working that were waiting on the away
+    /// notice and ended before it was delivered, or after: (end, seconds).
+    private var soundAlertsStretches: [Stretch] = []
+
+    private struct Stretch: Sendable, Equatable {
+        let end: TimeInterval
+        let seconds: TimeInterval
+    }
 
     public init() {}
 
@@ -104,28 +128,36 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// away: the status says the same thing, and a notice left behind sat
     /// in Notification Center for as long as the problem lasted. Putting
     /// the phone away again doesn't post it a second time.
-    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool) -> Update? {
+    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Update? {
         guard let cause else {
             toldCause = nil
-            return withdrawIfPosted()
+            if keepsDeliveredNotice(now: now) { return nil }
+            return withdrawIfPosted(now: now)
         }
         let changed = toldCause.map { !Self.sameStop($0, cause) } ?? false
         if appIsActive {
             if changed { toldCause = nil }
-            return withdrawIfPosted()
+            return withdrawIfPosted(now: now)
         }
         if changed {
             toldCause = nil
-            if !isEnabled { return withdrawIfPosted() }
+            if !isEnabled { return withdrawIfPosted(now: now) }
+        }
+        if isEnabled, cause == .soundAlertsNotWorking, soundAlertsDelivered, soundAlertsRecoveredAt.map({ now - $0 <= Self.soundAlertsWindow }) ?? true {
+            soundAlertsRecoveredAt = nil
+            toldCause = cause
+            return nil
         }
         guard isEnabled, toldCause == nil else { return nil }
-        let old = withdrawIfPosted()
+        let old = withdrawIfPosted(now: now)
         posted = true
         toldCause = cause
         let new: Update
         if cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking {
             postedAsSchedule = true
-            let delay = cause == .soundAlertsNotWorking ? Self.soundAlertsDelay : Self.otherAppDelay
+            let delay = cause == .soundAlertsNotWorking ? soundAlertsDelayLeft(now: now) : Self.otherAppDelay
+            soundAlertsScheduledAt = cause == .soundAlertsNotWorking ? now : nil
+            soundAlertsScheduledDelay = delay
             new = .schedule(Self.content(for: cause), after: delay)
         } else {
             postedAsSchedule = false
@@ -142,8 +174,37 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         return delayed(a) || delayed(b) ? a == b : true
     }
 
-    private mutating func withdrawIfPosted() -> Update? {
+    /// The minute of sound alerts not working is counted over the last
+    /// `soundAlertsWindow` seconds, not from the latest failure: failing for
+    /// 50 seconds, working for 20 and failing again leaves 10 seconds to go.
+    private mutating func soundAlertsDelayLeft(now: TimeInterval) -> TimeInterval {
+        soundAlertsStretches.removeAll { now - $0.end > Self.soundAlertsWindow }
+        let used = soundAlertsStretches.reduce(0) { $0 + $1.seconds }
+        return max(Self.soundAlertsMinimumDelay, min(Self.soundAlertsDelay, Self.soundAlertsDelay - used))
+    }
+
+    /// Sound alerts work again. A notice that already went out stays until
+    /// they have worked for the whole window; otherwise it is dropped as usual.
+    private mutating func keepsDeliveredNotice(now: TimeInterval) -> Bool {
+        if !soundAlertsDelivered, posted, let since = soundAlertsScheduledAt, now - since >= soundAlertsScheduledDelay {
+            soundAlertsDelivered = true
+            soundAlertsScheduledAt = nil
+            soundAlertsRecoveredAt = nil
+        }
+        guard soundAlertsDelivered else { return false }
+        let recovered = soundAlertsRecoveredAt ?? now
+        soundAlertsRecoveredAt = recovered
+        return now - recovered <= Self.soundAlertsWindow
+    }
+
+    private mutating func withdrawIfPosted(now: TimeInterval) -> Update? {
+        soundAlertsDelivered = false
+        soundAlertsRecoveredAt = nil
         guard posted else { return nil }
+        if let since = soundAlertsScheduledAt {
+            soundAlertsStretches.append(Stretch(end: now, seconds: max(0, now - since)))
+            soundAlertsScheduledAt = nil
+        }
         posted = false
         return postedAsSchedule ? .cancelScheduled(identifier: Self.identifier) : .withdraw(identifier: Self.identifier)
     }

@@ -181,6 +181,64 @@ class StoppedCaptionsNoticeTest {
         assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
     }
 
+    private fun scheduledDelay(update: StoppedCaptionsNotice.Update?): Double? = (update as? StoppedCaptionsNotice.Update.Schedule)?.afterSeconds
+
+    @Test
+    fun `sound alerts that fail 50 seconds, work 20, and fail again are still told because the minute counts across the gaps`() {
+        val notice = StoppedCaptionsNotice()
+        val down = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        assertEquals(60.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 0.0)))
+        assertEquals(StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER), notice.update(null, appIsActive = false, isEnabled = true, now = 50.0))
+        assertEquals(10.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 70.0)))
+        notice.update(null, appIsActive = false, isEnabled = true, now = 75.0)
+        assertEquals(StoppedCaptionsNotice.SOUND_ALERTS_MINIMUM_DELAY_SECONDS, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 95.0)))
+    }
+
+    @Test
+    fun `an hour of sound alerts failing 50 seconds and working 20 delivers one notice, not one per cycle`() {
+        val notice = StoppedCaptionsNotice()
+        var schedules = 0
+        var withdrawals = 0
+        var now = 0.0
+        while (now < 3600.0) {
+            for ((cause, length) in listOf(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking to 50.0, null to 20.0)) {
+                when (notice.update(cause, appIsActive = false, isEnabled = true, now = now)) {
+                    is StoppedCaptionsNotice.Update.Schedule, is StoppedCaptionsNotice.Update.Post, is StoppedCaptionsNotice.Update.Replace -> schedules++
+                    is StoppedCaptionsNotice.Update.Cancel, is StoppedCaptionsNotice.Update.Withdraw -> withdrawals++
+                    null -> Unit
+                }
+                now += length
+            }
+        }
+        assertEquals(2, schedules) // the first 50 s stretch is under a minute and is dropped; the second one delivers
+        assertEquals(1, withdrawals)
+        assertEquals(
+            StoppedCaptionsNotice.Update.Cancel(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(null, appIsActive = false, isEnabled = true, now = now + StoppedCaptionsNotice.SOUND_ALERTS_WINDOW_SECONDS + 1),
+        )
+    }
+
+    @Test
+    fun `one short blip of sound alerts failing does not bring the notice forward and a long gap forgets old failures`() {
+        val notice = StoppedCaptionsNotice()
+        val down = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        notice.update(down, appIsActive = false, isEnabled = true, now = 0.0)
+        notice.update(null, appIsActive = false, isEnabled = true, now = 5.0)
+        assertEquals(55.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 30.0)))
+        notice.update(null, appIsActive = false, isEnabled = true, now = 35.0)
+        val later = 35.0 + StoppedCaptionsNotice.SOUND_ALERTS_WINDOW_SECONDS + 1
+        assertEquals(60.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = later)))
+    }
+
+    @Test
+    fun `time waited on a notice that could not be shown still counts toward the minute`() {
+        val notice = StoppedCaptionsNotice()
+        val down = StoppedCaptionsNotice.Cause.SoundAlertsNotWorking
+        notice.update(down, appIsActive = false, isEnabled = true, now = 0.0)
+        notice.postFailed(now = 30.0)
+        assertEquals(30.0, scheduledDelay(notice.update(down, appIsActive = false, isEnabled = true, now = 31.0)))
+    }
+
     @Test
     fun `the other-app notice says another app is using the microphone and what to do`() {
         val body = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.OtherAppHasMicrophone).body
