@@ -387,6 +387,22 @@ class HomeServerTest {
     }
 
     @Test
+    fun `a computer that cannot caption the language says so, naming the language, and not that it did not answer`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE)
+        assertTrue(HomeServer.languageNotCovered(why))
+        assertFalse(HomeServer.languageNotCovered(EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no answer")) || HomeServer.languageNotCovered(null))
+        assertFalse(HomeServer.answeredWrongly(why))
+        Localization.withLanguage(UILanguage.English) {
+            val name = UILanguage.Spanish.spokenName
+            assertEquals("The home computer can’t caption $name", HomeServer.languageNotCoveredTitle(UILanguage.Spanish))
+            assertEquals("The home computer can’t caption $name, so the phone carries on by itself · Tap to pause", HomeServer.languageCoverDetail(why.detail, UILanguage.Spanish))
+            assertNull(HomeServer.languageCoverDetail("no answer", UILanguage.Spanish))
+            assertNull(HomeServer.addressCoverDetail(why.detail))
+            assertEquals("The home computer can’t caption this language. Open Ozen to continue.", HomeServer.languageNotCoveredNoticeText())
+        }
+    }
+
+    @Test
     fun `a computer that answered wrongly has one plain message, never check that it is on`() {
         val wrong = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "server said busy")
         val down = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "no answer")

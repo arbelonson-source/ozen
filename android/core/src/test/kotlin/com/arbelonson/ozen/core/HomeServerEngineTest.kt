@@ -157,6 +157,20 @@ class HomeServerEngineTest {
         assertFalse(HomeServer.answeredWrongly(refused.unavailability))
     }
 
+    @Test
+    fun `a language the computer cannot caption has its own cause - not answered wrongly, not no answer, and no retry`() = runTest {
+        val why = engine(socket("""{"type":"error","code":"unsupported_language","detail":""}""")).checkAvailability("xx").unavailability
+        assertTrue(HomeServer.languageNotCovered(why))
+        assertFalse(HomeServer.answeredWrongly(why))
+        assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, why?.kind)
+        val failure = PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why)
+        assertEquals(AutoRecoveryPolicy.Schedule.Never, AutoRecoveryPolicy.schedule(failure))
+        val chosen = AppSettings.default
+        chosen.engine = TranscriptionEngineKind.HomeServer
+        assertEquals(TranscriptionEngineKind.WhisperKit, CloudCover.phoneSettings(chosen, failure)?.engine)
+        assertFalse(HomeServer.languageNotCovered(engine(socket(null)).checkAvailability("he").unavailability))
+    }
+
     private suspend fun TestScope.runDeadPath(answering: Boolean): Pair<Throwable?, Int> {
         val socket = socket(READY)
         socket.setAnswersPings(answering)

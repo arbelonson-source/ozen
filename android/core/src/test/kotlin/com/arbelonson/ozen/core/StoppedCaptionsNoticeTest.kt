@@ -506,6 +506,17 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `a computer that cannot caption the language says so, not that it did not answer`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "The home computer can’t caption this language. Open Ozen to continue.",
+                StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", why))).body,
+            )
+        }
+    }
+
+    @Test
     fun `a computer that answered wrongly is not described as one that did not answer`() {
         val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.ANSWERED_WRONGLY_PREFIX + "unexpected reply")
         Localization.withLanguage(UILanguage.English) {

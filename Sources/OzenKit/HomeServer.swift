@@ -30,6 +30,7 @@ public enum HomeServer {
     /// The computer is on and answered, but with an error code or something
     /// the phone does not understand: a detail starting like this says so,
     /// and the rest says what came back.
+    static let unsupportedLanguage = "the computer's model cannot caption this language"
     static let answeredWronglyPrefix = "the computer answered, but not as expected: "
 
     /// An address typed in Settings but never saved with Return or the
@@ -146,6 +147,28 @@ public enum HomeServer {
     /// The computer answered, but with an error code or a reply the phone does not understand: it is on and awake, so checking that it is on would send her the wrong way. A retry may still work once the computer's Ozen is restarted, so it is retried like a computer that did not answer.
     public static func answeredWrongly(_ why: EngineUnavailability?) -> Bool {
         why?.kind == .homeServerUnreachable && why?.detail.hasPrefix(answeredWronglyPrefix) == true
+    }
+
+    /// The computer's model cannot caption the chosen language: restarting it or scanning its code again changes nothing, and a retry asks the same question, so only another language, another engine or a new model on the computer helps.
+    public static func languageNotCovered(_ why: EngineUnavailability?) -> Bool {
+        why?.kind == .homeServerUnreachable && why?.detail == unsupportedLanguage
+    }
+
+    /// The caption screen's headline for it.
+    public static func languageNotCoveredTitle(language: UILanguage) -> String {
+        tr("המחשב בבית לא יכול לתמלל בשפה %1", "The home computer can’t caption %1", args: ["\(language.spokenName)"])
+    }
+
+    /// What the stopped-captions notice says, which does not know the language.
+    public static func languageNotCoveredNoticeText() -> String {
+        tr("המחשב בבית לא יכול לתמלל את השפה הזאת.", "The home computer can’t caption this language.") + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+    }
+
+    /// What the caption screen says while the phone carries on by itself because the computer cannot caption the language; nil for any other cause.
+    public static func languageCoverDetail(detail: String?, language: UILanguage) -> String? {
+        guard detail == unsupportedLanguage else { return nil }
+        return tr("המחשב בבית לא יכול לתמלל בשפה %1, ממשיכים בזיהוי שבטלפון", "The home computer can’t caption %1, so the phone carries on by itself", args: ["\(language.spokenName)"])
+            + " · " + tr("הקישו כדי להשהות", "Tap to pause")
     }
 
     /// What the caption screen, the cover line and the notice say about a computer that answered wrongly.

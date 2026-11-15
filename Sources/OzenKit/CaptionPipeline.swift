@@ -3286,10 +3286,12 @@ public final class CaptionPipeline {
     /// Waiting for Wi-Fi or for room on the phone has no timer, but
     /// captions come back by themselves: on the next change of connection,
     /// or when the app is opened again with room. The microphone was off
-    /// for sounds all that time, and a smoke alarm went unheard.
+    /// for sounds all that time, and a smoke alarm went unheard. A computer
+    /// that cannot caption the language is the same: no timer asks it
+    /// again, and only a change of language or engine brings captions back.
     private func comesBackWithoutTimer(_ failure: PipelineFailure) -> Bool {
         guard let kind = failure.engineUnavailability?.kind else { return false }
-        return kind == .waitingForWiFi || kind == .notEnoughStorage
+        return kind == .waitingForWiFi || kind == .notEnoughStorage || HomeServer.languageNotCovered(failure.engineUnavailability)
     }
 
     private func soundAvailabilityReporter() -> @Sendable (Bool) -> Void {
@@ -3342,6 +3344,7 @@ public final class CaptionPipeline {
     private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
               !HomeServer.refusedPlainAddress(failure.engineUnavailability),
+              !HomeServer.languageNotCovered(failure.engineUnavailability),
               activeSettings?.engine == .homeServer
         else { return false }
         homeServerRecheck?.cancel()

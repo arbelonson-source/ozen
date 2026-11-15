@@ -384,6 +384,7 @@ class StoppedCaptionsNotice {
                         "הכתובת או הקוד חסרים. פתחו את אוזן כדי להמשיך.",
                         "The address or code is missing. Open Ozen to continue.",
                     )
+                    HomeServer.languageNotCovered(failure.engineUnavailability) -> HomeServer.languageNotCoveredNoticeText()
                     HomeServer.answeredWrongly(failure.engineUnavailability) ->
                         HomeServer.answeredWronglyText() + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
                     why == EngineUnavailability.Kind.HomeServerUnreachable -> tr(

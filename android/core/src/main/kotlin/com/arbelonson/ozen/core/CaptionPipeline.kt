@@ -3555,11 +3555,14 @@ class CaptionPipeline(
      * Waiting for Wi-Fi or for room on the phone has no timer, but
      * captions come back by themselves: on the next change of connection,
      * or when the app is opened again with room. The microphone was off
-     * for sounds all that time, and a smoke alarm went unheard.
+     * for sounds all that time, and a smoke alarm went unheard. A computer
+     * that cannot caption the language is the same: no timer asks it again,
+     * and only a change of language or engine brings captions back.
      */
     private fun comesBackWithoutTimer(failure: PipelineFailure): Boolean {
         val kind = failure.engineUnavailability?.kind ?: return false
-        return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage
+        return kind == EngineUnavailability.Kind.WaitingForWiFi || kind == EngineUnavailability.Kind.NotEnoughStorage ||
+            HomeServer.languageNotCovered(failure.engineUnavailability)
     }
 
     private fun soundAvailabilityReporter(): (Boolean) -> Unit {
@@ -3615,6 +3618,7 @@ class CaptionPipeline(
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
             HomeServer.refusedPlainAddress(failure.engineUnavailability) ||
+            HomeServer.languageNotCovered(failure.engineUnavailability) ||
             settingsInUse?.engine != TranscriptionEngineKind.HomeServer
         ) {
             return false

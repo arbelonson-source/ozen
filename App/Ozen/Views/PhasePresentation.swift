@@ -157,6 +157,9 @@ struct PhasePresentation {
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerUnreachable && HomeServer.addressCoverDetail(detail: coverDetail) != nil:
             self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.addressCoverDetail(detail: coverDetail), systemImage: "waveform", tint: .green, action: .pause)
 
+        case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerUnreachable && HomeServer.languageCoverDetail(detail: coverDetail, language: spokenLanguage) != nil:
+            self.init(title: tr("מאזינה", "Listening"), detail: HomeServer.languageCoverDetail(detail: coverDetail, language: spokenLanguage), systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud && coveredEngine == .homeServer:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
@@ -244,7 +247,7 @@ struct PhasePresentation {
                     title: title,
                     detail: scheduledRetry != nil
                         ? tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
-                        : HomeServer.answeredWrongly(failure.engineUnavailability)
+                        : HomeServer.answeredWrongly(failure.engineUnavailability) || HomeServer.languageNotCovered(failure.engineUnavailability)
                             ? tr("הקישו כדי להוסיף גיבוי בטלפון", "Tap to add a backup on the phone")
                             : HomeServer.unreachableBackupDetail(localNetworkHint: true),
                     systemImage: systemImage,
@@ -429,6 +432,14 @@ struct PhasePresentation {
                 title: HomeServer.rejectionTitle(detail: engineFailure?.detail),
                 detail: tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
                 systemImage: "key",
+                tint: .orange,
+                action: .openEngineSettings
+            )
+        case .homeServerUnreachable where HomeServer.languageNotCovered(engineFailure):
+            self.init(
+                title: HomeServer.languageNotCoveredTitle(language: spokenLanguage),
+                detail: tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
+                systemImage: "globe",
                 tint: .orange,
                 action: .openEngineSettings
             )

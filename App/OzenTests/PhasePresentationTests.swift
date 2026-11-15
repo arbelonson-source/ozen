@@ -484,6 +484,18 @@ struct PhasePresentationTests {
         #expect(backup.detail?.contains("check") != true)
     }
 
+    @Test("a computer that cannot caption the language names it on the screen and in the cover line, and sends her to the engine settings")
+    func languageNotCoveredOnScreen() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        let shown = PhasePresentation(phase: failure(why), engine: .homeServer, interruptedBySystem: false, spokenLanguage: .spanish)
+        #expect(shown.title == HomeServer.languageNotCoveredTitle(language: .spanish))
+        #expect(shown.action == .openEngineSettings)
+        let covering = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .homeServer, coverReason: .homeServerUnreachable, coverDetail: why.detail, spokenLanguage: .spanish)
+        #expect(covering.detail == HomeServer.languageCoverDetail(detail: why.detail, language: .spanish))
+        let backup = PhasePresentation(phase: failure(why), engine: .homeServer, interruptedBySystem: false, offerBackup: true, spokenLanguage: .spanish)
+        #expect(backup.action == .openBackupSettings)
+    }
+
     @Test("the engine error names the language being captioned, never Hebrew for someone captioning in Spanish")
     func engineErrorNamesTheSpokenLanguage() {
         let why = failure(EngineUnavailability(kind: .languageNotSupportedOnDevice, detail: ""))

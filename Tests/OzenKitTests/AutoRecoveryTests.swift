@@ -43,6 +43,15 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: wrong) == .glitch)
     }
 
+    @Test("a computer that cannot caption the language is not retried on a timer: the same question gets the same answer")
+    func unsupportedLanguageNotRetried() {
+        let why = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: why) == .never)
+    }
+
     @Test("a microphone another app holds is retried on a slow tail, not given up on")
     func microphoneTail() {
         for kind in [PipelineFailure.Kind.audioSessionFailed, .noAudioInputs] {

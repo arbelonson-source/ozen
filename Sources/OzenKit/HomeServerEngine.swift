@@ -422,6 +422,8 @@ public actor HomeServerEngine: TranscriptionEngine {
                 return socket
             case .refused(let code, let detail)? where code == "unauthorized":
                 throw EngineUnavailability.homeServerRejected("pairing code refused \(detail)")
+            case .refused(let code, _)? where code == "unsupported_language":
+                throw EngineUnavailability.homeServerUnreachable(HomeServer.unsupportedLanguage)
             case .refused(let code, let detail)?:
                 throw EngineUnavailability.homeServerUnreachable("\(HomeServer.answeredWronglyPrefix)server said \(code) \(detail)")
             default:

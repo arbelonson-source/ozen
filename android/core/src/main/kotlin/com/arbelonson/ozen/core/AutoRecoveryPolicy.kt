@@ -172,7 +172,11 @@ class AutoRecoveryPolicy(
                 // The damaged file is gone; the next try downloads it again.
                 EngineUnavailability.Kind.ModelDamaged -> Schedule.Glitch
                 EngineUnavailability.Kind.HomeServerUnreachable ->
-                    if (HomeServer.refusedPlainAddress(failure.engineUnavailability)) Schedule.Never else Schedule.Glitch
+                    if (HomeServer.refusedPlainAddress(failure.engineUnavailability) || HomeServer.languageNotCovered(failure.engineUnavailability)) {
+                        Schedule.Never
+                    } else {
+                        Schedule.Glitch
+                    }
                 EngineUnavailability.Kind.NoInternet,
                 EngineUnavailability.Kind.TemporarilyUnavailable,
                 EngineUnavailability.Kind.Other,

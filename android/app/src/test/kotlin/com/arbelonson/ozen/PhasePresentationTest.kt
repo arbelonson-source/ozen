@@ -436,6 +436,22 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a computer that cannot caption the language names it on the screen and in the cover line, and sends her to the engine settings`() {
+        val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.UNSUPPORTED_LANGUAGE)
+        val shown = present(failure(why), TranscriptionEngineKind.HomeServer, spokenLanguage = UILanguage.Spanish)
+        assertEquals(HomeServer.languageNotCoveredTitle(UILanguage.Spanish), shown.title)
+        assertEquals(Action.OpenEngineSettings, shown.action)
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer,
+            coverReason = EngineUnavailability.Kind.HomeServerUnreachable, coverDetail = why.detail, spokenLanguage = UILanguage.Spanish,
+        )
+        assertEquals(HomeServer.languageCoverDetail(why.detail, UILanguage.Spanish), covering.detail)
+        val backup = present(failure(why), TranscriptionEngineKind.HomeServer, offerBackup = true, spokenLanguage = UILanguage.Spanish)
+        assertEquals(Action.OpenBackupSettings, backup.action)
+    }
+
+    @Test
     fun `a short hint stays in the status button, a long one gets its own line rather than being cut off`() {
         val listening = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit)
         val paused = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit)

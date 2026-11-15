@@ -484,6 +484,8 @@ class HomeServerEngine(
                 is HomeServerMessage.Refused ->
                     if (message.code == "unauthorized") {
                         throw EngineUnavailability.homeServerRejected("pairing code refused ${message.detail}")
+                    } else if (message.code == "unsupported_language") {
+                        throw EngineUnavailability.homeServerUnreachable(HomeServer.UNSUPPORTED_LANGUAGE)
                     } else {
                         throw EngineUnavailability.homeServerUnreachable("${HomeServer.ANSWERED_WRONGLY_PREFIX}server said ${message.code} ${message.detail}")
                     }
