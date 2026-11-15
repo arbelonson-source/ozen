@@ -5116,6 +5116,23 @@ struct CaptionPipelineHomeLossTests {
         #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
     }
 
+    @Test("after a replay with no words, a live line that starts like the last line keeps its opening words")
+    func liveLineAfterSilentReplayKeepsItsStart() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        let heard = phone.samplesSeen.count
+        for chunk in speech(seconds: 10) { audio.push(chunk) }
+        #expect(await eventually { phone.samplesSeen.count >= heard + 160_000 })
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "at noon tomorrow we leave", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "at noon tomorrow we leave"])
+    }
+
     @Test("a replayed partial that grows past the overlap keeps the new words")
     func growingPartialKeepsNewWords() async {
         let (pipeline, audio, home, phone) = rig()

@@ -3907,7 +3907,13 @@ class CaptionPipeline(
             emit(chunk)
             val before = liveFed
             liveFed += chunk.size
-            if (before < grace && liveFed >= grace) scope.launch { if (runID == run) replayedLines = emptySet() }
+            if (before < grace && liveFed >= grace) {
+                scope.launch {
+                    if (runID != run || replayUtterance != null) return@launch
+                    replayedLines = emptySet()
+                    replayDedupe = emptyList()
+                }
+            }
         }
     }
 
