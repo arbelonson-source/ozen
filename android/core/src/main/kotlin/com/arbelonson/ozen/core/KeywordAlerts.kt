@@ -878,10 +878,9 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
             if (phrase.isEmpty()) return hits
             var position = line.indexOf(phrase)
             while (position >= 0) {
-                if (isWholeChineseName(phrase, line, position)) {
-                    hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
-                }
-                position = line.indexOf(phrase, position + phrase.length)
+                val whole = isWholeChineseName(phrase, line, position)
+                if (whole) hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
+                position = line.indexOf(phrase, position + if (whole) phrase.length else 1)
             }
             return hits
         }

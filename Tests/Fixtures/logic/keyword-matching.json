@@ -1027,6 +1027,22 @@
   {
    "alerts": [
     {
+     "phrase": "小明小"
+    }
+   ],
+   "text": "张小明小明小",
+   "note": "a skipped first hit must not hide the overlapping real one",
+   "matches": [
+    {
+     "phrase": "小明小",
+     "matchedText": "小明小",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
      "phrase": "老师"
     }
    ],
