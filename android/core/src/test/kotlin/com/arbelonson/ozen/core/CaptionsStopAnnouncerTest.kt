@@ -138,4 +138,10 @@ class CaptionsStopAnnouncerTest {
             CaptionsStopAnnouncer.stoppedText("Stalled, tap to try again", "Tap to try again", UILanguage.English),
         )
     }
+
+    @Test
+    fun `the next step follows the cause with the language's own full stop`() {
+        assertEquals("字幕已停止：T。S", CaptionsStopAnnouncer.stoppedText("T", "S", UILanguage.ChineseSimplified))
+        assertEquals("कैप्शन रुक गए: T। S", CaptionsStopAnnouncer.stoppedText("T", "S", UILanguage.Hindi))
+    }
 }

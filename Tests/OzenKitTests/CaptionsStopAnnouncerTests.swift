@@ -127,4 +127,12 @@ struct CaptionsStopAnnouncerTests {
         #expect(CaptionsStopAnnouncer.stoppedText(title: "Stalled", detail: "  ", in: .english) == "Captions stopped: Stalled")
         #expect(CaptionsStopAnnouncer.stoppedText(title: "Stalled, tap to try again", detail: "Tap to try again", in: .english) == "Captions stopped: Stalled, tap to try again")
     }
+
+    @Test("the next step follows the cause with the language's own full stop")
+    func stopTextUsesOwnFullStop() {
+        let chinese = CaptionsStopAnnouncer.stoppedText(title: "T", detail: "S", in: .chineseSimplified)
+        #expect(chinese == "字幕已停止：T。S")
+        let hindi = CaptionsStopAnnouncer.stoppedText(title: "T", detail: "S", in: .hindi)
+        #expect(hindi == "कैप्शन रुक गए: T। S")
+    }
 }
