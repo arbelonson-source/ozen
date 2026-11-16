@@ -1782,11 +1782,13 @@ struct HomeServerCoverTests {
         let audio = FakeAudioCapturer()
         let server = FakeEngine(kind: .homeServer)
         let phone = FakeEngine(kind: .whisperKit)
+        let clock = TestClock()
         let captions = CaptionPipeline(
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            now: { clock.now }
         )
         captions.homeServerRecheckSeconds = 0.2
         captions.homeServerWaitSeconds = 0.2
@@ -1808,6 +1810,8 @@ struct HomeServerCoverTests {
         // The checks run one after the other, so a second one means the
         // first search ended with no breath. Talk until it comes, not for a
         // fixed time: a slow machine stretches the waits between checks.
+        // The pipeline's clock stands still while the talk goes on, so a
+        // stalled machine cannot open a gap that counts as a breath.
         let talkUntil = ContinuousClock.now + .seconds(30)
         while server.prepareCount - asked < 2, ContinuousClock.now < talkUntil {
             audio.push(quiet)
@@ -1816,7 +1820,12 @@ struct HomeServerCoverTests {
         }
         #expect(server.prepareCount - asked >= 2)
         #expect(captions.activeEngineKind == .whisperKit)
-        #expect(await eventually { captions.activeEngineKind == .homeServer })
+        // Chunks still waiting to be heard stamp the clock when they are
+        // reached, so it keeps moving until the breath is seen.
+        #expect(await eventually(within: .seconds(30)) {
+            clock.advance(1)
+            return captions.activeEngineKind == .homeServer
+        })
     }
 
     @Test("with talk that never goes quiet, captions still go back after a few answered checks, between two lines")
