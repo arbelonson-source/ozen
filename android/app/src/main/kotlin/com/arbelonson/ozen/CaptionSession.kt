@@ -1927,7 +1927,7 @@ class CaptionSession(
         private const val CRITICAL_ANNOUNCEMENT_MILLIS = 4_000L
         private const val MODEL_READY_SHOWN_MILLIS = 8_000L
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
-        private const val LISTENING_CUT_IDENTIFIER = "listening-cut"
+        const val LISTENING_CUT_IDENTIFIER = "listening-cut"
         private const val SAMPLE_RATE = 16_000
         private const val BACKGROUND_CHECK_SECONDS = 30L
 
