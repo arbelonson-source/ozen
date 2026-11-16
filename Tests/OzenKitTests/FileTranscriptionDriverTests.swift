@@ -132,6 +132,21 @@ struct FileTranscriptionDriverTests {
         #expect(problem == .unexpected)
     }
 
+    @Test("a failure that lands as the person stops the run does not turn into kept lines")
+    func stoppedWhileFailing() async {
+        let samples = FileRunAudio.timeline([(false, 1), (true, 2), (false, 2), (true, 2), (false, 2)])
+        let box = FileRunTaskBox()
+        let engine = FileRunEngine { _, _ in [FileRunEngine.final("first line")] }
+        let run = driver(engine, score: { chunk in
+            if engine.streamsOpened >= 1 { box.cancel(); return nil }
+            return FileRunAudio.score(chunk)
+        })
+        let task = Task { await run.run(source: fileRunSource(samples), report: { _ in }) }
+        box.set(task)
+        let outcome = await task.value
+        #expect(outcome.result == .failed(.modelFailed))
+    }
+
     @Test("stopping after the second stretch opens no third stream and reports it was cancelled")
     func cancel() async {
         let samples = FileRunAudio.timeline([(false, 1), (true, 2), (false, 2), (true, 2), (false, 2), (true, 2), (false, 2), (true, 2), (false, 2)])

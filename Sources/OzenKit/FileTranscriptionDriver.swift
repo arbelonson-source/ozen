@@ -98,7 +98,7 @@ public struct FileTranscriptionDriver: Sendable {
     public func run(source: AsyncThrowingStream<[Float], any Error>, report: @escaping Report) async -> Outcome {
         var state = State(planner: planner())
         var result = await work(source, report, &state)
-        if case .failed(let problem) = result, !state.lines.isEmpty {
+        if case .failed(let problem) = result, !state.lines.isEmpty, !Task.isCancelled {
             result = .stoppedPartway(lines: state.lines, problem: problem)
         }
         return Outcome(result: result, streamsOpened: state.streams, peakBufferedSamples: state.peak)
