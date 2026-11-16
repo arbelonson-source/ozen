@@ -937,6 +937,11 @@ class CaptionSession(
             is StoppedCaptionsNotice.Update.Revise -> {
                 if (!notifier.revise(update.content)) stoppedCaptions.postFailed()
             }
+            is StoppedCaptionsNotice.Update.Realert -> {
+                val delivery = notifier.realert(update.content)
+                delivery.buzz?.let { pipeline.ignoreSounds(it) }
+                if (!delivery.posted) stoppedCaptions.postFailed()
+            }
             is StoppedCaptionsNotice.Update.Replace -> {
                 applyNoticeUpdate(update.old)
                 applyNoticeUpdate(update.new)
@@ -1072,6 +1077,7 @@ class CaptionSession(
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
             pausedForRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Paused,
+            soundAlertsPaused = settings.current.value.soundAlerts.isEnabled,
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,

@@ -210,6 +210,42 @@ struct TranscribeRecordingModelTests {
         }
     }
 
+    @Test("lines kept as the run goes are replaced by the final record under the same id, and a stopped run keeps none")
+    func keepsAsItGoes() async throws {
+        let lines = (0..<5).map { TranscribedLine(startSeconds: Double($0), endSeconds: Double($0) + 1, text: "line \($0)") }
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let screen = model(host: host, transcriber: RecordingTranscriberFake { _, report in
+            report(.init(stage: .transcribing, fraction: 0.5, lines: lines))
+            try? await Task.sleep(for: .milliseconds(100))
+            return .finished(lines: lines, endMissing: false)
+        })
+        await screen.load()
+        screen.start()
+        await screen.runFinished()
+        #expect(host.unfinished.count == 1)
+        #expect(host.unfinished.first?.cutShort == true)
+        #expect(host.saved.count == 1)
+        #expect(host.saved.first?.cutShort == false)
+        #expect(host.saved.first?.id == host.unfinished.first?.id)
+        #expect(host.removed.isEmpty)
+        await screen.close()
+
+        let stopped = RecordingHostFake()
+        stopped.installed = [recommended]
+        let other = model(host: stopped, transcriber: RecordingTranscriberFake { _, report in
+            report(.init(stage: .transcribing, fraction: 0.5, lines: lines))
+            try? await Task.sleep(for: .milliseconds(100))
+            return .cancelled
+        })
+        await other.load()
+        other.start()
+        await other.runFinished()
+        #expect(stopped.removed == stopped.unfinished.map(\.id))
+        #expect(stopped.saved.isEmpty)
+        await other.close()
+    }
+
     @Test("a problem ends on a page that names it, and trying again goes back to the start")
     func failureAndRetry() async throws {
         let host = RecordingHostFake()

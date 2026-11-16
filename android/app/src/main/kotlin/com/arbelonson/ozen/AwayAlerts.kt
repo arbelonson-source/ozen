@@ -71,9 +71,19 @@ class AlertNotifier(private val context: Context) {
         return deliver(content, quiet = true, showing = showing.map { it.tag to it.notification.`when` }).posted
     }
 
+    /**
+     * Changes the words of a notice that is still showing and alerts again,
+     * keeping the time it first had. One she swiped away is not brought back.
+     */
+    fun realert(content: AlertNotificationContent): Delivery {
+        val showing = context.getSystemService(NotificationManager::class.java).activeNotifications
+        if (!AwayAlerts.isShowing(showing.map { it.tag }, content.identifier)) return Delivery(true)
+        return deliver(content, showing = showing.map { it.tag to it.notification.`when` }, keepTime = true)
+    }
+
     class Delivery(val posted: Boolean, val buzz: AlertVibration? = null)
 
-    fun deliver(content: AlertNotificationContent, quiet: Boolean = false, showing: List<Pair<String?, Long>> = emptyList()): Delivery {
+    fun deliver(content: AlertNotificationContent, quiet: Boolean = false, showing: List<Pair<String?, Long>> = emptyList(), keepTime: Boolean = quiet): Delivery {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
         val vibration = AwayAlerts.vibrationFor(content)
@@ -97,7 +107,7 @@ class AlertNotifier(private val context: Context) {
         // The time it was heard, in the header: Android leaves it out unless
         // asked, so a doorbell found on the lock screen an hour later still
         // read "Heard just now", and an old alarm looked like a new one.
-        val heard = AwayAlerts.timeToShow(showing, content.identifier, System.currentTimeMillis(), revising = quiet)
+        val heard = AwayAlerts.timeToShow(showing, content.identifier, System.currentTimeMillis(), revising = keepTime)
         val notification = Notification.Builder(context, channel.id)
             .setWhen(heard)
             .setShowWhen(true)

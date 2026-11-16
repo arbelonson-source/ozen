@@ -1171,6 +1171,14 @@
    {"kind": "emphasized", "input": "Punkt acht", "language": "de", "expected": ["acht"]},
    {"kind": "emphasized", "input": "Gib acht", "language": "de", "expected": []},
    {"kind": "emphasized", "input": "Nach acht Stunden", "language": "de", "expected": ["acht Stunden"]},
-   {"kind": "emphasized", "input": "Wir treffen uns Viertel nach drei", "language": "de", "expected": ["Viertel nach drei"]}
+   {"kind": "emphasized", "input": "Wir treffen uns Viertel nach drei", "language": "de", "expected": ["Viertel nach drei"]},
+   {"kind": "emphasized", "input": "Es gibt zwei nach drei Kindern", "language": "de", "expected": ["zwei", "drei"]},
+   {"kind": "emphasized", "input": "fünf vor zehn Leuten", "language": "de", "expected": ["fünf", "zehn"]},
+   {"kind": "emphasized", "input": "acht nach neun Monaten", "language": "de", "expected": ["neun Monaten"]},
+   {"kind": "emphasized", "input": "zehn nach elf", "language": "de", "expected": ["zehn nach elf"]},
+   {"kind": "emphasized", "input": "Es ist zehn nach elf Uhr", "language": "de", "expected": ["zehn nach elf Uhr"]},
+   {"kind": "emphasized", "input": "fünf vor acht morgens", "language": "de", "expected": ["fünf vor acht"]},
+   {"kind": "emphasized", "input": "Es ist zehn nach elf.", "language": "de", "expected": ["zehn nach elf"]},
+   {"kind": "emphasized", "input": "um zehn nach elf ist Schluss", "language": "de", "expected": ["zehn nach elf"]}
  ]
 }

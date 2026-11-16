@@ -750,6 +750,8 @@ public final class LiveCaptionViewModel {
             apply(new)
         case .revise(let content):
             postNotification?(StoppedCaptionsNotice.revised(content, since: stoppedCaptions.stoppedAt).quietly())
+        case .realert(let content):
+            postNotification?(StoppedCaptionsNotice.revised(content, since: stoppedCaptions.stoppedAt))
         }
     }
 
@@ -1445,6 +1447,8 @@ public final class LiveCaptionViewModel {
         public var addressChanged = false
         public var codeSaved = false
         public var codeFailed = false
+        /// The phone could not write the address: it would revert after a relaunch.
+        public var addressFailed = false
         public var needsRestart: Bool { addressChanged || codeSaved }
     }
 
@@ -1454,7 +1458,12 @@ public final class LiveCaptionViewModel {
     public func storeHomeServerEntries(address: String?, code: String) -> HomeServerEntriesStored {
         var stored = HomeServerEntriesStored()
         if let address {
-            stored.addressChanged = storeHomeServerAddress(address).changed
+            let result = storeHomeServerAddress(address)
+            stored.addressChanged = result.changed
+            stored.addressFailed = !result.written
+        } else if settingsSaveError != nil {
+            // An address kept only in memory by a failed write is written again, not taken for saved.
+            stored.addressFailed = !storeHomeServerAddress(settings.homeServerAddress).written
         }
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {

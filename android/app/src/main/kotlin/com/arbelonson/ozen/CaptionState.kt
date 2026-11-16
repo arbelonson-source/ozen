@@ -133,6 +133,8 @@ data class CaptionScreenState(
     val pausedForSpeech: Boolean = false,
     /** Paused while a recording is turned into text; the captions come back by themselves and the listening notification stays up. */
     val pausedForRecording: Boolean = false,
+    /** Sound alerts were on when the recording paused the captions, and are off for the same time. */
+    val soundAlertsPaused: Boolean = false,
     /** The phone's own model captioning while the chosen engine can't, and why. */
     val coveringForCloud: Boolean = false,
     val coveredEngine: TranscriptionEngineKind? = null,
@@ -157,7 +159,7 @@ data class CaptionScreenState(
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
             coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
-            builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage, pausedForRecording,
+            builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage, pausedForRecording, soundAlertsPaused,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -227,6 +229,7 @@ object CaptionState {
         downloadSecondsRemaining: Double? = null,
         pausedForSpeech: Boolean = false,
         pausedForRecording: Boolean = false,
+        soundAlertsPaused: Boolean = false,
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
@@ -268,6 +271,7 @@ object CaptionState {
             downloadSecondsRemaining = downloadSecondsRemaining,
             pausedForSpeech = pausedForSpeech,
             pausedForRecording = pausedForRecording,
+            soundAlertsPaused = soundAlertsPaused,
             coveringForCloud = coveringForCloud,
             coveredEngine = coveredEngine,
             coverReason = coverReason,

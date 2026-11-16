@@ -15,7 +15,7 @@ struct StoppedCaptionsNoticeStopTimeTests {
         var notice = StoppedCaptionsNotice()
         _ = notice.update(for: .failed(glitch), appIsActive: false, isEnabled: true, now: 0, wallClock: at(0))
         let update = notice.update(for: .failed(noMic), appIsActive: false, isEnabled: true, now: 1800, wallClock: at(30))
-        guard case .revise(let content)? = update else { Issue.record("expected a revision"); return }
+        guard case .realert(let content)? = update else { Issue.record("expected a second alert"); return }
         #expect(notice.stoppedAt == at(0))
         let revised = StoppedCaptionsNotice.revised(content, since: notice.stoppedAt, timeZone: utc)
         let clock = at(0).formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: Localization.locale, timeZone: utc))
