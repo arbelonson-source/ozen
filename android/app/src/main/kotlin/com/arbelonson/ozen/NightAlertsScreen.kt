@@ -47,12 +47,14 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
     var battery by remember { mutableStateOf(NightAlerts.batteryExempt(context)) }
     var dnd by remember { mutableStateOf(AlertNotifier.alarmsOverrideDoNotDisturb(context)) }
     var alarmsAllowed by remember { mutableStateOf(AlertNotifier.alarmsAllowed(context)) }
+    var alarmsSilent by remember { mutableStateOf(AlertNotifier.alarmsPostable(context) && !AlertNotifier.alarmsAllowed(context)) }
     var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
     var sent by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
         battery = NightAlerts.batteryExempt(context)
         dnd = AlertNotifier.alarmsOverrideDoNotDisturb(context)
         alarmsAllowed = AlertNotifier.alarmsAllowed(context)
+        alarmsSilent = AlertNotifier.alarmsPostable(context) && !alarmsAllowed
         blocked = !AlertNotifier.allowed(context)
         onPauseOrDispose { }
     }
@@ -105,7 +107,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                 Step(
                     done = dnd,
                     title = tr("צלילים דחופים ב״נא לא להפריע״", "Urgent sounds in Do Not Disturb"),
-                    text = NightAlerts.dndText(dnd, alarmsAllowed, phoneLabel = phoneLabel),
+                    text = NightAlerts.dndText(dnd, alarmsAllowed, phoneLabel = phoneLabel, alarmsSilent = alarmsSilent),
                     button = if (dnd) null else tr("פתחו את הגדרות החירום", "Open the Emergency settings"),
                     onButton = { AlertNotifier.openAlarmSettings(context) },
                 )
