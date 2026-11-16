@@ -193,4 +193,27 @@ class ReplayHalfLineTest {
         assertTrue(eventually { rig.captions.segments.last().text == "and the rest" })
         assertEquals(listOf("line A is done", "and the rest"), rig.captions.segments.map { it.text })
     }
+
+    @Test
+    fun `a replay line open at the grace that ends as pure overlap leaves the half line and later words alone`() = runTest {
+        val rig = rig()
+        rig.captions.start(cloudSettings())
+        rig.said(3.0, 0.1f)
+        rig.cloud.emit(token("line A is done", true))
+        assertTrue(eventually { rig.captions.segments.size == 1 })
+        rig.said(6.0, 0.2f)
+        rig.cloud.emit(token("line B starts", false))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+        rig.dropAndReplay()
+
+        val replayLine = UUID.randomUUID()
+        rig.phone.emit(TranscriptToken(utteranceID = replayLine, text = "line A is done", isFinal = false, timestamp = virtualNow()))
+        rig.liveAfterReplay(10.0)
+        rig.phone.emit(TranscriptToken(utteranceID = replayLine, text = "line A is done", isFinal = true, timestamp = virtualNow()))
+        rig.phone.emit(token("new words", true))
+        assertTrue(eventually { rig.captions.segments.last().text == "new words" })
+        assertEquals(3, rig.captions.segments.size)
+        assertEquals("line A is done", rig.captions.segments.first().text)
+        assertTrue(rig.captions.segments[1].text.startsWith("line B starts"))
+    }
 }

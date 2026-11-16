@@ -212,6 +212,7 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var replayGraceCrossedMidUtterance = false
     private var pendingReplayedLines: Set<UUID> = []
     private var replayedLines: Set<UUID> = []
     private var utteranceFirstHeard: [UUID: Int] = [:]
@@ -563,6 +564,7 @@ public final class CaptionPipeline {
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
+        replayGraceCrossedMidUtterance = false
         replayedLines = replay.isEmpty ? [] : pendingReplayedLines
         pendingReplay = []
         pendingReplayDedupe = []
@@ -2022,6 +2024,7 @@ public final class CaptionPipeline {
     }
 
     private func handle(token incoming: TranscriptToken) {
+        defer { finishCrossedOverlap() }
         stats.tokensReceived += 1
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
@@ -2597,35 +2600,63 @@ public final class CaptionPipeline {
         return (replaySamples + step - 1) / step + AudioFanOut.defaultBufferLimit
     }
 
+    /// The grace counts live audio the engine has taken, not audio that was
+    /// queued for it: a slow or still loading model reads the replay late,
+    /// and its words must still replace the cut-off lines then. The count
+    /// runs when the engine pulls a chunk from the stream returned here.
     private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
         let step = Int(Self.sampleRate / 5)
-        let (stream, continuation) = AsyncStream<[Float]>.makeStream(
+        let (queue, continuation) = AsyncStream<ReplayChunk>.makeStream(
             bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
         replayTask?.cancel()
         let task = Task {
             var index = 0
             while index < replay.count, !Task.isCancelled {
                 let end = min(index + step, replay.count)
-                continuation.yield(Array(replay[index..<end]))
+                continuation.yield(ReplayChunk(samples: Array(replay[index..<end]), isLive: false))
                 index = end
             }
-            var liveFed = 0
-            let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
             for await chunk in live {
                 if Task.isCancelled { break }
-                continuation.yield(chunk)
-                let before = liveFed
-                liveFed += chunk.count
-                if before < grace, liveFed >= grace, self.replayUtterance == nil {
-                    self.replayedLines = []
-                    self.replayDedupe = []
-                }
+                continuation.yield(ReplayChunk(samples: chunk, isLive: true))
             }
             continuation.finish()
         }
         replayTask = task
         continuation.onTermination = { _ in task.cancel() }
-        return stream
+        let reader = ReplayReader(queue.makeAsyncIterator())
+        let run = runID
+        let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
+        return AsyncStream(unfolding: { [weak self] in
+            guard let chunk = await reader.next() else { return nil }
+            if chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
+                await self?.endReplayOverlap(run: run)
+            }
+            return chunk.samples
+        })
+    }
+
+    /// Only the replay of the current run may end the overlap check: an
+    /// older engine can still be reading its queue after a newer replay
+    /// has armed its own lines. A replay line open at that moment ends it
+    /// when the line finishes (see `finishCrossedOverlap`).
+    private func endReplayOverlap(run: UUID) {
+        guard runID == run else { return }
+        guard replayUtterance == nil else {
+            replayGraceCrossedMidUtterance = true
+            return
+        }
+        replayedLines = []
+        replayDedupe = []
+    }
+
+    /// The grace passed while a replay line was open: once that line is
+    /// over, whatever it did not rewrite is the live speech's to keep.
+    private func finishCrossedOverlap() {
+        guard replayGraceCrossedMidUtterance, replayUtterance == nil else { return }
+        replayGraceCrossedMidUtterance = false
+        replayedLines = []
+        replayDedupe = []
     }
 
     /// The replay starts before the home computer's last line, so the
@@ -3588,4 +3619,27 @@ final class ArrivalCounter: @unchecked Sendable {
     private var count = 0
     var value: Int { lock.withLock { count } }
     func increment() { lock.withLock { count += 1 } }
+}
+
+private struct ReplayChunk: Sendable {
+    let samples: [Float]
+    let isLive: Bool
+}
+
+/// Holds the one iterator the engine's pulls go through. The engine reads
+/// the stream from a single task, one chunk at a time, so nothing races.
+private final class ReplayReader: @unchecked Sendable {
+    private var iterator: AsyncStream<ReplayChunk>.Iterator
+    private var liveTaken = 0
+
+    init(_ iterator: AsyncStream<ReplayChunk>.Iterator) { self.iterator = iterator }
+
+    /// True once, on the pull that takes the live audio past the grace.
+    func takeLive(_ count: Int, grace: Int) -> Bool {
+        let before = liveTaken
+        liveTaken += count
+        return before < grace && liveTaken >= grace
+    }
+
+    func next() async -> ReplayChunk? { await iterator.next() }
 }

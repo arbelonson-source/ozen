@@ -190,4 +190,142 @@ struct ReplayHalfLineTests {
         #expect(await eventually { pipeline.segments.last?.text == "and the rest" })
         #expect(pipeline.segments.map(\.text) == ["line A is done", "and the rest"])
     }
+
+    /// Counts the live chunks (level 0.3) the engine has read and parks it
+    /// once it has read `parkAt` samples of them, after running `atPark`.
+    private final class LiveReads: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+        let resume = PrepareGate()
+        var taken: Int { lock.withLock { count } }
+
+        func hook(parkAt: Int, atPark: @escaping @Sendable () -> Void) -> @Sendable ([Float]) async -> Void {
+            { chunk in
+                guard chunk.first == 0.3 else { return }
+                let reached = self.lock.withLock { () -> Bool in
+                    self.count += chunk.count
+                    return self.count == parkAt
+                }
+                if reached {
+                    atPark()
+                    await self.resume.wait()
+                }
+            }
+        }
+    }
+
+    private func halfLineThenDropWithSlowModel(
+        _ pipeline: CaptionPipeline, _ audio: FakeAudioCapturer, _ cloud: FakeEngine
+    ) async {
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line A is done", isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await said(pipeline, audio, seconds: 6, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts", isFinal: false, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "gone"))
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase.isListening })
+        await said(pipeline, audio, seconds: 10, level: 0.3)
+    }
+
+    @Test("a model that reads the replay late, after more than the grace of live audio was captured, still replaces the half line")
+    func slowModelStillReplaces() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        let gate = PrepareGate()
+        let reads = LiveReads()
+        phone.streamGate = gate
+        phone.afterChunk = reads.hook(parkAt: 32_000) {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000))
+        }
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        #expect(phone.samplesSeen.isEmpty)
+
+        await gate.open()
+        #expect(await eventually { pipeline.segments.last?.text == "line B starts and ends" })
+        #expect(reads.taken == 32_000)
+        #expect(Double(reads.taken) < Self.graceSamples)
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+        await reads.resume.open()
+        #expect(await eventually { reads.taken == 160_000 })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+    }
+
+    @Test("a replay with no words keeps the half line once the model has taken more than the grace of live audio")
+    func slowModelWithNoWordsKeepsTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        let gate = PrepareGate()
+        let reads = LiveReads()
+        phone.streamGate = gate
+        phone.afterChunk = reads.hook(parkAt: 160_000) {}
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+
+        await gate.open()
+        #expect(await eventually { reads.taken == 160_000 })
+        #expect(Double(reads.taken) > Self.graceSamples)
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.count == 3 })
+        #expect(pipeline.segments.map(\.text).first == "line A is done")
+        #expect(pipeline.segments[1].text.hasPrefix("line B starts"))
+        #expect(pipeline.segments.last?.text == "live words")
+        await reads.resume.open()
+    }
+
+    @Test("a replay line that was open at the grace and ends as pure overlap leaves the half line and later words alone")
+    func overlapLineOpenAtTheGraceEndsTheCheck() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line A is done", isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await said(pipeline, audio, seconds: 6, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts", isFinal: false, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        await dropAndReplay(pipeline, audio, cloud, phone)
+
+        let replayLine = UUID()
+        phone.emit(TranscriptToken(utteranceID: replayLine, text: "line A is done", isFinal: false, timestamp: 2_000))
+        await liveAfterReplay(pipeline, audio, phone, seconds: 10)
+        phone.emit(TranscriptToken(utteranceID: replayLine, text: "line A is done", isFinal: true, timestamp: 2_001))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "new words", isFinal: true, timestamp: 2_002))
+        #expect(await eventually { pipeline.segments.last?.text == "new words" })
+        #expect(pipeline.segments.count == 3)
+        #expect(pipeline.segments.first?.text == "line A is done")
+        #expect(pipeline.segments[1].text.hasPrefix("line B starts") == true)
+    }
+
+    @Test("an engine from an earlier takeover that crosses the grace late leaves the newer replay's lines to be replaced")
+    func olderReplayCannotEndTheNewerOverlap() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        let first = PrepareGate()
+        let reads = LiveReads()
+        phone.streamGate = first
+        phone.afterChunk = reads.hook(parkAt: -1) {}
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        try? await Task.sleep(for: .milliseconds(300))
+
+        await pipeline.stop()
+        await pipeline.start(settings: cloudSettings)
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line C is done", isFinal: true, timestamp: 3_000))
+        #expect(await eventually { pipeline.segments.contains { $0.text == "line C is done" } })
+        await said(pipeline, audio, seconds: 3, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "line D starts", isFinal: false, timestamp: 3_001))
+        #expect(await eventually { pipeline.segments.contains { $0.text.hasPrefix("line D starts") } })
+        let second = PrepareGate()
+        phone.streamGate = second
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "gone"))
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase.isListening })
+        await said(pipeline, audio, seconds: 1, level: 0.4)
+
+        await first.open()
+        #expect(await eventually { reads.taken >= 160_000 })
+        await second.open()
+        #expect(await eventually { phone.samplesSeen.contains(0.4) })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "line D starts and ends", isFinal: true, timestamp: 4_000))
+        #expect(await eventually { pipeline.segments.last?.text == "line D starts and ends" })
+        #expect(pipeline.segments.filter { $0.text.hasPrefix("line D starts") }.count == 1)
+    }
+
+    private static let graceSamples = CaptionPipeline.replayWordsGraceSeconds * 16_000
 }
