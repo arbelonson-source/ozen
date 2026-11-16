@@ -393,6 +393,38 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends", "live words"])
     }
 
+    @Test("a pass that crosses the grace with speech that begins after it keeps the half line")
+    func speechBeginningAfterTheGraceKeepsTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        phone.reportsDecoding = true
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 160_000, tokens: 1)
+        try? await Task.sleep(for: .milliseconds(300))
+        phone.emit(TranscriptToken(
+            utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_000,
+            speechStartSample: replayLength + 140_000))
+        #expect(await eventually { pipeline.segments.count == 3 })
+        #expect(pipeline.segments.first?.text == "line A is done")
+        #expect(pipeline.segments[1].text.hasPrefix("line B starts"))
+        #expect(pipeline.segments.last?.text == "live words")
+    }
+
+    @Test("a pass that crosses the grace with speech that begins before it still replaces the half line")
+    func speechBeginningBeforeTheGraceReplacesTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        phone.reportsDecoding = true
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 160_000, tokens: 1)
+        try? await Task.sleep(for: .milliseconds(300))
+        phone.emit(TranscriptToken(
+            utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000,
+            speechStartSample: replayLength - 20_000))
+        #expect(await eventually { pipeline.segments.last?.text == "line B starts and ends" })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+    }
+
     @Test("a stop issued while the engine is told about decode progress leaves the pipeline stopped with no stream")
     func stopDuringDecodeProgressSetup() async {
         let (pipeline, _, _, phone) = rig()
