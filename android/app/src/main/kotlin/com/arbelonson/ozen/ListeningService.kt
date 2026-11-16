@@ -152,7 +152,7 @@ class ListeningService : Service() {
      */
     private fun refresh() {
         val screen = CaptionState.screen.value
-        if (ServiceKeepAlive.ends(screen.phase, screen.pausedForSpeech, screen.soundsOnly, screen.pausedForRecording)) {
+        if (ServiceKeepAlive.ends(screen.phase, screen.pausedForSpeech, screen.soundsOnly, screen.pausedForRecording, screen.startsAgainAfterRecording)) {
             finish()
             return
         }

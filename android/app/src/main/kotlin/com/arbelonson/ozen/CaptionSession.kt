@@ -711,16 +711,16 @@ class CaptionSession(
     private val recordingHandover = CaptionsHandover()
 
     /**
-     * Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright.
+     * Running captions are paused, and a start still loading or waiting for a retry is stopped; both come back by [giveCaptionsBack].
      * The recording is read from a file, so sound alerts that were on keep listening meanwhile with the speech model let go.
      * A night of sounds only is left running as it is.
      */
     internal fun stopCaptionsForRecording() {
-        val paused = recordingHandover.begin(pipeline.phase)
+        val handedOver = recordingHandover.begin(pipeline.phase, pipeline.isRecoveringByItself)
         replies.userTookControl()
         if (!pipeline.soundsOnlyChosen) pipeline.stopFromNotification()
         pipeline.releaseModels()
-        if (paused && chosenSettings().soundAlerts.isEnabled) {
+        if (handedOver && chosenSettings().soundAlerts.isEnabled) {
             scope.launch(start = CoroutineStart.UNDISPATCHED) { pipeline.listenForSoundsOnly(chosenSettings()) }
         }
     }
@@ -798,10 +798,11 @@ class CaptionSession(
     }
 
     fun stopFromNotification() {
-        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
+        // Stopped first: letting go of the hand-over before would save the temporary sounds-only as her night choice.
         pipeline.stopFromNotification()
+        dropRecordingHandover()
     }
 
     /**
@@ -1093,7 +1094,8 @@ class CaptionSession(
             speakerName = pipeline::displayName,
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
-            pausedForRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Paused,
+            pausedForRecording = recordingHandover.pausedHere && (pipeline.phase == PipelinePhase.Paused || pipeline.phase == PipelinePhase.Idle),
+            startsAgainAfterRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Idle,
             soundAlertsPaused = PhasePresentation.soundAlertsPausedForRecording(settings.current.value.soundAlerts.isEnabled, pipeline.isListeningForSoundsOnly),
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
