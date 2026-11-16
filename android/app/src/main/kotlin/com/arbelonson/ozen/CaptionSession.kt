@@ -915,7 +915,9 @@ class CaptionSession(
                 if (!notifier.revise(update.content)) stoppedCaptions.postFailed()
             }
             is StoppedCaptionsNotice.Update.Realert -> {
-                if (!notifier.realert(update.content)) stoppedCaptions.postFailed()
+                val delivery = notifier.realert(update.content)
+                delivery.buzz?.let { pipeline.ignoreSounds(it) }
+                if (!delivery.posted) stoppedCaptions.postFailed()
             }
             is StoppedCaptionsNotice.Update.Replace -> {
                 applyNoticeUpdate(update.old)

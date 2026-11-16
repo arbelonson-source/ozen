@@ -31,6 +31,7 @@ extension StoppedCaptionsNotice {
         case (_, .notEnoughStorage?): return .freeSpace
         case (.noAudioInputs, _): return .checkMicrophone
         case (_, .cloudKeyNeeded?), (_, .cloudLanguageNotCovered?), (_, .cloudOutOfCredit?): return .fixCloudService
+        case (_, .noInternet?) where unavailability?.cloudTimedOut == true: return .openToContinue
         case (_, .noInternet?): return .checkConnection
         case (_, .homeServerUnreachable?):
             if HomeServer.refusedPlainAddress(unavailability) || HomeServer.languageNotCovered(unavailability) || HomeServer.answeredWrongly(unavailability) { return .fixComputerSettings }

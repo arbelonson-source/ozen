@@ -35,6 +35,7 @@ private fun failureAction(failure: PipelineFailure): NoticeAction {
         unavailability?.kind == EngineUnavailability.Kind.CloudKeyNeeded ||
             unavailability?.kind == EngineUnavailability.Kind.CloudLanguageNotCovered ||
             unavailability?.kind == EngineUnavailability.Kind.CloudOutOfCredit -> NoticeAction.FixCloudService
+        unavailability?.kind == EngineUnavailability.Kind.NoInternet && unavailability.cloudTimedOut -> NoticeAction.OpenToContinue
         unavailability?.kind == EngineUnavailability.Kind.NoInternet -> NoticeAction.CheckConnection
         HomeServer.refusedPlainAddress(unavailability) ||
             HomeServer.languageNotCovered(unavailability) ||

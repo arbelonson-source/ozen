@@ -70,4 +70,13 @@ class StoppedCaptionsNoticeRealertTest {
         assertEquals(NoticeAction.NothingToDo, action(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking))
         assertEquals(NoticeAction.TurnSoundAlertsOn, action(StoppedCaptionsNotice.Cause.SoundAlertsStopped))
     }
+
+    @Test
+    fun aCloudTimeoutIsNotALostInternetConnection() {
+        val slow = StoppedCaptionsNotice.Cause.Failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", CloudSpeechError.TimedOut.unavailability))
+        val offline = StoppedCaptionsNotice.Cause.Failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", CloudSpeechError.Offline.unavailability))
+        assertEquals(NoticeAction.OpenToContinue, StoppedCaptionsNotice.action(slow))
+        assertEquals(NoticeAction.CheckConnection, StoppedCaptionsNotice.action(offline))
+        assertEquals(realert(offline), posted(slow).next(offline, 1.0))
+    }
 }

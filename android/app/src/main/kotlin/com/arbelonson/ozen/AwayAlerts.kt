@@ -75,10 +75,10 @@ class AlertNotifier(private val context: Context) {
      * Changes the words of a notice that is still showing and alerts again,
      * keeping the time it first had. One she swiped away is not brought back.
      */
-    fun realert(content: AlertNotificationContent): Boolean {
+    fun realert(content: AlertNotificationContent): Delivery {
         val showing = context.getSystemService(NotificationManager::class.java).activeNotifications
-        if (!AwayAlerts.isShowing(showing.map { it.tag }, content.identifier)) return true
-        return deliver(content, showing = showing.map { it.tag to it.notification.`when` }, keepTime = true).posted
+        if (!AwayAlerts.isShowing(showing.map { it.tag }, content.identifier)) return Delivery(true)
+        return deliver(content, showing = showing.map { it.tag to it.notification.`when` }, keepTime = true)
     }
 
     class Delivery(val posted: Boolean, val buzz: AlertVibration? = null)

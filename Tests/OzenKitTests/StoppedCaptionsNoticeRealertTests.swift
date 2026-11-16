@@ -67,4 +67,14 @@ struct StoppedCaptionsNoticeRealertTests {
         #expect(StoppedCaptionsNotice.action(for: .soundAlertsNotWorking) == .nothingToDo)
         #expect(StoppedCaptionsNotice.action(for: .soundAlertsStopped) == .turnSoundAlertsOn)
     }
+
+    @Test("a cloud timeout is not a lost internet connection")
+    func timeoutIsNotNoInternet() {
+        let slow = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.timedOut.unavailability)
+        let offline = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: CloudSpeechError.offline.unavailability)
+        #expect(StoppedCaptionsNotice.action(for: .failed(slow)) == .openToContinue)
+        #expect(StoppedCaptionsNotice.action(for: .failed(offline)) == .checkConnection)
+        var notice = posted(.failed(slow))
+        #expect(next(&notice, .failed(offline), 1) == .realert(StoppedCaptionsNotice.content(for: .failed(offline))))
+    }
 }
