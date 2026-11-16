@@ -750,6 +750,8 @@ public final class LiveCaptionViewModel {
             apply(new)
         case .revise(let content):
             postNotification?(StoppedCaptionsNotice.revised(content, since: stoppedCaptions.stoppedAt).quietly())
+        case .realert(let content):
+            postNotification?(StoppedCaptionsNotice.revised(content, since: stoppedCaptions.stoppedAt))
         }
     }
 

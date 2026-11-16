@@ -76,7 +76,7 @@ class CaptionPipelineFallbackSilentMicrophoneTest {
         assertIs<StoppedCaptionsNotice.Update.Schedule>(notice.update(generic, appIsActive = false, isEnabled = true, now = 0.0))
         assertNull(notice.update(generic, appIsActive = false, isEnabled = true, now = 30.0))
         val revised = notice.update(silent, appIsActive = false, isEnabled = true, now = 100.0)
-        assertEquals(StoppedCaptionsNotice.Update.Revise(StoppedCaptionsNotice.content(silent)), revised)
+        assertEquals(StoppedCaptionsNotice.Update.Realert(StoppedCaptionsNotice.content(silent)), revised)
         assertNull(notice.update(silent, appIsActive = false, isEnabled = true, now = 110.0))
     }
 
@@ -97,6 +97,6 @@ class CaptionPipelineFallbackSilentMicrophoneTest {
         notice.update(generic, appIsActive = false, isEnabled = true, now = 0.0)
         assertNull(notice.update(null, appIsActive = false, isEnabled = true, now = 100.0))
         val revised = notice.update(silent, appIsActive = false, isEnabled = true, now = 120.0)
-        assertEquals(StoppedCaptionsNotice.Update.Revise(StoppedCaptionsNotice.content(silent)), revised)
+        assertEquals(StoppedCaptionsNotice.Update.Realert(StoppedCaptionsNotice.content(silent)), revised)
     }
 }
