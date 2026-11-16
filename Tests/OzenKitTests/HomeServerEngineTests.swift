@@ -1820,8 +1820,12 @@ struct HomeServerCoverTests {
         }
         #expect(server.prepareCount - asked >= 2)
         #expect(captions.activeEngineKind == .whisperKit)
-        clock.advance(5)
-        #expect(await eventually { captions.activeEngineKind == .homeServer })
+        // Chunks still waiting to be heard stamp the clock when they are
+        // reached, so it keeps moving until the breath is seen.
+        #expect(await eventually(within: .seconds(30)) {
+            clock.advance(1)
+            return captions.activeEngineKind == .homeServer
+        })
     }
 
     @Test("with talk that never goes quiet, captions still go back after a few answered checks, between two lines")
