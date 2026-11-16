@@ -642,6 +642,11 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 }
                 val done = finish(runLast, runStop, lowered[runLast], afterFraction)
                 var numberStart = word.coreStart
+                if (position == runLast && core in profile.plainAlone && !done.joined &&
+                    !(previous != null && previous in profile.countsAfter)
+                ) {
+                    continue
+                }
                 if (position == runLast && core in profile.ambiguous) {
                     if (previous != null && previous in profile.notACountBefore) continue
                     if (!done.joined) {

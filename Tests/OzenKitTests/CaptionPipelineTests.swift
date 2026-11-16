@@ -169,6 +169,26 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// Runs after each chunk `stream` reads, with that chunk; the read loop
     /// waits for it, so a test can park the engine at an exact point.
     var afterChunk: (@Sendable ([Float]) async -> Void)?
+    /// Whether this engine says how far its decoding has got, like the
+    /// phone's model; see `reportDecoded`.
+    var reportsDecoding = false
+    var reportsDecodeProgress: Bool { reportsDecoding }
+    private var decodeReport: (@Sendable (Int, Int) -> Void)?
+
+    /// Parks `setDecodeProgress` until the test opens it.
+    var decodeProgressGate: PrepareGate?
+    private(set) var streamsStarted = 0
+
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {
+        lock.withLock { decodeReport = report }
+        await decodeProgressGate?.wait()
+    }
+
+    /// Says the decoding has got through this many samples of the stream,
+    /// with `tokens` yielded so far (as the real engine counts them).
+    func reportDecoded(_ position: Int, tokens: Int = 0) {
+        lock.withLock { decodeReport }?(position, tokens)
+    }
     /// Waits this long between progress reports, as a real download does.
     var progressSpacing: Duration?
     /// Megabytes `prepare` would still download; nil when the model is there.
@@ -261,7 +281,8 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     }
 
     func stream(languageCode: String, audio: AsyncStream<[Float]>) -> AsyncThrowingStream<TranscriptToken, Error> {
-        AsyncThrowingStream { continuation in
+        lock.withLock { streamsStarted += 1 }
+        return AsyncThrowingStream { continuation in
             lock.withLock { tokenContinuation = continuation }
             Task {
                 await self.streamGate?.wait()

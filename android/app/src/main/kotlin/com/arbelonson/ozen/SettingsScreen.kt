@@ -137,6 +137,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -190,6 +191,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -395,6 +397,8 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     val sizeLabel = tr("גודל טקסט", "Text size")
     val look = CaptionTheme.of(display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
     val lockScreenBlocked = lockScreenNotificationsBlocked()
+    val lockScreenBlockedText = tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen.")
+    AnnounceWhenShown(display.lockScreenCaptions && lockScreenBlocked, lockScreenBlockedText)
     SettingsGroup {
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -492,7 +496,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
         item {
             SettingSwitchRow(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), display.lockScreenCaptions, { on -> settings.change { it.display = it.display.copy(lockScreenCaptions = on) } }, icon = Icons.Rounded.Lock)
         }
-        if (display.lockScreenCaptions && lockScreenBlocked) item { LockScreenBlockedNotice() }
+        if (display.lockScreenCaptions && lockScreenBlocked) item { LockScreenBlockedNotice(lockScreenBlockedText) }
     }
     if (display.markUncertainLines && engine == TranscriptionEngineKind.Cloud) {
         GroupFootnote(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן כשמשתמשים בו, שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
@@ -755,14 +759,27 @@ private fun HomeComputerSection(
     }
     // The button vanishes the moment it is pressed, so the save is said
     // aloud and focus goes to the field instead of falling away.
+    val keyboard = LocalSoftwareKeyboardController.current
+    // TalkBack speaks the field that just took focus and drops an
+    // announcement sent at the same moment, so this one waits for the focus
+    // to settle. The field is only focused for the screen reader, so the
+    // keyboard is put away again.
+    val focusThenSay = { focus: FocusRequester, text: String ->
+        scope.launch {
+            try {
+                focus.requestFocus()
+            } catch (_: IllegalStateException) {
+            }
+            keyboard?.hide()
+            delay(FOCUS_SETTLE_MILLIS)
+            ScreenReader.said(context, text)
+        }
+        Unit
+    }
     val saveAddressAndSay = {
         val savedBefore = current.homeServerAddress
         saveAddress()
-        try {
-            addressFocus.requestFocus()
-        } catch (_: IllegalStateException) {
-        }
-        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
+        focusThenSay(addressFocus, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false
@@ -781,13 +798,7 @@ private fun HomeComputerSection(
     // address typed but not saved yet is saved first.
     val saveCodeNow = {
         scope.launch {
-            if (saveCode()) {
-                try {
-                    codeFocus.requestFocus()
-                } catch (_: IllegalStateException) {
-                }
-                ScreenReader.said(context, HomeServer.codeSavedText())
-            }
+            if (saveCode()) focusThenSay(codeFocus, HomeServer.codeSavedText())
         }
         Unit
     }
@@ -1156,6 +1167,8 @@ private fun AlertsSection(
         blocked = !AlertNotifier.allowed(context)
         toCheck = nightItemsToCheck(context, sounds.isEnabled)
     }
+    val blockedText = tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off.")
+    AnnounceWhenShown(notifyInBackground && blocked, blockedText)
     SectionHeader(tr("התראות", "Alerts"))
     SettingsGroup(dividerInset = 56.dp) {
         item {
@@ -1191,9 +1204,9 @@ private fun AlertsSection(
                 Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
                     if (blocked) {
                         Text(
-                            tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."),
+                            blockedText,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         )
                         TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
                     } else {
@@ -1218,8 +1231,8 @@ private fun AlertsSection(
                 )
             }
             if (quietHours.isEnabled) {
-                item { HourStepper(tr("מתחילות", "Starts"), quietHours.startHour) { onQuietHours(QuietHours(true, it, quietHours.endHour)) } }
-                item { HourStepper(tr("מסתיימות", "Ends"), quietHours.endHour) { onQuietHours(QuietHours(true, quietHours.startHour, it)) } }
+                item { HourStepper(tr("מתחילות", "Starts"), HourStepperText.start(), quietHours.startHour) { onQuietHours(QuietHours(true, it, quietHours.endHour)) } }
+                item { HourStepper(tr("מסתיימות", "Ends"), HourStepperText.end(), quietHours.endHour) { onQuietHours(QuietHours(true, quietHours.startHour, it)) } }
                 // An equal start and end is the whole day, deliberately; two
                 // equal hours on screen don't say that, so the note does, and
                 // the screen reader reads it out when it changes.
@@ -1288,13 +1301,13 @@ private fun lockScreenNotificationsBlocked(): Boolean {
 }
 
 @Composable
-private fun LockScreenBlockedNotice() {
+private fun LockScreenBlockedNotice(text: String) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
         Text(
-            tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."),
+            text,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
     }
@@ -1306,10 +1319,10 @@ private fun LockScreenBlockedNotice() {
  * screen reader moves it by swiping up or down on the row.
  */
 @Composable
-private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
+private fun HourStepper(title: String, row: String, hour: Int, onChange: (Int) -> Unit) {
     val shown = hour.toString().padStart(2, '0') + ":00"
-    val earlier = tr("שעה מוקדמת יותר", "One hour earlier")
-    val later = tr("שעה מאוחרת יותר", "One hour later")
+    val earlier = HourStepperText.button(later = false, row = row)
+    val later = HourStepperText.button(later = true, row = row)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1329,8 +1342,8 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(shown, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics { })
         }
-        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0, modifier = Modifier.semantics { contentDescription = "$title, $earlier" }) { Text("−", fontSize = 24.sp) }
-        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23, modifier = Modifier.semantics { contentDescription = "$title, $later" }) { Text("+", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0, modifier = Modifier.semantics { contentDescription = earlier }) { Text("−", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23, modifier = Modifier.semantics { contentDescription = later }) { Text("+", fontSize = 24.sp) }
     }
 }
 
@@ -1749,3 +1762,5 @@ internal fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.
 
 @Composable
 internal fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f
+
+private const val FOCUS_SETTLE_MILLIS = 600L

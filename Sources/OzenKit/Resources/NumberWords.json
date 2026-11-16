@@ -238,6 +238,8 @@
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
       "halbes"
     ],
+    "plainAlone": ["acht", "elf", "null"],
+    "countsAfter": ["um", "bis", "ab", "gegen", "vor", "nach", "punkt"],
     "notACountBefore": [
       "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"
     ],
@@ -469,7 +471,8 @@
       "اولى", "أولى", "ثانية", "ثالثة", "رابعة", "خامسة", "سادسة", "سابعة", "ثامنة", "تاسعة", "عاشرة", "حادية"
     ],
     "plainWords": [
-      "الاثنين", "والاثنين", "فالاثنين", "بالاثنين", "للاثنين", "ولالاثنين"
+      "الاثنين", "والاثنين", "فالاثنين", "بالاثنين", "للاثنين", "ولالاثنين",
+      "الاحد", "والاحد", "فالاحد", "بالاحد", "للاحد", "ولالاحد"
     ],
     "oneFollowsUnit": true
   }

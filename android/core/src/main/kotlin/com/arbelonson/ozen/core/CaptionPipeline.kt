@@ -963,7 +963,30 @@ class CaptionPipeline(
         // run before it returns; the dead fan-out must not start listening.
         if (runID != run) return abandon(fan)
         fanOut = fan
-        val engineAudio = if (replay.isEmpty()) fan.outputs[0] else replaying(replay, fan.outputs[0], run)
+        var crossing: ReplayCrossing? = null
+        val engineAudio: Flow<FloatArray>
+        if (replay.isEmpty()) {
+            engineAudio = fan.outputs[0]
+            engine.setDecodeProgress(null)
+        } else {
+            val byDecoding = engine.reportsDecodeProgress
+            val counter = ReplayCrossing()
+            engineAudio = replaying(replay, fan.outputs[0], run, if (byDecoding) null else counter)
+            if (byDecoding) {
+                crossing = counter
+                val grace = (REPLAY_WORDS_GRACE_SECONDS * SAMPLE_RATE).toLong()
+                val replayCount = replay.size
+                engine.setDecodeProgress { position, tokens ->
+                    if (counter.decodedLive(position - replayCount, grace, tokens)) {
+                        scope.launch { if (counter.crossingDue()) endReplayOverlap(run) }
+                    }
+                }
+            } else {
+                engine.setDecodeProgress(null)
+            }
+        }
+        // The engine call above can suspend; a stop meanwhile must not start a stale stream.
+        if (runID != run) return abandon(fan)
         val tokens = engine.stream(settings.languageCode, engineAudio)
         val embedderAudio = fan.outputs[1]
         val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]), soundAvailabilityReporter())
@@ -997,7 +1020,10 @@ class CaptionPipeline(
             var knownFailure: EngineUnavailability? = null
             var stopReason: String? = null
             try {
-                tokens.takeWhile { runID == run }.collect { token -> handleToken(token) }
+                tokens.takeWhile { runID == run }.collect { token ->
+                    handleToken(token)
+                    if (crossing?.tokenHandled() == true) endReplayOverlap(run)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: CloudSpeechError) {
@@ -3929,7 +3955,7 @@ class CaptionPipeline(
      * so it holds nothing beyond the replay itself: the live audio waits in
      * the fan-out's own bounded channel meanwhile.
      */
-    private fun replaying(replay: FloatArray, live: Flow<FloatArray>, run: UUID): Flow<FloatArray> = flow {
+    private fun replaying(replay: FloatArray, live: Flow<FloatArray>, run: UUID, byPulls: ReplayCrossing?): Flow<FloatArray> = flow {
         val step = (SAMPLE_RATE / 5).toInt()
         for (start in replay.indices step step) emit(replay.copyOfRange(start, minOf(start + step, replay.size)))
         var liveFed = 0L
@@ -3938,18 +3964,25 @@ class CaptionPipeline(
             emit(chunk)
             val before = liveFed
             liveFed += chunk.size
-            if (before < grace && liveFed >= grace) {
-                scope.launch {
-                    if (runID != run) return@launch
-                    if (replayUtterance != null) {
-                        replayGraceCrossedMidUtterance = true
-                        return@launch
-                    }
-                    replayedLines = emptySet()
-                    replayDedupe = emptyList()
-                }
+            if (byPulls != null && before < grace && liveFed >= grace) {
+                scope.launch { endReplayOverlap(run) }
             }
         }
+    }
+
+    /**
+     * Only the replay of the current run may end the overlap check: an
+     * older replay can't end a newer one. A line open when it ends is
+     * finished first (see [finishCrossedOverlap]).
+     */
+    private fun endReplayOverlap(run: UUID) {
+        if (runID != run) return
+        if (replayUtterance != null) {
+            replayGraceCrossedMidUtterance = true
+            return
+        }
+        replayedLines = emptySet()
+        replayDedupe = emptyList()
     }
 
     /**
@@ -4289,3 +4322,38 @@ data class KeywordHit(
     val match: KeywordMatch,
     val timestamp: Double,
 )
+
+/**
+ * Counts live audio the engine has decoded past a replay and the tokens
+ * the pipeline has handled, so the grace ends only after the words the
+ * decoding found before it. Reports come from the engine's own thread.
+ */
+private class ReplayCrossing {
+    private val lock = Any()
+    private var liveDecoded = 0
+    private var tokensHandled = 0
+    private var crossingAfter: Int? = null
+
+    /** True once, on the report that takes decoded live audio past [grace]; the crossing then waits for [tokens] to be handled. */
+    fun decodedLive(count: Int, grace: Long, tokens: Int): Boolean = synchronized(lock) {
+        val before = liveDecoded
+        liveDecoded = maxOf(before, count)
+        if (before >= grace || liveDecoded < grace) return false
+        crossingAfter = tokens
+        true
+    }
+
+    /** Counts one handled token; true when that makes a waiting crossing due. */
+    fun tokenHandled(): Boolean {
+        synchronized(lock) { tokensHandled += 1 }
+        return crossingDue()
+    }
+
+    /** True once, when a crossing is waiting and all tokens before it were handled. */
+    fun crossingDue(): Boolean = synchronized(lock) {
+        val after = crossingAfter ?: return false
+        if (tokensHandled < after) return false
+        crossingAfter = null
+        true
+    }
+}
