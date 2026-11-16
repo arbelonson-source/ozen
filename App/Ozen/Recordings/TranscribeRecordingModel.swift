@@ -262,7 +262,8 @@ final class TranscribeRecordingModel {
         guard !closed else { return }
         let code = ready.language.engineLanguageCode
         let baseName = (ready.name as NSString).deletingPathExtension
-        shareText = TranscriptFormats.text(lines, languageCode: code)
+        let text = TranscriptFormats.text(lines, languageCode: code)
+        shareText = endMissing || stoppedBy != nil ? "\(TranscriptSessionRecord.cutShortNote)\n\n\(text)" : text
         subtitlesURL = RecordingFiles.writeShare(TranscriptFormats.srt(lines, languageCode: code), name: baseName, fileExtension: "srt")
         state = .done(.init(name: ready.name, language: ready.language, model: model, lines: lines, history: history, endMissing: endMissing, stoppedBy: stoppedBy))
     }

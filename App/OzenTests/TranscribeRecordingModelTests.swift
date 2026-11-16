@@ -210,6 +210,18 @@ struct TranscribeRecordingModelTests {
         }
     }
 
+    @Test("the shared text of a recording whose end was missing opens with the cut-short note")
+    func shareTextSaysWhenCutShort() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let screen = model(host: host, transcriber: RecordingTranscriberFake { _, _ in .finished(lines: [first], endMissing: true) })
+        await screen.load()
+        screen.start()
+        await screen.runFinished()
+        #expect(screen.shareText == "\(TranscriptSessionRecord.cutShortNote)\n\n\(TranscriptFormats.text([first], languageCode: "he"))")
+        await screen.close()
+    }
+
     @Test("lines kept as the run goes are replaced by the final record under the same id, and a stopped run keeps none")
     func keepsAsItGoes() async throws {
         let lines = (0..<5).map { TranscribedLine(startSeconds: Double($0), endSeconds: Double($0) + 1, text: "line \($0)") }
