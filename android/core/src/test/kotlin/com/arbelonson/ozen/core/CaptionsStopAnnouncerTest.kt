@@ -122,4 +122,20 @@ class CaptionsStopAnnouncerTest {
         assertNull(announcer.phaseChanged(stalled, active = false))
         assertEquals(stopped, announcer.comingBack(stalled))
     }
+
+    @Test
+    fun `the stop text names the cause and then the next step`() {
+        val text = CaptionsStopAnnouncer.stoppedText("No microphone found", "Tap to try again", UILanguage.English)
+        assertEquals("Captions stopped: No microphone found. Tap to try again", text)
+    }
+
+    @Test
+    fun `the stop text leaves out an empty step and one the title already says`() {
+        assertEquals("Captions stopped: Stalled", CaptionsStopAnnouncer.stoppedText("Stalled", null, UILanguage.English))
+        assertEquals("Captions stopped: Stalled", CaptionsStopAnnouncer.stoppedText("Stalled", "  ", UILanguage.English))
+        assertEquals(
+            "Captions stopped: Stalled, tap to try again",
+            CaptionsStopAnnouncer.stoppedText("Stalled, tap to try again", "Tap to try again", UILanguage.English),
+        )
+    }
 }

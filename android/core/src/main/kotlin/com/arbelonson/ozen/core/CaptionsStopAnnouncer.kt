@@ -75,5 +75,16 @@ class CaptionsStopAnnouncer {
 
     companion object {
         const val LONG_PREPARATION_SECONDS = 10.0
+
+        /**
+         * What is said when captions stop: the cause, then the one line saying what to do, so a listener with
+         * hints turned off still hears the next step. The line is left out when it is empty or already part of the title.
+         */
+        fun stoppedText(title: String, detail: String?, language: UILanguage = Localization.language): String {
+            val head = tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(title), language)
+            val step = detail?.trim().orEmpty()
+            if (step.isEmpty() || title.lowercase().contains(step.lowercase())) return head
+            return "$head. $step"
+        }
     }
 }

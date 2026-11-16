@@ -230,13 +230,14 @@ private struct SoundEventRow: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+            let toggleName = tr("להתריע גם על צליל חלש יותר", "Alert on a fainter sound too")
             Toggle(isOn: $isSensitive) {
-                Text(tr("להתריע גם על צליל חלש יותר", "Alert on a fainter sound too"))
+                Text(toggleName)
                     .font(.caption.weight(.semibold))
                     .frame(minHeight: 44)
             }
             .toggleStyle(.button)
-            .accessibilityHint(caption)
+            .accessibilityLabel(toggleName + ". " + caption)
         }
         .accessibilityIdentifier("soundSensitivityToggle-\(event.identifier)")
     }

@@ -137,6 +137,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -190,6 +191,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -755,14 +757,27 @@ private fun HomeComputerSection(
     }
     // The button vanishes the moment it is pressed, so the save is said
     // aloud and focus goes to the field instead of falling away.
+    val keyboard = LocalSoftwareKeyboardController.current
+    // TalkBack speaks the field that just took focus and drops an
+    // announcement sent at the same moment, so this one waits for the focus
+    // to settle. The field is only focused for the screen reader, so the
+    // keyboard is put away again.
+    val focusThenSay = { focus: FocusRequester, text: String ->
+        scope.launch {
+            try {
+                focus.requestFocus()
+            } catch (_: IllegalStateException) {
+            }
+            keyboard?.hide()
+            delay(FOCUS_SETTLE_MILLIS)
+            ScreenReader.said(context, text)
+        }
+        Unit
+    }
     val saveAddressAndSay = {
         val savedBefore = current.homeServerAddress
         saveAddress()
-        try {
-            addressFocus.requestFocus()
-        } catch (_: IllegalStateException) {
-        }
-        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
+        focusThenSay(addressFocus, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false
@@ -781,13 +796,7 @@ private fun HomeComputerSection(
     // address typed but not saved yet is saved first.
     val saveCodeNow = {
         scope.launch {
-            if (saveCode()) {
-                try {
-                    codeFocus.requestFocus()
-                } catch (_: IllegalStateException) {
-                }
-                ScreenReader.said(context, HomeServer.codeSavedText())
-            }
+            if (saveCode()) focusThenSay(codeFocus, HomeServer.codeSavedText())
         }
         Unit
     }
@@ -1749,3 +1758,5 @@ internal fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.
 
 @Composable
 internal fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f
+
+private const val FOCUS_SETTLE_MILLIS = 600L

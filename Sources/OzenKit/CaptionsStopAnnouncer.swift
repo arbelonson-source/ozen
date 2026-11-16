@@ -80,4 +80,16 @@ public struct CaptionsStopAnnouncer: Sendable, Equatable {
             return nil
         }
     }
+
+    /// What is said when captions stop: the cause, then the one line saying
+    /// what to do, so a listener with hints turned off still hears the next
+    /// step. The line is left out when it is empty or already part of the
+    /// title.
+    public static func stoppedText(title: String, detail: String?, in language: UILanguage = Localization.language) -> String {
+        let head = tr("הכתוביות נעצרו: %1", "Captions stopped: %1", args: ["\(title)"], in: language)
+        let step = (detail ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let spoken = title.lowercased()
+        guard !step.isEmpty, !spoken.contains(step.lowercased()) else { return head }
+        return head + ". " + step
+    }
 }

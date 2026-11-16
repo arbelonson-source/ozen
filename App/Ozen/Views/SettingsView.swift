@@ -798,13 +798,23 @@ struct SettingsView: View {
         let savedAddressBefore = viewModel.settings.homeServerAddress
         saveHomeServerAddress()
         savedFieldFocus = .address
-        AccessibilityNotification.Announcement(HomeServer.addressSavedAnnouncement(address: homeServerAddressDraft, pin: HomeServer.announcementPin(typed: homeServerAddressDraft, saved: savedAddressBefore, pin: viewModel.settings.homeServerCertificatePin))).post()
+        announceAfterFocusMove(HomeServer.addressSavedAnnouncement(address: homeServerAddressDraft, pin: HomeServer.announcementPin(typed: homeServerAddressDraft, saved: savedAddressBefore, pin: viewModel.settings.homeServerCertificatePin)))
     }
 
     private func saveHomeServerCodeAndSay() {
         guard saveHomeServerCode() else { return }
         savedFieldFocus = .code
-        AccessibilityNotification.Announcement(HomeServer.codeSavedText()).post()
+        announceAfterFocusMove(HomeServer.codeSavedText())
+    }
+
+    /// VoiceOver reads the field that just took focus and drops an
+    /// announcement posted at the same moment, so this one waits a moment
+    /// and is queued behind that speech.
+    private func announceAfterFocusMove(_ text: String) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            Announcement.post(text)
+        }
     }
 
     @discardableResult

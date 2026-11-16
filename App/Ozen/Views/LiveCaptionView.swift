@@ -1352,7 +1352,7 @@ struct LiveCaptionView: View {
     private func sayStopOrReturn(_ event: CaptionsStopAnnouncer.Event?) {
         switch event {
         case .stopped?:
-            announceAlert(tr("הכתוביות נעצרו: %1", "Captions stopped: %1", args: ["\(presentation.title)"]))
+            announceAlert(CaptionsStopAnnouncer.stoppedText(title: presentation.title, detail: presentation.detail))
         case .back?:
             announceAlert(tr("הכתוביות חזרו", "Captions are back"))
         case .ready?:

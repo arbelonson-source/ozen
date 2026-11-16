@@ -42,7 +42,7 @@ struct CaptionLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    IslandMark(state: context.state, isStale: context.isStale)
+                    IslandMark(state: context.state, isStale: context.isStale, nameOnly: true)
                         .font(.title2)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -87,13 +87,15 @@ extension CaptionActivityAttributes.ContentState {
 struct IslandMark: View {
     let state: CaptionActivityAttributes.ContentState
     let isStale: Bool
+    /// The expanded island already shows the note as text under the mark.
+    var nameOnly = false
 
     var body: some View {
         let name = state.appName ?? (state.english ? "Ozen" : "אוזן")
         let note = isStale ? state.notUpdatingNote : state.status
         Image(systemName: note == nil ? "captions.bubble.fill" : "exclamationmark.bubble.fill")
             .foregroundStyle(note == nil ? Color.yellow : Color.orange)
-            .accessibilityLabel(note.map { "\(name). \($0)" } ?? name)
+            .accessibilityLabel(nameOnly ? name : note.map { "\(name). \($0)" } ?? name)
     }
 }
 
