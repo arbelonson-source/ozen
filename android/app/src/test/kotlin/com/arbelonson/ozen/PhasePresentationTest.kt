@@ -40,6 +40,7 @@ class PhasePresentationTest {
         downloadSecondsRemaining: Double? = null,
         pausedForSpeech: Boolean = false,
         pausedForRecording: Boolean = false,
+        soundAlertsPaused: Boolean = false,
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
@@ -54,7 +55,7 @@ class PhasePresentationTest {
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
         pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
         builtInOffered = builtInOffered, modelGettingReady = modelGettingReady, modelJustReady = modelJustReady,
-        coverDetail = coverDetail, spokenLanguage = spokenLanguage, pausedForRecording = pausedForRecording,
+        coverDetail = coverDetail, spokenLanguage = spokenLanguage, pausedForRecording = pausedForRecording, soundAlertsPaused = soundAlertsPaused,
     )
 
     @Test
@@ -773,6 +774,30 @@ class PhasePresentationTest {
             assertEquals("Captions are paused while a recording is turned into text", shown.title)
             assertEquals(PhasePresentation.Action.None, shown.action)
             assertEquals("Listening for sounds only", present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, soundsOnly = true).title)
+        }
+    }
+
+    @Test
+    fun soundAlertsCountAsPausedForARecordingOnlyWhenNothingListensForSounds() {
+        assertEquals(true, PhasePresentation.soundAlertsPausedForRecording(alertsOn = true, listeningForSounds = false))
+        assertEquals(false, PhasePresentation.soundAlertsPausedForRecording(alertsOn = true, listeningForSounds = true))
+        assertEquals(false, PhasePresentation.soundAlertsPausedForRecording(alertsOn = false, listeningForSounds = false))
+    }
+
+    @Test
+    fun pausedForARecordingWithSoundAlertsOnSaysTheyArePausedToo() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, pausedForRecording = true, soundAlertsPaused = true)
+            assertEquals("Captions and sound alerts are paused while a recording is turned into text", shown.title)
+            assertEquals("They come back when it’s done", shown.detail)
+            assertEquals(PhasePresentation.Action.None, shown.action)
+        }
+    }
+
+    @Test
+    fun soundAlertsPausedChangesNothingOutsideARecordingPause() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Paused", present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, soundAlertsPaused = true).title)
         }
     }
 }

@@ -170,6 +170,9 @@ class PhasePresentation private constructor(
         }
 
     companion object {
+        /** Sound alerts are paused with the captions for a recording only when no microphone is listening for sounds meanwhile. */
+        fun soundAlertsPausedForRecording(alertsOn: Boolean, listeningForSounds: Boolean): Boolean = alertsOn && !listeningForSounds
+
         /**
          * About what two lines of the status button hold on an ordinary
          * phone: 17-18 Hebrew letters a line. A longer detail was cut off
@@ -198,6 +201,7 @@ class PhasePresentation private constructor(
             coverDetail: String? = null,
             spokenLanguage: UILanguage = UILanguage.Hebrew,
             pausedForRecording: Boolean = false,
+            soundAlertsPaused: Boolean = false,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -282,7 +286,11 @@ class PhasePresentation private constructor(
                         )
                     } else if (pausedForRecording) {
                         PhasePresentation(
-                            title = tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text"),
+                            title = if (soundAlertsPaused) {
+                                tr("הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט", "Captions and sound alerts are paused while a recording is turned into text")
+                            } else {
+                                tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text")
+                            },
                             detail = tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
                             systemImage = "pause.circle.fill",
                             tint = PhaseTint.Attention,

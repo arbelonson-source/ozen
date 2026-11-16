@@ -1197,6 +1197,7 @@
   "one hour later": "አንድ ሰዓት ዘግይቶ",
   "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።",
   "Captions are paused while a recording is turned into text": "ቅጂ ወደ ጽሑፍ ሲቀየር ካፕሽኖች ተቋርጠዋል",
+  "Captions and sound alerts are paused while a recording is turned into text": "ቅጂ ወደ ጽሑፍ ሲቀየር ካፕሽኖችና የድምጽ ማንቂያዎች ተቋርጠዋል",
   "They come back when it’s done": "ሲጨርስ ይመለሳሉ",
   "Emergency alerts are muted": "የአደጋ ማንቂያዎች ድምፅ አልባ ናቸው",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጠፍተዋል፣ ስለዚህ የጭስ ማንቂያ አይደርሰዎትም። ለማብራት ይንኩ።",
@@ -1208,7 +1209,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "ጽሑፉ ከቅጂው መጨረሻ በፊት ይቆማል፤ ስለዚህ የተወሰነ ጽሑፍ ጎድሏል።",
   "The address wasn’t kept on the phone.": "አድራሻው በስልኩ ላይ አልተቀመጠም።",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "የቤት ኮምፒዩተሩ አድራሻ በስልኩ ላይ አልተቀመጠም፣ ስልኩ እንደገና ሲነሳ ይጠፋል።",
-  "Close anyway": "ለማንኛውም ዝጋ"
+  "Close anyway": "ለማንኛውም ዝጋ",
+  "Before you sleep": "ከመተኛትዎ በፊት"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2408,6 +2410,7 @@
   "one hour later": "تأخير ساعة",
   "The first stop was at %1.": "كان التوقف الأول عند %1.",
   "Captions are paused while a recording is turned into text": "توقفت الترجمة النصية مؤقتًا أثناء تحويل تسجيل إلى نص",
+  "Captions and sound alerts are paused while a recording is turned into text": "توقفت الترجمة النصية وتنبيهات الصوت مؤقتًا أثناء تحويل تسجيل إلى نص",
   "They come back when it’s done": "ستعود عند الانتهاء",
   "Emergency alerts are muted": "تنبيهات الطوارئ صامتة",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "تنبيهات الطوارئ متوقفة في إعدادات الهاتف، لذا لن يصلكم تنبيه إنذار الدخان. المسوا لتشغيلها.",
@@ -2419,7 +2422,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "يتوقف النص قبل نهاية التسجيل، لذلك ينقص بعض الكلام.",
   "The address wasn’t kept on the phone.": "لم يُحفظ العنوان على الهاتف.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "لم يُحفظ عنوان الكمبيوتر المنزلي على الهاتف وسيضيع بعد إعادة التشغيل.",
-  "Close anyway": "إغلاق على أي حال"
+  "Close anyway": "إغلاق على أي حال",
+  "Before you sleep": "قبل أن تنام"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3619,6 +3623,7 @@
   "one hour later": "推后一小时",
   "The first stop was at %1.": "首次停止的时间是 %1。",
   "Captions are paused while a recording is turned into text": "录音转写为文字期间，字幕已暂停",
+  "Captions and sound alerts are paused while a recording is turned into text": "录音转写为文字期间，字幕和声音提醒已暂停",
   "They come back when it’s done": "转写完成后会自动恢复",
   "Emergency alerts are muted": "紧急提醒已静音",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "紧急提醒在手机设置中已关闭，所以你收不到烟雾报警的提醒。点按即可打开。",
@@ -3630,7 +3635,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "这份文字在录音结束前就停止了，因此缺少一部分内容。",
   "The address wasn’t kept on the phone.": "地址没有保存在手机上。",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "家用电脑的地址没有保存在手机上，重启后会丢失。",
-  "Close anyway": "仍然关闭"
+  "Close anyway": "仍然关闭",
+  "Before you sleep": "睡觉前"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4830,6 +4836,7 @@
   "one hour later": "une heure plus tard",
   "The first stop was at %1.": "Le premier arrêt a eu lieu à %1.",
   "Captions are paused while a recording is turned into text": "Les sous-titres sont en pause pendant la transcription d’un enregistrement",
+  "Captions and sound alerts are paused while a recording is turned into text": "Les sous-titres et les alertes sonores sont en pause pendant la transcription d’un enregistrement",
   "They come back when it’s done": "Ils reviennent dès que c’est terminé",
   "Emergency alerts are muted": "Les alertes d’urgence sont coupées",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Les alertes d’urgence sont désactivées dans les réglages du téléphone : une alarme incendie ne vous parviendra pas. Touchez pour les activer.",
@@ -4841,7 +4848,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Cette transcription s’arrête avant la fin de l’enregistrement ; il manque donc une partie du texte.",
   "The address wasn’t kept on the phone.": "L’adresse n’a pas été conservée sur le téléphone.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "L’adresse de l’ordinateur à la maison n’a pas été conservée sur le téléphone et sera perdue après un redémarrage.",
-  "Close anyway": "Fermer quand même"
+  "Close anyway": "Fermer quand même",
+  "Before you sleep": "Avant de dormir"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6041,6 +6049,7 @@
   "one hour later": "eine Stunde später",
   "The first stop was at %1.": "Der erste Stopp war um %1.",
   "Captions are paused while a recording is turned into text": "Die Untertitel pausieren, während eine Aufnahme in Text umgewandelt wird",
+  "Captions and sound alerts are paused while a recording is turned into text": "Die Untertitel und Geräuschhinweise pausieren, während eine Aufnahme in Text umgewandelt wird",
   "They come back when it’s done": "Sie kommen zurück, sobald das fertig ist",
   "Emergency alerts are muted": "Notfallhinweise sind stummgeschaltet",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Notfallhinweise sind in den Einstellungen des Telefons ausgeschaltet, deshalb erreicht Sie ein Rauchmelder nicht. Zum Einschalten tippen.",
@@ -6052,7 +6061,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Diese Abschrift endet vor dem Ende der Aufnahme, es fehlt also ein Teil des Textes.",
   "The address wasn’t kept on the phone.": "Die Adresse wurde nicht auf dem Telefon behalten.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Die Adresse des Heimcomputers wurde nicht auf dem Telefon behalten und geht nach einem Neustart verloren.",
-  "Close anyway": "Trotzdem schließen"
+  "Close anyway": "Trotzdem schließen",
+  "Before you sleep": "Bevor Sie schlafen"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7252,6 +7262,7 @@
   "one hour later": "एक घंटा बाद करें",
   "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।",
   "Captions are paused while a recording is turned into text": "रिकॉर्डिंग को टेक्स्ट में बदलने के दौरान कैप्शन रुके हुए हैं",
+  "Captions and sound alerts are paused while a recording is turned into text": "रिकॉर्डिंग को टेक्स्ट में बदलने के दौरान कैप्शन और आवाज़ के अलर्ट रुके हुए हैं",
   "They come back when it’s done": "काम पूरा होते ही वे अपने आप लौट आएँगे",
   "Emergency alerts are muted": "आपातकालीन अलर्ट म्यूट हैं",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट बंद हैं, इसलिए धुएँ के अलार्म की सूचना आप तक नहीं पहुँचेगी। चालू करने के लिए छूएँ।",
@@ -7263,7 +7274,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "यह ट्रांसक्रिप्ट रिकॉर्डिंग खत्म होने से पहले रुक जाती है, इसलिए कुछ टेक्स्ट गायब है।",
   "The address wasn’t kept on the phone.": "पता फ़ोन पर नहीं रखा गया।",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "घर के कंप्यूटर का पता फ़ोन पर नहीं रखा गया और रीस्टार्ट के बाद खो जाएगा।",
-  "Close anyway": "फिर भी बंद करें"
+  "Close anyway": "फिर भी बंद करें",
+  "Before you sleep": "सोने से पहले"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8463,6 +8475,7 @@
   "one hour later": "uma hora mais tarde",
   "The first stop was at %1.": "A primeira parada foi às %1.",
   "Captions are paused while a recording is turned into text": "As legendas estão em pausa enquanto uma gravação é transcrita",
+  "Captions and sound alerts are paused while a recording is turned into text": "As legendas e os avisos de sons estão em pausa enquanto uma gravação é transcrita",
   "They come back when it’s done": "Elas voltam quando terminar",
   "Emergency alerts are muted": "Os alertas de emergência estão silenciados",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Os alertas de emergência estão desativados nas definições do telefone, por isso um alarme de fumo não lhe chegará. Toque para os ativar.",
@@ -8474,7 +8487,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Esta transcrição termina antes do fim da gravação, então falta parte do texto.",
   "The address wasn’t kept on the phone.": "O endereço não foi guardado no telemóvel.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "O endereço do computador lá de casa não foi guardado no telemóvel e perder-se-á após um reinício.",
-  "Close anyway": "Fechar mesmo assim"
+  "Close anyway": "Fechar mesmo assim",
+  "Before you sleep": "Antes de dormir"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9674,6 +9688,7 @@
   "one hour later": "на час позже",
   "The first stop was at %1.": "Первая остановка была в %1.",
   "Captions are paused while a recording is turned into text": "Субтитры приостановлены, пока запись преобразуется в текст",
+  "Captions and sound alerts are paused while a recording is turned into text": "Субтитры и звуковые оповещения приостановлены, пока запись преобразуется в текст",
   "They come back when it’s done": "Они вернутся, когда это закончится",
   "Emergency alerts are muted": "Экстренные оповещения отключены",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Экстренные оповещения выключены в настройках телефона, поэтому сигнал дымовой тревоги до вас не дойдёт. Нажмите, чтобы включить.",
@@ -9685,7 +9700,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Эта расшифровка обрывается до конца записи, поэтому часть текста отсутствует.",
   "The address wasn’t kept on the phone.": "Адрес не сохранён на телефоне.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адрес домашнего компьютера не сохранён на телефоне и пропадёт после перезапуска.",
-  "Close anyway": "Всё равно закрыть"
+  "Close anyway": "Всё равно закрыть",
+  "Before you sleep": "Перед сном"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10885,6 +10901,7 @@
   "one hour later": "una hora después",
   "The first stop was at %1.": "La primera parada fue a las %1.",
   "Captions are paused while a recording is turned into text": "Los subtítulos están en pausa mientras se transcribe una grabación",
+  "Captions and sound alerts are paused while a recording is turned into text": "Los subtítulos y las alertas de sonido están en pausa mientras se transcribe una grabación",
   "They come back when it’s done": "Vuelven cuando termine",
   "Emergency alerts are muted": "Las alertas de emergencia están silenciadas",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Las alertas de emergencia están desactivadas en los ajustes del teléfono, así que una alarma de humo no te llegará. Toca para activarlas.",
@@ -10896,7 +10913,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Esta transcripción termina antes del final de la grabación, así que falta parte del texto.",
   "The address wasn’t kept on the phone.": "La dirección no se guardó en el teléfono.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "La dirección del ordenador de casa no se guardó en el teléfono y se perderá tras reiniciar.",
-  "Close anyway": "Cerrar de todos modos"
+  "Close anyway": "Cerrar de todos modos",
+  "Before you sleep": "Antes de dormir"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12096,6 +12114,7 @@
   "one hour later": "на годину пізніше",
   "The first stop was at %1.": "Перша зупинка була о %1.",
   "Captions are paused while a recording is turned into text": "Субтитри призупинено, поки запис перетворюється на текст",
+  "Captions and sound alerts are paused while a recording is turned into text": "Субтитри та звукові сповіщення призупинено, поки запис перетворюється на текст",
   "They come back when it’s done": "Вони повернуться, коли це завершиться",
   "Emergency alerts are muted": "Екстрені сповіщення вимкнено",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Екстрені сповіщення вимкнено в налаштуваннях телефона, тому сигнал димової тривоги до вас не дійде. Торкніться, щоб увімкнути.",
@@ -12107,6 +12126,7 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Ця розшифровка обривається до кінця запису, тому частини тексту бракує.",
   "The address wasn’t kept on the phone.": "Адресу не збережено на телефоні.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адресу домашнього комп’ютера не збережено на телефоні, і вона зникне після перезапуску.",
-  "Close anyway": "Усе одно закрити"
+  "Close anyway": "Усе одно закрити",
+  "Before you sleep": "Перед сном"
  }
 }
