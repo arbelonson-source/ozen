@@ -87,7 +87,13 @@ class ListeningCutTest {
     @Test
     fun `a record from before an app update still gives its notice`() {
         val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION - 1)
-        assertEquals(at(1, 10), ListeningCut.notice(record, now = at(4, 20))?.stoppedAt)
+        assertEquals(at(1, 10), ListeningCut.notice(record, now = at(4, 20), version = VERSION)?.stoppedAt)
+    }
+
+    @Test
+    fun `a record from before an update gives a notice even when the gap is under two minutes`() {
+        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION - 1)
+        assertEquals(at(1, 10), ListeningCut.notice(record, now = at(1, 10) + 30, version = VERSION)?.stoppedAt)
     }
 
     @Test
@@ -263,17 +269,9 @@ class ListeningCutTest {
     }
 
     @Test
-    fun `a record from another version is cleared even right after it was written`() {
+    fun `a record from another version gives its notice even right after it was written, since an update ended the process`() {
         store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
         clock = at(1, 11)
-        assertNull(recorder().take())
-        assertNull(store.value)
-    }
-
-    @Test
-    fun `taking a record from before an app update far in the past gives its notice and clears it`() {
-        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
-        clock = at(4, 20)
         assertEquals(at(1, 10), recorder().take()?.stoppedAt)
         assertNull(store.value)
     }
