@@ -116,7 +116,13 @@ public final class RecordingAudioReader: @unchecked Sendable {
         let output = AVAssetReaderAudioMixOutput(audioTracks: audio, audioSettings: settings)
         guard let reader = try? AVAssetReader(asset: asset), reader.canAdd(output) else { throw RecordingReadProblem.unreadable }
         reader.add(output)
-        let seconds = duration.seconds
+        var soundSeconds = 0.0
+        for track in audio {
+            if let range = try? await track.load(.timeRange), range.duration.seconds.isFinite {
+                soundSeconds = max(soundSeconds, range.duration.seconds)
+            }
+        }
+        let seconds = soundSeconds > 0 ? soundSeconds : duration.seconds
         return RecordingAudioReader(
             source: AssetPieceSource(reader: reader, output: output),
             durationSeconds: seconds.isFinite && seconds > 0 ? seconds : nil,
