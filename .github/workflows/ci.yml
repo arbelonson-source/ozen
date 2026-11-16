@@ -61,7 +61,7 @@ jobs:
         run: |
           base=https://download.swift.org/swift-6.1.3-release/ubuntu2404/swift-6.1.3-RELEASE
           file=swift-6.1.3-RELEASE-ubuntu24.04.tar.gz
-          fetch() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$@"; }
+          fetch() { curl -fsSL --connect-timeout 30 --max-time 300 --retry 5 --retry-all-errors --retry-delay 5 -o "$@"; }
           fetch "$RUNNER_TEMP/$file" "$base/$file"
           fetch "$RUNNER_TEMP/$file.sig" "$base/$file.sig"
           gpg --import .github/swift-all-keys.asc
