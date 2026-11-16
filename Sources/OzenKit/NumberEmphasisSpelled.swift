@@ -73,6 +73,18 @@ extension NumberEmphasis {
             return (cursor + 1, wordEnd(cursor + 1))
         }
 
+        func numberClock(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
+            guard joinsNext(last, end), let link = lowered[last + 1], profile.numberClockLinks.contains(link),
+                  joinsNext(last + 1, wordEnd(last + 1)), last + 2 < words.count, isNumber(last + 2),
+                  let minute = lowered[last + 2], !profile.ambiguous.contains(minute)
+            else { return nil }
+            let second = runEnd(from: last + 2)
+            let tail = finish(second, wordEnd(second), lowered[second], afterFraction: false)
+            if tail.joined { return nil }
+            if joinsNext(second, wordEnd(second)), let after = lowered[second + 1], profile.periods.contains(after) { return nil }
+            return (second, wordEnd(second))
+        }
+
         func finish(_ last: Int, _ end: String.Index, _ core: String?, afterFraction: Bool) -> (last: Int, end: String.Index, joined: Bool) {
             var last = last
             var end = end
@@ -145,7 +157,11 @@ extension NumberEmphasis {
                             spanStart = unitStart
                         }
                     }
-                    span = (spanStart, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
+                    if !afterFraction, !done.joined, !profile.ambiguous.contains(core), let clock = numberClock(after: last, end) {
+                        span = (spanStart, clock.last, clock.end)
+                    } else {
+                        span = (spanStart, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
+                    }
                 } else if profile.clockOrdinals.contains(core), position > 0, let noun = lowered[position - 1],
                           profile.clockNouns.contains(noun), joinsNext(position - 1, wordEnd(position - 1)),
                           let nounStart = words[position - 1].coreRange?.lowerBound {

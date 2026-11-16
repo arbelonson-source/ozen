@@ -590,6 +590,19 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         return SpelledTail(lastWord, endAt, joined)
     }
 
+    fun numberClock(last: Int, end: Int): Pair<Int, Int>? {
+        if (!joinsNext(last, end) || lowered[last + 1] !in profile.numberClockLinks ||
+            !joinsNext(last + 1, coreEnd(last + 1)) || last + 2 >= words.size || !isNumber(last + 2) ||
+            lowered[last + 2] in profile.ambiguous
+        ) {
+            return null
+        }
+        val second = runEnd(last + 2)
+        if (finish(second, coreEnd(second), lowered[second], false).joined) return null
+        if (joinsNext(second, coreEnd(second)) && lowered[second + 1] in profile.periods) return null
+        return second to coreEnd(second)
+    }
+
     val result = mutableListOf<OpenEndRange<Int>>()
     var lastJoined = -1
     for ((position, word) in words.withIndex()) {
@@ -657,9 +670,10 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                     }
                 }
                 start = numberStart
+                val clock = if (!afterFraction && !done.joined && core !in profile.ambiguous) numberClock(runLast, runStop) else null
                 val keepTail = done.joined || !afterFraction
-                last = if (keepTail) done.last else runLast
-                end = if (keepTail) done.end else runStop
+                last = clock?.first ?: if (keepTail) done.last else runLast
+                end = clock?.second ?: if (keepTail) done.end else runStop
             } else if (core in profile.clockOrdinals && position > 0 && lowered[position - 1] in profile.clockNouns &&
                 joinsNext(position - 1, coreEnd(position - 1))
             ) {

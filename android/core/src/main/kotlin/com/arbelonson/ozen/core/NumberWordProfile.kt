@@ -15,6 +15,7 @@ internal class NumberWordProfile(entry: JsonObject) {
     val fractions = strings(entry, "fractions", foldsArabic)
     val fractionLinks = strings(entry, "fractionLinks", foldsArabic)
     val clockLinks = strings(entry, "clockLinks", foldsArabic)
+    val numberClockLinks = strings(entry, "numberClockLinks", foldsArabic)
     val ambiguous = strings(entry, "ambiguous", foldsArabic)
     val notACountBefore = strings(entry, "notACountBefore", foldsArabic)
     val countsAfter = strings(entry, "countsAfter", foldsArabic)
