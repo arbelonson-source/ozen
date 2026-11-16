@@ -1406,17 +1406,20 @@ public final class LiveCaptionViewModel {
         }
     }
 
-    public func setHomeServerAddress(_ address: String) async {
+    /// Whether the setting reached the disk (true too when nothing changed).
+    @discardableResult
+    public func setHomeServerAddress(_ address: String) async -> Bool {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard settings.homeServerAddress != trimmed else { return }
+        guard settings.homeServerAddress != trimmed else { return true }
         settings.typeHomeServerAddress(trimmed)
-        persist()
+        let written = persist()
         // This restart carries the current beam too: one still settling
         // from the slider would only reconnect a second time.
         beamRestart?.cancel()
         if settings.engine == .homeServer {
             await restartIfRunning()
         }
+        return written
     }
 
     /// A pairing link from a home computer's QR code, waiting for someone
@@ -2742,16 +2745,20 @@ public final class LiveCaptionViewModel {
 
     private var pendingPersistTask: Task<Void, Never>?
 
-    private func persist() {
+    @discardableResult
+    private func persist() -> Bool {
         pendingPersistTask?.cancel()
         pendingPersistTask = nil
+        var written = true
         do {
             try settingsStore.save(settings)
             if settingsSaveError != nil { settingsSaveError = nil }
         } catch {
             settingsSaveError = String(describing: error)
+            written = false
         }
         refreshSavingTrouble()
+        return written
     }
 
     /// Coalesces rapid-fire settings changes into one write instead of

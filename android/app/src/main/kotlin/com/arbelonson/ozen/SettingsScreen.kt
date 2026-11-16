@@ -761,23 +761,27 @@ private fun HomeComputerSection(
     // TalkBack speaks the field that just took focus and drops an
     // announcement sent at the same moment, so this one waits for the focus
     // to settle. The field is only focused for the screen reader, so the
-    // keyboard is put away again.
+    // keyboard is put away again. Compose starts the text input session
+    // after the focus change, so the keyboard is hidden once a frame has
+    // passed and again just before speaking.
     val focusThenSay = { focus: FocusRequester, text: String ->
         scope.launch {
             try {
                 focus.requestFocus()
             } catch (_: IllegalStateException) {
             }
+            withFrameNanos {}
             keyboard?.hide()
             delay(FOCUS_SETTLE_MILLIS)
+            keyboard?.hide()
             ScreenReader.said(context, text)
         }
         Unit
     }
     val saveAddressAndSay = {
         val savedBefore = current.homeServerAddress
-        saveAddress()
-        focusThenSay(addressFocus, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
+        val written = saveAddress()
+        focusThenSay(addressFocus, HomeServer.addressSaveOutcome(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin), writeFailed = !written))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false

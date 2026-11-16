@@ -121,6 +121,12 @@ public enum HomeServer {
         return saved
     }
 
+    /// What Save address says once the write is known: the failure when the
+    /// phone could not keep the setting, so "saved" is never said untrue.
+    public static func addressSaveOutcome(address: String, pin: String?, writeFailed: Bool) -> String {
+        writeFailed ? SavingTroubleNotice.title : addressSavedAnnouncement(address: address, pin: pin)
+    }
+
     /// The note Settings shows under the address when the home link is plain.
     public static func linkNotEncryptedText() -> String {
         tr("החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.", "The link to the computer isn’t encrypted on the home Wi‑Fi. To encrypt it, scan the code from the computer again.")

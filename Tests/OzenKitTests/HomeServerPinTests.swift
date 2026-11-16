@@ -257,6 +257,17 @@ struct HomeServerPinTests {
                 == "Computer address saved. That address doesn’t look right")
         }
     }
+
+    @Test("a failed write is said as a failure, never as saved")
+    func failedWriteIsNotSaidAsSaved() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.addressSaveOutcome(address: "wss://home.example", pin: nil, writeFailed: true) == "Saving on the phone failed")
+            #expect(HomeServer.addressSaveOutcome(address: "", pin: nil, writeFailed: true) == "Saving on the phone failed")
+            #expect(HomeServer.addressSaveOutcome(address: "wss://home.example", pin: nil, writeFailed: false) == "Computer address saved")
+            #expect(HomeServer.addressSaveOutcome(address: "ws://203.0.113.9:8765", pin: nil, writeFailed: false)
+                == HomeServer.addressSavedAnnouncement(address: "ws://203.0.113.9:8765", pin: nil))
+        }
+    }
 }
 
 @Suite("The pin an address announcement uses")

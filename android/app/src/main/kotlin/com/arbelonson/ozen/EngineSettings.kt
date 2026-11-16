@@ -167,14 +167,17 @@ class EngineSettings(
         }
     }
 
-    fun saveHomeComputerAddress(draft: String) {
+    /** Whether the address reached the disk (true too when nothing changed). */
+    fun saveHomeComputerAddress(draft: String): Boolean {
         val address = draft.trim()
-        if (settings.current.value.homeServerAddress == address) return
+        if (settings.current.value.homeServerAddress == address) return true
         settings.change {
             it.homeServerAddress = address
             it.homeServerCertificatePin = null
         }
+        val written = !settings.saveFailed.value
         if (homeComputerIsTheEngine) restart()
+        return written
     }
 
     fun hasPairingCode(): Boolean = pairingCodeHeld.value

@@ -340,6 +340,19 @@ class HomeServerTest {
     }
 
     @Test
+    fun `a failed write is said as a failure, never as saved`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Saving on the phone failed", HomeServer.addressSaveOutcome("wss://home.example", null, writeFailed = true))
+            assertEquals("Saving on the phone failed", HomeServer.addressSaveOutcome("", null, writeFailed = true))
+            assertEquals("Computer address saved", HomeServer.addressSaveOutcome("wss://home.example", null, writeFailed = false))
+            assertEquals(
+                HomeServer.addressSavedAnnouncement("ws://203.0.113.9:8765", null),
+                HomeServer.addressSaveOutcome("ws://203.0.113.9:8765", null, writeFailed = false),
+            )
+        }
+    }
+
+    @Test
     fun `saving an address that shows a caution says the caution after the saved words`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Computer address saved", HomeServer.addressSavedAnnouncement("wss://home.example", null))
