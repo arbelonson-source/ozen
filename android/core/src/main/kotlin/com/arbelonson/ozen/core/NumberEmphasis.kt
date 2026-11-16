@@ -507,7 +507,7 @@ private class SpelledTail(val last: Int, val end: Int, val joined: Boolean)
 internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberWordProfile): List<OpenEndRange<Int>> {
     val line = NumberEmphasisLine(text)
     val words = emphasisWords(line, decimalComma)
-    val lowered = words.map { it.core?.lowercase(Locale.ROOT)?.replace('’', '\'') }
+    val lowered = words.map { it.core?.let(profile::normalize) }
     fun coreEnd(index: Int): Int = if (words[index].hasCore) words[index].coreEnd else words[index].end
     fun joinsNext(index: Int, end: Int): Boolean =
         index + 1 < words.size && end == words[index].end && !emphasisFollowedByComma(line, end, decimalComma)
@@ -546,6 +546,7 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
     }
 
     fun repeatedAfter(last: Int, end: Int): Pair<Int, Int>? {
+        if (joinsNext(last, end) && lowered[last + 1] in profile.adverbPeriods) return last + 1 to coreEnd(last + 1)
         if (!joinsNext(last, end) || last + 2 >= words.size) return null
         if (lowered[last + 1] !in profile.repeatLinks || !joinsNext(last + 1, coreEnd(last + 1))) return null
         var counted = last + 2
@@ -612,7 +613,13 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
             val previous = if (position > 0) lowered[position - 1] else null
             if (core in profile.onceWords) {
                 if (previous != null && previous in profile.notACountBefore) continue
-                val again = repeatedAfter(position, coreEnd(position)) ?: continue
+                var found = repeatedAfter(position, coreEnd(position))
+                if (found == null && profile.adverbPeriods.isNotEmpty() && joinsNext(position, coreEnd(position)) &&
+                    lowered[position + 1] in profile.ambiguous
+                ) {
+                    found = repeatedAfter(position + 1, coreEnd(position + 1))
+                }
+                val again = found ?: continue
                 start = word.coreStart
                 if (previous != null && previous in profile.ambiguous && joinsNext(position - 1, coreEnd(position - 1))) {
                     start = words[position - 1].coreStart
@@ -634,14 +641,33 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                     afterFraction = true
                 }
                 val done = finish(runLast, runStop, lowered[runLast], afterFraction)
+                var numberStart = word.coreStart
                 if (position == runLast && core in profile.ambiguous) {
                     if (previous != null && previous in profile.notACountBefore) continue
-                    if (!done.joined) continue
+                    if (!done.joined) {
+                        val unitBefore = profile.oneFollowsUnit && previous != null && previous in profile.units &&
+                            previous !in profile.onceWords && joinsNext(position - 1, coreEnd(position - 1))
+                        if (!unitBefore) continue
+                        numberStart = words[position - 1].coreStart
+                    }
                 }
-                start = word.coreStart
+                start = numberStart
                 val keepTail = done.joined || !afterFraction
                 last = if (keepTail) done.last else runLast
                 end = if (keepTail) done.end else runStop
+            } else if (core in profile.clockOrdinals && position > 0 && lowered[position - 1] in profile.clockNouns &&
+                joinsNext(position - 1, coreEnd(position - 1))
+            ) {
+                var clockLast = position
+                val next = if (joinsNext(clockLast, coreEnd(clockLast))) lowered[clockLast + 1] else null
+                if (next != null && next in profile.numbers) {
+                    clockLast = runEnd(clockLast + 1)
+                } else if (next != null && next in profile.fractions) {
+                    clockLast += 1
+                }
+                start = words[position - 1].coreStart
+                last = clockLast
+                end = coreEnd(clockLast)
             } else if (core in profile.fractions) {
                 val clock = joinsNext(position, coreEnd(position)) && lowered[position + 1] in profile.clockLinks &&
                     joinsNext(position + 1, coreEnd(position + 1)) && position + 2 < words.size &&
