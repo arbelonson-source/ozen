@@ -174,6 +174,17 @@ struct CaptionLinesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // A warning comes first: at the largest text sizes the lines fill
+            // the room, and what is cut off is the bottom. It is also what
+            // VoiceOver should read first.
+            if isStale {
+                // The app stopped updating the lines (iOS closed it, say):
+                // they may be long out of date, and so may a note it left
+                // ("paused for a call" with the call long over).
+                note(state.notUpdatingNote)
+            } else if let status = state.status {
+                note(status)
+            }
             if state.lines.isEmpty {
                 // "Listening" under "captions are starting", "paused
                 // because of a call" or "captions aren't updating" would
@@ -199,14 +210,7 @@ struct CaptionLinesView: View {
                         .inAppDirection(line.readsRightToLeft ? .rightToLeft : .leftToRight)
                 }
             }
-            if isStale {
-                // The app stopped updating the lines (iOS closed it, say):
-                // they may be long out of date, and so may a note it left
-                // ("paused for a call" with the call long over).
-                note(state.notUpdatingNote)
-            } else if let status = state.status {
-                note(status)
-            } else if let ageNote = state.ageNote {
+            if !isStale, state.status == nil, let ageNote = state.ageNote {
                 // Captions run, but nobody has spoken for a while.
                 note(ageNote, color: .white.opacity(0.7))
             }
@@ -214,8 +218,8 @@ struct CaptionLinesView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// A note under the lines: why they stopped coming, or how long ago
-    /// they were said. Follows the phone's text size, up to
+    /// A note: why the lines stopped coming (above them), or how long ago
+    /// they were said (under them). Follows the phone's text size, up to
     /// where it would crowd the lines out of the lock screen's room.
     private func note(_ text: String, color: Color = .orange) -> some View {
         Text(text)
