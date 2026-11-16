@@ -1406,11 +1406,14 @@ public final class LiveCaptionViewModel {
         }
     }
 
-    /// Whether the setting reached the disk (true too when nothing changed).
+    /// Whether the setting reached the disk. Unchanged counts as saved unless
+    /// the last write failed, then it is written again.
     @discardableResult
     public func setHomeServerAddress(_ address: String) async -> Bool {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard settings.homeServerAddress != trimmed else { return true }
+        guard settings.homeServerAddress != trimmed else {
+            return settingsSaveError == nil || persist()
+        }
         settings.typeHomeServerAddress(trimmed)
         let written = persist()
         // This restart carries the current beam too: one still settling

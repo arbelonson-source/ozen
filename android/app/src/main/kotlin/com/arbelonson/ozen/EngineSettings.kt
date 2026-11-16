@@ -167,10 +167,14 @@ class EngineSettings(
         }
     }
 
-    /** Whether the address reached the disk (true too when nothing changed). */
+    /** Whether the address reached the disk. An unchanged address counts as saved unless the last write failed, then it is written again. */
     fun saveHomeComputerAddress(draft: String): Boolean {
         val address = draft.trim()
-        if (settings.current.value.homeServerAddress == address) return true
+        if (settings.current.value.homeServerAddress == address) {
+            if (!settings.saveFailed.value) return true
+            settings.change {}
+            return !settings.saveFailed.value
+        }
         settings.change {
             it.homeServerAddress = address
             it.homeServerCertificatePin = null

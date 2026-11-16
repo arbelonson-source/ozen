@@ -287,6 +287,11 @@ class EngineSettingsTest {
         File(settingsFile, "blocker").writeText("x")
         assertFalse(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
         assertTrue(settings.saveFailed.value)
+        assertFalse(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
+        assertTrue(File(settingsFile, "blocker").delete())
+        assertTrue(settingsFile.delete())
+        assertTrue(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
+        assertEquals("wss://other.example.net", saved().homeServerAddress)
     }
 
     @Test
