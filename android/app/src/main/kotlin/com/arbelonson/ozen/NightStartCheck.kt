@@ -52,10 +52,10 @@ object NightStartCheck {
     fun toShow(found: List<Problem>, dismissed: Set<Problem>): List<Problem> =
         if (found.any { it !in dismissed }) found else emptyList()
 
-    /** A card up while she fixes things in Settings: what is fixed leaves it. */
     /** A closed problem that has since been fixed is forgotten, so it shows again if it comes back. */
     fun stillDismissed(dismissed: List<Problem>, found: List<Problem>): List<Problem> = dismissed.filter { it in found }
 
+    /** A card up while she fixes things in Settings: what is fixed leaves it. */
     fun stillOpen(shown: List<Problem>, found: List<Problem>): List<Problem> = shown.filter { it in found }
 
     fun encode(list: Collection<Problem>): String = list.joinToString(",") { it.name }

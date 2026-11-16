@@ -37,6 +37,7 @@ internal class NumberWordProfile(entry: JsonObject) {
     val clockOrdinals = strings(entry, "clockOrdinals", foldsArabic)
     val plainWords = strings(entry, "plainWords", foldsArabic)
     val oneFollowsUnit = entry["oneFollowsUnit"]?.jsonPrimitive?.content == "true"
+    val clockStopsBeforeCapitalized = entry["clockStopsBeforeCapitalized"]?.jsonPrimitive?.content == "true"
     private val attachedPrefixes = strings(entry, "attachedPrefixes", foldsArabic).toList()
     private val known = numbers + fractions + units + periods + adverbPeriods + clockNouns + clockOrdinals +
         onceWords + ambiguous + notACountBefore + countsAfter + plainAlone

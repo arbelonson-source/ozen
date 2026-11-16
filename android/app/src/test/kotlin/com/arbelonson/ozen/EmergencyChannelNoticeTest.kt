@@ -38,11 +38,11 @@ class EmergencyChannelNoticeTest {
     }
 
     @Test
-    fun `sound and buzz both off at any importance count as silent, one of them off does not`() {
+    fun `sound and buzz both off at any importance count as silent, sound on with the buzz off is a gentler warning, buzz on with sound off is none`() {
         val both = EmergencyChannelNotice.warning(true, false, true, high, hasSound = false, vibrates = false)
         assertEquals(Warning.Silent, both)
         assertEquals(Warning.None, EmergencyChannelNotice.warning(true, false, true, high, hasSound = false, vibrates = true))
-        assertEquals(Warning.None, EmergencyChannelNotice.warning(true, false, true, default, hasSound = true, vibrates = false))
+        assertEquals(Warning.NoBuzz, EmergencyChannelNotice.warning(true, false, true, default, hasSound = true, vibrates = false))
         assertEquals(false, AlertNotifier.alarmsOn(true, high, hasSound = false, vibrates = false))
         assertEquals(true, AlertNotifier.alarmsOn(true, high, hasSound = false, vibrates = true))
         assertEquals(false, AlertNotifier.alarmsGetThrough(true, high, true, hasSound = false, vibrates = false))
@@ -73,5 +73,26 @@ class EmergencyChannelNoticeTest {
         assertEquals("Emergency alerts are muted", EmergencyChannelNotice.title())
         assertTrue(EmergencyChannelNotice.detail(Warning.Off).contains("turned off") && EmergencyChannelNotice.detail(Warning.Off).contains("Tap to turn them on"))
         assertTrue(EmergencyChannelNotice.detail(Warning.Silent).contains("silent") && EmergencyChannelNotice.detail(Warning.Silent).contains("Tap to fix"))
+    }
+
+    @Test
+    fun `sound on with vibration off warns that alerts will not buzz, below off and silent`() {
+        fun w(importance: Int?, notificationsOn: Boolean = true, away: Boolean = false, sounds: Boolean = true) =
+            EmergencyChannelNotice.warning(sounds, away, notificationsOn, importance, hasSound = true, vibrates = false)
+        assertEquals(Warning.NoBuzz, w(high))
+        assertEquals(Warning.NoBuzz, w(null))
+        assertEquals(Warning.Off, w(none))
+        assertEquals(Warning.Silent, w(low))
+        assertEquals(Warning.Off, w(high, notificationsOn = false))
+        assertEquals(Warning.None, w(high, notificationsOn = false, away = true))
+        assertEquals(Warning.None, w(high, sounds = false))
+    }
+
+    @Test
+    fun `the no-buzz words say vibration is off and have their own title`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("Emergency alerts won’t buzz", EmergencyChannelNotice.title(Warning.NoBuzz))
+        assertEquals("Emergency alerts are muted", EmergencyChannelNotice.title(Warning.Silent))
+        val text = EmergencyChannelNotice.detail(Warning.NoBuzz)
+        assertTrue(text.contains("won’t buzz") && text.contains("vibration is off") && text.contains("Tap to fix"))
     }
 }

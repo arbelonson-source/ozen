@@ -82,6 +82,13 @@ extension NumberEmphasis {
             return (second, wordEnd(second))
         }
 
+        func minuteWithClockUnit(at index: Int) -> (last: Int, end: String.Index)? {
+            guard index < words.count, isNumber(index), let minute = lowered[index], !profile.ambiguous.contains(minute),
+                  runEnd(from: index) == index, joinsNext(index, wordEnd(index)), let unit = lowered[index + 1],
+                  profile.clockUnits.contains(unit) else { return nil }
+            return (index + 1, wordEnd(index + 1))
+        }
+
         func numberClock(after last: Int, _ end: String.Index, cued: Bool = false) -> (last: Int, end: String.Index)? {
             guard joinsNext(last, end), let link = lowered[last + 1], profile.numberClockLinks.contains(link),
                   joinsNext(last + 1, wordEnd(last + 1)), last + 2 < words.count
@@ -95,7 +102,10 @@ extension NumberEmphasis {
             if (cued || cuedByArticle), let one = lowered[minute], profile.clockMinuteOnes.contains(one), !joinsNext(minute, wordEnd(minute)) {
                 return (minute, wordEnd(minute))
             }
-            return minuteEnd(at: minute)
+            guard let found = minuteEnd(at: minute) ?? minuteWithClockUnit(at: minute) else { return nil }
+            if profile.clockStopsBeforeCapitalized, joinsNext(found.last, found.end), let noun = lowered[found.last + 1],
+               words[found.last + 1].core?.first?.isUppercase == true, !profile.clockUnits.contains(noun) { return nil }
+            return found
         }
 
         func hourClock(after unit: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
