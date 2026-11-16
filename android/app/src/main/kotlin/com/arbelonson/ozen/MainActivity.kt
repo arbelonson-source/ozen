@@ -719,6 +719,7 @@ private fun OzenApp(
                                 onClear = app.captions::clearCaptions,
                                 clearQuestion = { HistoryTexts.clearQuestion(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
                                 awayAlertsOn = current.notifyWhenInBackground,
+                                soundAlertsOn = current.soundAlerts.isEnabled,
                             )
                         }
                     }
@@ -955,15 +956,18 @@ private fun CaptionScreen(
     onClear: (keepingHistory: Boolean) -> Boolean,
     clearQuestion: () -> ClearQuestion,
     awayAlertsOn: Boolean,
+    soundAlertsOn: Boolean,
 ) {
     val context = LocalContext.current
     var notificationsAllowed by remember { mutableStateOf(AlertNotifier.allowed(context)) }
+    var emergencyWarning by remember { mutableStateOf(EmergencyChannelNotice.Warning.None) }
+    val awayAlertsBlocked = AwayAlertsNotice.blocked(awayAlertsOn, notificationsAllowed)
     // Looked at again on coming back from the phone's settings.
-    LifecycleResumeEffect(Unit) {
+    LifecycleResumeEffect(soundAlertsOn, awayAlertsOn) {
         notificationsAllowed = AlertNotifier.allowed(context)
+        emergencyWarning = AlertNotifier.emergencyWarning(context, soundAlertsOn, AwayAlertsNotice.blocked(awayAlertsOn, notificationsAllowed))
         onPauseOrDispose { }
     }
-    val awayAlertsBlocked = AwayAlertsNotice.blocked(awayAlertsOn, notificationsAllowed)
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
     // final size is saved.
@@ -1210,6 +1214,7 @@ private fun CaptionScreen(
                     // at the largest text it is never below the scrolled-off part.
                     ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
                     ArrivingBanner(Unit.takeIf { state.startRefused }) { StartRefusedBanner() }
+                    ArrivingBanner(emergencyWarning.takeIf { it != EmergencyChannelNotice.Warning.None }) { EmergencyChannelBanner(it) { AlertNotifier.openAlarmSettings(context) } }
                     ArrivingBanner(Unit.takeIf { awayAlertsBlocked }) { AwayAlertsBlockedBanner { openNotificationSettings(context) } }
                     ArrivingBanner(shownWord) { word ->
                         // A tap closes it, as on the iPhone, not only with TalkBack on.

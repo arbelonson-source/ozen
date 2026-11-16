@@ -1191,7 +1191,10 @@
   "Feel the vibration": "ንዝረቱን ይሰማዎት",
   "one hour earlier": "አንድ ሰዓት ቀደም ብሎ",
   "one hour later": "አንድ ሰዓት ዘግይቶ",
-  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።"
+  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።",
+  "Emergency alerts are muted": "የአደጋ ማንቂያዎች ድምፅ አልባ ናቸው",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጠፍተዋል፣ ስለዚህ የጭስ ማንቂያ አይደርሰዎትም። ለማብራት ይንኩ።",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጸጥ ተብለዋል፣ ስለዚህ የጭስ ማንቂያ አይጮኽም ወይም አይንቀጠቀጥም። ለማስተካከል ይንኩ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2385,7 +2388,10 @@
   "Feel the vibration": "الشعور بالاهتزاز",
   "one hour earlier": "تقديم ساعة",
   "one hour later": "تأخير ساعة",
-  "The first stop was at %1.": "كان التوقف الأول عند %1."
+  "The first stop was at %1.": "كان التوقف الأول عند %1.",
+  "Emergency alerts are muted": "تنبيهات الطوارئ صامتة",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "تنبيهات الطوارئ متوقفة في إعدادات الهاتف، لذا لن يصلكم تنبيه إنذار الدخان. المسوا لتشغيلها.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "تنبيهات الطوارئ مضبوطة على الصامت في إعدادات الهاتف، لذا لن يصدر إنذار الدخان صوتًا ولا اهتزازًا. المسوا للإصلاح."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3579,7 +3585,10 @@
   "Feel the vibration": "感受振动",
   "one hour earlier": "提前一小时",
   "one hour later": "推后一小时",
-  "The first stop was at %1.": "首次停止的时间是 %1。"
+  "The first stop was at %1.": "首次停止的时间是 %1。",
+  "Emergency alerts are muted": "紧急提醒已静音",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "紧急提醒在手机设置中已关闭，所以你收不到烟雾报警的提醒。点按即可打开。",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "紧急提醒在手机设置中被设为静音，所以烟雾报警既不会响铃也不会震动。点按即可修复。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4773,7 +4782,10 @@
   "Feel the vibration": "Sentir la vibration",
   "one hour earlier": "une heure plus tôt",
   "one hour later": "une heure plus tard",
-  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1."
+  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1.",
+  "Emergency alerts are muted": "Les alertes d’urgence sont coupées",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Les alertes d’urgence sont désactivées dans les réglages du téléphone : une alarme incendie ne vous parviendra pas. Touchez pour les activer.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Les alertes d’urgence sont en mode silencieux dans les réglages du téléphone : une alarme incendie ne sonnera pas et ne fera pas vibrer. Touchez pour corriger."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5967,7 +5979,10 @@
   "Feel the vibration": "Vibration spüren",
   "one hour earlier": "eine Stunde früher",
   "one hour later": "eine Stunde später",
-  "The first stop was at %1.": "Der erste Stopp war um %1."
+  "The first stop was at %1.": "Der erste Stopp war um %1.",
+  "Emergency alerts are muted": "Notfallhinweise sind stummgeschaltet",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Notfallhinweise sind in den Einstellungen des Telefons ausgeschaltet, deshalb erreicht Sie ein Rauchmelder nicht. Zum Einschalten tippen.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Notfallhinweise sind in den Einstellungen des Telefons auf lautlos gestellt, deshalb gibt ein Rauchmelder weder Ton noch Vibration ab. Zum Beheben tippen."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7161,7 +7176,10 @@
   "Feel the vibration": "कंपन महसूस करें",
   "one hour earlier": "एक घंटा पहले करें",
   "one hour later": "एक घंटा बाद करें",
-  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।"
+  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।",
+  "Emergency alerts are muted": "आपातकालीन अलर्ट म्यूट हैं",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट बंद हैं, इसलिए धुएँ के अलार्म की सूचना आप तक नहीं पहुँचेगी। चालू करने के लिए छूएँ।",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट साइलेंट पर हैं, इसलिए धुएँ के अलार्म पर न आवाज़ होगी और न कंपन। ठीक करने के लिए छूएँ।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8355,7 +8373,10 @@
   "Feel the vibration": "Sentir a vibração",
   "one hour earlier": "uma hora mais cedo",
   "one hour later": "uma hora mais tarde",
-  "The first stop was at %1.": "A primeira parada foi às %1."
+  "The first stop was at %1.": "A primeira parada foi às %1.",
+  "Emergency alerts are muted": "Os alertas de emergência estão silenciados",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Os alertas de emergência estão desativados nas definições do telefone, por isso um alarme de fumo não lhe chegará. Toque para os ativar.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Os alertas de emergência estão em modo silencioso nas definições do telefone, por isso um alarme de fumo não vai tocar nem vibrar. Toque para corrigir."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9549,7 +9570,10 @@
   "Feel the vibration": "Почувствовать вибрацию",
   "one hour earlier": "на час раньше",
   "one hour later": "на час позже",
-  "The first stop was at %1.": "Первая остановка была в %1."
+  "The first stop was at %1.": "Первая остановка была в %1.",
+  "Emergency alerts are muted": "Экстренные оповещения отключены",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Экстренные оповещения выключены в настройках телефона, поэтому сигнал дымовой тревоги до вас не дойдёт. Нажмите, чтобы включить.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Экстренные оповещения переведены в беззвучный режим в настройках телефона, поэтому дымовая тревога не прозвучит и не завибрирует. Нажмите, чтобы исправить."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10743,7 +10767,10 @@
   "Feel the vibration": "Sentir la vibración",
   "one hour earlier": "una hora antes",
   "one hour later": "una hora después",
-  "The first stop was at %1.": "La primera parada fue a las %1."
+  "The first stop was at %1.": "La primera parada fue a las %1.",
+  "Emergency alerts are muted": "Las alertas de emergencia están silenciadas",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Las alertas de emergencia están desactivadas en los ajustes del teléfono, así que una alarma de humo no te llegará. Toca para activarlas.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Las alertas de emergencia están en silencio en los ajustes del teléfono, así que una alarma de humo no sonará ni vibrará. Toca para corregirlo."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11937,6 +11964,9 @@
   "Feel the vibration": "Відчути вібрацію",
   "one hour earlier": "на годину раніше",
   "one hour later": "на годину пізніше",
-  "The first stop was at %1.": "Перша зупинка була о %1."
+  "The first stop was at %1.": "Перша зупинка була о %1.",
+  "Emergency alerts are muted": "Екстрені сповіщення вимкнено",
+  "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Екстрені сповіщення вимкнено в налаштуваннях телефона, тому сигнал димової тривоги до вас не дійде. Торкніться, щоб увімкнути.",
+  "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Екстрені сповіщення переведено в беззвучний режим у налаштуваннях телефона, тому димова тривога не пролунає й не завібрує. Торкніться, щоб виправити."
  }
 }
