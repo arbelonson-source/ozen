@@ -703,8 +703,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "የጸጥታ ሰዓቶች በአንድ ሰዓት ሲጀምሩና ሲያበቁ ቀኑን ሙሉ ይቆያሉ። እንደ ሳይረን ያሉ አጣዳፊ ድምጾች አሁንም ያስጠነቅቃሉ።",
   "Starting the microphone": "ማይክሮፎኑን በማስጀመር ላይ",
   "Starts": "ይጀምራል",
-  "One hour earlier": "አንድ ሰዓት ቀደም ብሎ",
-  "One hour later": "አንድ ሰዓት ዘግይቶ",
   "Status": "ሁኔታ",
   "Still loading the model": "ሞዴሉ አሁንም እየተጫነ ነው",
   "Stop": "ያቁሙ",
@@ -1187,7 +1185,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "ስልኩ Ozen እንዲያዳምጥ አልፈቀደም። እንደገና ለመሞከር «ካፕሽን ጀምር»ን ይንኩ።",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "ከሰረዙ አዲሱ ፋይል አይከፈትም። ይህን ጽሑፍ ካስቀመጡ ወይም ከዘጉ በኋላ እንደገና ያጋሩት።",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "የደመና ንግግር መለያ አሁን አይገኝም። ለመቀጠል Ozenን ይክፈቱ።",
-  "The address or code is missing. Open Ozen to continue.": "አድራሻው ወይም ኮዱ ጠፍቷል። ለመቀጠል Ozenን ይክፈቱ።"
+  "The address or code is missing. Open Ozen to continue.": "አድራሻው ወይም ኮዱ ጠፍቷል። ለመቀጠል Ozenን ይክፈቱ።",
+  "End": "መጨረሻ",
+  "Feel the vibration": "ንዝረቱን ይሰማዎት",
+  "one hour earlier": "አንድ ሰዓት ቀደም ብሎ",
+  "one hour later": "አንድ ሰዓት ዘግይቶ"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -1893,8 +1895,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "عندما تبدأ وتنتهي في الساعة نفسها، تستمر ساعات الهدوء طوال اليوم. الأصوات العاجلة مثل صفارة الإنذار تنبّه دائمًا.",
   "Starting the microphone": "بدء تشغيل الميكروفون",
   "Starts": "يبدأ",
-  "One hour earlier": "تقديم ساعة",
-  "One hour later": "تأخير ساعة",
   "Status": "الحالة",
   "Still loading the model": "ما زال النموذج قيد التحميل",
   "Stop": "إيقاف",
@@ -2377,7 +2377,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "لم يسمح الهاتف لـ Ozen بالاستماع. المسوا «بدء الترجمة النصية» للمحاولة مرة أخرى.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "إذا ألغيتم، لن يُفتح الملف الجديد. شاركوه مرة أخرى بعد حفظ هذا النص أو إغلاقه.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "النسخ السحابي غير متاح الآن. افتحوا Ozen للمتابعة.",
-  "The address or code is missing. Open Ozen to continue.": "العنوان أو الرمز مفقود. افتحوا Ozen للمتابعة."
+  "The address or code is missing. Open Ozen to continue.": "العنوان أو الرمز مفقود. افتحوا Ozen للمتابعة.",
+  "End": "النهاية",
+  "Feel the vibration": "الشعور بالاهتزاز",
+  "one hour earlier": "تقديم ساعة",
+  "one hour later": "تأخير ساعة"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3083,8 +3087,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "开始和结束在同一时间时，免打扰时段会持续一整天。像警笛这样的紧急声音仍会提醒你。",
   "Starting the microphone": "正在启动麦克风",
   "Starts": "开始时间",
-  "One hour earlier": "提前一小时",
-  "One hour later": "推后一小时",
   "Status": "状态",
   "Still loading the model": "仍在加载模型",
   "Stop": "停止",
@@ -3567,7 +3569,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "手机不允许 Ozen 收听。请点按“开始字幕”重试。",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "如果取消，新文件将不会打开。保存或关闭此文本后，请再次分享该文件。",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "云端语音识别目前不可用。打开 Ozen 以继续。",
-  "The address or code is missing. Open Ozen to continue.": "缺少地址或配对码。打开 Ozen 以继续。"
+  "The address or code is missing. Open Ozen to continue.": "缺少地址或配对码。打开 Ozen 以继续。",
+  "End": "结束",
+  "Feel the vibration": "感受振动",
+  "one hour earlier": "提前一小时",
+  "one hour later": "推后一小时"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4273,8 +4279,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Quand elles commencent et finissent à la même heure, les heures calmes durent toute la journée. Les sons urgents comme une sirène alertent quand même.",
   "Starting the microphone": "Démarrage du microphone",
   "Starts": "Début",
-  "One hour earlier": "Une heure plus tôt",
-  "One hour later": "Une heure plus tard",
   "Status": "État",
   "Still loading the model": "Chargement du modèle toujours en cours",
   "Stop": "Arrêter",
@@ -4757,7 +4761,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Le téléphone n’a pas laissé Ozen écouter. Touchez « Démarrer les sous-titres » pour réessayer.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si vous annulez, le nouveau fichier ne s’ouvre pas. Partagez-le de nouveau après avoir enregistré ou fermé ce texte.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcription dans le cloud n’est pas disponible pour le moment. Ouvrez Ozen pour continuer.",
-  "The address or code is missing. Open Ozen to continue.": "L’adresse ou le code est manquant. Ouvrez Ozen pour continuer."
+  "The address or code is missing. Open Ozen to continue.": "L’adresse ou le code est manquant. Ouvrez Ozen pour continuer.",
+  "End": "Fin",
+  "Feel the vibration": "Sentir la vibration",
+  "one hour earlier": "une heure plus tôt",
+  "one hour later": "une heure plus tard"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5463,8 +5471,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Beginnen und enden sie zur selben Stunde, gelten die Ruhezeiten den ganzen Tag. Dringende Geräusche wie eine Sirene lösen weiterhin einen Hinweis aus.",
   "Starting the microphone": "Das Mikrofon wird gestartet",
   "Starts": "Beginnt",
-  "One hour earlier": "Eine Stunde früher",
-  "One hour later": "Eine Stunde später",
   "Status": "Status",
   "Still loading the model": "Das Modell wird noch geladen",
   "Stop": "Stopp",
@@ -5947,7 +5953,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Das Telefon hat Ozen das Zuhören nicht erlaubt. Tippen Sie auf „Untertitel starten“, um es erneut zu versuchen.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Wenn Sie abbrechen, wird die neue Datei nicht geöffnet. Teilen Sie sie erneut, nachdem Sie diesen Text gespeichert oder geschlossen haben.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "Cloud‑Transkription ist gerade nicht verfügbar. Öffnen Sie Ozen, um fortzufahren.",
-  "The address or code is missing. Open Ozen to continue.": "Die Adresse oder der Code fehlt. Öffnen Sie Ozen, um fortzufahren."
+  "The address or code is missing. Open Ozen to continue.": "Die Adresse oder der Code fehlt. Öffnen Sie Ozen, um fortzufahren.",
+  "End": "Ende",
+  "Feel the vibration": "Vibration spüren",
+  "one hour earlier": "eine Stunde früher",
+  "one hour later": "eine Stunde später"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -6653,8 +6663,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "एक ही घंटे पर शुरू और ख़त्म होने पर शांत घंटे पूरे दिन रहते हैं। सायरन जैसी ज़रूरी आवाज़ें फिर भी अलर्ट करती हैं।",
   "Starting the microphone": "माइक्रोफ़ोन शुरू हो रहा है",
   "Starts": "शुरू होता है",
-  "One hour earlier": "एक घंटा पहले करें",
-  "One hour later": "एक घंटा बाद करें",
   "Status": "स्थिति",
   "Still loading the model": "मॉडल अभी भी लोड हो रहा है",
   "Stop": "रोकें",
@@ -7137,7 +7145,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "फ़ोन ने Ozen को सुनने नहीं दिया। दोबारा कोशिश करने के लिए “कैप्शन शुरू करें” पर टैप करें।",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "रद्द करने पर नई फ़ाइल नहीं खुलेगी। इस टेक्स्ट को सहेजने या बंद करने के बाद उसे फिर से शेयर करें।",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "क्लाउड ट्रांसक्रिप्शन अभी उपलब्ध नहीं है। जारी रखने के लिए Ozen खोलें।",
-  "The address or code is missing. Open Ozen to continue.": "पता या कोड ग़ायब है। जारी रखने के लिए Ozen खोलें।"
+  "The address or code is missing. Open Ozen to continue.": "पता या कोड ग़ायब है। जारी रखने के लिए Ozen खोलें।",
+  "End": "समाप्त",
+  "Feel the vibration": "कंपन महसूस करें",
+  "one hour earlier": "एक घंटा पहले करें",
+  "one hour later": "एक घंटा बाद करें"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -7843,8 +7855,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Quando começam e acabam à mesma hora, as horas de silêncio duram o dia todo. Sons urgentes como uma sirene continuam a avisar.",
   "Starting the microphone": "A iniciar o microfone",
   "Starts": "Começa",
-  "One hour earlier": "Uma hora mais cedo",
-  "One hour later": "Uma hora mais tarde",
   "Status": "Estado",
   "Still loading the model": "Ainda a carregar o modelo",
   "Stop": "Parar",
@@ -8327,7 +8337,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "O telemóvel não deixou o Ozen ouvir. Toque em “Iniciar legendas” para tentar de novo.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Se cancelar, o novo ficheiro não será aberto. Partilhe-o novamente depois de guardar ou fechar este texto.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "A transcrição na nuvem não está disponível neste momento. Abra o Ozen para continuar.",
-  "The address or code is missing. Open Ozen to continue.": "Falta o endereço ou o código. Abra o Ozen para continuar."
+  "The address or code is missing. Open Ozen to continue.": "Falta o endereço ou o código. Abra o Ozen para continuar.",
+  "End": "Fim",
+  "Feel the vibration": "Sentir a vibração",
+  "one hour earlier": "uma hora mais cedo",
+  "one hour later": "uma hora mais tarde"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9033,8 +9047,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Если начало и конец тихих часов совпадают, они длятся весь день. Срочные звуки, например сирена, всё равно вызывают оповещение.",
   "Starting the microphone": "Запуск микрофона",
   "Starts": "Начинается",
-  "One hour earlier": "На час раньше",
-  "One hour later": "На час позже",
   "Status": "Статус",
   "Still loading the model": "Модель всё ещё загружается",
   "Stop": "Остановить",
@@ -9517,7 +9529,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дал Ozen слушать. Нажмите «Включить субтитры», чтобы повторить попытку.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Если отменить, новый файл не откроется. Поделитесь им снова после сохранения или закрытия этого текста.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "Облачное распознавание сейчас недоступно. Откройте Ozen, чтобы продолжить.",
-  "The address or code is missing. Open Ozen to continue.": "Отсутствует адрес или код. Откройте Ozen, чтобы продолжить."
+  "The address or code is missing. Open Ozen to continue.": "Отсутствует адрес или код. Откройте Ozen, чтобы продолжить.",
+  "End": "Конец",
+  "Feel the vibration": "Почувствовать вибрацию",
+  "one hour earlier": "на час раньше",
+  "one hour later": "на час позже"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10223,8 +10239,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Si empiezan y terminan a la misma hora, las horas de silencio duran todo el día. Los sonidos urgentes como una sirena alertan igual.",
   "Starting the microphone": "Iniciando el micrófono",
   "Starts": "Empieza",
-  "One hour earlier": "Una hora antes",
-  "One hour later": "Una hora después",
   "Status": "Estado",
   "Still loading the model": "El modelo todavía se está cargando",
   "Stop": "Detener",
@@ -10707,7 +10721,11 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "El teléfono no dejó que Ozen escuchara. Toca «Iniciar subtítulos» para intentarlo de nuevo.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Si cancelas, el archivo nuevo no se abre. Compártelo de nuevo después de guardar o cerrar este texto.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "La transcripción en la nube no está disponible en este momento. Abre Ozen para continuar.",
-  "The address or code is missing. Open Ozen to continue.": "Falta la dirección o el código. Abre Ozen para continuar."
+  "The address or code is missing. Open Ozen to continue.": "Falta la dirección o el código. Abre Ozen para continuar.",
+  "End": "Fin",
+  "Feel the vibration": "Sentir la vibración",
+  "one hour earlier": "una hora antes",
+  "one hour later": "una hora después"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11413,8 +11431,6 @@
   "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.": "Якщо вони починаються й закінчуються в ту саму годину, тихі години тривають увесь день. Термінові звуки, як-от сирена, все одно сповіщають.",
   "Starting the microphone": "Запуск мікрофона",
   "Starts": "Починається",
-  "One hour earlier": "На годину раніше",
-  "One hour later": "На годину пізніше",
   "Status": "Статус",
   "Still loading the model": "Модель усе ще завантажується",
   "Stop": "Зупинити",
@@ -11897,6 +11913,10 @@
   "The phone wouldn’t let Ozen listen. Tap Start captions to try again.": "Телефон не дозволив Ozen слухати. Натисніть «Увімкнути субтитри», щоб спробувати ще раз.",
   "If you cancel, the new file is not opened. Share it again after saving or closing this text.": "Якщо скасувати, новий файл не відкриється. Поділіться ним знову після збереження або закриття цього тексту.",
   "Cloud transcription isn’t available right now. Open Ozen to continue.": "Хмарне розпізнавання зараз недоступне. Відкрийте Ozen, щоб продовжити.",
-  "The address or code is missing. Open Ozen to continue.": "Відсутня адреса або код. Відкрийте Ozen, щоб продовжити."
+  "The address or code is missing. Open Ozen to continue.": "Відсутня адреса або код. Відкрийте Ozen, щоб продовжити.",
+  "End": "Кінець",
+  "Feel the vibration": "Відчути вібрацію",
+  "one hour earlier": "на годину раніше",
+  "one hour later": "на годину пізніше"
  }
 }

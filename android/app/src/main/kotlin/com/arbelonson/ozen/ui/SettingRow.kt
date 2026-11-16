@@ -38,10 +38,11 @@ fun SettingRow(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
+    onClickLabel: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     RowLayout(
-        modifier.then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick) else Modifier),
+        modifier.then(if (onClick != null) Modifier.clickable(enabled = enabled, role = Role.Button, onClickLabel = onClickLabel, onClick = onClick) else Modifier),
         title, icon, subtitle, enabled, trailing,
     )
 }
