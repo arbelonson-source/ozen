@@ -1565,7 +1565,7 @@ class TranscriptHistoryStore(
         private val INVISIBLE = Regex("[\\u202A-\\u202E\\u2066-\\u2069\\u200E\\u200F\\u061C\\u2028\\u2029\\u200B\\uFEFF]")
 
         private fun isPictographic(point: Int) =
-            point >= 0x1F000 || point in 0x2190..0x2BFF || point == 0xFE0F
+            point in 0x1F000..0x1FAFF || point in 0x2190..0x2BFF || point == 0xFE0F
 
         private fun String.trimEdges() = trim { it == '.' || it == '\u200C' || it.isWhitespace() }
 
@@ -1573,7 +1573,7 @@ class TranscriptHistoryStore(
 
         private fun canJoin(point: Int) =
             Character.isLetter(point) || isPictographic(point) ||
-                Character.getType(point).let { it == Character.NON_SPACING_MARK.toInt() || it == Character.COMBINING_SPACING_MARK.toInt() }
+                Character.getType(point).let { it == Character.NON_SPACING_MARK.toInt() || it == Character.COMBINING_SPACING_MARK.toInt() || it == Character.ENCLOSING_MARK.toInt() }
 
         /**
          * Direction overrides, line separators and zero-width spaces would

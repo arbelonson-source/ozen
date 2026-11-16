@@ -143,4 +143,17 @@ class SharedFileNameTest {
         assertEquals("ab$stamp", name("a\uDB40\uDC41\uDB40\uDC7Fb"))
         assertEquals("\uD83C\uDFF4$stamp", name("\uD83C\uDFF4\uDB40\uDC67"))
     }
+
+    @Test
+    fun `a joiner beside a private-use character is dropped`() {
+        assertEquals("a\uDB80\uDC00$stamp", name("a\u200D\uDB80\uDC00"))
+        assertEquals("\uDB80\uDC00a$stamp", name("\uDB80\uDC00\u200Da"))
+        assertEquals("\uD83D\uDC68\u200D\uD83D\uDC69$stamp", name("\uD83D\uDC68\u200D\uD83D\uDC69"))
+    }
+
+    @Test
+    fun `a joiner beside an enclosing mark stays`() {
+        assertEquals("a\u20DD\u200Db$stamp", name("a\u20DD\u200Db"))
+        assertEquals("1\uFE0F\u20E3\u200D\uD83D\uDC68$stamp", name("1\uFE0F\u20E3\u200D\uD83D\uDC68"))
+    }
 }
