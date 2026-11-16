@@ -17,6 +17,8 @@ internal class NumberWordProfile(entry: JsonObject) {
     val clockLinks = strings(entry, "clockLinks", foldsArabic)
     val ambiguous = strings(entry, "ambiguous", foldsArabic)
     val notACountBefore = strings(entry, "notACountBefore", foldsArabic)
+    val countsAfter = strings(entry, "countsAfter", foldsArabic)
+    val plainAlone = strings(entry, "plainAlone", foldsArabic)
     val onceWords = strings(entry, "onceWords", foldsArabic)
     val repeatLinks = strings(entry, "repeatLinks", foldsArabic)
     val repeatUnits = strings(entry, "repeatUnits", foldsArabic)
@@ -30,7 +32,7 @@ internal class NumberWordProfile(entry: JsonObject) {
     val oneFollowsUnit = entry["oneFollowsUnit"]?.jsonPrimitive?.content == "true"
     private val attachedPrefixes = strings(entry, "attachedPrefixes", foldsArabic).toList()
     private val known = numbers + fractions + units + periods + adverbPeriods + clockNouns + clockOrdinals +
-        onceWords + ambiguous + notACountBefore
+        onceWords + ambiguous + notACountBefore + countsAfter + plainAlone
 
     /**
      * The form of a word as the lists have it: lower case and, for Arabic, without vowel marks,

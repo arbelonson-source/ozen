@@ -238,6 +238,8 @@
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
       "halbes"
     ],
+    "plainAlone": ["acht", "elf", "null"],
+    "countsAfter": ["um", "bis", "ab", "gegen", "vor", "nach", "punkt"],
     "notACountBefore": [
       "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"
     ],
