@@ -119,6 +119,13 @@ class HomeServerEngineTest {
     }
 
     @Test
+    fun `Test connection says a computer that cannot caption the language answered, and which language, not that there was no answer`() = runTest {
+        val reply = """{"type":"error","code":"unsupported_language","detail":""}"""
+        assertEquals(HomeServerCheck.LanguageNotCovered, HomeServerCheck.of(engine(socket(reply)).checkAvailability("xx"), 0.1))
+        assertEquals(HomeServerCheck.Unreachable, HomeServerCheck.of(engine(socket(null)).checkAvailability("he"), 0.3))
+    }
+
+    @Test
     fun `a computer that turns the phone away for any reason but the code, or answers something else, is not answering, only a refused code needs a person`() = runTest {
         for (reply in listOf(
             """{"type":"error","code":"bad_request","detail":"hello expected"}""",
@@ -128,7 +135,7 @@ class HomeServerEngineTest {
             "not json",
         )) {
             val availability = engine(socket(reply)).checkAvailability("he")
-            assertEquals(HomeServerCheck.Unreachable, HomeServerCheck.of(availability, 0.1), reply)
+            assertEquals(HomeServerCheck.AnsweredWrongly, HomeServerCheck.of(availability, 0.1), reply)
             val why = assertIs<EngineAvailability.Unavailable>(availability, "$reply was taken for a working computer").why
             assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, why.kind, reply)
         }

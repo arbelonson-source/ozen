@@ -884,7 +884,7 @@ private fun HomeComputerSection(
                         )
                         if (checking && !ReducedMotion.isOn()) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    check?.let { HomeComputerCheckLabel(it, address) }
+                    check?.let { HomeComputerCheckLabel(it, address, current.spokenLanguage) }
                 }
             }
         }
@@ -1045,7 +1045,7 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
 }
 
 @Composable
-private fun HomeComputerCheckLabel(check: HomeServerCheck, address: String) {
+private fun HomeComputerCheckLabel(check: HomeServerCheck, address: String, language: UILanguage) {
     val (text, color) = when (check) {
         is HomeServerCheck.Connected -> tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", listOf("${check.milliseconds}")) to savedGreen()
         HomeServerCheck.CodeRefused -> tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה־QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.") to MaterialTheme.colorScheme.error
@@ -1053,6 +1053,8 @@ private fun HomeComputerCheckLabel(check: HomeServerCheck, address: String) {
         HomeServerCheck.Unreachable -> HomeServer.unreachableText(address) to cautionOrange()
         HomeServerCheck.NotSetUp -> tr("הכתובת או הקוד חסרים", "The address or code is missing") to MaterialTheme.colorScheme.onSurfaceVariant
         HomeServerCheck.NeedsEncryptedAddress -> tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://") to cautionOrange()
+        HomeServerCheck.AnsweredWrongly -> HomeServer.answeredWronglyText() to cautionOrange()
+        HomeServerCheck.LanguageNotCovered -> HomeServer.languageNotCoveredTitle(language) to cautionOrange()
     }
     Text(text, color = color, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }

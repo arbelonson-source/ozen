@@ -381,6 +381,15 @@ struct HomeServerEngineTests {
         #expect(addressSent.isEmpty)
     }
 
+    @Test("Test connection says a computer that cannot caption the language answered, and which language, not that there was no answer")
+    func testConnectionNamesTheLanguage() async {
+        let reply = #"{"type":"error","code":"unsupported_language","detail":""}"#
+        let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "xx")
+        #expect(HomeServerCheck(availability: availability, seconds: 0.1) == .languageNotCovered)
+        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        #expect(HomeServerCheck(availability: silent, seconds: 0.3) == .unreachable)
+    }
+
     @Test("a computer that turns the phone away for any reason but the code, or answers something else, is not answering; only a refused code needs a person")
     func otherRefusalsAreNotACodeProblem() async {
         for reply in [
@@ -391,7 +400,7 @@ struct HomeServerEngineTests {
             "not json",
         ] {
             let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "he")
-            #expect(HomeServerCheck(availability: availability, seconds: 0.1) == .unreachable, "\(reply)")
+            #expect(HomeServerCheck(availability: availability, seconds: 0.1) == .answeredWrongly, "\(reply)")
             guard case .unavailable(let why) = availability else {
                 Issue.record("\(reply) was taken for a working computer")
                 continue

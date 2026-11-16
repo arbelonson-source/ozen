@@ -645,7 +645,7 @@ struct SettingsView: View {
                         isCheckingHomeServer = false
                         guard generation == homeServerCheckGeneration else { return }
                         homeServerCheck = check
-                        UIAccessibility.post(notification: .announcement, argument: Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress))
+                        UIAccessibility.post(notification: .announcement, argument: Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress, language: viewModel.settings.spokenLanguage))
                     }
                 } label: {
                     HStack {
@@ -725,7 +725,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func homeServerCheckLabel(_ check: HomeServerCheck) -> some View {
-        let text = Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress)
+        let text = Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress, language: viewModel.settings.spokenLanguage)
         switch check {
         case .connected:
             Label(text, systemImage: "checkmark.circle.fill")
@@ -742,10 +742,13 @@ struct SettingsView: View {
         case .needsEncryptedAddress:
             Label(text, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.readable(.orange))
+        case .answeredWrongly, .languageNotCovered:
+            Label(text, systemImage: "desktopcomputer.trianglebadge.exclamationmark")
+                .foregroundStyle(.readable(.orange))
         }
     }
 
-    static func homeServerCheckText(_ check: HomeServerCheck, address: String) -> String {
+    static func homeServerCheckText(_ check: HomeServerCheck, address: String, language: UILanguage) -> String {
         switch check {
         case .connected(let milliseconds):
             tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", args: ["\(milliseconds)"])
@@ -759,6 +762,10 @@ struct SettingsView: View {
             tr("הכתובת או הקוד חסרים", "The address or code is missing")
         case .needsEncryptedAddress:
             tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
+        case .answeredWrongly:
+            HomeServer.answeredWronglyText()
+        case .languageNotCovered:
+            HomeServer.languageNotCoveredTitle(language: language)
         }
     }
 

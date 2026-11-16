@@ -516,6 +516,10 @@ sealed class HomeServerCheck {
 
     data object NeedsEncryptedAddress : HomeServerCheck()
 
+    data object AnsweredWrongly : HomeServerCheck()
+
+    data object LanguageNotCovered : HomeServerCheck()
+
     companion object {
         fun of(availability: EngineAvailability, seconds: Double): HomeServerCheck = when (availability) {
             is EngineAvailability.Available -> Connected(maxOf(0, rounded(seconds * 1000)))
@@ -529,7 +533,8 @@ sealed class HomeServerCheck {
                 EngineUnavailability.Kind.HomeServerUnreachable -> when (availability.why.detail) {
                     HomeServer.NO_ADDRESS -> NotSetUp
                     HomeServer.NEEDS_ENCRYPTION -> NeedsEncryptedAddress
-                    else -> Unreachable
+                    HomeServer.UNSUPPORTED_LANGUAGE -> LanguageNotCovered
+                    else -> if (availability.why.detail.startsWith(HomeServer.ANSWERED_WRONGLY_PREFIX)) AnsweredWrongly else Unreachable
                 }
                 else -> Unreachable
             }
