@@ -1,8 +1,6 @@
 import Foundation
 
 extension StoppedCaptionsNotice {
-    /// What the person has to do about a stop. A revised notice that keeps the
-    /// same action only adds detail; a different action is news worth a second alert.
     public enum Action: Sendable, Equatable {
         case openToContinue
         case allowMicrophone

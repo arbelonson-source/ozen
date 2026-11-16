@@ -1,9 +1,5 @@
 package com.arbelonson.ozen.core
 
-/**
- * What the person has to do about a stop. A revised notice that keeps the
- * same action only adds detail; a different action is news worth a second alert.
- */
 enum class NoticeAction {
     OpenToContinue,
     AllowMicrophone,
