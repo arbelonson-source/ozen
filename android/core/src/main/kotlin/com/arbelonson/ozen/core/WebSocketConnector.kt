@@ -265,7 +265,7 @@ private class WebSocketConnection(
             output.write(request.toString().toByteArray(Charsets.UTF_8))
             output.flush()
             val status = readLine(input)
-            val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: throw IOException("not an HTTP answer: $status")
+            val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: throw NotAWebSocketAnswer("not an HTTP answer: $status")
             val answer = HashMap<String, String>()
             var headerBytes = 0
             while (true) {
@@ -278,7 +278,7 @@ private class WebSocketConnection(
             }
             if (code != 101) throw SocketRefused(code)
             if (answer["sec-websocket-accept"] != WebSocketConnector.acceptKey(key)) {
-                throw IOException("the server's answer doesn't match this connection")
+                throw NotAWebSocketAnswer("the server's answer doesn't match this connection")
             }
             socket.soTimeout = 0
             return Streams(socket, input, output)

@@ -774,7 +774,7 @@ struct SettingsView: View {
         case .needsEncryptedAddress:
             Label(text, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.readable(.orange))
-        case .answeredWrongly, .languageNotCovered:
+        case .answeredWrongly, .secureMismatch, .languageNotCovered:
             Label(text, systemImage: "desktopcomputer.trianglebadge.exclamationmark")
                 .foregroundStyle(.readable(.orange))
         }
@@ -796,6 +796,8 @@ struct SettingsView: View {
             tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
         case .answeredWrongly:
             HomeServer.answeredWronglyText()
+        case .secureMismatch:
+            HomeServer.secureMismatchText()
         case .languageNotCovered:
             HomeServer.languageNotCoveredTitle(language: language)
         }

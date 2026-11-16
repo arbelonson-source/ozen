@@ -1119,6 +1119,7 @@ private fun HomeComputerCheckLabel(check: HomeServerCheck, address: String, lang
         HomeServerCheck.NotSetUp -> tr("הכתובת או הקוד חסרים", "The address or code is missing") to MaterialTheme.colorScheme.onSurfaceVariant
         HomeServerCheck.NeedsEncryptedAddress -> tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://") to cautionOrange()
         HomeServerCheck.AnsweredWrongly -> HomeServer.answeredWronglyText() to cautionOrange()
+        HomeServerCheck.SecureMismatch -> HomeServer.secureMismatchText() to cautionOrange()
         HomeServerCheck.LanguageNotCovered -> HomeServer.languageNotCoveredTitle(language) to cautionOrange()
     }
     Text(text, color = color, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })

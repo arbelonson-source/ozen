@@ -58,6 +58,7 @@ object HomeServer {
      */
     const val UNSUPPORTED_LANGUAGE = "the computer's model cannot caption this language"
     const val ANSWERED_WRONGLY_PREFIX = "the computer answered, but not as expected: "
+    const val SECURE_MISMATCH_PREFIX = ANSWERED_WRONGLY_PREFIX + "secure connection: "
     const val END = """{"type":"end"}"""
 
     /**
@@ -225,8 +226,29 @@ object HomeServer {
     }
 
     /** What the caption screen, the cover line and the notice say about a computer that answered wrongly. */
-    fun answeredWronglyText(): String =
-        tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+    fun answeredWronglyText(detail: String? = null): String =
+        if (detail != null && detail.startsWith(SECURE_MISMATCH_PREFIX)) secureMismatchText() else tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+
+    /** The computer answered, but the secure connection did not match or something else answers on its port: it is on, so checking the power would send her the wrong way. */
+    fun secureMismatchText(): String =
+        tr(
+            "המחשב ענה, אבל החיבור המאובטח לא תאם, או שמשהו אחר עונה בפורט הזה. בדקו את מספר הפורט בהגדרות המחשב בבית, או סרקו שוב את קוד ה־QR שלו.",
+            "The computer answered, but the secure connection didn’t match, or something else is answering on that port. Check the port number in the home computer settings, or scan its QR code again.",
+        )
+
+    /**
+     * What a connection error means for the home computer: a failed secure handshake, a reply that
+     * is not a WebSocket answer, or an HTTP refusal of the upgrade all mean something answered on
+     * that port, so the computer is on. Anything else (no route, refused, timed out, name not
+     * found) stays "unreachable".
+     */
+    fun connectionFailure(error: Throwable, prefix: String = ""): EngineUnavailability {
+        val chain = generateSequence(error) { it.cause }.toList()
+        val timedOut = chain.any { it is java.net.SocketTimeoutException || it is java.net.ConnectException || it is java.net.UnknownHostException }
+        val answered = chain.any { it is SocketRefused || it is NotAWebSocketAnswer } ||
+            (!timedOut && chain.any { it is javax.net.ssl.SSLException })
+        return EngineUnavailability.homeServerUnreachable(if (answered) "$SECURE_MISMATCH_PREFIX$error" else "$prefix$error")
+    }
 
     /**
      * What the caption screen says while the phone carries on by itself because the address never
@@ -238,7 +260,7 @@ object HomeServer {
         return when {
             detail == NO_ADDRESS -> rejectionTitle(NO_ADDRESS) + " · " + pause
             detail == NEEDS_ENCRYPTION -> plainAddressRefusedText() + " · " + pause
-            detail != null && detail.startsWith(ANSWERED_WRONGLY_PREFIX) -> answeredWronglyText() + " · " + pause
+            detail != null && detail.startsWith(ANSWERED_WRONGLY_PREFIX) -> answeredWronglyText(detail) + " · " + pause
             else -> null
         }
     }
@@ -542,6 +564,8 @@ sealed class HomeServerCheck {
 
     data object AnsweredWrongly : HomeServerCheck()
 
+    data object SecureMismatch : HomeServerCheck()
+
     data object LanguageNotCovered : HomeServerCheck()
 
     companion object {
@@ -558,7 +582,11 @@ sealed class HomeServerCheck {
                     HomeServer.NO_ADDRESS -> NotSetUp
                     HomeServer.NEEDS_ENCRYPTION -> NeedsEncryptedAddress
                     HomeServer.UNSUPPORTED_LANGUAGE -> LanguageNotCovered
-                    else -> if (availability.why.detail.startsWith(HomeServer.ANSWERED_WRONGLY_PREFIX)) AnsweredWrongly else Unreachable
+                    else -> when {
+                        availability.why.detail.startsWith(HomeServer.SECURE_MISMATCH_PREFIX) -> SecureMismatch
+                        availability.why.detail.startsWith(HomeServer.ANSWERED_WRONGLY_PREFIX) -> AnsweredWrongly
+                        else -> Unreachable
+                    }
                 }
                 else -> Unreachable
             }
@@ -663,6 +691,9 @@ data class SocketClosed(val code: Int, val reason: String) : Exception("closed w
  * with an HTTP status instead of opening the connection.
  */
 data class SocketRefused(val status: Int) : Exception("refused with $status")
+
+/** What a socket throws when the far end's answer to the request to open it is not a WebSocket answer. */
+class NotAWebSocketAnswer(message: String) : java.io.IOException(message)
 
 /**
  * One open connection to the server. The real one is supplied by the

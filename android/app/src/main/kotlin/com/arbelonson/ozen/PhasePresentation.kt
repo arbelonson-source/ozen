@@ -726,7 +726,7 @@ class PhasePresentation private constructor(
                     )
                 } else if (HomeServer.answeredWrongly(engineFailure)) {
                     PhasePresentation(
-                        title = HomeServer.answeredWronglyText(),
+                        title = HomeServer.answeredWronglyText(engineFailure?.detail),
                         detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                         systemImage = "desktopcomputer.trianglebadge.exclamationmark",
                         tint = PhaseTint.Attention,

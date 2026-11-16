@@ -381,7 +381,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             case (_, .homeServerUnreachable?) where HomeServer.languageNotCovered(failure.engineUnavailability):
                 return HomeServer.languageNotCoveredNoticeText()
             case (_, .homeServerUnreachable?) where HomeServer.answeredWrongly(failure.engineUnavailability):
-                return HomeServer.answeredWronglyText() + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+                return HomeServer.answeredWronglyText(detail: failure.engineUnavailability?.detail) + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             case (_, .homeServerUnreachable?):
                 return tr(
                     "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
