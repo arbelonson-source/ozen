@@ -3,7 +3,7 @@ import Foundation
 extension NumberEmphasis {
     static func spelledRanges(in text: String, profile: NumberWordProfile) -> [Range<String.Index>] {
         let words = self.words(in: text)
-        let lowered: [String?] = words.map { $0.core?.lowercased().replacingOccurrences(of: "\u{2019}", with: "'") }
+        let lowered: [String?] = words.map { $0.core.map(profile.normalize) }
         func joinsNext(_ index: Int, _ end: String.Index) -> Bool {
             index + 1 < words.count && end == words[index].text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
         }
@@ -44,6 +44,9 @@ extension NumberEmphasis {
         }
 
         func repeated(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
+            if joinsNext(last, end), let adverb = lowered[last + 1], profile.adverbPeriods.contains(adverb) {
+                return (last + 1, wordEnd(last + 1))
+            }
             guard joinsNext(last, end), last + 2 < words.count, let link = lowered[last + 1], profile.repeatLinks.contains(link),
                   joinsNext(last + 1, wordEnd(last + 1))
             else { return nil }
@@ -103,7 +106,12 @@ extension NumberEmphasis {
                 let previous = position > 0 ? lowered[position - 1] : nil
                 if profile.onceWords.contains(core) {
                     if let previous, profile.notACountBefore.contains(previous) { continue }
-                    guard let again = repeated(after: position, wordEnd(position)) else { continue }
+                    var found = repeated(after: position, wordEnd(position))
+                    if found == nil, !profile.adverbPeriods.isEmpty, joinsNext(position, wordEnd(position)),
+                       let one = lowered[position + 1], profile.ambiguous.contains(one) {
+                        found = repeated(after: position + 1, wordEnd(position + 1))
+                    }
+                    guard let again = found else { continue }
                     var spanStart = start
                     if let previous, profile.ambiguous.contains(previous), joinsNext(position - 1, wordEnd(position - 1)),
                        let oneStart = words[position - 1].coreRange?.lowerBound {
@@ -124,11 +132,26 @@ extension NumberEmphasis {
                     }
                     let done = finish(last, end, lowered[last], afterFraction: afterFraction)
                     let alone = position == last
+                    var spanStart = start
                     if alone, profile.ambiguous.contains(core) {
                         if let previous, profile.notACountBefore.contains(previous) { continue }
-                        if !done.joined { continue }
+                        if !done.joined {
+                            guard profile.oneFollowsUnit, let previous, profile.units.contains(previous),
+                                  !profile.onceWords.contains(previous), joinsNext(position - 1, wordEnd(position - 1)),
+                                  let unitStart = words[position - 1].coreRange?.lowerBound
+                            else { continue }
+                            spanStart = unitStart
+                        }
                     }
-                    span = (start, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
+                    span = (spanStart, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)
+                } else if profile.clockOrdinals.contains(core), position > 0, let noun = lowered[position - 1],
+                          profile.clockNouns.contains(noun), joinsNext(position - 1, wordEnd(position - 1)),
+                          let nounStart = words[position - 1].coreRange?.lowerBound {
+                    var last = position
+                    if joinsNext(last, wordEnd(last)), let next = lowered[last + 1], profile.numbers.contains(next) || profile.fractions.contains(next) {
+                        last = profile.numbers.contains(next) ? runEnd(from: last + 1) : last + 1
+                    }
+                    span = (nounStart, last, wordEnd(last))
                 } else if profile.fractions.contains(core) {
                     if joinsNext(position, wordEnd(position)), let link = lowered[position + 1], profile.clockLinks.contains(link),
                        joinsNext(position + 1, wordEnd(position + 1)), position + 2 < words.count, isNumber(position + 2) || hasDigit(position + 2) {
