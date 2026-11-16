@@ -66,4 +66,41 @@ struct CaptionsHandoverTests {
         #expect(!second)
         #expect(resume)
     }
+
+    @Test("running captions with sound alerts on keep the sounds, off they just pause")
+    func keepsSounds() {
+        var on = CaptionsHandover()
+        #expect(on.begin(phase: .listening, soundAlertsOn: true) == .keepSounds)
+        #expect(on.pausedHere)
+        var off = CaptionsHandover()
+        #expect(off.begin(phase: .listening, soundAlertsOn: false) == .pause)
+    }
+
+    @Test("captions not running are left alone even with sound alerts on")
+    func notRunningWithSounds() {
+        for phase in [PipelinePhase.paused, .idle, failed, .startingAudio] {
+            var handover = CaptionsHandover()
+            #expect(handover.begin(phase: phase, soundAlertsOn: true) == .leaveAlone, "\(phase)")
+            #expect(!handover.pausedHere)
+        }
+    }
+
+    @Test("captions come back after sounds-only, but not when the person stopped them meanwhile")
+    func comingBack() {
+        var handover = CaptionsHandover()
+        _ = handover.begin(phase: .listening, soundAlertsOn: true)
+        let back = handover.end(phase: .paused)
+        #expect(back)
+        var stopped = CaptionsHandover()
+        _ = stopped.begin(phase: .listening, soundAlertsOn: true)
+        let again = stopped.end(phase: .idle)
+        #expect(!again)
+    }
+
+    @Test("sounds-only that did not take leaves captions running, so they are paused plainly")
+    func fallback() {
+        #expect(CaptionsHandover.needsPlainPause(after: .keepSounds, phase: .listening))
+        #expect(!CaptionsHandover.needsPlainPause(after: .keepSounds, phase: .paused))
+        #expect(!CaptionsHandover.needsPlainPause(after: .pause, phase: .listening))
+    }
 }

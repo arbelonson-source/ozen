@@ -306,6 +306,38 @@ struct TranscribeRecordingModelTests {
         #expect(host.captionsPhase == .listening)
     }
 
+    @Test("with sound alerts on, captions turn to sounds only for the recording and come back after")
+    func keepsSoundsListening() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        host.soundAlertsOn = true
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.soundsKept == 1)
+        #expect(host.toggles == 0)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.toggles == 1)
+        #expect(host.captionsPhase == .listening)
+    }
+
+    @Test("sounds-only that does not take falls back to the plain pause")
+    func soundsOnlyFallsBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        host.soundAlertsOn = true
+        host.soundsOnlyTakes = false
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.captionsPhase == .paused)
+        #expect(host.toggles == 1)
+    }
+
     @Test("captions failed with a retry lined up count as running, and Stop ends them instead of pausing")
     func retryLinedUpIsStopped() async throws {
         let host = RecordingHostFake()
