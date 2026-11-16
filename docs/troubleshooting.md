@@ -306,8 +306,8 @@ says where to look on the common ones.
   has a Delete button and an accuracy score.
 - **Some words are in a different color.** Numbers (a time, how many pills,
   a phone number), written in digits or spoken as words (when the captions are
-  in Hebrew, English, Spanish, Russian, French, German, Portuguese or
-  Ukrainian: "three pills at ten thirty"), stand out so they aren't missed: yellow among white text,
+  in Hebrew, English, Spanish, Russian, French, German, Portuguese, Ukrainian or
+  Arabic: "three pills at ten thirty"), stand out so they aren't missed: yellow among white text,
   white among yellow text, dark blue on a white background. Settings → Display (tetzuga) →
   "Bold numbers" (hadgashat misparim) turns it off.
 - **One person gets two speaker numbers, or two people share one.** Voices
