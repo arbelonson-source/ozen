@@ -116,6 +116,22 @@ struct FileTranscriptionDriverTests {
         #expect(broken.streamsOpened == 2)
     }
 
+    @Test("a stream that fails twice after some lines were made keeps those lines and says what went wrong")
+    func failsPartway() async {
+        let samples = FileRunAudio.timeline([(false, 1), (true, 2), (false, 2), (true, 2), (false, 2)])
+        let engine = FileRunEngine { number, _ in
+            if number >= 2 { throw FileRunFailure() }
+            return [FileRunEngine.final("first line")]
+        }
+        let outcome = await driver(engine).run(source: fileRunSource(samples), report: { _ in })
+        guard case .stoppedPartway(let lines, let problem) = outcome.result else {
+            Issue.record("\(outcome.result)")
+            return
+        }
+        #expect(lines.map(\.text) == ["first line"])
+        #expect(problem == .unexpected)
+    }
+
     @Test("stopping after the second stretch opens no third stream and reports it was cancelled")
     func cancel() async {
         let samples = FileRunAudio.timeline([(false, 1), (true, 2), (false, 2), (true, 2), (false, 2), (true, 2), (false, 2), (true, 2), (false, 2)])

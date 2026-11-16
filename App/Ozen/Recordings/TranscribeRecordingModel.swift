@@ -203,6 +203,8 @@ final class TranscribeRecordingModel {
         switch result {
         case .finished(let lines, let endMissing):
             finish(ready, model: model, lines: lines, endMissing: endMissing)
+        case .stoppedPartway(let lines, let problem):
+            finish(ready, model: model, lines: lines, endMissing: false, stoppedBy: problem)
         case .failed(let problem):
             state = .failed(name: ready.name, problem: problem)
         case .cancelled:
@@ -219,7 +221,7 @@ final class TranscribeRecordingModel {
         state = .working(working)
     }
 
-    private func finish(_ ready: FileTranscription.Ready, model: WhisperModelOption, lines: [TranscribedLine], endMissing: Bool) {
+    private func finish(_ ready: FileTranscription.Ready, model: WhisperModelOption, lines: [TranscribedLine], endMissing: Bool, stoppedBy: FileTranscriptionProblem? = nil) {
         let history: HistorySave
         if host.savesHistory {
             let record = FileTranscriptRecord.make(
@@ -246,7 +248,7 @@ final class TranscribeRecordingModel {
         let baseName = (ready.name as NSString).deletingPathExtension
         shareText = TranscriptFormats.text(lines, languageCode: code)
         subtitlesURL = RecordingFiles.writeShare(TranscriptFormats.srt(lines, languageCode: code), name: baseName, fileExtension: "srt")
-        state = .done(.init(name: ready.name, language: ready.language, model: model, lines: lines, history: history, endMissing: endMissing))
+        state = .done(.init(name: ready.name, language: ready.language, model: model, lines: lines, history: history, endMissing: endMissing, stoppedBy: stoppedBy))
     }
 
     private func settledNetwork() async -> NetworkConditions? {

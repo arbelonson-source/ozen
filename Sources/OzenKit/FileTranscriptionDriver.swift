@@ -37,6 +37,8 @@ public struct FileTranscriptionDriver: Sendable {
         public enum Result: Sendable, Equatable {
             case finished(lines: [TranscribedLine], endMissing: Bool)
             case failed(FileTranscriptionProblem)
+            /// The run broke off after some lines were made; they are kept.
+            case stoppedPartway(lines: [TranscribedLine], problem: FileTranscriptionProblem)
             case cancelled
         }
 
@@ -95,7 +97,10 @@ public struct FileTranscriptionDriver: Sendable {
 
     public func run(source: AsyncThrowingStream<[Float], any Error>, report: @escaping Report) async -> Outcome {
         var state = State(planner: planner())
-        let result = await work(source, report, &state)
+        var result = await work(source, report, &state)
+        if case .failed(let problem) = result, !state.lines.isEmpty {
+            result = .stoppedPartway(lines: state.lines, problem: problem)
+        }
         return Outcome(result: result, streamsOpened: state.streams, peakBufferedSamples: state.peak)
     }
 
