@@ -1190,7 +1190,8 @@
   "End": "መጨረሻ",
   "Feel the vibration": "ንዝረቱን ይሰማዎት",
   "one hour earlier": "አንድ ሰዓት ቀደም ብሎ",
-  "one hour later": "አንድ ሰዓት ዘግይቶ"
+  "one hour later": "አንድ ሰዓት ዘግይቶ",
+  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2383,7 +2384,8 @@
   "End": "النهاية",
   "Feel the vibration": "الشعور بالاهتزاز",
   "one hour earlier": "تقديم ساعة",
-  "one hour later": "تأخير ساعة"
+  "one hour later": "تأخير ساعة",
+  "The first stop was at %1.": "كان التوقف الأول عند %1."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3576,7 +3578,8 @@
   "End": "结束",
   "Feel the vibration": "感受振动",
   "one hour earlier": "提前一小时",
-  "one hour later": "推后一小时"
+  "one hour later": "推后一小时",
+  "The first stop was at %1.": "首次停止的时间是 %1。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4769,7 +4772,8 @@
   "End": "Fin",
   "Feel the vibration": "Sentir la vibration",
   "one hour earlier": "une heure plus tôt",
-  "one hour later": "une heure plus tard"
+  "one hour later": "une heure plus tard",
+  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5962,7 +5966,8 @@
   "End": "Ende",
   "Feel the vibration": "Vibration spüren",
   "one hour earlier": "eine Stunde früher",
-  "one hour later": "eine Stunde später"
+  "one hour later": "eine Stunde später",
+  "The first stop was at %1.": "Der erste Stopp war um %1."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7155,7 +7160,8 @@
   "End": "समाप्त",
   "Feel the vibration": "कंपन महसूस करें",
   "one hour earlier": "एक घंटा पहले करें",
-  "one hour later": "एक घंटा बाद करें"
+  "one hour later": "एक घंटा बाद करें",
+  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8348,7 +8354,8 @@
   "End": "Fim",
   "Feel the vibration": "Sentir a vibração",
   "one hour earlier": "uma hora mais cedo",
-  "one hour later": "uma hora mais tarde"
+  "one hour later": "uma hora mais tarde",
+  "The first stop was at %1.": "A primeira parada foi às %1."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9541,7 +9548,8 @@
   "End": "Конец",
   "Feel the vibration": "Почувствовать вибрацию",
   "one hour earlier": "на час раньше",
-  "one hour later": "на час позже"
+  "one hour later": "на час позже",
+  "The first stop was at %1.": "Первая остановка была в %1."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10734,7 +10742,8 @@
   "End": "Fin",
   "Feel the vibration": "Sentir la vibración",
   "one hour earlier": "una hora antes",
-  "one hour later": "una hora después"
+  "one hour later": "una hora después",
+  "The first stop was at %1.": "La primera parada fue a las %1."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11927,6 +11936,7 @@
   "End": "Кінець",
   "Feel the vibration": "Відчути вібрацію",
   "one hour earlier": "на годину раніше",
-  "one hour later": "на годину пізніше"
+  "one hour later": "на годину пізніше",
+  "The first stop was at %1.": "Перша зупинка була о %1."
  }
 }

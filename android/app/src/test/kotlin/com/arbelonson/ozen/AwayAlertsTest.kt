@@ -115,4 +115,18 @@ class AwayAlertsTest {
         assertEquals(false, AwayAlerts.isShowing(listOf(null, "sound-1"), "captions-stopped"))
         assertEquals(false, AwayAlerts.isShowing(emptyList(), "captions-stopped"))
     }
+
+    @Test
+    fun `a revised notice keeps the time it first showed`() {
+        val showing = listOf<Pair<String?, Long>>(null to 5L, "sound-1" to 7L, "captions-stopped" to 1_000L)
+        assertEquals(1_000L, AwayAlerts.timeToShow(showing, "captions-stopped", now = 9_000L, revising = true))
+    }
+
+    @Test
+    fun `a new notice gets the time of now`() {
+        val showing = listOf<Pair<String?, Long>>("captions-stopped" to 1_000L)
+        assertEquals(9_000L, AwayAlerts.timeToShow(showing, "captions-stopped", now = 9_000L, revising = false))
+        assertEquals(9_000L, AwayAlerts.timeToShow(emptyList(), "captions-stopped", now = 9_000L, revising = true))
+        assertEquals(9_000L, AwayAlerts.timeToShow(listOf<Pair<String?, Long>>("sound-1" to 7L), "captions-stopped", now = 9_000L, revising = true))
+    }
 }

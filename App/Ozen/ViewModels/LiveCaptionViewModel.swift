@@ -749,7 +749,7 @@ public final class LiveCaptionViewModel {
             apply(old)
             apply(new)
         case .revise(let content):
-            postNotification?(content.quietly())
+            postNotification?(StoppedCaptionsNotice.revised(content, since: stoppedCaptions.stoppedAt).quietly())
         }
     }
 

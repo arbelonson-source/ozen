@@ -43,6 +43,14 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
 
     companion object {
         /** The notice with this identifier is among the notification tags still in the shade. */
+        /**
+         * The time a notice carries in its header: a revision of one still
+         * showing keeps the time it first had, since the notice only has its
+         * words brought up to date; anything else is stamped now.
+         */
+        fun timeToShow(active: List<Pair<String?, Long>>, identifier: String, now: Long, revising: Boolean): Long =
+            if (revising) active.firstOrNull { it.first == identifier }?.second ?: now else now
+
         fun isShowing(activeTags: List<String?>, identifier: String): Boolean = identifier in activeTags
 
         fun vibrationFor(content: AlertNotificationContent): AlertVibration =
@@ -58,14 +66,14 @@ class AlertNotifier(private val context: Context) {
      * or heads-up. One she swiped away is not brought back; that counts as done.
      */
     fun revise(content: AlertNotificationContent): Boolean {
-        val showing = context.getSystemService(NotificationManager::class.java).activeNotifications.map { it.tag }
-        if (!AwayAlerts.isShowing(showing, content.identifier)) return true
-        return deliver(content, quiet = true).posted
+        val showing = context.getSystemService(NotificationManager::class.java).activeNotifications
+        if (!AwayAlerts.isShowing(showing.map { it.tag }, content.identifier)) return true
+        return deliver(content, quiet = true, showing = showing.map { it.tag to it.notification.`when` }).posted
     }
 
     class Delivery(val posted: Boolean, val buzz: AlertVibration? = null)
 
-    fun deliver(content: AlertNotificationContent, quiet: Boolean = false): Delivery {
+    fun deliver(content: AlertNotificationContent, quiet: Boolean = false, showing: List<Pair<String?, Long>> = emptyList()): Delivery {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
         val vibration = AwayAlerts.vibrationFor(content)
@@ -89,7 +97,7 @@ class AlertNotifier(private val context: Context) {
         // The time it was heard, in the header: Android leaves it out unless
         // asked, so a doorbell found on the lock screen an hour later still
         // read "Heard just now", and an old alarm looked like a new one.
-        val heard = System.currentTimeMillis()
+        val heard = AwayAlerts.timeToShow(showing, content.identifier, System.currentTimeMillis(), revising = quiet)
         val notification = Notification.Builder(context, channel.id)
             .setWhen(heard)
             .setShowWhen(true)

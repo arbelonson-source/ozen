@@ -77,6 +77,10 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     public static let soundAlertsMinimumDelay: TimeInterval = 5
 
     public static let identifier = "captions-stopped"
+    /// When the stop she was told about first happened (wall clock), nil while no notice is up.
+    /// A revision brings the words up to date but not this: the notice's own
+    /// time is the time of the latest delivery, and she reads it in the morning.
+    public private(set) var stoppedAt: Date?
     /// A notice is sitting in Notification Center.
     private var posted = false
     /// What is sitting there was scheduled for later, not delivered now.
@@ -155,7 +159,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     /// away: the status says the same thing, and a notice left behind sat
     /// in Notification Center for as long as the problem lasted. Putting
     /// the phone away again doesn't post it a second time.
-    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool, soundAlertsMeantToRun: Bool = true, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Update? {
+    public mutating func update(for cause: Cause?, appIsActive: Bool, isEnabled: Bool, soundAlertsMeantToRun: Bool = true, now: TimeInterval = ProcessInfo.processInfo.systemUptime, wallClock: Date = Date()) -> Update? {
         guard let cause else {
             toldCause = nil
             if soundAlertsMeantToRun, keepsDeliveredNotice(now: now) { return nil }
@@ -198,6 +202,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             postedAsSchedule = false
             let content = Self.content(for: cause)
             postedContent = content
+            stoppedAt = wallClock
             new = .post(content)
         }
         guard let old else { return new }
@@ -245,7 +250,25 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             soundAlertsScheduledAt = nil
         }
         posted = false
+        stoppedAt = nil
         return postedAsSchedule ? .cancelScheduled(identifier: Self.identifier) : .withdraw(identifier: Self.identifier)
+    }
+
+    /// The words of a revised notice with the time of the first stop added, so
+    /// the time iOS shows for the latest delivery is not the only clue.
+    public static func revised(_ content: AlertNotificationContent, since: Date?, timeZone: TimeZone = .current) -> AlertNotificationContent {
+        guard let since else { return content }
+        let style = Date.FormatStyle(date: .omitted, time: .shortened, locale: Localization.locale, timeZone: timeZone)
+        let clock = since.formatted(style)
+        let sentence = tr("העצירה הראשונה הייתה ב־%1.", "The first stop was at %1.", args: ["\(clock)"])
+        let line = TimeArticle.agreeing(sentence, time: clock)
+        return AlertNotificationContent(
+            identifier: content.identifier,
+            title: content.title,
+            body: content.body + " " + line,
+            threadIdentifier: content.threadIdentifier,
+            isUrgent: content.isUrgent
+        )
     }
 
     static func content(for cause: Cause) -> AlertNotificationContent {
