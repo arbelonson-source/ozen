@@ -66,6 +66,10 @@ struct ConversationTimeZoneTests {
         #expect(!json.contains("utcOffsetSeconds"))
         let damaged = json.replacingOccurrences(of: "\"engine\"", with: "\"utcOffsetSeconds\":\"x\",\"engine\"")
         #expect(try JSONDecoder().decode(TranscriptSessionRecord.self, from: Data(damaged.utf8)).utcOffsetSeconds == nil)
+        for absurd in ["86400", "-9223372036854775808"] {
+            let wild = json.replacingOccurrences(of: "\"engine\"", with: "\"utcOffsetSeconds\":\(absurd),\"engine\"")
+            #expect(try JSONDecoder().decode(TranscriptSessionRecord.self, from: Data(wild.utf8)).utcOffsetSeconds == nil)
+        }
     }
 
     @Test("a later save from another zone keeps the offset the conversation was first saved with")

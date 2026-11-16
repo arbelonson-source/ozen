@@ -316,8 +316,8 @@ data class TranscriptSessionRecord(
             )
         }
 
-        /** Real zones lie within a day of UTC; anything else is damage. */
-        internal fun plausibleUtcOffset(seconds: Int): Int? = seconds.takeIf { Math.abs(seconds) <= 86_400 }
+        /** Real zones lie within 18 hours of UTC; anything else is damage. */
+        internal fun plausibleUtcOffset(seconds: Int): Int? = seconds.takeIf { it in -64_800..64_800 }
 
         /**
          * A language tag as the settings write it ("he", "en", "pt-BR"):

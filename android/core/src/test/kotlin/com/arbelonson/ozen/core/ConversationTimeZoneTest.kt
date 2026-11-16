@@ -62,6 +62,9 @@ class ConversationTimeZoneTest {
         assertNull(TranscriptSessionRecord.fromJson(plain.toJson()).utcOffsetSeconds)
         val damaged = plain.toJson().replaceFirst("{", "{\"utcOffsetSeconds\":\"x\",")
         assertNull(TranscriptSessionRecord.fromJson(damaged).utcOffsetSeconds)
+        for (absurd in listOf("86400", "-70000")) {
+            assertNull(TranscriptSessionRecord.fromJson(plain.toJson().replaceFirst("{", "{\"utcOffsetSeconds\":$absurd,")).utcOffsetSeconds)
+        }
         assertEquals(telAviv, TranscriptSessionRecord.fromJson(kept.toJson()).utcOffsetSeconds)
     }
 
