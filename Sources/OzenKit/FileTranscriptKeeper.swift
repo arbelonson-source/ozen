@@ -34,6 +34,7 @@ public final class FileTranscriptKeeper {
     private var keptLines = 0
     private var lastKept: TimeInterval = 0
     private var holdsCopy = false
+    private var active = false
 
     public init(
         historyOn: @escaping () -> Bool,
@@ -58,10 +59,12 @@ public final class FileTranscriptKeeper {
         lastKept = began
         keptLines = 0
         holdsCopy = false
+        active = true
     }
 
     /// Every line so far; saves when enough are new, or enough time has passed since the last save.
     public func linesSoFar(_ lines: [TranscribedLine]) {
+        guard active else { return }
         guard historyOn() else {
             discard()
             return
@@ -88,6 +91,7 @@ public final class FileTranscriptKeeper {
 
     /// The run ended without text worth keeping, or History was switched off: what was kept goes.
     public func discard() {
+        active = false
         guard holdsCopy else { return }
         try? delete(id)
         holdsCopy = false
@@ -96,6 +100,7 @@ public final class FileTranscriptKeeper {
 
     /// The finished record has been saved under `id`: it replaces the kept copy.
     public func finished() {
+        active = false
         holdsCopy = false
         keptLines = 0
     }

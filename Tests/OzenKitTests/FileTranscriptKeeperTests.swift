@@ -116,6 +116,7 @@ struct FileTranscriptKeeperTests {
         keeper.begin(details)
         keeper.discard()
         #expect(shelf.deleted.isEmpty)
+        keeper.begin(details)
         keeper.linesSoFar(lines(5))
         keeper.discard()
         #expect(shelf.deleted == [keeper.id])
@@ -139,6 +140,22 @@ struct FileTranscriptKeeperTests {
         #expect(shelf.saved.isEmpty)
         shelf.fails = false
         keeper.linesSoFar(lines(6))
+        #expect(shelf.saved.count == 1)
+    }
+
+    @Test("late lines from a run that has ended are ignored until the next run begins")
+    func lateLines() {
+        let shelf = Shelf()
+        let keeper = keeper(shelf)
+        keeper.begin(details)
+        keeper.discard()
+        keeper.linesSoFar(lines(5))
+        #expect(shelf.saved.isEmpty)
+        keeper.begin(details)
+        keeper.linesSoFar(lines(5))
+        #expect(shelf.saved.count == 1)
+        keeper.finished()
+        keeper.linesSoFar(lines(10))
         #expect(shelf.saved.count == 1)
     }
 }
