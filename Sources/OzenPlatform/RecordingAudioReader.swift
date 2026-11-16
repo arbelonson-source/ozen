@@ -102,8 +102,11 @@ public final class RecordingAudioReader: @unchecked Sendable {
             throw RecordingReadProblem.unreadable
         }
         guard readable, !tracks.isEmpty else { throw RecordingReadProblem.unreadable }
-        let audio = tracks.filter { $0.mediaType == .audio }
-        guard !audio.isEmpty else { throw RecordingReadProblem.noAudio }
+        let allAudio = tracks.filter { $0.mediaType == .audio }
+        var enabled: [Bool] = []
+        for track in allAudio { enabled.append((try? await track.load(.isEnabled)) ?? false) }
+        guard let pick = AudioTrackChoice.index(defaults: enabled) else { throw RecordingReadProblem.noAudio }
+        let audio = [allAudio[pick]]
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: sampleRate,
@@ -117,10 +120,8 @@ public final class RecordingAudioReader: @unchecked Sendable {
         guard let reader = try? AVAssetReader(asset: asset), reader.canAdd(output) else { throw RecordingReadProblem.unreadable }
         reader.add(output)
         var soundSeconds = 0.0
-        for track in audio {
-            if let range = try? await track.load(.timeRange), range.duration.seconds.isFinite {
-                soundSeconds = max(soundSeconds, range.duration.seconds)
-            }
+        if let range = try? await audio[0].load(.timeRange), range.duration.seconds.isFinite {
+            soundSeconds = range.duration.seconds
         }
         let seconds = soundSeconds > 0 ? soundSeconds : duration.seconds
         return RecordingAudioReader(
