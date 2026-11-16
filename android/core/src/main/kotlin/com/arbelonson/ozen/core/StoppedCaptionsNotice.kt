@@ -46,6 +46,9 @@ class StoppedCaptionsNotice {
 
         /** Sound alerts are on, but the classifier keeps failing. */
         data object SoundAlertsNotWorking : Cause()
+
+        /** Sound alerts are on, but the microphone sends only silence. */
+        data object SoundAlertsMicrophoneSilent : Cause()
     }
 
     sealed class Update {
@@ -135,7 +138,7 @@ class StoppedCaptionsNotice {
             toldCause = null
             if (!isEnabled) return withdrawIfPosted(sweep = false, now = now)
         }
-        if (isEnabled && cause == Cause.SoundAlertsNotWorking && soundAlertsDelivered &&
+        if (isEnabled && isSoundAlertsDown(cause) && soundAlertsDelivered &&
             (soundAlertsRecoveredAt?.let { now - it <= SOUND_ALERTS_WINDOW_SECONDS } ?: true)
         ) {
             soundAlertsRecoveredAt = null
@@ -154,11 +157,11 @@ class StoppedCaptionsNotice {
         val old = withdrawIfPosted(sweep = false, now = now)
         posted = true
         toldCause = cause
-        val new = if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
+        val new = if (cause == Cause.OtherAppHasMicrophone || isSoundAlertsDown(cause)) {
             postedAsSchedule = true
             postedContent = null
-            val delay = if (cause == Cause.SoundAlertsNotWorking) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
-            soundAlertsScheduledAt = if (cause == Cause.SoundAlertsNotWorking) now else null
+            val delay = if (isSoundAlertsDown(cause)) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
+            soundAlertsScheduledAt = if (isSoundAlertsDown(cause)) now else null
             soundAlertsScheduledDelay = delay
             Update.Schedule(content(cause), delay)
         } else {
@@ -176,7 +179,9 @@ class StoppedCaptionsNotice {
      */
     private fun sameStop(a: Cause, b: Cause): Boolean = if (isDelayed(a) || isDelayed(b)) a == b else true
 
-    private fun isDelayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking
+    private fun isDelayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || isSoundAlertsDown(cause)
+
+    private fun isSoundAlertsDown(cause: Cause) = cause == Cause.SoundAlertsNotWorking || cause == Cause.SoundAlertsMicrophoneSilent
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
     fun postFailed(now: Double = System.nanoTime() / 1e9) {
@@ -270,11 +275,14 @@ class StoppedCaptionsNotice {
             interruptedByCall: Boolean = false,
             soundsOnlyChosen: Boolean = false,
             soundAlertsNotWorking: Boolean = false,
+            soundAlertsMicrophoneSilent: Boolean = false,
             engine: TranscriptionEngineKind? = null,
             spokenLanguage: UILanguage = UILanguage.Hebrew,
         ): Cause? {
             val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen, engine, spokenLanguage)
-            if (stop == null && soundAlertsNotWorking && !systemInterrupted) return Cause.SoundAlertsNotWorking
+            if (stop == null && soundAlertsNotWorking && !systemInterrupted) {
+                return if (soundAlertsMicrophoneSilent) Cause.SoundAlertsMicrophoneSilent else Cause.SoundAlertsNotWorking
+            }
             return stop
         }
 
@@ -308,7 +316,7 @@ class StoppedCaptionsNotice {
             identifier = IDENTIFIER,
             title = when (cause) {
                 Cause.SoundAlertsStopped -> tr("ההתראות על צלילים נעצרו", "Sound alerts stopped")
-                Cause.SoundAlertsNotWorking -> soundAlertsNotWorkingTitle()
+                Cause.SoundAlertsNotWorking, Cause.SoundAlertsMicrophoneSilent -> soundAlertsNotWorkingTitle()
                 Cause.OtherAppHasMicrophone -> tr("הכתוביות מושהות", "Captions paused")
                 else -> tr("הכתוביות נעצרו", "Captions stopped")
             },
@@ -322,6 +330,11 @@ class StoppedCaptionsNotice {
         fun soundAlertsNotWorkingDetail(): String = tr(
             "הזיהוי של צלילים לא עובד כרגע, ולכן ייתכן שלא תקבלו התראה על צלצול בדלת, אזעקה או בכי של תינוק. אוזן ממשיכה לנסות.",
             "Ozen can’t recognize sounds right now, so you may miss a doorbell, an alarm or a baby crying. It keeps trying.",
+        )
+
+        fun soundAlertsMicrophoneSilentDetail(): String = tr(
+            "המיקרופון שולח רק שקט, ולכן ייתכן שלא תקבלו התראה על צלצול בדלת, אזעקה או בכי של תינוק. בדקו שהמיקרופון מחובר ושאפליקציה אחרת או הגדרות הטלפון לא חוסמות אותו. אוזן ממשיכה להאזין.",
+            "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.",
         )
 
         private fun openOzenToContinue(): String = tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
@@ -349,6 +362,7 @@ class StoppedCaptionsNotice {
 
         private fun body(cause: Cause): String = when (cause) {
             Cause.SoundAlertsNotWorking -> soundAlertsNotWorkingDetail()
+            Cause.SoundAlertsMicrophoneSilent -> soundAlertsMicrophoneSilentDetail()
             Cause.OtherAppHasMicrophone -> tr(
                 "אפליקציה אחרת משתמשת במיקרופון, ולכן הכתוביות וההתראות על צלילים מושהות. פתחו את אוזן כדי להחזיר אותן.",
                 "Another app is using the microphone, so captions and sound alerts are paused. Open Ozen to bring them back.",
