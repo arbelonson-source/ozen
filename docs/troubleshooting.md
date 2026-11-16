@@ -91,13 +91,13 @@ status button gives in the table below, so look it up there.
 | "… isn't available in … on this device" (… lo zamin be-safa … ba-machshir ha-ze) | Apple's engine has no on-device support for the language being captioned (Hebrew, for example) on this iPhone. | Tap to switch to Whisper in Settings. |
 | "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key for the chosen service, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste a key from the chosen service's site and tap Save; [Cloud services](cloud-services.md#getting-a-key) says where each one keeps its keys. |
 | "The service didn't accept this key. Check that you copied all of it." | The cloud service turned the key down, often because only part of it was copied. With no Whisper model on the phone this is the whole button; with one, the button says "Listening" with these words and the phone carries on by itself. Settings says the same when the key is saved. | Tap it: Settings opens. Copy the whole key again from the chosen service's site and tap Save. The cloud is tried again the next time captions start. |
-| "Cloud transcription isn't available right now" | The cloud service did not answer in time: a slow or stuck connection, or the service itself having trouble. This is not a missing key. If a Whisper model is on the phone it takes over after the first time-out, hears the last seconds again so no words are lost, and the cloud is asked quietly meanwhile. Captions go back to it once it answers. | Nothing, if the phone is carrying on by itself. Otherwise tap to try again, or check the connection. |
+| "Cloud transcription isn't available right now" | The cloud service did not answer in time: a slow or stuck connection, or the service itself having trouble. This is not a missing key. If a Whisper model is on the phone it takes over after the first time-out and hears the last seconds again, and the cloud is asked quietly meanwhile. Without a model, captions wait and the cloud is tried again. Captions go back to it once it answers. | Nothing, if the phone is carrying on by itself. Otherwise tap to try again, or check the connection. |
 | "Cloud transcription's budget ran out" (nigmar ha-kredit le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
 | "No internet connection" (ein chibur la-internet) | Cloud captions can't reach the internet, and no Whisper model is on the phone to take over. | Check Wi-Fi or cellular data. It retries by itself; or switch to Whisper, which works offline. |
 | "Trying again on its own · Tap to try now" (menasim shuv otomatit · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
-| "The address or code is missing" | The home computer is chosen, but the phone has no address or no pairing code for it. The computer was never asked, so it may be fine. With a Whisper model on the phone the button says "Listening" with these words and the phone carries on by itself. | Tap it: Settings opens. Scan the QR code from "Ozen - pair a phone" in the computer's Start menu, or type the address and the code. Captions start once they are saved. Nothing is retried on a timer meanwhile, but sound alerts keep listening. |
+| "The address or code is missing" | The home computer is chosen, but the phone has no address or no pairing code for it. The computer was never asked, so it may be fine. With a Whisper model on the phone the button says "Listening" with these words and the phone carries on by itself. | Tap it: Settings opens. Scan the QR code from "Ozen - pair a phone" in the computer's Start menu, or type the address and the code. Captions start once they are saved. Nothing is retried on a timer meanwhile; if sound alerts are on, they keep listening. |
 | "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is on and awake, but it answered with an error or with something the phone does not understand. It is not off, so there is nothing to wake. | Restart Ozen on the computer, or scan the QR code again. The phone keeps trying by itself, and its own model carries on if the backup is downloaded; otherwise the status line says "Tap to add a backup on the phone". |
-| "The home computer can't caption …" (the language's name is shown) | The model on the home computer does not know the language the phone is set to. Asking again would get the same answer, so the phone does not. With a Whisper model on the phone it carries on by itself, and the button says so. Without one, captions wait, and sound alerts keep listening. | Tap it: Settings opens. Pick another engine, or another language. [The home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language) says more. |
+| "The home computer can't caption …" (the language's name is shown) | The model on the home computer does not know the language the phone is set to. Asking again would get the same answer, so the phone does not. With a Whisper model on the phone it carries on by itself, and the button says so. Without one, captions wait, and sound alerts, if on, keep listening. | Tap it: Settings opens. Pick another engine, or another language. [The home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language) says more. |
 | "The computer's pairing changed. Scan its QR code again." | The computer made a new certificate (for example its certificate file was deleted), so the saved code no longer matches. | Scan the QR code again from "Ozen - pair a phone" in the computer's Start menu. |
 | "The home computer didn't accept the pairing code" | The code on the phone is not the one on the computer. | Scan the QR code again. |
 
@@ -186,9 +186,11 @@ says where to look on the common ones.
   the History list, the saved-conversation card and notifications, a "…"
   only means the text was shortened to fit.)
 
-  After the home computer or a cloud service drops out, the phone's own
-  model hears the last seconds again (up to about 20 seconds, since the
-  last finished line), so the sentence is not lost. Once that replay shows
+  After the home computer or a cloud service drops out, and only if the
+  phone has its own speech model (for the home computer, the downloaded
+  backup), that model hears the last seconds again (up to about 20 seconds,
+  since the last finished line), so the sentence is less likely to be
+  lost. Without a model, nothing is replayed. Once that replay shows
   words, a half-written line that began inside the replayed audio is
   replaced by the replayed line, on the screen and in History, so the same
   words do not show twice. If the replay has no words, the cut-off line
@@ -212,7 +214,8 @@ says where to look on the common ones.
   captions can't run for now (the home computer is off or asleep, the
   cloud is out of reach) and are waiting to try again, the microphone stays
   on for sound alerts alone, so a doorbell or smoke alarm still alerts. The
-  same holds when the wait is for something only a person can fix: no home
+  same holds, when sound alerts are on, when the wait is for something only
+  a person can fix: no home
   computer address saved, a plain `ws://` address the phone refuses, or a
   home computer that can't caption the chosen language. Nothing is retried
   on a timer then, and saving an address starts captions again.

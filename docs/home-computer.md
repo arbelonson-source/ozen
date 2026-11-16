@@ -211,8 +211,8 @@ A wrong code is handled the same way: the phone carries on with its own
 model if it has the backup. Without it, the screen says the home computer
 did not accept the pairing code. Scan the QR code again.
 
-When the computer drops out in the middle of a sentence, the phone's own
-model hears the last seconds again (up to about 20 seconds since the last
+When the computer drops out in the middle of a sentence and the backup is
+downloaded, the phone's own model hears the last seconds again (up to about 20 seconds since the last
 finished line) before it goes on with the live sound. A half-written line
 that began inside those seconds is replaced by the replayed line, so words
 do not show twice. If the replay brings no words, the half line stays.
@@ -226,8 +226,8 @@ Some answers are not "off or asleep", and the screen says so:
   backup.
 - **"The address or code is missing".** Nothing is saved to ask. Tap the
   line to open Settings and scan the QR code. Nothing is retried on a timer;
-  captions start as soon as an address is saved. Sound alerts keep listening
-  meanwhile.
+  captions start as soon as an address is saved. If sound alerts are on,
+  they keep listening meanwhile.
 
 ## When the computer cannot caption the language
 
@@ -239,7 +239,7 @@ would get the same answer, so the phone does not ask on a timer.
 - **With the backup**, the phone carries on with its own model, and the
   status line says "The home computer can’t caption …, so the phone carries
   on by itself".
-- **Without it**, captions wait and say so. Sound alerts keep listening
+- **Without it**, captions wait and say so. If sound alerts are on, they keep listening
   meanwhile, so a doorbell or smoke alarm still alerts.
 
 To get captions, pick another engine under **Transcription engine**
