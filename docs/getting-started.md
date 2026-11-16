@@ -183,7 +183,7 @@ Numbers (a time, how many pills, a phone number) are shown in a heavier
 weight and a second color, so they are not missed. This works for digits,
 and also for numbers said as words ("three pills at ten thirty") when the
 captions are in Hebrew, English, Spanish, Russian, French, German,
-Portuguese or Ukrainian. In the other languages only digits stand out.
+Ukrainian or Arabic. In the other languages only digits stand out.
 "Bold numbers" (hadgashat misparim) in Settings, under Display, turns it
 off.
 

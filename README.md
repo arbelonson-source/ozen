@@ -189,8 +189,8 @@ Open a section for the details.
     in words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim),
     "twice" (pa'amayim), "once a day" (pa'am be-yom), "in two weeks"
     (be'od shvu'ayim)). Number words are marked when the captions are in
-    Hebrew, English, Spanish, Russian, French, German, Portuguese or
-    Ukrainian ("three pills at ten thirty").
+    Hebrew, English, Spanish, Russian, French, German, Portuguese, Ukrainian or
+    Arabic ("three pills at ten thirty").
   - Long stretches of speech broken into short paragraphs at sentence
     ends.
   - The screen stays awake while listening (and locks as usual after a
