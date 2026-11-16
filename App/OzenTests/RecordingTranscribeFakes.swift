@@ -18,6 +18,8 @@ final class RecordingHostFake: RecordingTranscribeHost {
     var network: NetworkConditions? = .wifi
     var saveFails = false
     private(set) var saved: [TranscriptSessionRecord] = []
+    private(set) var unfinished: [TranscriptSessionRecord] = []
+    private(set) var removed: [UUID] = []
     private(set) var toggles = 0
     private(set) var log: [String] = []
     var duringWaitOut: (@MainActor () -> Void)?
@@ -56,6 +58,15 @@ final class RecordingHostFake: RecordingTranscribeHost {
         if saveFails { throw RecordingTestFailure() }
         saved.append(record)
         return !record.segments.isEmpty
+    }
+
+    func saveUnfinished(_ record: TranscriptSessionRecord) throws -> Bool {
+        unfinished.append(record)
+        return true
+    }
+
+    func deleteRecord(id: UUID) throws {
+        removed.append(id)
     }
 
     func note(_ event: String) { log.append(event) }

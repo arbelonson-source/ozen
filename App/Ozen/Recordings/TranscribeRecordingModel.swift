@@ -43,6 +43,7 @@ final class TranscribeRecordingModel {
     private let awake: any ScreenAwakeHolding
     private let now: @MainActor () -> Date
     private let onSaved: @MainActor () -> Void
+    private let keeper: FileTranscriptKeeper
     @ObservationIgnored private var handover = CaptionsHandover()
     @ObservationIgnored private var running: Task<Void, Never>?
     @ObservationIgnored private var holdsCaptions = false
@@ -65,6 +66,12 @@ final class TranscribeRecordingModel {
         self.awake = awake
         self.now = now
         self.onSaved = onSaved
+        keeper = FileTranscriptKeeper(
+            historyOn: { [unowned host] in MainActor.assumeIsolated { host.savesHistory } },
+            save: { [unowned host] record in try MainActor.assumeIsolated { try host.saveUnfinished(record) } },
+            delete: { [unowned host] id in try MainActor.assumeIsolated { try host.deleteRecord(id: id) } },
+            now: { MainActor.assumeIsolated { now().timeIntervalSince1970 } }
+        )
         displayName = file.displayName
         language = host.spokenLanguage
     }
@@ -188,6 +195,7 @@ final class TranscribeRecordingModel {
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
         )
+        keeper.begin(.init(fileName: ready.name, recordingSeconds: ready.durationSeconds, modelVariant: model.variant, languageCode: ready.language.engineLanguageCode))
         let result: FileTranscriptionDriver.Outcome.Result
         if Task.isCancelled {
             // Stopped while captions' model was still loading: its own is
@@ -206,8 +214,10 @@ final class TranscribeRecordingModel {
         case .stoppedPartway(let lines, let problem):
             finish(ready, model: model, lines: lines, endMissing: false, stoppedBy: problem)
         case .failed(let problem):
+            keeper.discard()
             state = .failed(name: ready.name, problem: problem)
         case .cancelled:
+            keeper.discard()
             state = .ready(makeReady())
         }
     }
@@ -218,6 +228,7 @@ final class TranscribeRecordingModel {
         working.fraction = progress.fraction
         working.timeLeftSeconds = progress.timeLeftSeconds
         working.lines = progress.lines
+        keeper.linesSoFar(progress.lines)
         state = .working(working)
     }
 
@@ -230,6 +241,7 @@ final class TranscribeRecordingModel {
                 finishedAt: now().timeIntervalSince1970,
                 recordingSeconds: ready.durationSeconds,
                 modelVariant: model.variant,
+                id: keeper.id,
                 languageCode: ready.language.engineLanguageCode,
                 cutShort: endMissing || stoppedBy != nil
             )
@@ -238,7 +250,9 @@ final class TranscribeRecordingModel {
             } catch {
                 history = .failed
             }
+            if case .saved = history { keeper.finished() }
         } else {
+            keeper.discard()
             history = .off
         }
         if case .saved = history { onSaved() }
