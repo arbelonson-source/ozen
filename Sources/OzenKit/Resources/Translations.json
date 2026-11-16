@@ -1208,7 +1208,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "ጽሑፉ ከቅጂው መጨረሻ በፊት ይቆማል፤ ስለዚህ የተወሰነ ጽሑፍ ጎድሏል።",
   "The address wasn’t kept on the phone.": "አድራሻው በስልኩ ላይ አልተቀመጠም።",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "የቤት ኮምፒዩተሩ አድራሻ በስልኩ ላይ አልተቀመጠም፣ ስልኩ እንደገና ሲነሳ ይጠፋል።",
-  "Close anyway": "ለማንኛውም ዝጋ"
+  "Close anyway": "ለማንኛውም ዝጋ",
+  "Before you sleep": "ከመተኛትዎ በፊት"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2419,7 +2420,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "يتوقف النص قبل نهاية التسجيل، لذلك ينقص بعض الكلام.",
   "The address wasn’t kept on the phone.": "لم يُحفظ العنوان على الهاتف.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "لم يُحفظ عنوان الكمبيوتر المنزلي على الهاتف وسيضيع بعد إعادة التشغيل.",
-  "Close anyway": "إغلاق على أي حال"
+  "Close anyway": "إغلاق على أي حال",
+  "Before you sleep": "قبل أن تنام"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3630,7 +3632,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "这份文字在录音结束前就停止了，因此缺少一部分内容。",
   "The address wasn’t kept on the phone.": "地址没有保存在手机上。",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "家用电脑的地址没有保存在手机上，重启后会丢失。",
-  "Close anyway": "仍然关闭"
+  "Close anyway": "仍然关闭",
+  "Before you sleep": "睡觉前"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4841,7 +4844,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Cette transcription s’arrête avant la fin de l’enregistrement ; il manque donc une partie du texte.",
   "The address wasn’t kept on the phone.": "L’adresse n’a pas été conservée sur le téléphone.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "L’adresse de l’ordinateur à la maison n’a pas été conservée sur le téléphone et sera perdue après un redémarrage.",
-  "Close anyway": "Fermer quand même"
+  "Close anyway": "Fermer quand même",
+  "Before you sleep": "Avant de dormir"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6052,7 +6056,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Diese Abschrift endet vor dem Ende der Aufnahme, es fehlt also ein Teil des Textes.",
   "The address wasn’t kept on the phone.": "Die Adresse wurde nicht auf dem Telefon behalten.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Die Adresse des Heimcomputers wurde nicht auf dem Telefon behalten und geht nach einem Neustart verloren.",
-  "Close anyway": "Trotzdem schließen"
+  "Close anyway": "Trotzdem schließen",
+  "Before you sleep": "Bevor Sie schlafen"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7263,7 +7268,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "यह ट्रांसक्रिप्ट रिकॉर्डिंग खत्म होने से पहले रुक जाती है, इसलिए कुछ टेक्स्ट गायब है।",
   "The address wasn’t kept on the phone.": "पता फ़ोन पर नहीं रखा गया।",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "घर के कंप्यूटर का पता फ़ोन पर नहीं रखा गया और रीस्टार्ट के बाद खो जाएगा।",
-  "Close anyway": "फिर भी बंद करें"
+  "Close anyway": "फिर भी बंद करें",
+  "Before you sleep": "सोने से पहले"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8474,7 +8480,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Esta transcrição termina antes do fim da gravação, então falta parte do texto.",
   "The address wasn’t kept on the phone.": "O endereço não foi guardado no telemóvel.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "O endereço do computador lá de casa não foi guardado no telemóvel e perder-se-á após um reinício.",
-  "Close anyway": "Fechar mesmo assim"
+  "Close anyway": "Fechar mesmo assim",
+  "Before you sleep": "Antes de dormir"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9685,7 +9692,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Эта расшифровка обрывается до конца записи, поэтому часть текста отсутствует.",
   "The address wasn’t kept on the phone.": "Адрес не сохранён на телефоне.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адрес домашнего компьютера не сохранён на телефоне и пропадёт после перезапуска.",
-  "Close anyway": "Всё равно закрыть"
+  "Close anyway": "Всё равно закрыть",
+  "Before you sleep": "Перед сном"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10896,7 +10904,8 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Esta transcripción termina antes del final de la grabación, así que falta parte del texto.",
   "The address wasn’t kept on the phone.": "La dirección no se guardó en el teléfono.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "La dirección del ordenador de casa no se guardó en el teléfono y se perderá tras reiniciar.",
-  "Close anyway": "Cerrar de todos modos"
+  "Close anyway": "Cerrar de todos modos",
+  "Before you sleep": "Antes de dormir"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12107,6 +12116,7 @@
   "This transcript stops before the end of the recording, so some text is missing.": "Ця розшифровка обривається до кінця запису, тому частини тексту бракує.",
   "The address wasn’t kept on the phone.": "Адресу не збережено на телефоні.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адресу домашнього комп’ютера не збережено на телефоні, і вона зникне після перезапуску.",
-  "Close anyway": "Усе одно закрити"
+  "Close anyway": "Усе одно закрити",
+  "Before you sleep": "Перед сном"
  }
 }
