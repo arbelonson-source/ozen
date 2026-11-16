@@ -108,6 +108,12 @@ struct HistoryDetailView: View {
                 if !isSearch, !numberLineIDs.isEmpty {
                     numbersSection(record, proxy: proxy)
                 }
+                if record.cutShort {
+                    Section {
+                        Label(TranscriptSessionRecord.cutShortNote, systemImage: "exclamationmark.triangle")
+                            .accessibilityElement(children: .combine)
+                    }
+                }
                 Section {
                     ForEach(Array(record.segments.enumerated()), id: \.element.id) { index, segment in
                         let isMatch = isSearch && matches.contains(segment.id)

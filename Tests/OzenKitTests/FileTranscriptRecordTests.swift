@@ -133,4 +133,27 @@ struct FileTranscriptRecordTests {
         object["fromRecording"] = "yes"
         #expect(try !JSONDecoder().decode(TranscriptSessionRecord.self, from: JSONSerialization.data(withJSONObject: object)).fromRecording)
     }
+
+    @Test("a transcript that stops early is saved as cut short, and a complete one is not")
+    func cutShortIsSaved() throws {
+        let whole = FileTranscriptRecord.make(fileName: "a.wav", lines: lines, finishedAt: 5_060, recordingSeconds: 60, modelVariant: nil)
+        #expect(!whole.cutShort)
+        let early = FileTranscriptRecord.make(fileName: "a.wav", lines: lines, finishedAt: 5_060, recordingSeconds: 60, modelVariant: nil, cutShort: true)
+        #expect(early.cutShort)
+        let back = try JSONDecoder().decode(TranscriptSessionRecord.self, from: JSONEncoder().encode(early))
+        #expect(back.cutShort)
+        #expect(!TranscriptSessionRecord.cutShortNote.isEmpty)
+    }
+
+    @Test("a record saved before the cut-short marker existed loads as complete, and a damaged marker reads as complete")
+    func oldRecordIsComplete() throws {
+        let old = """
+        {"id":"6F1B3C2A-1111-4222-8333-444455556666","startedAt":5000,"endedAt":5060,"engine":"whisperKit","modelVariant":"small","segments":[{"id":"6F1B3C2A-1111-4222-8333-444455556667","text":"first","startTimestamp":5000,"isCommitted":true}],"title":"a","fromRecording":true}
+        """
+        let record = try JSONDecoder().decode(TranscriptSessionRecord.self, from: Data(old.utf8))
+        #expect(record.segments.count == 1)
+        #expect(!record.cutShort)
+        let damaged = old.replacingOccurrences(of: "\"fromRecording\":true", with: "\"fromRecording\":true,\"cutShort\":\"yes\"")
+        #expect(try !JSONDecoder().decode(TranscriptSessionRecord.self, from: Data(damaged.utf8)).cutShort)
+    }
 }
