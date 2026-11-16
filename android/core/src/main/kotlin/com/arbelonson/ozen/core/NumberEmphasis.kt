@@ -590,17 +590,36 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         return SpelledTail(lastWord, endAt, joined)
     }
 
-    fun numberClock(last: Int, end: Int): Pair<Int, Int>? {
-        if (!joinsNext(last, end) || lowered[last + 1] !in profile.numberClockLinks ||
-            !joinsNext(last + 1, coreEnd(last + 1)) || last + 2 >= words.size || !isNumber(last + 2) ||
-            lowered[last + 2] in profile.ambiguous
-        ) {
-            return null
-        }
-        val second = runEnd(last + 2)
+    fun minuteEnd(index: Int): Pair<Int, Int>? {
+        if (index >= words.size || !isNumber(index) || lowered[index] in profile.ambiguous) return null
+        val second = runEnd(index)
         if (finish(second, coreEnd(second), lowered[second], false).joined) return null
         if (joinsNext(second, coreEnd(second)) && lowered[second + 1] in profile.periods) return null
         return second to coreEnd(second)
+    }
+
+    fun numberClock(last: Int, end: Int): Pair<Int, Int>? {
+        if (!joinsNext(last, end) || lowered[last + 1] !in profile.numberClockLinks ||
+            !joinsNext(last + 1, coreEnd(last + 1)) || last + 2 >= words.size
+        ) {
+            return null
+        }
+        var minute = last + 2
+        if (lowered[minute] in profile.numberClockArticles && joinsNext(minute, coreEnd(minute))) minute += 1
+        return minuteEnd(minute)
+    }
+
+    fun hourClock(unit: Int, end: Int): Pair<Int, Int>? {
+        if (lowered[unit] !in profile.clockUnits || !joinsNext(unit, end)) return null
+        minuteEnd(unit + 1)?.let { return it }
+        if (lowered[unit + 1] !in profile.clockUnitLinks || !joinsNext(unit + 1, coreEnd(unit + 1))) return null
+        minuteEnd(unit + 2)?.let { return it }
+        var cursor = unit + 1
+        while (joinsNext(cursor, coreEnd(cursor)) && cursor + 1 < words.size && lowered[cursor + 1] in profile.fractionLinks) {
+            cursor += 1
+        }
+        if (!joinsNext(cursor, coreEnd(cursor)) || cursor + 1 >= words.size || lowered[cursor + 1] !in profile.fractions) return null
+        return (cursor + 1) to coreEnd(cursor + 1)
     }
 
     val result = mutableListOf<OpenEndRange<Int>>()
@@ -655,7 +674,12 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 }
                 val done = finish(runLast, runStop, lowered[runLast], afterFraction)
                 var numberStart = word.coreStart
-                val clock = if (!afterFraction && !done.joined && core !in profile.ambiguous) numberClock(runLast, runStop) else null
+                val clock = when {
+                    afterFraction -> null
+                    done.joined -> hourClock(done.last, done.end)
+                    core !in profile.ambiguous -> numberClock(runLast, runStop)
+                    else -> null
+                }
                 if (clock == null && position == runLast && core in profile.plainAlone && !done.joined &&
                     !(previous != null && previous in profile.countsAfter)
                 ) {

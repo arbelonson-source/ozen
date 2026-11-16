@@ -1473,6 +1473,17 @@ public final class LiveCaptionViewModel {
         }
     }
 
+    /// "Test connection" after `storeHomeServerEntries`: captions start
+    /// again once for what was stored, then the connection is tried.
+    public func restartThenCheckHomeServer(
+        _ stored: HomeServerEntriesStored,
+        check: (() async -> HomeServerCheck)? = nil
+    ) async -> HomeServerCheck {
+        await restartForHomeServerEntries(stored)
+        if let check { return await check() }
+        return await checkHomeServer()
+    }
+
     /// A pairing link from a home computer's QR code, waiting for someone
     /// to confirm it (see `HomeServerPairing`).
     public var pendingPairing: HomeServerPairing?

@@ -56,6 +56,7 @@
     ],
     "fractionLinks": ["de", "del", "la", "el", "un", "una"],
     "clockLinks": [],
+    "numberClockLinks": ["y", "menos"],
     "ambiguous": ["un", "una", "uno"],
     "notACountBefore": [
       "el", "la", "los", "las", "este", "esta", "ese", "esa", "aquel", "aquella", "ningún", "ninguna",
@@ -157,6 +158,8 @@
       "de", "du", "d'un", "d'une", "la", "le", "un", "une"
     ],
     "clockLinks": [],
+    "clockUnits": ["heure", "heures"],
+    "clockUnitLinks": ["et", "moins"],
     "ambiguous": [
       "un", "une", "neuf"
     ],
@@ -296,6 +299,8 @@
       "de", "do", "da", "um", "uma", "o", "a"
     ],
     "clockLinks": [],
+    "numberClockLinks": ["e", "para"],
+    "numberClockArticles": ["as"],
     "ambiguous": [
       "um", "uma"
     ],
