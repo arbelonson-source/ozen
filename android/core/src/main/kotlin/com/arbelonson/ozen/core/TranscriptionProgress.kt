@@ -9,6 +9,20 @@ object TranscriptionProgress {
         return (doneSeconds / totalSeconds).coerceIn(0.0, 1.0).toFloat()
     }
 
+    private const val EARLY_END_SHARE = 0.05
+    private const val EARLY_END_SECONDS = 10.0
+
+    /**
+     * True when the audio that was read falls clearly short of the length the file's header gives.
+     * Compressed formats only estimate their length, so a gap must be both over 5% of the header
+     * and over 10 seconds. A file shorter than 10 seconds can therefore never be flagged.
+     */
+    fun endsEarly(heardSeconds: Double, totalSeconds: Double?): Boolean {
+        if (totalSeconds == null || !(totalSeconds > 0) || !heardSeconds.isFinite()) return false
+        val missing = totalSeconds - heardSeconds
+        return missing > EARLY_END_SECONDS && missing > totalSeconds * EARLY_END_SHARE
+    }
+
     fun percent(fraction: Float): Int = Math.floor(fraction * 100.0 + 1e-5).toInt().coerceIn(0, 100)
 
     fun secondsLeft(elapsedSeconds: Double, doneSeconds: Double, totalSeconds: Double?): Double? {

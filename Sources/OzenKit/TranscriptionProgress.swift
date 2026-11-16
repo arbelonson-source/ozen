@@ -30,4 +30,17 @@ public enum TranscriptionProgress {
         if rest == 0 { return tr("נותרו בערך %1 שע׳", "About %1 h left", args: ["\(hours)"]) }
         return tr("נותרו בערך %1 שע׳ ו־%2 דק׳", "About %1 h %2 min left", args: ["\(hours)", "\(rest)"])
     }
+
+    static let earlyEndShare = 0.05
+    static let earlyEndSeconds = 10.0
+
+    /// True when the audio that was read falls clearly short of the length the
+    /// file's header gives. Compressed formats only estimate their length, so
+    /// a gap must be both over 5% of the header and over 10 seconds. A file
+    /// shorter than 10 seconds can therefore never be flagged.
+    public static func endsEarly(heardSeconds: Double, totalSeconds: Double?) -> Bool {
+        guard let totalSeconds, totalSeconds > 0, heardSeconds.isFinite else { return false }
+        let missing = totalSeconds - heardSeconds
+        return missing > earlyEndSeconds && missing > totalSeconds * earlyEndShare
+    }
 }

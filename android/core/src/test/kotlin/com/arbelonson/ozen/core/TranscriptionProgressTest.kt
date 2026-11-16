@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -67,5 +68,41 @@ class TranscriptionProgressTest {
         Localization.withLanguage(UILanguage.Hebrew) {
             assertTrue(TranscriptionProgress.timeLeftText(7 * 60.0).contains("7"))
         }
+    }
+}
+
+class FileEndsEarlyTest {
+    private fun early(heard: Double, total: Double?) = TranscriptionProgress.endsEarly(heard, total)
+
+    @Test
+    fun aWholeFileIsNotFlagged() {
+        assertFalse(early(3_600.0, 3_600.0))
+        assertFalse(early(3_601.0, 3_600.0))
+    }
+
+    @Test
+    fun aGapInsideTheMarginIsNotFlagged() {
+        assertFalse(early(3_598.0, 3_600.0))
+        assertFalse(early(3_500.0, 3_600.0))
+        assertFalse(early(52.0, 60.0))
+    }
+
+    @Test
+    fun aClearShortfallIsFlagged() {
+        assertTrue(early(2_400.0, 3_600.0))
+        assertTrue(early(20.0, 60.0))
+        assertTrue(early(48.0, 60.0))
+    }
+
+    @Test
+    fun anUnknownLengthIsNotFlagged() {
+        assertFalse(early(100.0, null))
+        assertFalse(early(100.0, 0.0))
+    }
+
+    @Test
+    fun aVeryShortFileCanNeverBeFlagged() {
+        assertFalse(early(3.0, 8.0))
+        assertFalse(early(0.0, 10.0))
     }
 }
