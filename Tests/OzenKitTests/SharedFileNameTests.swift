@@ -65,4 +65,30 @@ struct SharedFileNameTests {
         #expect(SharedFileName.make(from: "הרצאה 4") == "הרצאה 4")
         #expect(SharedFileName.make(from: "PTT-2026.10.16-WA0003") == "PTT-2026.10.16-WA0003")
     }
+
+    @Test("emoji tag characters are dropped except inside a flag")
+    func tagCharacters() {
+        let tags = "\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}"
+        let flag = "\u{1F3F4}" + tags
+        #expect(SharedFileName.make(from: "a" + flag) == "a" + flag)
+        #expect(SharedFileName.make(from: "a\u{E0041}\u{E007F}b") == "ab")
+        #expect(SharedFileName.make(from: "\u{1F3F4}\u{E0067}") == "\u{1F3F4}")
+    }
+
+    @Test("a joiner stays between letters, marks or pictures, and goes elsewhere")
+    func joiners() {
+        #expect(SharedFileName.make(from: "a\u{200D}b") == "a\u{200D}b")
+        #expect(SharedFileName.make(from: "a \u{200D} b") == "a  b")
+        #expect(SharedFileName.make(from: "\u{200D}ab\u{200D}") == "ab")
+        #expect(SharedFileName.make(from: "a\u{200D}\u{F0000}") == "a\u{F0000}")
+        #expect(SharedFileName.make(from: "\u{F0000}\u{200D}a") == "\u{F0000}a")
+        #expect(SharedFileName.make(from: "a\u{20DD}\u{200D}b") == "a\u{20DD}\u{200D}b")
+        #expect(SharedFileName.make(from: "\u{1F468}\u{200D}\u{1F469}") == "\u{1F468}\u{200D}\u{1F469}")
+    }
+
+    @Test("a non-joiner at the ends is trimmed with the dots")
+    func edgeNonJoiner() {
+        #expect(SharedFileName.make(from: "\u{200C}.ab.\u{200C}") == "ab")
+        #expect(SharedFileName.make(from: "a\u{200C}b") == "a\u{200C}b")
+    }
 }
