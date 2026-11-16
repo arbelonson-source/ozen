@@ -145,7 +145,8 @@ extension NumberEmphasis {
                     let done = finish(last, end, lowered[last], afterFraction: afterFraction)
                     let alone = position == last
                     var spanStart = start
-                    if alone, profile.plainAlone.contains(core), !done.joined,
+                    let clock = !afterFraction && !done.joined && !profile.ambiguous.contains(core) ? numberClock(after: last, end) : nil
+                    if clock == nil, alone, profile.plainAlone.contains(core), !done.joined,
                        !(previous.map(profile.countsAfter.contains) ?? false) { continue }
                     if alone, profile.ambiguous.contains(core) {
                         if let previous, profile.notACountBefore.contains(previous) { continue }
@@ -157,7 +158,7 @@ extension NumberEmphasis {
                             spanStart = unitStart
                         }
                     }
-                    if !afterFraction, !done.joined, !profile.ambiguous.contains(core), let clock = numberClock(after: last, end) {
+                    if let clock {
                         span = (spanStart, clock.last, clock.end)
                     } else {
                         span = (spanStart, done.joined || !afterFraction ? done.last : last, done.joined || !afterFraction ? done.end : end)

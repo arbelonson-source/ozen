@@ -1105,6 +1105,8 @@
    {"kind": "emphasized", "input": "Wir treffen uns um fünf vor acht", "language": "de", "expected": ["fünf vor acht"]},
    {"kind": "emphasized", "input": "Zwanzig nach neun", "language": "de", "expected": ["Zwanzig nach neun"]},
    {"kind": "emphasized", "input": "Es ist zehn vor zwölf", "language": "de", "expected": ["zehn vor zwölf"]},
+   {"kind": "emphasized", "input": "Acht nach elf", "language": "de", "expected": ["Acht nach elf"]},
+   {"kind": "emphasized", "input": "Elf vor acht", "language": "de", "expected": ["Elf vor acht"]},
    {"kind": "emphasized", "input": "Acht nach Hause", "language": "de", "expected": []},
    {"kind": "emphasized", "input": "Zwei vor drei Wochen", "language": "de", "expected": ["Zwei", "drei Wochen"]},
    {"kind": "emphasized", "input": "Fünf nach drei Tabletten", "language": "de", "expected": ["Fünf", "drei Tabletten"]},

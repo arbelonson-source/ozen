@@ -655,7 +655,8 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 }
                 val done = finish(runLast, runStop, lowered[runLast], afterFraction)
                 var numberStart = word.coreStart
-                if (position == runLast && core in profile.plainAlone && !done.joined &&
+                val clock = if (!afterFraction && !done.joined && core !in profile.ambiguous) numberClock(runLast, runStop) else null
+                if (clock == null && position == runLast && core in profile.plainAlone && !done.joined &&
                     !(previous != null && previous in profile.countsAfter)
                 ) {
                     continue
@@ -670,7 +671,6 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                     }
                 }
                 start = numberStart
-                val clock = if (!afterFraction && !done.joined && core !in profile.ambiguous) numberClock(runLast, runStop) else null
                 val keepTail = done.joined || !afterFraction
                 last = clock?.first ?: if (keepTail) done.last else runLast
                 end = clock?.second ?: if (keepTail) done.end else runStop
