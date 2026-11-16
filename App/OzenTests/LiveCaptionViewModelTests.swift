@@ -92,6 +92,48 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.settings.homeServerCertificatePin == nil)
     }
 
+    @Test("closing Settings with an address and a code both unsaved restarts captions on the home computer once")
+    func closingWithBothUnsavedRestartsOnce() async {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.saveHomeServerCode = { _ in true }
+        await viewModel.start()
+        await viewModel.setEngine(.homeServer)
+        let before = viewModel.stats.engineRestarts
+
+        let both = viewModel.storeHomeServerEntries(address: "192.168.1.40", code: " newcode ")
+        #expect(both.addressChanged && both.codeSaved && !both.codeFailed)
+        #expect(viewModel.settings.homeServerAddress == "192.168.1.40")
+        #expect(viewModel.stats.engineRestarts == before)
+        await viewModel.restartForHomeServerEntries(both)
+        #expect(viewModel.stats.engineRestarts == before + 1)
+
+        let codeOnly = viewModel.storeHomeServerEntries(address: nil, code: "another")
+        await viewModel.restartForHomeServerEntries(codeOnly)
+        #expect(viewModel.stats.engineRestarts == before + 2)
+
+        let addressOnly = viewModel.storeHomeServerEntries(address: "192.168.1.41", code: "  ")
+        #expect(addressOnly.addressChanged && !addressOnly.codeSaved && !addressOnly.codeFailed)
+        await viewModel.restartForHomeServerEntries(addressOnly)
+        #expect(viewModel.stats.engineRestarts == before + 3)
+
+        let nothing = viewModel.storeHomeServerEntries(address: nil, code: "")
+        await viewModel.restartForHomeServerEntries(nothing)
+        #expect(viewModel.stats.engineRestarts == before + 3)
+    }
+
+    @Test("a code the phone won't keep is reported failed and restarts nothing on its own")
+    func closingWithUnsavableCode() async {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.saveHomeServerCode = { _ in false }
+        await viewModel.start()
+        await viewModel.setEngine(.homeServer)
+        let before = viewModel.stats.engineRestarts
+        let stored = viewModel.storeHomeServerEntries(address: nil, code: "x")
+        #expect(stored.codeFailed && !stored.codeSaved)
+        await viewModel.restartForHomeServerEntries(stored)
+        #expect(viewModel.stats.engineRestarts == before)
+    }
+
     @Test("The address write is reported at once, without waiting for any restart")
     func addressWriteIsReportedWithoutRestart() {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())

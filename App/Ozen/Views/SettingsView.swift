@@ -772,10 +772,25 @@ struct SettingsView: View {
     /// Typed but never saved with Return or the button: kept as Settings
     /// closes instead of silently dropped.
     private func saveUnsavedEntries() {
-        if HomeServer.unsavedAddress(draft: homeServerAddressDraft, saved: viewModel.settings.homeServerAddress) != nil {
-            saveHomeServerAddress()
+        let address = HomeServer.unsavedAddress(draft: homeServerAddressDraft, saved: viewModel.settings.homeServerAddress)
+        if let address {
+            homeServerAddressDraft = address
+            homeServerAddressLoaded = address
+            forgetHomeServerCheck()
         }
-        saveHomeServerCode()
+        let code = homeServerCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stored = viewModel.storeHomeServerEntries(address: address, code: code)
+        if !code.isEmpty {
+            homeServerCodeSaveFailed = stored.codeFailed
+        }
+        if stored.codeSaved {
+            homeServerCodeDraft = ""
+            forgetHomeServerCheck()
+            hasHomeServerCode = true
+        }
+        if stored.needsRestart {
+            Task { await viewModel.restartForHomeServerEntries(stored) }
+        }
     }
 
     private func forgetHomeServerCheck() {

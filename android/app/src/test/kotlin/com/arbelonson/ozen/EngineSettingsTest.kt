@@ -334,6 +334,20 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `closing settings with an address and a code both unsaved restarts captions on the home computer once`() = runBlocking<Unit> {
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        restarts = 0
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "", addressDraft = "ws://192.168.1.20:8765", pairingCodeDraft = "code-typed")
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+        assertEquals("code-typed", codes.read())
+        assertEquals(1, restarts)
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "", addressDraft = "", pairingCodeDraft = "code-two")
+        assertEquals(2, restarts)
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "", addressDraft = "ws://192.168.1.21:8765", pairingCodeDraft = "")
+        assertEquals(3, restarts)
+    }
+
+    @Test
     fun `closing settings drops an address that could not connect and changes nothing for entries left as they were`() = runBlocking<Unit> {
         engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
         engineSettings.saveHomeComputerAddress("ws://192.168.1.20:8765")
