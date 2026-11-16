@@ -112,7 +112,15 @@ final class TranscribeRecordingModel {
 
     func stopCaptions() async {
         guard case .ready = state else { return }
-        if handover.begin(phase: host.captionsPhase) {
+        let step = handover.begin(phase: host.captionsPhase, soundAlertsOn: host.soundAlertsOn)
+        if step == .keepSounds {
+            // The speech model is let go, the microphone and sound alerts
+            // go on, so a doorbell is still heard meanwhile.
+            await host.keepSoundsListening()
+            if CaptionsHandover.needsPlainPause(after: step, phase: host.captionsPhase) {
+                await host.toggleCaptionsPause()
+            }
+        } else if step == .pause {
             await host.toggleCaptionsPause()
         } else if host.captionsMayLoadModels {
             // Starting, or failed with a retry lined up: nothing to pause,

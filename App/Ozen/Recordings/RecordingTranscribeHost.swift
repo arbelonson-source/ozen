@@ -13,7 +13,9 @@ protocol RecordingTranscribeHost: AnyObject {
     var captionsMayLoadModels: Bool { get }
     func installedModelVariants() -> Set<String>
     func networkConditions() -> NetworkConditions?
+    var soundAlertsOn: Bool { get }
     func toggleCaptionsPause() async
+    func keepSoundsListening() async
     func stopCaptions() async
     func beginRecordingTranscription()
     func waitOutCaptionsLoad() async
@@ -40,6 +42,8 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     var captionsPhase: PipelinePhase { viewModel.phase }
     var captionsMayLoadModels: Bool { viewModel.pipeline.mayLoadModels }
 
+    var soundAlertsOn: Bool { viewModel.settings.soundAlerts.isEnabled }
+
     func installedModelVariants() -> Set<String> {
         Set(WhisperModelStore().installedVariants())
     }
@@ -50,6 +54,10 @@ final class LiveRecordingHost: RecordingTranscribeHost {
 
     func toggleCaptionsPause() async {
         await viewModel.togglePause()
+    }
+
+    func keepSoundsListening() async {
+        await viewModel.listenForSoundsOnly()
     }
 
     func stopCaptions() async {

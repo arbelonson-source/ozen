@@ -14,6 +14,9 @@ final class RecordingHostFake: RecordingTranscribeHost {
     var savesHistory = true
     var captionsPhase: PipelinePhase = .idle
     var retryLinedUp = false
+    var soundAlertsOn = false
+    var soundsOnlyTakes = true
+    private(set) var soundsKept = 0
     var installed: Set<String> = []
     var network: NetworkConditions? = .wifi
     var saveFails = false
@@ -37,6 +40,11 @@ final class RecordingHostFake: RecordingTranscribeHost {
         } else if captionsPhase == .paused {
             captionsPhase = .listening
         }
+    }
+
+    func keepSoundsListening() async {
+        soundsKept += 1
+        if soundsOnlyTakes, captionsPhase.isListening { captionsPhase = .paused }
     }
 
     func stopCaptions() async {
