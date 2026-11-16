@@ -393,5 +393,21 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends", "live words"])
     }
 
+    @Test("a stop issued while the engine is told about decode progress leaves the pipeline stopped with no stream")
+    func stopDuringDecodeProgressSetup() async {
+        let (pipeline, _, _, phone) = rig()
+        let gate = PrepareGate()
+        phone.decodeProgressGate = gate
+        let starting = Task { await pipeline.start(settings: AppSettings.default) }
+        #expect(await eventually { phone.prepareCount > 0 })
+        try? await Task.sleep(for: .milliseconds(300))
+        pipeline.stop()
+        await gate.open()
+        await starting.value
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(phone.streamsStarted == 0)
+        #expect(!pipeline.phase.isListening)
+    }
+
     private static let graceSamples = CaptionPipeline.replayWordsGraceSeconds * 16_000
 }

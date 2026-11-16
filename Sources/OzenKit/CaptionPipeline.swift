@@ -773,11 +773,13 @@ public final class CaptionPipeline {
         if replay.isEmpty {
             engineAudio = fan.outputs[0]
             await engine.setDecodeProgress(nil)
+            guard runID == run else { return }
         } else {
             let replayed = replaying(replay, then: fan.outputs[0], byDecoding: engine.reportsDecodeProgress)
             engineAudio = replayed.audio
             crossing = replayed.report == nil ? nil : replayed.reader
             await engine.setDecodeProgress(replayed.report)
+            guard runID == run else { return }
         }
         let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]

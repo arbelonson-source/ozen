@@ -175,8 +175,13 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     var reportsDecodeProgress: Bool { reportsDecoding }
     private var decodeReport: (@Sendable (Int, Int) -> Void)?
 
+    /// Parks `setDecodeProgress` until the test opens it.
+    var decodeProgressGate: PrepareGate?
+    private(set) var streamsStarted = 0
+
     func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {
         lock.withLock { decodeReport = report }
+        await decodeProgressGate?.wait()
     }
 
     /// Says the decoding has got through this many samples of the stream,
@@ -276,7 +281,8 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     }
 
     func stream(languageCode: String, audio: AsyncStream<[Float]>) -> AsyncThrowingStream<TranscriptToken, Error> {
-        AsyncThrowingStream { continuation in
+        lock.withLock { streamsStarted += 1 }
+        return AsyncThrowingStream { continuation in
             lock.withLock { tokenContinuation = continuation }
             Task {
                 await self.streamGate?.wait()

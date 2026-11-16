@@ -416,7 +416,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 // (that's where hallucinations come from), just keep a
                 // little lead-in audio and wait.
                 if total > keepSamples {
-                    report?(gone + total, yielded)
+                    report?(gone + total - keepSamples, yielded)
                     trim(total - keepSamples)
                 }
                 if status.finished { break }
@@ -503,7 +503,9 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // may not have been scored yet.
             if !status.finished && intake.hasVoice(upTo: end) == false && lastShownText.isEmpty {
                 tally.recordSkippedWithoutVoice()
-                report?(gone + end, yielded)
+                // The half second a skipped pass keeps is only context for the
+                // next one, so it is not reported as decoded.
+                report?(gone + (isFinal ? end : max(0, end - keepSamples)), yielded)
                 if isFinal {
                     trim(end)
                     utteranceID = UUID()
