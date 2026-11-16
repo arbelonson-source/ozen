@@ -265,7 +265,7 @@ private class WebSocketConnection(
             output.write(request.toString().toByteArray(Charsets.UTF_8))
             output.flush()
             val status = readLine(input)
-            val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: throw IOException("not an HTTP answer: $status")
+            val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: throw NotAWebSocketAnswer("not an HTTP answer: $status")
             val answer = HashMap<String, String>()
             var headerBytes = 0
             while (true) {
@@ -278,7 +278,7 @@ private class WebSocketConnection(
             }
             if (code != 101) throw SocketRefused(code)
             if (answer["sec-websocket-accept"] != WebSocketConnector.acceptKey(key)) {
-                throw IOException("the server's answer doesn't match this connection")
+                throw NotAWebSocketAnswer("the server's answer doesn't match this connection")
             }
             socket.soTimeout = 0
             return Streams(socket, input, output)
@@ -292,7 +292,10 @@ private class WebSocketConnection(
         val line = StringBuilder()
         while (true) {
             val byte = input.read()
-            if (byte < 0) throw EOFException("the connection closed while opening")
+            if (byte < 0) {
+                if (line.isNotEmpty()) throw NotAWebSocketAnswer("the answer ended before its first line did: $line")
+                throw EOFException("the connection closed while opening")
+            }
             if (byte == '\n'.code) return line.toString().trimEnd('\r')
             line.append(byte.toChar())
             if (line.length > 8_192) throw IOException("an answer line is too long")

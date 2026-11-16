@@ -471,7 +471,7 @@ class HomeServerEngine(
             throw error
         } catch (error: Exception) {
             if (error.isCertificateMismatch()) throw EngineUnavailability.homeServerRejected(HomeServer.PAIRING_CHANGED)
-            throw EngineUnavailability.homeServerUnreachable("could not connect: $error")
+            throw HomeServer.connectionFailure(error, "could not connect: ")
         }
         try {
             // Sent inside the timed wait: a connection that never completes
@@ -497,7 +497,7 @@ class HomeServerEngine(
         } catch (error: Exception) {
             withContext(NonCancellable) { socket.close() }
             if (error.isCertificateMismatch()) throw EngineUnavailability.homeServerRejected(HomeServer.PAIRING_CHANGED)
-            throw (error as? EngineUnavailability) ?: EngineUnavailability.homeServerUnreachable("$error")
+            throw (error as? EngineUnavailability) ?: HomeServer.connectionFailure(error)
         }
     }
 

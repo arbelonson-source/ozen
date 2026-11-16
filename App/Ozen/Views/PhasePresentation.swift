@@ -446,7 +446,7 @@ struct PhasePresentation {
             )
         case .homeServerUnreachable where HomeServer.answeredWrongly(engineFailure):
             self.init(
-                title: HomeServer.answeredWronglyText(),
+                title: HomeServer.answeredWronglyText(detail: engineFailure?.detail),
                 detail: tr("הקישו כדי לנסות שוב", "Tap to try again"),
                 systemImage: "desktopcomputer.trianglebadge.exclamationmark",
                 tint: .orange,

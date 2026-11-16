@@ -32,6 +32,8 @@ public enum HomeServer {
     /// and the rest says what came back.
     static let unsupportedLanguage = "the computer's model cannot caption this language"
     static let answeredWronglyPrefix = "the computer answered, but not as expected: "
+    /// A kind of answered-wrongly: the secure connection did not match, or something else answers on that port.
+    static let secureMismatchPrefix = answeredWronglyPrefix + "secure connection: "
 
     /// An address typed in Settings but never saved with Return or the
     /// button, worth saving as Settings closes: going back used to drop it,
@@ -201,8 +203,28 @@ public enum HomeServer {
     }
 
     /// What the caption screen, the cover line and the notice say about a computer that answered wrongly.
-    public static func answeredWronglyText() -> String {
-        tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+    public static func answeredWronglyText(detail: String? = nil) -> String {
+        if detail?.hasPrefix(secureMismatchPrefix) == true { return secureMismatchText() }
+        return tr("המחשב ענה, אבל לא כפי שאוזן ציפתה. הפעילו מחדש את אוזן במחשב, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again.")
+    }
+
+    /// What a connection error means for the home computer: a failed secure handshake, a certificate the system does not trust, a reply that is not a WebSocket answer, or an HTTP refusal of the upgrade all mean something answered on that port, so the computer is on. Anything else (no route, refused, timed out, name not found) stays "unreachable".
+    static func connectionFailure(_ error: any Error, prefix: String = "") -> EngineUnavailability {
+        if error is SocketRefused { return .homeServerUnreachable("\(secureMismatchPrefix)\(error)") }
+        if let code = (error as? URLError)?.code {
+            switch code {
+            case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateNotYetValid,
+                 .serverCertificateHasUnknownRoot, .clientCertificateRejected, .clientCertificateRequired, .cannotParseResponse, .badServerResponse:
+                return .homeServerUnreachable("\(secureMismatchPrefix)\(error)")
+            default: break
+            }
+        }
+        return .homeServerUnreachable("\(prefix)\(error)")
+    }
+
+    /// The computer answered, but the secure connection did not match or something else answers on its port: it is on, so checking the power would send her the wrong way.
+    public static func secureMismatchText() -> String {
+        tr("המחשב ענה, אבל החיבור המאובטח לא תאם, או שמשהו אחר עונה בפורט הזה. בדקו את מספר הפורט בהגדרות המחשב בבית, או סרקו שוב את קוד ה־QR שלו.", "The computer answered, but the secure connection didn’t match, or something else is answering on that port. Check the port number in the home computer settings, or scan its QR code again.")
     }
 
     /// What the caption screen says while the phone carries on by itself because the address never allowed asking the computer, or the computer answered wrongly; nil for a computer that simply did not answer.
@@ -211,7 +233,7 @@ public enum HomeServer {
         switch detail {
         case noAddress: return rejectionTitle(detail: noAddress) + " · " + pause
         case needsEncryption: return plainAddressRefusedText() + " · " + pause
-        case let detail? where detail.hasPrefix(answeredWronglyPrefix): return answeredWronglyText() + " · " + pause
+        case let detail? where detail.hasPrefix(answeredWronglyPrefix): return answeredWronglyText(detail: detail) + " · " + pause
         default: return nil
         }
     }
@@ -428,6 +450,7 @@ public enum HomeServerCheck: Sendable, Equatable {
     case notSetUp
     case needsEncryptedAddress
     case answeredWrongly
+    case secureMismatch
     case languageNotCovered
 
     public init(availability: EngineAvailability, seconds: Double) {
@@ -447,6 +470,7 @@ public enum HomeServerCheck: Sendable, Equatable {
                 case HomeServer.noAddress: self = .notSetUp
                 case HomeServer.needsEncryption: self = .needsEncryptedAddress
                 case HomeServer.unsupportedLanguage: self = .languageNotCovered
+                case let detail where detail.hasPrefix(HomeServer.secureMismatchPrefix): self = .secureMismatch
                 case let detail where detail.hasPrefix(HomeServer.answeredWronglyPrefix): self = .answeredWrongly
                 default: self = .unreachable
                 }

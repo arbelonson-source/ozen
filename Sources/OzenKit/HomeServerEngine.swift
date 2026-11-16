@@ -407,7 +407,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             socket = try await connector.open(target.url, pinnedTo: certificatePin)
         } catch {
             if error is CertificateMismatch { throw EngineUnavailability.homeServerRejected(HomeServer.pairingChanged) }
-            throw EngineUnavailability.homeServerUnreachable("could not connect: \(error)")
+            throw HomeServer.connectionFailure(error, prefix: "could not connect: ")
         }
         do {
             // Sent inside the timed wait: a connection that never completes
@@ -432,7 +432,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         } catch {
             await socket.close()
             if error is CertificateMismatch { throw EngineUnavailability.homeServerRejected(HomeServer.pairingChanged) }
-            throw error as? EngineUnavailability ?? .homeServerUnreachable("\(error)")
+            throw error as? EngineUnavailability ?? HomeServer.connectionFailure(error)
         }
     }
 
