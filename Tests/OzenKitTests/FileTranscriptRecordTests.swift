@@ -156,4 +156,16 @@ struct FileTranscriptRecordTests {
         let damaged = old.replacingOccurrences(of: "\"fromRecording\":true", with: "\"fromRecording\":true,\"cutShort\":\"yes\"")
         #expect(try !JSONDecoder().decode(TranscriptSessionRecord.self, from: Data(damaged.utf8)).cutShort)
     }
+
+    @Test("a shared cut-short transcript opens with the note, a complete one does not")
+    func exportSaysWhenCutShort() {
+        let segments = [SavedSegment(id: UUID(), text: "first", speakerName: nil, speakerClusterID: nil, startTimestamp: 5_000, isCommitted: true)]
+        var record = TranscriptSessionRecord(startedAt: 5_000, engine: .whisperKit, modelVariant: nil, inputName: nil, segments: segments, fromRecording: true)
+        let whole = TranscriptHistoryStore.exportText(record)
+        #expect(!whole.contains(TranscriptSessionRecord.cutShortNote))
+        record.cutShort = true
+        let early = TranscriptHistoryStore.exportText(record)
+        #expect(early == "\(TranscriptSessionRecord.cutShortNote)\n\n\(whole)")
+        #expect(TranscriptHistoryStore.exportAllText([record], utcOffsetAt: { _ in 0 }, marksUncertain: false)?.contains(TranscriptSessionRecord.cutShortNote) == true)
+    }
 }

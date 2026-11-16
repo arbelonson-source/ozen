@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptFormats
+import com.arbelonson.ozen.core.TranscriptSessionRecord
 
 enum class SubtitleFormat(val extension: String, val mime: String) {
     Srt("srt", "application/x-subrip"),
@@ -15,8 +16,10 @@ enum class SubtitleFormat(val extension: String, val mime: String) {
         if (this == Srt) TranscriptFormats.srt(lines, languageCode) else TranscriptFormats.vtt(lines, languageCode)
 }
 
-internal fun transcriptShareSheet(context: Context, name: String, lines: List<TranscribedLine>, languageCode: String): Intent =
-    textShareSheet(context, name, TranscriptFormats.text(lines, languageCode))
+internal fun transcriptShareSheet(context: Context, name: String, lines: List<TranscribedLine>, languageCode: String, cutShort: Boolean = false): Intent {
+    val text = TranscriptFormats.text(lines, languageCode)
+    return textShareSheet(context, name, if (cutShort) "${TranscriptSessionRecord.cutShortNote}\n\n$text" else text)
+}
 
 internal fun subtitleShareSheet(context: Context, name: String, lines: List<TranscribedLine>, languageCode: String, format: SubtitleFormat): Intent {
     val file = SharedFile.create(context.cacheDir, safeFileName(name) + "." + format.extension)
