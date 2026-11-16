@@ -133,6 +133,10 @@ object HomeServer {
     fun addressSavedText(address: String): String =
         if (address.isBlank()) tr("כתובת המחשב הוסרה", "Computer address removed") else tr("כתובת המחשב נשמרה", "Computer address saved")
 
+    /** The pin an announcement may count for the typed address: the saved pin belongs only to the saved address. */
+    fun announcementPin(typed: String, saved: String, pin: String?): String? =
+        if (typed.trim() == saved) pin else null
+
     /** What Save address says aloud: the saved words, then the caution Settings shows under the field for that address, as one announcement. */
     fun addressSavedAnnouncement(address: String, pin: String?): String {
         val saved = addressSavedText(address)

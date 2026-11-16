@@ -203,6 +203,20 @@ struct HomeServerPinTests {
         }
     }
 
+    @Test("Russian and Ukrainian set the language's own name apart instead of declining it")
+    func languageNameStandsAlone() {
+        let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
+        let name = UILanguage.spanish.spokenName
+        Localization.$override.withValue(.russian) {
+            #expect(HomeServer.languageNotCoveredTitle(language: .spanish) == "Домашний компьютер не может создавать субтитры на языке «\(name)»")
+            #expect(HomeServer.languageCoverDetail(detail: why.detail, language: .spanish)?.contains("«\(name)»") == true)
+        }
+        Localization.$override.withValue(.ukrainian) {
+            #expect(HomeServer.languageNotCoveredTitle(language: .spanish) == "Домашній комп’ютер не може створювати субтитри мовою «\(name)»")
+            #expect(HomeServer.languageCoverDetail(detail: why.detail, language: .spanish)?.contains("«\(name)»") == true)
+        }
+    }
+
     @Test("a computer that cannot caption the language says so, naming the language, and not that it did not answer")
     func languageNotCoveredWords() {
         let why = EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.unsupportedLanguage)
@@ -242,5 +256,16 @@ struct HomeServerPinTests {
             #expect(HomeServer.addressSavedAnnouncement(address: " not an address ", pin: nil)
                 == "Computer address saved. That address doesn’t look right")
         }
+    }
+}
+
+@Suite("The pin an address announcement uses")
+struct AnnouncementPinTests {
+    @Test("the saved pin counts only while the typed address is the saved one")
+    func pinOnlyForSavedAddress() {
+        #expect(HomeServer.announcementPin(typed: "wss://home.example", saved: "wss://home.example", pin: "abc") == "abc")
+        #expect(HomeServer.announcementPin(typed: " wss://home.example ", saved: "wss://home.example", pin: "abc") == "abc")
+        #expect(HomeServer.announcementPin(typed: "ws://192.168.1.20:8765", saved: "wss://home.example", pin: "abc") == nil)
+        #expect(HomeServer.announcementPin(typed: "wss://home.example", saved: "wss://home.example", pin: nil) == nil)
     }
 }

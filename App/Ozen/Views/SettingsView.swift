@@ -795,9 +795,10 @@ struct SettingsView: View {
     /// replaces it is not announced, so the save is said, and VoiceOver
     /// focus goes to the field instead of falling to the top of the screen.
     private func saveHomeServerAddressAndSay() {
+        let savedAddressBefore = viewModel.settings.homeServerAddress
         saveHomeServerAddress()
         savedFieldFocus = .address
-        AccessibilityNotification.Announcement(HomeServer.addressSavedAnnouncement(address: homeServerAddressDraft, pin: viewModel.settings.homeServerCertificatePin)).post()
+        AccessibilityNotification.Announcement(HomeServer.addressSavedAnnouncement(address: homeServerAddressDraft, pin: HomeServer.announcementPin(typed: homeServerAddressDraft, saved: savedAddressBefore, pin: viewModel.settings.homeServerCertificatePin))).post()
     }
 
     private func saveHomeServerCodeAndSay() {

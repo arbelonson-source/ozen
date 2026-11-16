@@ -103,6 +103,12 @@ public enum HomeServer {
             : tr("כתובת המחשב נשמרה", "Computer address saved")
     }
 
+    /// The pin an announcement may count for the typed address: the saved pin
+    /// belongs only to the saved address, and a new address clears it as it lands.
+    public static func announcementPin(typed: String, saved: String, pin: String?) -> String? {
+        typed.trimmingCharacters(in: .whitespacesAndNewlines) == saved ? pin : nil
+    }
+
     /// What Save address says aloud: the saved words, then the caution Settings
     /// shows under the field for that address, as one announcement.
     public static func addressSavedAnnouncement(address: String, pin: String?) -> String {

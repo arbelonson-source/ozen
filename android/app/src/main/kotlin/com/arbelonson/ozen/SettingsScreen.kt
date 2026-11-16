@@ -756,12 +756,13 @@ private fun HomeComputerSection(
     // The button vanishes the moment it is pressed, so the save is said
     // aloud and focus goes to the field instead of falling away.
     val saveAddressAndSay = {
+        val savedBefore = current.homeServerAddress
         saveAddress()
         try {
             addressFocus.requestFocus()
         } catch (_: IllegalStateException) {
         }
-        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address, current.homeServerCertificatePin))
+        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address, HomeServer.announcementPin(address, savedBefore, current.homeServerCertificatePin)))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false

@@ -332,6 +332,14 @@ class HomeServerTest {
     }
 
     @Test
+    fun `the saved pin counts for the announcement only while the typed address is the saved one`() {
+        assertEquals("abc", HomeServer.announcementPin("wss://home.example", "wss://home.example", "abc"))
+        assertEquals("abc", HomeServer.announcementPin(" wss://home.example ", "wss://home.example", "abc"))
+        assertEquals(null, HomeServer.announcementPin("ws://192.168.1.20:8765", "wss://home.example", "abc"))
+        assertEquals(null, HomeServer.announcementPin("wss://home.example", "wss://home.example", null))
+    }
+
+    @Test
     fun `saving an address that shows a caution says the caution after the saved words`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Computer address saved", HomeServer.addressSavedAnnouncement("wss://home.example", null))
