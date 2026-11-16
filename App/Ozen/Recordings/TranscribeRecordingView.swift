@@ -178,8 +178,13 @@ struct TranscribeRecordingView: View {
     private func doneList(_ done: FileTranscription.Done) -> some View {
         List {
             Section {
-                Label(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), systemImage: "checkmark.circle.fill")
-                    .font(.headline)
+                if done.stoppedBy != nil {
+                    Label(FileTranscription.Done.partialTitle, systemImage: "exclamationmark.triangle.fill")
+                        .font(.headline)
+                } else {
+                    Label(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), systemImage: "checkmark.circle.fill")
+                        .font(.headline)
+                }
                 Text(done.name)
                 if done.history.keepsText {
                     Text(done.history.message)
@@ -190,6 +195,10 @@ struct TranscribeRecordingView: View {
                 }
                 if done.endMissing {
                     Text(FileTranscription.Done.endMissingMessage)
+                        .foregroundStyle(.readable(.orange))
+                }
+                if let problem = done.stoppedBy {
+                    Text(FileTranscription.Done.stoppedPartwayMessage + " " + problem.message)
                         .foregroundStyle(.readable(.orange))
                 }
             }

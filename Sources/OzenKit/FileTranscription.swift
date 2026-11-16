@@ -136,14 +136,18 @@ public enum FileTranscription: Sendable, Equatable {
         public var lines: [TranscribedLine]
         public var history: HistorySave
         public var endMissing: Bool
+        /// Set when the run broke off partway: the lines made so far are
+        /// here, and this is what went wrong.
+        public var stoppedBy: FileTranscriptionProblem?
 
-        public init(name: String, language: UILanguage, model: WhisperModelOption, lines: [TranscribedLine], history: HistorySave, endMissing: Bool = false) {
+        public init(name: String, language: UILanguage, model: WhisperModelOption, lines: [TranscribedLine], history: HistorySave, endMissing: Bool = false, stoppedBy: FileTranscriptionProblem? = nil) {
             self.name = name
             self.language = language
             self.model = model
             self.lines = lines
             self.history = history
             self.endMissing = endMissing
+            self.stoppedBy = stoppedBy
         }
 
         public var recordID: UUID? {
@@ -164,6 +168,14 @@ extension FileTranscription.Working.Stage {
 }
 
 extension FileTranscription.Done {
+    public static var partialTitle: String {
+        tr("רק חלק מההקלטה הומר לטקסט.", "Only part of the recording was turned into text.")
+    }
+
+    public static var stoppedPartwayMessage: String {
+        tr("ההמרה לטקסט נעצרה באמצע, ולכן הטקסט נקטע לפני הסוף.", "Turning the recording into text stopped partway, so the text ends early.")
+    }
+
     public static var endMissingMessage: String {
         tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early.")
     }
@@ -183,6 +195,10 @@ extension FileTranscription {
         case (.done, .done):
             return nil
         case let (.done(done), _):
+            if let problem = done.stoppedBy {
+                let details = [done.history.message, Done.stoppedPartwayMessage, problem.message].joined(separator: " ")
+                return Done.partialTitle + " " + details
+            }
             let details = ([done.history.message] + (done.endMissing ? [Done.endMissingMessage] : [])).joined(separator: " ")
             return tr("ההקלטה הומרה לטקסט. %1", "Recording turned into text. %1", args: ["\(details)"])
         case let (.failed(_, problem), .failed(_, before)) where problem == before:

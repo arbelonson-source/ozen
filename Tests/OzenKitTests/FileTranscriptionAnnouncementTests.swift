@@ -45,6 +45,19 @@ struct FileTranscriptionAnnouncementTests {
         }
     }
 
+    @Test("a run that broke off partway says only part was turned into text, why, and where the text went")
+    func stoppedPartway() {
+        Localization.$override.withValue(.english) {
+            let partial = FileTranscription.done(FileTranscription.Done(name: "a.m4a", language: .hebrew, model: model, lines: [], history: .saved(UUID()), stoppedBy: .modelFailed))
+            let said = partial.announcement(after: working(.transcribing, 0.8)) ?? ""
+            #expect(said.hasPrefix(FileTranscription.Done.partialTitle))
+            #expect(said.hasPrefix("Only part of the recording was turned into text."))
+            #expect(said.contains(HistorySave.saved(UUID()).message))
+            #expect(said.contains(FileTranscription.Done.stoppedPartwayMessage))
+            #expect(said.contains(FileTranscriptionProblem.modelFailed.message))
+        }
+    }
+
     @Test("a failure says what went wrong, also when the file can't be opened at all")
     func failed() {
         Localization.$override.withValue(.english) {
