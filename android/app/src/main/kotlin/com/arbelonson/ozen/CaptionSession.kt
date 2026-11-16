@@ -639,7 +639,7 @@ class CaptionSession(
             seconds = { SystemClock.elapsedRealtime() / 1000.0 },
             changed = {
                 captionsBusy.value = it.isListening || it.isTransitioning
-                if (soundsOnlyChoice.chosen != pipeline.soundsOnlyChosen) soundsOnlyChoice.chosen = pipeline.soundsOnlyChosen
+                saveSoundsOnlyChoice()
                 conversations.listeningChanged()
             },
             publish = ::publish,
@@ -727,7 +727,16 @@ class CaptionSession(
 
     /** The user took the captions over (stopped, paused or started them): they are no longer ours to give back. */
     private fun dropRecordingHandover() {
-        if (recordingHandover.cancel()) publish()
+        if (recordingHandover.cancel()) {
+            saveSoundsOnlyChoice()
+            publish()
+        }
+    }
+
+    /** Sounds kept only while a recording is transcribed are not her night choice: after the app is ended, captions are what she wants back. */
+    private fun saveSoundsOnlyChoice() {
+        val chosen = pipeline.soundsOnlyChosen && !recordingHandover.pausedHere
+        if (soundsOnlyChoice.chosen != chosen) soundsOnlyChoice.chosen = chosen
     }
 
     /** The recording is over or its screen was left: captions paused for it carry on, others are not started. */
