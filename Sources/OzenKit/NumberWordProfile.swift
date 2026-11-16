@@ -29,6 +29,7 @@ struct NumberWordProfile: Decodable, Sendable {
     var clockOrdinals: Set<String> = []
     var plainWords: Set<String> = []
     var oneFollowsUnit = false
+    var clockStopsBeforeCapitalized = false
     private var foldsArabic = false
     private var attachedPrefixes: [String] = []
     private var known: Set<String> = []
@@ -69,6 +70,7 @@ struct NumberWordProfile: Decodable, Sendable {
         clockOrdinals = try set(.clockOrdinals)
         plainWords = try set(.plainWords)
         oneFollowsUnit = try box.decodeIfPresent(Bool.self, forKey: .oneFollowsUnit) ?? false
+        clockStopsBeforeCapitalized = try box.decodeIfPresent(Bool.self, forKey: .clockStopsBeforeCapitalized) ?? false
         attachedPrefixes = (try box.decodeIfPresent([String].self, forKey: .attachedPrefixes) ?? []).map(ArabicLetters.fold)
         known = numbers.union(fractions).union(units).union(periods).union(adverbPeriods).union(clockNouns)
             .union(clockOrdinals).union(onceWords).union(ambiguous).union(notACountBefore).union(countsAfter).union(plainAlone)
@@ -95,7 +97,7 @@ struct NumberWordProfile: Decodable, Sendable {
     private enum Key: String, CodingKey {
         case numbers, scales, connectors, fractions, fractionLinks, clockLinks, numberClockLinks, numberClockArticles, clockUnits, clockHourOnes, clockMinuteOnes, clockOneCues, clockUnitLinks, ambiguous, notACountBefore, countsAfter, plainAlone
         case onceWords, repeatLinks, repeatUnits, periods, idioms, units
-        case adverbPeriods, clockNouns, clockOrdinals, plainWords, oneFollowsUnit, letterFolding, attachedPrefixes
+        case adverbPeriods, clockNouns, clockOrdinals, plainWords, oneFollowsUnit, clockStopsBeforeCapitalized, letterFolding, attachedPrefixes
     }
 
     static func profile(for languageCode: String) -> NumberWordProfile? {
