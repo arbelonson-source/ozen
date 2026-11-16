@@ -184,13 +184,13 @@ internal fun StartRefusedBanner() {
     )
 }
 
-/** Sound alerts are on but the phone has Emergency alerts off or silent: a smoke alarm would be dropped or make no sound. A tap opens that channel's page in the phone's settings. */
+/** Sound alerts are on but the phone has Emergency alerts off, silent or without its buzz: a smoke alarm would be dropped or make no sound or buzz. A tap opens that channel's page in the phone's settings. */
 @Composable
 internal fun EmergencyChannelBanner(warning: EmergencyChannelNotice.Warning, onOpenSettings: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Emergency,
-        EmergencyChannelNotice.title(),
+        EmergencyChannelNotice.title(warning),
         EmergencyChannelNotice.detail(warning),
         Modifier
             .clickable(role = Role.Button, onClick = onOpenSettings)
