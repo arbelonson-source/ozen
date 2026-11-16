@@ -239,7 +239,7 @@
       "halbes"
     ],
     "plainAlone": ["acht", "elf", "null"],
-    "countsAfter": ["um", "bis", "ab", "gegen"],
+    "countsAfter": ["um", "bis", "ab", "gegen", "vor", "nach", "punkt"],
     "notACountBefore": [
       "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"
     ],

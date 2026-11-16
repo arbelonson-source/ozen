@@ -1093,6 +1093,13 @@
    {"kind": "emphasized", "input": "Ab elf geht es los", "language": "de", "expected": ["elf"]},
    {"kind": "emphasized", "input": "Wir treffen uns um acht Uhr", "language": "de", "expected": ["acht Uhr"]},
    {"kind": "emphasized", "input": "Es ist ein Viertel", "language": "de", "expected": ["ein Viertel"]},
-   {"kind": "emphasized", "input": "Ein Viertel der Tablette", "language": "de", "expected": ["Ein Viertel der Tablette"]}
+   {"kind": "emphasized", "input": "Ein Viertel der Tablette", "language": "de", "expected": ["Ein Viertel der Tablette"]},
+   {"kind": "emphasized", "input": "Es ist kurz vor acht", "language": "de", "expected": ["acht"]},
+   {"kind": "emphasized", "input": "Kurz nach elf", "language": "de", "expected": ["elf"]},
+   {"kind": "emphasized", "input": "Zehn nach elf", "language": "de", "expected": ["Zehn", "elf"]},
+   {"kind": "emphasized", "input": "Punkt acht", "language": "de", "expected": ["acht"]},
+   {"kind": "emphasized", "input": "Gib acht", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Nach acht Stunden", "language": "de", "expected": ["acht Stunden"]},
+   {"kind": "emphasized", "input": "Wir treffen uns Viertel nach drei", "language": "de", "expected": ["Viertel nach drei"]}
  ]
 }
