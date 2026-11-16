@@ -378,6 +378,7 @@ class CaptionPipeline(
     private var pendingReplayDedupe: List<String> = emptyList()
     private var replayDedupe: List<String> = emptyList()
     private var replayUtterance: UUID? = null
+    private var replayGraceCrossedMidUtterance = false
     private var pendingReplayedLines: Set<UUID> = emptySet()
     private var replayedLines: Set<UUID> = emptySet()
 
@@ -750,6 +751,7 @@ class CaptionPipeline(
         val replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = null
+        replayGraceCrossedMidUtterance = false
         replayedLines = if (replay.isEmpty()) emptySet() else pendingReplayedLines
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
@@ -2182,6 +2184,25 @@ class CaptionPipeline(
     }
 
     private fun handleToken(incoming: TranscriptToken) {
+        try {
+            handleTokenInner(incoming)
+        } finally {
+            finishCrossedOverlap()
+        }
+    }
+
+    /**
+     * The grace passed while a replay line was open: once that line is
+     * over, whatever it did not rewrite is the live speech's to keep.
+     */
+    private fun finishCrossedOverlap() {
+        if (!replayGraceCrossedMidUtterance || replayUtterance != null) return
+        replayGraceCrossedMidUtterance = false
+        replayedLines = emptySet()
+        replayDedupe = emptyList()
+    }
+
+    private fun handleTokenInner(incoming: TranscriptToken) {
         statsData.tokensReceived += 1
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
@@ -3909,7 +3930,11 @@ class CaptionPipeline(
             liveFed += chunk.size
             if (before < grace && liveFed >= grace) {
                 scope.launch {
-                    if (runID != run || replayUtterance != null) return@launch
+                    if (runID != run) return@launch
+                    if (replayUtterance != null) {
+                        replayGraceCrossedMidUtterance = true
+                        return@launch
+                    }
                     replayedLines = emptySet()
                     replayDedupe = emptyList()
                 }

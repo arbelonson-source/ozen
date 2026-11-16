@@ -212,6 +212,7 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var replayGraceCrossedMidUtterance = false
     private var pendingReplayedLines: Set<UUID> = []
     private var replayedLines: Set<UUID> = []
     private var utteranceFirstHeard: [UUID: Int] = [:]
@@ -563,6 +564,7 @@ public final class CaptionPipeline {
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
+        replayGraceCrossedMidUtterance = false
         replayedLines = replay.isEmpty ? [] : pendingReplayedLines
         pendingReplay = []
         pendingReplayDedupe = []
@@ -2022,6 +2024,7 @@ public final class CaptionPipeline {
     }
 
     private func handle(token incoming: TranscriptToken) {
+        defer { finishCrossedOverlap() }
         stats.tokensReceived += 1
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
@@ -2621,18 +2624,36 @@ public final class CaptionPipeline {
         replayTask = task
         continuation.onTermination = { _ in task.cancel() }
         let reader = ReplayReader(queue.makeAsyncIterator())
+        let run = runID
         let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
         return AsyncStream(unfolding: { [weak self] in
             guard let chunk = await reader.next() else { return nil }
             if chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
-                await self?.endReplayOverlap()
+                await self?.endReplayOverlap(run: run)
             }
             return chunk.samples
         })
     }
 
-    private func endReplayOverlap() {
-        guard replayUtterance == nil else { return }
+    /// Only the replay of the current run may end the overlap check: an
+    /// older engine can still be reading its queue after a newer replay
+    /// has armed its own lines. A replay line open at that moment ends it
+    /// when the line finishes (see `finishCrossedOverlap`).
+    private func endReplayOverlap(run: UUID) {
+        guard runID == run else { return }
+        guard replayUtterance == nil else {
+            replayGraceCrossedMidUtterance = true
+            return
+        }
+        replayedLines = []
+        replayDedupe = []
+    }
+
+    /// The grace passed while a replay line was open: once that line is
+    /// over, whatever it did not rewrite is the live speech's to keep.
+    private func finishCrossedOverlap() {
+        guard replayGraceCrossedMidUtterance, replayUtterance == nil else { return }
+        replayGraceCrossedMidUtterance = false
         replayedLines = []
         replayDedupe = []
     }
