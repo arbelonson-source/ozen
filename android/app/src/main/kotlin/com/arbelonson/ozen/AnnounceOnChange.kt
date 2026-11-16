@@ -7,14 +7,14 @@ import androidx.compose.ui.platform.LocalContext
 
 class AnnounceOnChange {
     private var shown: Boolean? = null
-    private var lastText: String? = null
+    private var changeShown = false
+    private var changeText: String? = null
 
-    fun observe(now: Boolean, text: String): Boolean {
-        val before = shown
-        val reworded = now && before == true && lastText != text
-        val appeared = observe(now)
-        lastText = text
-        return appeared || reworded
+    fun observeChange(now: Boolean, text: String): Boolean {
+        val reworded = now && changeShown && changeText != text
+        changeShown = now
+        changeText = text
+        return reworded
     }
 
     fun observe(now: Boolean): Boolean {
@@ -28,7 +28,16 @@ class AnnounceOnChange {
 fun AnnounceWhenShown(shown: Boolean, text: String) {
     val context = LocalContext.current
     val tracker = remember { AnnounceOnChange() }
+    LaunchedEffect(shown) {
+        if (tracker.observe(shown)) ScreenReader.said(context, text)
+    }
+}
+
+@Composable
+fun AnnounceWhenTextChanges(shown: Boolean, text: String) {
+    val context = LocalContext.current
+    val tracker = remember { AnnounceOnChange() }
     LaunchedEffect(shown, text) {
-        if (tracker.observe(shown, text)) ScreenReader.said(context, text)
+        if (tracker.observeChange(shown, text)) ScreenReader.said(context, text)
     }
 }
