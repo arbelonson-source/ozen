@@ -3560,10 +3560,10 @@ class CaptionPipeline(
         // Counted as the microphone hands chunks over, not as the classifier
         // takes them: a classifier slow for a few seconds is not a
         // microphone that stopped.
-        val counted = if (chosen) source.onEach {
-            soundsOnlyChunks += 1
+        val counted = source.onEach {
+            if (chosen) soundsOnlyChunks += 1
             soundsOnlySilence.heard(it, systemInterrupted)
-        } else source
+        }
         fan = FlowAudioFanOut(
             scope,
             counted,
@@ -3590,7 +3590,24 @@ class CaptionPipeline(
             if (runID != run || !isActive) return@launch
             statsData.soundDetectionRunning = false
         }
-        if (chosen) watchSoundsOnly(fan)
+        if (chosen) watchSoundsOnly(fan) else watchFallbackSilence(fan)
+    }
+
+    /**
+     * Sounds kept for while captions wait have no stall watch (captions try
+     * again and take the microphone over), but a microphone sending only
+     * zeros is told the same way as when sounds alone were chosen.
+     */
+    private fun watchFallbackSilence(fan: FlowAudioFanOut) {
+        soundsOnlySilence.reset()
+        soundsOnlyWatch?.cancel()
+        soundsOnlyWatch = scope.launch {
+            while (isActive) {
+                delay(SOUNDS_ONLY_STALL_CHECK_SECONDS.seconds)
+                if (fanOut !== fan) return@launch
+                soundsOnlyMicrophoneSilent = soundsOnlySilence.isSilent
+            }
+        }
     }
 
     /**
