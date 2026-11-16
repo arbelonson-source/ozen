@@ -110,6 +110,19 @@ class AwayAlertsTest {
     }
 
     @Test
+    fun `a silenced Emergency channel does not count as coming through, or as on`() {
+        val low = android.app.NotificationManager.IMPORTANCE_LOW
+        val min = android.app.NotificationManager.IMPORTANCE_MIN
+        val default = android.app.NotificationManager.IMPORTANCE_DEFAULT
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = low, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = min, bypassesDnd = true))
+        assertEquals(true, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = default, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsOn(notificationsOn = true, importance = low))
+        assertEquals(false, AlertNotifier.alarmsOn(notificationsOn = true, importance = min))
+        assertEquals(true, AlertNotifier.alarmsOn(notificationsOn = true, importance = default))
+    }
+
+    @Test
     fun `a quiet update only touches a notice that is still showing`() {
         assertTrue(AwayAlerts.isShowing(listOf(null, "captions-stopped"), "captions-stopped"))
         assertEquals(false, AwayAlerts.isShowing(listOf(null, "sound-1"), "captions-stopped"))

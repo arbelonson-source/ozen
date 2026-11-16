@@ -77,7 +77,7 @@ class AlertNotifier(private val context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
         val vibration = AwayAlerts.vibrationFor(content)
-        val shown = if (alarm) alarmsAllowed(context) else allowed(context)
+        val shown = if (alarm) alarmsPostable(context) else allowed(context)
         if (!shown) return Delivery(false)
         val channel = if (alarm) {
             alarmChannel()
@@ -216,29 +216,43 @@ class AlertNotifier(private val context: Context) {
         var alarmsOverrideDoNotDisturb: (Context) -> Boolean = { context ->
             val manager = context.getSystemService(NotificationManager::class.java)
             val channel = manager.getNotificationChannel(ALARM_CHANNEL_ID)
-            alarmsGetThrough(manager.areNotificationsEnabled(), channel?.importance, channel?.canBypassDnd() == true)
+            alarmsGetThrough(manager.areNotificationsEnabled(), channel?.importance, channel?.canBypassDnd() == true, channel?.sound != null, channel?.shouldVibrate() != false)
         }
 
         /**
          * The phone keeps a channel's Do Not Disturb setting after the channel
-         * itself is turned off, and [deliver] then drops every alarm: urgent
-         * sounds come through only while the channel can show anything.
+         * itself is turned off, and a silenced channel makes no sound or buzz
+         * either: urgent sounds come through only while the channel is loud.
          */
-        fun alarmsGetThrough(notificationsOn: Boolean, importance: Int?, bypassesDnd: Boolean): Boolean =
-            notificationsOn && importance != null && importance != NotificationManager.IMPORTANCE_NONE && bypassesDnd
+        fun alarmsGetThrough(notificationsOn: Boolean, importance: Int?, bypassesDnd: Boolean, hasSound: Boolean = true, vibrates: Boolean = true): Boolean =
+            notificationsOn && importance != null && EmergencyChannelNotice.loud(importance, hasSound, vibrates) && bypassesDnd
 
         var openAlarmSettings: (Context) -> Unit = { context -> context.startActivity(alarmSettings(context)) }
 
         /**
-         * Whether the phone shows Ozen's Emergency alerts at all. A channel
-         * not made yet counts as on: [alarmSettings] makes it on.
+         * Whether the phone sounds Ozen's Emergency alerts: shown, and not
+         * set to silent. A channel not made yet counts as on:
+         * [alarmSettings] makes it on.
          */
-        fun alarmsOn(notificationsOn: Boolean, importance: Int?): Boolean =
-            notificationsOn && importance != NotificationManager.IMPORTANCE_NONE
+        fun alarmsOn(notificationsOn: Boolean, importance: Int?, hasSound: Boolean = true, vibrates: Boolean = true): Boolean =
+            notificationsOn && EmergencyChannelNotice.loud(importance, hasSound, vibrates)
 
         var alarmsAllowed: (Context) -> Boolean = { context ->
             val manager = context.getSystemService(NotificationManager::class.java)
-            alarmsOn(manager.areNotificationsEnabled(), manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance)
+            val channel = manager.getNotificationChannel(ALARM_CHANNEL_ID)
+            alarmsOn(manager.areNotificationsEnabled(), channel?.importance, channel?.sound != null, channel?.shouldVibrate() != false)
+        }
+
+        /** A silent alarm is still posted, so it can be seen; only a blocked channel drops it. */
+        var alarmsPostable: (Context) -> Boolean = { context ->
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.areNotificationsEnabled() && manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+        }
+
+        var emergencyWarning: (Context, Boolean, Boolean) -> EmergencyChannelNotice.Warning = { context, soundAlertsOn, awayBannerShowing ->
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val channel = manager.getNotificationChannel(ALARM_CHANNEL_ID)
+            EmergencyChannelNotice.warning(soundAlertsOn, awayBannerShowing, manager.areNotificationsEnabled(), channel?.importance, channel?.sound != null, channel?.shouldVibrate() != false)
         }
 
         var allowed: (Context) -> Boolean = { context ->

@@ -184,6 +184,20 @@ internal fun StartRefusedBanner() {
     )
 }
 
+/** Sound alerts are on but the phone has Emergency alerts off or silent: a smoke alarm would be dropped or make no sound. A tap opens that channel's page in the phone's settings. */
+@Composable
+internal fun EmergencyChannelBanner(warning: EmergencyChannelNotice.Warning, onOpenSettings: () -> Unit) {
+    NoticeBanner(
+        Icons.Rounded.Warning,
+        NoticeTone.Emergency,
+        EmergencyChannelNotice.title(),
+        EmergencyChannelNotice.detail(warning),
+        Modifier
+            .clickable(role = Role.Button, onClick = onOpenSettings)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
 /** Away alerts are on but the phone's notifications for Ozen are off: nothing reaches her while the phone is put away. It stays up for as long as that lasts; a tap opens the phone's notification settings, as the iPhone's does. */
 @Composable
 internal fun AwayAlertsBlockedBanner(onOpenSettings: () -> Unit) {

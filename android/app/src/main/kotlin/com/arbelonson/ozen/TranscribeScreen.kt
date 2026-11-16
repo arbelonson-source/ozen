@@ -62,6 +62,9 @@ import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptFormats
 import com.arbelonson.ozen.core.TranscriptionProgress
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.announcement
+import com.arbelonson.ozen.core.endMissingMessage
+import com.arbelonson.ozen.core.title
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenScreen
@@ -95,6 +98,12 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         }
     }
     BackHandler(onBack = close)
+    val context = LocalContext.current
+    val last = remember { arrayOf(state) }
+    LaunchedEffect(state) {
+        state.announcement(last[0])?.let { ScreenReader.said(context, it) }
+        last[0] = state
+    }
     // A recording shared in meanwhile replaces the finished text only after
     // the person agreed: otherwise the question would be about text no
     // longer on screen, and its Close would close the new recording.
@@ -282,11 +291,7 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
     val context = LocalContext.current
     LaunchedEffect(refusals) { if (busyNotice.announcementDue()) ScreenReader.said(context, BUSY_LINE) }
     val percent = working.fraction?.let(TranscriptionProgress::percent)
-    val title = when (working.stage) {
-        FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
-        FileTranscription.Working.Stage.Loading -> tr("מכינים את המודל", "Getting the model ready")
-        FileTranscription.Working.Stage.Transcribing -> tr("ממירים את ההקלטה לטקסט", "Turning the recording into text")
-    }
+    val title = working.stage.title
     val left = working.timeLeftSeconds?.let(TranscriptionProgress::timeLeftText)
     val detail = listOfNotNull(working.model.displayName, left).joinToString(" · ")
     val header: @Composable () -> Unit = {
@@ -363,7 +368,7 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
         )
         if (done.endMissing) {
             Text(
-                tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early."),
+                endMissingMessage,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.testTag("transcribe-end-missing"),
             )
