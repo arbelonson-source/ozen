@@ -46,6 +46,8 @@ class ConversationSaver(
      * in between must not label the old words with the new language.
      */
     private val spokenLanguage: (() -> String)? = null,
+    /** The phone's offset from UTC at a moment: a conversation keeps the one from when it started. */
+    private val utcOffsetAt: (Double) -> Int = { at -> java.util.TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000 },
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -115,6 +117,7 @@ class ConversationSaver(
             inputName = inputName(),
             starred = starred.toSet(),
             languageCode = spokenLanguage?.invoke() ?: using.languageCode,
+            utcOffsetSeconds = utcOffsetAt(startedAt),
         )
         val written = if (inBackground) {
             writer.saveInBackground(record)
@@ -150,6 +153,7 @@ class ConversationSaver(
                     inputName = record.inputName,
                     starred = starred.toSet(),
                     languageCode = record.languageCode,
+                    utcOffsetSeconds = record.utcOffsetSeconds,
                 ),
             )
         }

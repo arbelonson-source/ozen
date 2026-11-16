@@ -19,6 +19,7 @@ import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.UUID
@@ -38,7 +39,7 @@ data class ConversationRow(
         fun of(summary: TranscriptSessionSummary, zone: ZoneId = ZoneId.systemDefault(), languageCode: String) = ConversationRow(
             id = summary.id,
             title = summary.title,
-            time = clockTime(summary.startedAt, zone),
+            time = clockTime(summary.startedAt, ownZone(summary.utcOffsetSeconds, zone)),
             duration = summary.durationSeconds?.let { ConversationStats.minutesText(it) },
             speakers = summary.speakerNames.takeIf { it.isNotEmpty() }?.let { names ->
                 names.take(3).joinToString(", ") + if (names.size > 3) tr(" ועוד", " and more") else ""
@@ -84,13 +85,14 @@ data class SavedLine(
             slots: SpeakerColorSlots = slotsOf(record.segments),
         ): List<SavedLine> {
             val language = record.languageCode(languageCode)
+            val here = ownZone(record.utcOffsetSeconds, zone)
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
                 val offset = segment.startTimestamp - record.startedAt
                 val time = if (segment.id !in timed) null
                 else if (record.fromRecording) TranscriptFormats.clock(offset)
-                else clockTime(segment.startTimestamp, zone)
+                else clockTime(segment.startTimestamp, here)
                 val spokenTime = if (time != null && record.fromRecording) ConversationStats.spokenDuration(offset) else time
                 val unsure = markUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
                 val phones = PhoneNumbers.matches(segment.text)
@@ -130,7 +132,7 @@ data class SavedLine(
         ): SavedLine {
             val segment = line.segment
             val language = line.languageCode(languageCode)
-            val time = clockTime(segment.startTimestamp, zone)
+            val time = clockTime(segment.startTimestamp, ownZone(line.utcOffsetSeconds, zone))
             val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
             val unsure = markUncertain && line.isUncertain
             return SavedLine(
@@ -151,16 +153,20 @@ data class SavedLine(
     }
 }
 
+/** The zone a conversation's times are read in: the one it happened in, or the phone's when it was saved without one. */
+fun ownZone(utcOffsetSeconds: Int?, phone: ZoneId = ZoneId.systemDefault()): ZoneId =
+    utcOffsetSeconds?.let { ZoneOffset.ofTotalSeconds(it) } ?: phone
+
 fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Localization.locale)
         .format(Instant.ofEpochMilli((at * 1_000).toLong()).atZone(zone))
 
 /** A conversation's day and the time it started, over its lines and over each group of starred lines, as on the iPhone. */
-fun conversationHeading(startedAt: Double, now: Double, zone: ZoneId = ZoneId.systemDefault()): String {
+fun conversationHeading(startedAt: Double, now: Double, zone: ZoneId = ZoneId.systemDefault(), utcOffsetSeconds: Int? = null): String {
     val offset = { at: Double -> zone.rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds }
-    val time = clockTime(startedAt, zone)
-    return TimeArticle.agreeing(tr("%1 בשעה %2", "%1 at %2", listOf(HistoryDays.title(startedAt, now, offset), time)), time)
+    val time = clockTime(startedAt, ownZone(utcOffsetSeconds, zone))
+    return TimeArticle.agreeing(tr("%1 בשעה %2", "%1 at %2", listOf(HistoryDays.title(startedAt, utcOffsetSeconds, now, offset), time)), time)
 }
 
 /** The time above talk that picked up after a break, as on the iPhone: with the day when the words before it were on another day. */

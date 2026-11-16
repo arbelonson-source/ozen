@@ -83,6 +83,25 @@ class ConversationSaverTest {
     private fun saved() = writer.waitUntilIdle().let { store.listSummaries() }
 
     @Test
+    fun `a saved conversation keeps the zone the phone was in when it started`() {
+        var offset = 7_200
+        val abroad = ConversationSaver(
+            writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+            speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = {}, scope = scope,
+            now = { clock }, io = EmptyCoroutineContext, utcOffsetAt = { offset },
+        )
+        listening = true
+        abroad.listeningChanged()
+        say("Take three pills")
+        abroad.save(ended = false)
+        offset = 0
+        listening = false
+        abroad.listeningChanged()
+        writer.waitUntilIdle()
+        assertEquals(7_200, store.load(store.listSummaries().single().id)?.utcOffsetSeconds)
+    }
+
+    @Test
     fun `a saved conversation keeps the language the captions were started in, not the setting that changed meanwhile`() {
         val switched = ConversationSaver(
             writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
