@@ -103,6 +103,23 @@ public enum HomeServer {
             : tr("כתובת המחשב נשמרה", "Computer address saved")
     }
 
+    /// What Save address says aloud: the saved words, then the caution Settings
+    /// shows under the field for that address, as one announcement.
+    public static func addressSavedAnnouncement(address: String, pin: String?) -> String {
+        let saved = addressSavedText(address: address)
+        let typed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty { return saved }
+        if needsEncryptedAddress(address) { return saved + ". " + plainAddressRefusedText() }
+        if url(from: address) == nil { return saved + ". " + tr("הכתובת לא נראית תקינה", "That address doesn’t look right") }
+        if linkIsNotEncrypted(address: address, pin: pin) { return saved + ". " + linkNotEncryptedText() }
+        return saved
+    }
+
+    /// The note Settings shows under the address when the home link is plain.
+    public static func linkNotEncryptedText() -> String {
+        tr("החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.", "The link to the computer isn’t encrypted on the home Wi‑Fi. To encrypt it, scan the code from the computer again.")
+    }
+
     /// Said to a screen reader when Save code is pressed, as the green line
     /// that appears is not announced by itself.
     public static func codeSavedText() -> String {

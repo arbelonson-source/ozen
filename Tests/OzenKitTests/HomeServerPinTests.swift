@@ -227,4 +227,20 @@ struct HomeServerPinTests {
             #expect(HomeServer.codeSavedText() == "Pairing code saved on the phone")
         }
     }
+
+    @Test("saving an address that shows a caution says the caution after the saved words")
+    func savedWordsWithCaution() {
+        Localization.$override.withValue(.english) {
+            #expect(HomeServer.addressSavedAnnouncement(address: "wss://home.example", pin: nil) == "Computer address saved")
+            #expect(HomeServer.addressSavedAnnouncement(address: "wss://192.168.1.20:8766", pin: nil) == "Computer address saved")
+            #expect(HomeServer.addressSavedAnnouncement(address: "", pin: nil) == "Computer address removed")
+            #expect(HomeServer.addressSavedAnnouncement(address: "ws://203.0.113.9:8765", pin: nil)
+                == "Computer address saved. Outside the home network, use the address that starts with wss://")
+            #expect(HomeServer.addressSavedAnnouncement(address: "ws://192.168.1.20:8765", pin: nil)
+                == "Computer address saved. The link to the computer isn’t encrypted on the home Wi‑Fi. To encrypt it, scan the code from the computer again.")
+            #expect(HomeServer.addressSavedAnnouncement(address: "ws://192.168.1.20:8765", pin: "abc") == "Computer address saved")
+            #expect(HomeServer.addressSavedAnnouncement(address: " not an address ", pin: nil)
+                == "Computer address saved. That address doesn’t look right")
+        }
+    }
 }

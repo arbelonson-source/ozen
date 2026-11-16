@@ -78,7 +78,7 @@ class SharedFileNameTest {
 
     @Test
     fun `direction marks, separators and zero-width characters are dropped`() {
-        val hidden = "\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\u200E\u200F\u061C\u2028\u2029\u200B\u200C\u200D\uFEFF"
+        val hidden = "\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\u200E\u200F\u061C\u2028\u2029\u200B\uFEFF"
         assertEquals("ab$stamp", name("a${hidden}b"))
     }
 
@@ -108,5 +108,52 @@ class SharedFileNameTest {
         val family = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66"
         assertEquals("a".repeat(60) + stamp, name("a".repeat(60) + family))
         assertEquals("a".repeat(50) + family + stamp, name("a".repeat(50) + family))
+    }
+
+    @Test
+    fun `dots and spaces at the ends do not make a hidden-looking file`() {
+        assertEquals("x$stamp", name(".x"))
+        assertEquals("x y$stamp", name(" ..x y.. "))
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Conversation from Ozen$stamp", name(".."))
+            assertEquals("Conversation from Ozen$stamp", name(" . . "))
+        }
+    }
+
+    @Test
+    fun `a zero-width non-joiner stays because Hindi and Persian words need it`() {
+        val persian = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645"
+        assertEquals("$persian$stamp", name(persian))
+    }
+
+    @Test
+    fun `a zero-width joiner stays between two letters and goes at the ends or beside spaces`() {
+        val hindi = "\u0915\u094D\u200D\u0937"
+        assertEquals("$hindi$stamp", name(hindi))
+        assertEquals("a\u200Db$stamp", name("a\u200Db"))
+        assertEquals("a  b$stamp", name("a \u200D b"))
+        assertEquals("ab$stamp", name("\u200Dab\u200D"))
+    }
+
+    @Test
+    fun `emoji tag characters are dropped except inside a flag`() {
+        val tags = "\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F"
+        val flag = "\uD83C\uDFF4$tags"
+        assertEquals("a$flag$stamp", name("a$flag"))
+        assertEquals("ab$stamp", name("a\uDB40\uDC41\uDB40\uDC7Fb"))
+        assertEquals("\uD83C\uDFF4$stamp", name("\uD83C\uDFF4\uDB40\uDC67"))
+    }
+
+    @Test
+    fun `a joiner beside a private-use character is dropped`() {
+        assertEquals("a\uDB80\uDC00$stamp", name("a\u200D\uDB80\uDC00"))
+        assertEquals("\uDB80\uDC00a$stamp", name("\uDB80\uDC00\u200Da"))
+        assertEquals("\uD83D\uDC68\u200D\uD83D\uDC69$stamp", name("\uD83D\uDC68\u200D\uD83D\uDC69"))
+    }
+
+    @Test
+    fun `a joiner beside an enclosing mark stays`() {
+        assertEquals("a\u20DD\u200Db$stamp", name("a\u20DD\u200Db"))
+        assertEquals("1\uFE0F\u20E3\u200D\uD83D\uDC68$stamp", name("1\uFE0F\u20E3\u200D\uD83D\uDC68"))
     }
 }

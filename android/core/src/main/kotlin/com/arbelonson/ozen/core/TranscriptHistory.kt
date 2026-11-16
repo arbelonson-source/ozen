@@ -1550,7 +1550,8 @@ class TranscriptHistoryStore(
          */
         fun sharedFileName(kind: SharedKind, title: String?, at: Double, utcOffsetSeconds: Int): String {
             val fallback = if (kind == SharedKind.Starred) tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen") else tr("שיחה מתוך אוזן", "Conversation from Ozen")
-            val clean = withoutInvisible(title.orEmpty()).replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trim()
+            val forbidden = Regex("[\\\\/:*?\"<>|\\p{Cntrl}]")
+            val clean = withoutInvisible(title.orEmpty()).replace(forbidden, "_").trimEdges().let { cutToBytes(it, SHARED_TITLE_BYTES) }.trimEdges()
             val local = Math.floor(at).toLong() + utcOffsetSeconds
             val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(at, utcOffsetSeconds))
             val rest = Math.floorMod(local, 86_400L).toInt()
@@ -1561,16 +1562,26 @@ class TranscriptHistoryStore(
 
         private const val SHARED_TITLE_BYTES = 80
 
-        private val INVISIBLE = Regex("[\\u202A-\\u202E\\u2066-\\u2069\\u200E\\u200F\\u061C\\u2028\\u2029\\u200B\\u200C\\uFEFF]")
+        private val INVISIBLE = Regex("[\\u202A-\\u202E\\u2066-\\u2069\\u200E\\u200F\\u061C\\u2028\\u2029\\u200B\\uFEFF]")
 
         private fun isPictographic(point: Int) =
-            point >= 0x1F000 || point in 0x2190..0x2BFF || point == 0xFE0F
+            point in 0x1F000..0x1FAFF || point in 0x2190..0x2BFF || point == 0xFE0F
+
+        private fun String.trimEdges() = trim { it == '.' || it == '\u200C' || it.isWhitespace() }
+
+        private fun isTag(point: Int) = point in 0xE0020..0xE007F
+
+        private fun canJoin(point: Int) =
+            Character.isLetter(point) || isPictographic(point) ||
+                Character.getType(point).let { it == Character.NON_SPACING_MARK.toInt() || it == Character.COMBINING_SPACING_MARK.toInt() || it == Character.ENCLOSING_MARK.toInt() }
 
         /**
-         * Direction overrides, line separators and zero-width characters
-         * would hide in a file name (a right-to-left override can make
-         * "evil.txt.exe" look harmless). A joiner stays only between two
-         * pictures, where it builds one emoji.
+         * Direction overrides, line separators and zero-width spaces would
+         * hide in a file name (a right-to-left override can make
+         * "evil.txt.exe" look harmless). A non-joiner stays, as Persian and
+         * Hindi words need it. A joiner stays only between two letters or
+         * pictures and goes at the ends or beside spaces. Emoji tag
+         * characters go too, except in a flag's tag sequence.
          */
         private fun withoutInvisible(text: String): String {
             val stripped = INVISIBLE.replace(text, "")
@@ -1578,10 +1589,19 @@ class TranscriptHistoryStore(
             var index = 0
             while (index < stripped.length) {
                 val point = stripped.codePointAt(index)
-                val next = index + Character.charCount(point)
-                val joins = point == 0x200D && out.isNotEmpty() && next < stripped.length &&
-                    isPictographic(out.codePointBefore(out.length)) && isPictographic(stripped.codePointAt(next))
-                if (point != 0x200D || joins) out.appendCodePoint(point)
+                var next = index + Character.charCount(point)
+                if (point == 0x1F3F4) {
+                    var end = next
+                    while (end < stripped.length && stripped.codePointAt(end).let { isTag(it) && it != 0xE007F }) end += 2
+                    if (end > next && end < stripped.length && stripped.codePointAt(end) == 0xE007F) next = end + 2
+                    out.append(stripped, index, next)
+                } else if (point == 0x200D) {
+                    val joins = out.isNotEmpty() && next < stripped.length &&
+                        canJoin(out.codePointBefore(out.length)) && canJoin(stripped.codePointAt(next))
+                    if (joins) out.appendCodePoint(point)
+                } else if (!isTag(point)) {
+                    out.appendCodePoint(point)
+                }
                 index = next
             }
             return out.toString()

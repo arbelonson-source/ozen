@@ -757,8 +757,11 @@ private fun HomeComputerSection(
     // aloud and focus goes to the field instead of falling away.
     val saveAddressAndSay = {
         saveAddress()
-        addressFocus.requestFocus()
-        ScreenReader.said(context, HomeServer.addressSavedText(address))
+        try {
+            addressFocus.requestFocus()
+        } catch (_: IllegalStateException) {
+        }
+        ScreenReader.said(context, HomeServer.addressSavedAnnouncement(address, current.homeServerCertificatePin))
     }
     val saveCode: suspend () -> Boolean = {
         var stored = false
@@ -778,7 +781,10 @@ private fun HomeComputerSection(
     val saveCodeNow = {
         scope.launch {
             if (saveCode()) {
-                codeFocus.requestFocus()
+                try {
+                    codeFocus.requestFocus()
+                } catch (_: IllegalStateException) {
+                }
                 ScreenReader.said(context, HomeServer.codeSavedText())
             }
         }
@@ -834,12 +840,7 @@ private fun HomeComputerSection(
                 )
                 if (address.trim() != saved) TonalButton(tr("שמירת הכתובת", "Save address"), onClick = saveAddressAndSay, modifier = Modifier.fillMaxWidth())
                 if (HomeServer.homeLinkIsPlain(address, if (address.trim() == saved) current.homeServerCertificatePin else null)) {
-                    Caution(
-                        tr(
-                            "החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.",
-                            "The link to the computer isn’t encrypted on the home Wi‑Fi. To encrypt it, scan the code from the computer again.",
-                        ),
-                    )
+                    Caution(HomeServer.linkNotEncryptedText())
                 }
                 if (HomeServer.needsEncryptedAddress(address)) {
                     Caution(tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://"))
