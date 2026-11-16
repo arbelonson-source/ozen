@@ -73,6 +73,7 @@ class OnDeviceWhisperEngine(
     // in memory for good.
     private var lettings = 0
     private var vocabulary: List<String> = emptyList()
+    private var decodeProgress: ((position: Int, tokens: Int) -> Unit)? = null
     private var cellularDownloadAllowed = true
 
     /**
@@ -169,6 +170,12 @@ class OnDeviceWhisperEngine(
 
     override suspend fun cancelDownload() {
         loader.cancelDownload()
+    }
+
+    override val reportsDecodeProgress: Boolean get() = true
+
+    override suspend fun setDecodeProgress(report: ((position: Int, tokens: Int) -> Unit)?) {
+        synchronized(lock) { decodeProgress = report }
     }
 
     override suspend fun setVocabulary(terms: List<String>) {
@@ -371,6 +378,22 @@ class OnDeviceWhisperEngine(
         // the margin until a live pass has been timed.
         val finalWindow = FinalPassWindow()
 
+        // Says how far the decoding has got in the audio this stream was
+        // given, for the replay grace (`reportsDecodeProgress`). `gone` is
+        // what was dropped from the front of the intake so far.
+        val report = synchronized(lock) { decodeProgress }
+        var gone = 0
+        var yielded = 0
+        var told = 0
+        fun tell(position: Int) {
+            told = maxOf(told, position)
+            report?.invoke(told, yielded)
+        }
+        fun trim(count: Int) {
+            intake.drop(count)
+            gone += count
+        }
+
         var utteranceID = UUID.randomUUID()
         var samplesAtLastPass = 0
         var lastShownText = ""
@@ -390,7 +413,8 @@ class OnDeviceWhisperEngine(
                 // (that's where hallucinations come from), just keep a
                 // little lead-in audio and wait.
                 if (total > keepSamples) {
-                    intake.drop(total - keepSamples)
+                    trim(total - keepSamples)
+                    tell(gone)
                 }
                 if (status.finished) break
                 delay(80)
@@ -468,7 +492,8 @@ class OnDeviceWhisperEngine(
             if (!status.finished && intake.hasVoice(end) == false && lastShownText.isEmpty()) {
                 synchronized(lock) { tally.recordSkippedWithoutVoice() }
                 if (isFinal) {
-                    intake.drop(end)
+                    trim(end)
+                    tell(gone)
                     utteranceID = UUID.randomUUID()
                     samplesAtLastPass = 0
                     lastLivePassSeconds = null
@@ -478,7 +503,8 @@ class OnDeviceWhisperEngine(
                     // it would wait on a pass over all of it. The half
                     // second kept is longer than a chunk, so a word just
                     // starting (not yet scored) stays.
-                    intake.drop(total - keepSamples)
+                    trim(total - keepSamples)
+                    tell(gone)
                     samplesAtLastPass = keepSamples
                 }
                 continue
@@ -598,12 +624,16 @@ class OnDeviceWhisperEngine(
                         voicedChunks = if (text.isEmpty()) null else voicedChunks,
                     ),
                 )
+                yielded += 1
                 lastShownText = shown
                 lastShownConfidence = shownConfidence
             }
 
+            // With the count of tokens yielded so far: the pipeline acts on
+            // the position only once it has handled that many.
+            tell(gone + end)
             if (isFinal) {
-                intake.drop(end)
+                trim(end)
                 utteranceID = UUID.randomUUID()
                 samplesAtLastPass = 0
                 lastShownText = ""

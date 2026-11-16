@@ -333,6 +333,20 @@ class FakeEngine(
         vocabularyHistory.add(terms)
     }
 
+    /** Whether this engine says how far its decoding has got, like the phone's model; see [reportDecoded]. */
+    var reportsDecoding = false
+    override val reportsDecodeProgress: Boolean get() = reportsDecoding
+    @Volatile private var decodeReport: ((Int, Int) -> Unit)? = null
+
+    override suspend fun setDecodeProgress(report: ((position: Int, tokens: Int) -> Unit)?) {
+        decodeReport = report
+    }
+
+    /** Says the decoding has got through this many samples of the stream, with `tokens` yielded so far. */
+    fun reportDecoded(position: Int, tokens: Int = 0) {
+        decodeReport?.invoke(position, tokens)
+    }
+
     private val cellularHistory = ArrayList<Boolean>()
 
     /** Every answer handed to `setCellularDownloadAllowed`, in order. */
