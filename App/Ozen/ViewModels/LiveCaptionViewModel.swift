@@ -727,7 +727,7 @@ public final class LiveCaptionViewModel {
             soundAlertsNotWorking: pipeline.soundAlertsNotWorking,
             soundsOnlyStopped: pipeline.soundsOnlyStoppedByItself,
             engine: pipeline.activeEngineKind,
-            spokenLanguage: settings.spokenLanguage
+            spokenLanguage: (pipeline.activeSettings ?? settings).spokenLanguage
         )
         if let update = stoppedCaptions.update(for: cause, appIsActive: isAppActive, isEnabled: settings.notifyWhenInBackground, soundAlertsMeantToRun: pipeline.soundAlertsMeantToRun) {
             apply(update)
@@ -748,6 +748,8 @@ public final class LiveCaptionViewModel {
         case .replace(let old, let new):
             apply(old)
             apply(new)
+        case .revise(let content):
+            postNotification?(content.quietly())
         }
     }
 

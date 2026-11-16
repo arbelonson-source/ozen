@@ -56,6 +56,10 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         /// The cause changed: do `old` (drop what was told for the previous
         /// cause), then `new` (tell the new one by its own rule).
         case replace(old: Update, new: Update)
+        /// The notice is already up and the cause changed to another one that
+        /// is told at once: change its words in place, with no sound, buzz or
+        /// banner. The stop was already told; only the reason is brought up to date.
+        case revise(AlertNotificationContent)
     }
 
     /// How long another app has to keep the microphone before she is told.
@@ -77,6 +81,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     private var posted = false
     /// What is sitting there was scheduled for later, not delivered now.
     private var postedAsSchedule = false
+    /// The words of the notice that went out at once, to tell when a new cause needs other ones.
+    private var postedContent: AlertNotificationContent?
     /// The stop she has been told about: by the notice, or by opening the
     /// app and seeing the status. Not told again until captions run, but a
     /// different cause is told by itself.
@@ -169,6 +175,13 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             toldCause = cause
             return nil
         }
+        if isEnabled, posted, !postedAsSchedule, !Self.isDelayed(cause), let shown = postedContent {
+            let content = Self.content(for: cause)
+            toldCause = cause
+            guard content != shown else { return nil }
+            postedContent = content
+            return .revise(content)
+        }
         guard isEnabled, toldCause == nil else { return nil }
         let old = withdrawIfPosted(now: now)
         posted = true
@@ -176,24 +189,29 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         let new: Update
         if cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking {
             postedAsSchedule = true
+            postedContent = nil
             let delay = cause == .soundAlertsNotWorking ? soundAlertsDelayLeft(now: now) : Self.otherAppDelay
             soundAlertsScheduledAt = cause == .soundAlertsNotWorking ? now : nil
             soundAlertsScheduledDelay = delay
             new = .schedule(Self.content(for: cause), after: delay)
         } else {
             postedAsSchedule = false
-            new = .post(Self.content(for: cause))
+            let content = Self.content(for: cause)
+            postedContent = content
+            new = .post(content)
         }
         guard let old else { return new }
         return .replace(old: old, new: new)
     }
 
     /// The causes that post at once are one stop, so a failure turning into a
-    /// call that didn't end well is not told twice; each delayed cause is its own.
+    /// call that didn't end well is not told twice (its words are only
+    /// brought up to date, see `revise`); each delayed cause is its own.
     private static func sameStop(_ a: Cause, _ b: Cause) -> Bool {
-        func delayed(_ cause: Cause) -> Bool { cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking }
-        return delayed(a) || delayed(b) ? a == b : true
+        isDelayed(a) || isDelayed(b) ? a == b : true
     }
+
+    private static func isDelayed(_ cause: Cause) -> Bool { cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking }
 
     /// The minute of sound alerts not working is counted over the last
     /// `soundAlertsWindow` seconds, not from the latest failure: failing for

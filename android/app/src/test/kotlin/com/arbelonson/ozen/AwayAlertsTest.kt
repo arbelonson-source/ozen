@@ -108,4 +108,11 @@ class AwayAlertsTest {
         assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = null, bypassesDnd = true))
         assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = high, bypassesDnd = false))
     }
+
+    @Test
+    fun `a quiet update only touches a notice that is still showing`() {
+        assertTrue(AwayAlerts.isShowing(listOf(null, "captions-stopped"), "captions-stopped"))
+        assertEquals(false, AwayAlerts.isShowing(listOf(null, "sound-1"), "captions-stopped"))
+        assertEquals(false, AwayAlerts.isShowing(emptyList(), "captions-stopped"))
+    }
 }

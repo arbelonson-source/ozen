@@ -34,7 +34,20 @@ nonisolated final class AlertNotifier: Sendable {
     }
 
     func post(_ content: AlertNotificationContent) {
+        if content.isQuiet {
+            reviseIfDelivered(content)
+            return
+        }
         add(UNNotificationRequest(identifier: content.identifier, content: Self.body(for: content), trigger: nil))
+    }
+
+    /// A quiet update changes a notice that is still in Notification Center;
+    /// one the person cleared is not brought back.
+    private func reviseIfDelivered(_ content: AlertNotificationContent) {
+        UNUserNotificationCenter.current().getDeliveredNotifications { [self] delivered in
+            guard delivered.contains(where: { $0.request.identifier == content.identifier }) else { return }
+            add(UNNotificationRequest(identifier: content.identifier, content: Self.body(for: content), trigger: nil))
+        }
     }
 
     /// Delivers `content` at `date`, replacing anything already scheduled
@@ -79,11 +92,13 @@ nonisolated final class AlertNotifier: Sendable {
         body.title = content.title
         body.body = content.body
         body.threadIdentifier = content.threadIdentifier
-        body.sound = .default
         // Time-sensitive delivery needs an entitlement a free signing
         // account doesn't get; urgent alerts use the loudest level that
-        // works without it.
-        body.interruptionLevel = .active
+        // works without it. A quiet update of a notice already up carries
+        // no sound and the passive level, so the same identifier changes
+        // its words in place without lighting the screen.
+        body.sound = content.isQuiet ? nil : .default
+        body.interruptionLevel = content.isQuiet ? .passive : .active
         body.relevanceScore = content.isUrgent ? 1 : 0.5
         return body
     }
