@@ -1040,6 +1040,7 @@
    {"kind": "emphasized", "input": "Дві таблетки двічі на добу", "language": "uk", "expected": ["Дві таблетки", "двічі на добу"]},
    {"kind": "emphasized", "input": "Пʼятнадцять хвилин", "language": "uk", "expected": ["Пʼятнадцять хвилин"]},
    {"kind": "emphasized", "input": "Tome três vezes por semana", "language": "pt", "expected": ["três vezes por semana"]},
-   {"kind": "emphasized", "input": "Dois mil e vinte", "language": "pt", "expected": ["Dois mil e vinte"]}
+   {"kind": "emphasized", "input": "Dois mil e vinte", "language": "pt", "expected": ["Dois mil e vinte"]},
+   {"kind": "emphasized", "input": "Протягом одного тижня", "language": "uk", "expected": ["одного тижня"]}
  ]
 }

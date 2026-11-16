@@ -138,14 +138,14 @@
   },
   "french": {
     "numbers": [
-      "zéro", "zero", "un", "une", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze",
-      "douze", "treize", "quatorze", "quinze", "seize", "vingt", "vingts", "trente", "quarante", "cinquante",
-      "soixante", "septante", "huitante", "octante", "nonante", "cent", "cents", "mille", "million", "millions",
-      "milliard", "milliards", "douzaine"
+      "zéro", "un", "une", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze",
+      "treize", "quatorze", "quinze", "seize", "vingt", "vingts", "trente", "quarante", "cinquante", "soixante",
+      "septante", "huitante", "nonante", "cent", "cents", "mille", "million", "millions", "milliard", "milliards",
+      "douzaine"
     ],
     "scales": [
-      "vingt", "trente", "quarante", "cinquante", "soixante", "septante", "huitante", "octante", "nonante", "cent",
-      "cents", "mille", "million", "millions", "milliard", "milliards"
+      "vingt", "trente", "quarante", "cinquante", "soixante", "septante", "huitante", "nonante", "cent", "cents",
+      "mille", "million", "millions", "milliard", "milliards"
     ],
     "connectors": [
       "et"
@@ -193,35 +193,34 @@
     "numbers": [
       "null", "eins", "zwei", "zwo", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf",
       "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn", "zwanzig",
-      "einundzwanzig", "zweiundzwanzig", "zwoundzwanzig", "dreiundzwanzig", "vierundzwanzig", "fünfundzwanzig",
-      "sechsundzwanzig", "siebenundzwanzig", "achtundzwanzig", "neunundzwanzig", "dreißig", "einunddreißig",
-      "zweiunddreißig", "zwounddreißig", "dreiunddreißig", "vierunddreißig", "fünfunddreißig", "sechsunddreißig",
-      "siebenunddreißig", "achtunddreißig", "neununddreißig", "dreissig", "einunddreissig", "zweiunddreissig",
-      "zwounddreissig", "dreiunddreissig", "vierunddreissig", "fünfunddreissig", "sechsunddreissig",
-      "siebenunddreissig", "achtunddreissig", "neununddreissig", "vierzig", "einundvierzig", "zweiundvierzig",
-      "zwoundvierzig", "dreiundvierzig", "vierundvierzig", "fünfundvierzig", "sechsundvierzig", "siebenundvierzig",
-      "achtundvierzig", "neunundvierzig", "fünfzig", "einundfünfzig", "zweiundfünfzig", "zwoundfünfzig",
+      "einundzwanzig", "zweiundzwanzig", "dreiundzwanzig", "vierundzwanzig", "fünfundzwanzig", "sechsundzwanzig",
+      "siebenundzwanzig", "achtundzwanzig", "neunundzwanzig", "dreißig", "einunddreißig", "zweiunddreißig",
+      "dreiunddreißig", "vierunddreißig", "fünfunddreißig", "sechsunddreißig", "siebenunddreißig", "achtunddreißig",
+      "neununddreißig", "dreissig", "einunddreissig", "zweiunddreissig", "dreiunddreissig", "vierunddreissig",
+      "fünfunddreissig", "sechsunddreissig", "siebenunddreissig", "achtunddreissig", "neununddreissig", "vierzig",
+      "einundvierzig", "zweiundvierzig", "dreiundvierzig", "vierundvierzig", "fünfundvierzig", "sechsundvierzig",
+      "siebenundvierzig", "achtundvierzig", "neunundvierzig", "fünfzig", "einundfünfzig", "zweiundfünfzig",
       "dreiundfünfzig", "vierundfünfzig", "fünfundfünfzig", "sechsundfünfzig", "siebenundfünfzig", "achtundfünfzig",
-      "neunundfünfzig", "sechzig", "einundsechzig", "zweiundsechzig", "zwoundsechzig", "dreiundsechzig",
-      "vierundsechzig", "fünfundsechzig", "sechsundsechzig", "siebenundsechzig", "achtundsechzig", "neunundsechzig",
-      "siebzig", "einundsiebzig", "zweiundsiebzig", "zwoundsiebzig", "dreiundsiebzig", "vierundsiebzig",
-      "fünfundsiebzig", "sechsundsiebzig", "siebenundsiebzig", "achtundsiebzig", "neunundsiebzig", "achtzig",
-      "einundachtzig", "zweiundachtzig", "zwoundachtzig", "dreiundachtzig", "vierundachtzig", "fünfundachtzig",
-      "sechsundachtzig", "siebenundachtzig", "achtundachtzig", "neunundachtzig", "neunzig", "einundneunzig",
-      "zweiundneunzig", "zwoundneunzig", "dreiundneunzig", "vierundneunzig", "fünfundneunzig", "sechsundneunzig",
-      "siebenundneunzig", "achtundneunzig", "neunundneunzig", "hundert", "einhundert", "tausend", "eintausend",
-      "million", "millionen", "milliarde", "milliarden", "dutzend", "zweihundert", "zweitausend", "zwohundert",
-      "zwotausend", "dreihundert", "dreitausend", "vierhundert", "viertausend", "fünfhundert", "fünftausend",
-      "sechshundert", "sechstausend", "siebenhundert", "siebentausend", "achthundert", "achttausend", "neunhundert",
-      "neuntausend", "eineinhalb", "anderthalb", "zweieinhalb", "dreieinhalb", "viereinhalb", "fünfeinhalb",
-      "einmal", "zweimal", "dreimal", "viermal", "fünfmal", "sechsmal", "siebenmal", "achtmal", "neunmal", "zehnmal",
-      "halb", "halbe", "halben", "halber", "halbem", "halbes", "ein", "eine", "einen", "einem", "einer", "eines"
+      "neunundfünfzig", "sechzig", "einundsechzig", "zweiundsechzig", "dreiundsechzig", "vierundsechzig",
+      "fünfundsechzig", "sechsundsechzig", "siebenundsechzig", "achtundsechzig", "neunundsechzig", "siebzig",
+      "einundsiebzig", "zweiundsiebzig", "dreiundsiebzig", "vierundsiebzig", "fünfundsiebzig", "sechsundsiebzig",
+      "siebenundsiebzig", "achtundsiebzig", "neunundsiebzig", "achtzig", "einundachtzig", "zweiundachtzig",
+      "dreiundachtzig", "vierundachtzig", "fünfundachtzig", "sechsundachtzig", "siebenundachtzig", "achtundachtzig",
+      "neunundachtzig", "neunzig", "einundneunzig", "zweiundneunzig", "dreiundneunzig", "vierundneunzig",
+      "fünfundneunzig", "sechsundneunzig", "siebenundneunzig", "achtundneunzig", "neunundneunzig", "hundert",
+      "einhundert", "tausend", "eintausend", "million", "millionen", "milliarde", "milliarden", "dutzend",
+      "zweihundert", "zweitausend", "dreihundert", "dreitausend", "vierhundert", "viertausend", "fünfhundert",
+      "fünftausend", "sechshundert", "sechstausend", "siebenhundert", "siebentausend", "achthundert", "achttausend",
+      "neunhundert", "neuntausend", "eineinhalb", "anderthalb", "zweieinhalb", "dreieinhalb", "viereinhalb",
+      "fünfeinhalb", "einmal", "zweimal", "dreimal", "viermal", "fünfmal", "sechsmal", "siebenmal", "achtmal",
+      "neunmal", "zehnmal", "halb", "halbe", "halben", "halber", "halbem", "halbes", "ein", "eine", "einen", "einem",
+      "einer", "eines"
     ],
     "scales": [
       "hundert", "einhundert", "tausend", "eintausend", "million", "millionen", "milliarde", "milliarden",
-      "zweihundert", "zwohundert", "dreihundert", "vierhundert", "fünfhundert", "sechshundert", "siebenhundert",
-      "achthundert", "neunhundert", "zweitausend", "zwotausend", "dreitausend", "viertausend", "fünftausend",
-      "sechstausend", "siebentausend", "achttausend", "neuntausend"
+      "zweihundert", "dreihundert", "vierhundert", "fünfhundert", "sechshundert", "siebenhundert", "achthundert",
+      "neunhundert", "zweitausend", "dreitausend", "viertausend", "fünftausend", "sechstausend", "siebentausend",
+      "achttausend", "neuntausend"
     ],
     "connectors": [
       "und"
@@ -269,8 +268,8 @@
   },
   "portuguese": {
     "numbers": [
-      "zero", "um", "uma", "dois", "duas", "três", "tres", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez",
-      "onze", "doze", "treze", "catorze", "quatorze", "quinze", "dezasseis", "dezesseis", "dezassete", "dezessete",
+      "zero", "um", "uma", "dois", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze",
+      "doze", "treze", "catorze", "quatorze", "quinze", "dezasseis", "dezesseis", "dezassete", "dezessete",
       "dezoito", "dezanove", "dezenove", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta",
       "oitenta", "noventa", "cem", "cento", "duzentos", "duzentas", "trezentos", "trezentas", "quatrocentos",
       "quatrocentas", "quinhentos", "quinhentas", "seiscentos", "seiscentas", "setecentos", "setecentas",
@@ -329,21 +328,20 @@
   },
   "ukrainian": {
     "numbers": [
-      "нуль", "один", "одна", "одне", "одно", "одну", "одного", "одної", "однієї", "одній", "одним", "одною",
-      "однією", "одному", "дві", "два", "двох", "двом", "двома", "двоє", "три", "трьох", "трьом", "трьома", "троє",
-      "чотири", "чотирьох", "чотирьом", "чотирма", "четверо", "п'ять", "пʼять", "п'яти", "пʼяти", "п'ятьма",
-      "пʼятьма", "п'ятьох", "пʼятьох", "шість", "шести", "шістьма", "сім", "семи", "сімох", "вісім", "восьми",
-      "вісьма", "вісьмома", "дев'ять", "девʼять", "дев'яти", "девʼяти", "десять", "десяти", "одинадцять",
-      "одинадцяти", "дванадцять", "дванадцяти", "тринадцять", "тринадцяти", "чотирнадцять", "чотирнадцяти",
-      "п'ятнадцять", "пʼятнадцять", "п'ятнадцяти", "пʼятнадцяти", "шістнадцять", "шістнадцяти", "сімнадцять",
-      "сімнадцяти", "вісімнадцять", "вісімнадцяти", "дев'ятнадцять", "девʼятнадцять", "дев'ятнадцяти",
-      "девʼятнадцяти", "двадцять", "двадцяти", "тридцять", "тридцяти", "сорок", "сорока", "п'ятдесят", "пʼятдесят",
-      "п'ятдесяти", "пʼятдесяти", "шістдесят", "шістдесяти", "сімдесят", "сімдесяти", "вісімдесят", "вісімдесяти",
-      "дев'яносто", "девʼяносто", "дев'яноста", "девʼяноста", "сто", "ста", "двісті", "двохсот", "триста",
-      "трьохсот", "чотириста", "чотирьохсот", "п'ятсот", "пʼятсот", "п'ятисот", "пʼятисот", "шістсот", "шестисот",
-      "сімсот", "семисот", "вісімсот", "восьмисот", "дев'ятсот", "девʼятсот", "дев'ятисот", "девʼятисот", "тисяча",
-      "тисячі", "тисячу", "тисяч", "мільйон", "мільйона", "мільйонів", "півтора", "півтори", "дюжина", "двічі",
-      "тричі", "чотирічі"
+      "нуль", "один", "одна", "одне", "одну", "одного", "однієї", "одній", "одним", "одною", "однією", "одному",
+      "дві", "два", "двох", "двом", "двома", "двоє", "три", "трьох", "трьом", "трьома", "троє", "чотири", "чотирьох",
+      "чотирьом", "чотирма", "четверо", "п'ять", "пʼять", "п'яти", "пʼяти", "п'ятьма", "пʼятьма", "п'ятьох",
+      "пʼятьох", "шість", "шести", "шістьма", "сім", "семи", "сімох", "вісім", "восьми", "вісьма", "вісьмома",
+      "дев'ять", "девʼять", "дев'яти", "девʼяти", "десять", "десяти", "одинадцять", "одинадцяти", "дванадцять",
+      "дванадцяти", "тринадцять", "тринадцяти", "чотирнадцять", "чотирнадцяти", "п'ятнадцять", "пʼятнадцять",
+      "п'ятнадцяти", "пʼятнадцяти", "шістнадцять", "шістнадцяти", "сімнадцять", "сімнадцяти", "вісімнадцять",
+      "вісімнадцяти", "дев'ятнадцять", "девʼятнадцять", "дев'ятнадцяти", "девʼятнадцяти", "двадцять", "двадцяти",
+      "тридцять", "тридцяти", "сорок", "сорока", "п'ятдесят", "пʼятдесят", "п'ятдесяти", "пʼятдесяти", "шістдесят",
+      "шістдесяти", "сімдесят", "сімдесяти", "вісімдесят", "вісімдесяти", "дев'яносто", "девʼяносто", "дев'яноста",
+      "девʼяноста", "сто", "ста", "двісті", "двохсот", "триста", "трьохсот", "чотириста", "чотирьохсот", "п'ятсот",
+      "пʼятсот", "п'ятисот", "пʼятисот", "шістсот", "шестисот", "сімсот", "семисот", "вісімсот", "восьмисот",
+      "дев'ятсот", "девʼятсот", "дев'ятисот", "девʼятисот", "тисяча", "тисячі", "тисячу", "тисяч", "мільйон",
+      "мільйона", "мільйонів", "півтора", "півтори", "дюжина", "двічі", "тричі"
     ],
     "scales": [],
     "connectors": [
@@ -357,8 +355,7 @@
     ],
     "clockLinks": [],
     "ambiguous": [
-      "один", "одна", "одне", "одно", "одну", "одного", "одної", "однієї", "одній", "одним", "одною", "однією",
-      "одному", "сорока"
+      "один", "одна", "одне", "одну", "одного", "однієї", "одній", "одним", "одною", "однією", "одному", "сорока"
     ],
     "notACountBefore": [
       "ні", "не", "кожен", "кожна", "кожне", "кожну", "кожного", "інший", "інша", "інше", "інші", "цей", "ця", "це",
@@ -369,10 +366,10 @@
       "на", "в", "у", "кожен", "кожну", "кожні"
     ],
     "repeatUnits": [
-      "раз", "раза", "разів", "рази", "двічі", "тричі", "чотирічі"
+      "раз", "разів", "рази", "двічі", "тричі"
     ],
     "periods": [
-      "день", "дня", "дні", "днів", "добу", "доба", "доби", "діб", "тиждень", "тиждня", "тижні", "тижнів", "місяць",
+      "день", "дня", "дні", "днів", "добу", "доба", "доби", "діб", "тиждень", "тижня", "тижні", "тижнів", "місяць",
       "місяця", "місяці", "місяців", "рік", "року", "роки", "років", "годину", "години", "годин", "ніч", "ночі",
       "ранок", "вечір"
     ],
@@ -393,9 +390,8 @@
       "градусів", "відсоток", "відсотка", "відсотки", "відсотків", "гривня", "гривні", "гривню", "гривень",
       "копійка", "копійки", "копійок", "долар", "долара", "долари", "доларів", "євро", "шекель", "шекеля", "шекелі",
       "шекелів", "секунда", "секунди", "секунду", "секунд", "хвилина", "хвилини", "хвилину", "хвилин", "година",
-      "години", "годину", "годин", "дня", "дні", "днів", "доба", "добу", "доби", "діб", "тиждень", "тиждня", "тижні",
-      "тижнів", "місяць", "місяця", "місяці", "місяців", "рік", "року", "роки", "років", "раз", "раза", "разів",
-      "рази"
+      "години", "годину", "годин", "дня", "дні", "днів", "доба", "добу", "доби", "діб", "тиждень", "тижня", "тижні",
+      "тижнів", "місяць", "місяця", "місяці", "місяців", "рік", "року", "роки", "років", "раз", "разів", "рази"
     ]
   }
 }
