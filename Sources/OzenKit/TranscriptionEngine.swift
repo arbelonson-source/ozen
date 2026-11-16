@@ -273,6 +273,21 @@ public protocol TranscriptionEngine: Sendable {
     /// retrying for minutes; others ignore it.
     func setPhoneModelCheck(_ check: @escaping @Sendable () async -> Bool) async
 
+    /// Whether this engine reports `setDecodeProgress`. The pipeline counts
+    /// the replay's grace by that report when it does, and by the audio the
+    /// engine takes from the stream when it does not.
+    var reportsDecodeProgress: Bool { get }
+
+    /// How the engine says how many input samples its decoding has got
+    /// through, counted from the first sample of the stream: audio it read
+    /// ahead of a slow pass is not counted until a pass has covered it, and
+    /// the words that pass found are yielded before the report is made. Set before
+    /// every `stream`; nil clears it. Engines that report nothing ignore it.
+    /// The report is `(position, tokens)`: `tokens` is how many tokens the
+    /// engine had yielded on that stream when it reported, so the pipeline
+    /// can act on the position only after it has handled all of them.
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async
+
     /// What the engine knows about how its work has gone (how long passes
     /// take, how much it threw away), for the journal when a problem is
     /// marked. Nil from engines that keep no such count.
@@ -294,6 +309,10 @@ public protocol TranscriptionEngine: Sendable {
 }
 
 public extension TranscriptionEngine {
+    var reportsDecodeProgress: Bool { false }
+
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {}
+
     func setVocabulary(_ terms: [String]) async {}
 
     func setPhoneModelCheck(_ check: @escaping @Sendable () async -> Bool) async {}
