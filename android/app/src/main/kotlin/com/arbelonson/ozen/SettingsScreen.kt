@@ -238,18 +238,34 @@ fun SettingsScreen(
     // rather than closing as if the cloud were set up.
     var keyNotStored by rememberSaveable { mutableStateOf(false) }
     var addressNotKept by rememberSaveable { mutableStateOf(false) }
+    var keyAlsoLost by rememberSaveable { mutableStateOf(false) }
     val finishClosing: (Boolean) -> Unit = { withKey ->
         closing.launch {
             var addressKept = true
-            val kept = engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value) { addressKept = it.addressKept }
-            if (kept) onClose() else if (!addressKept) addressNotKept = true else keyNotStored = true
+            var keyKept = true
+            val typedCode = codeDraft.value
+            val kept = engineSettings.saveUnsavedEntries(
+                if (withKey) cloudKeyDraft.value else "",
+                addressDraft.value,
+                typedCode,
+                onStored = {
+                    addressKept = it.addressKept
+                    // A code that is saved is not sent again on a retry, which would restart captions again.
+                    if (it.codeStored && codeDraft.value == typedCode) codeDraft.value = ""
+                },
+                onKeyKept = { keyKept = it },
+            )
+            if (kept) onClose() else if (!addressKept) { keyAlsoLost = !keyKept; addressNotKept = true } else keyNotStored = true
         }
     }
     if (addressNotKept) {
         AlertDialog(
             onDismissRequest = { addressNotKept = false },
             title = { Text(SavingTroubleNotice.title) },
-            text = { Text(tr("הכתובת של המחשב בבית לא נשמרה בטלפון, ותיעלם אחרי הפעלה מחדש.", "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.")) },
+            text = {
+                val address = tr("הכתובת של המחשב בבית לא נשמרה בטלפון, ותיעלם אחרי הפעלה מחדש.", "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.")
+                Text(if (keyAlsoLost) address + " " + tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again.") else address)
+            },
             confirmButton = {
                 TextButton(onClick = {
                     addressNotKept = false

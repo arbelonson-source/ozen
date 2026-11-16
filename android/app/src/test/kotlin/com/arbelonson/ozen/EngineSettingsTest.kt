@@ -408,9 +408,11 @@ class EngineSettingsTest {
         assertTrue(engineSettings.saveUnsavedEntries("", "", ""))
         blockSettingsFile()
         var stored: EngineSettings.EntriesStored? = null
-        assertFalse(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", "") { stored = it })
+        assertFalse(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", "", onStored = { stored = it }))
         assertFalse(stored!!.addressKept)
-        assertFalse(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", ""))
+        var keyKept: Boolean? = null
+        assertFalse(engineSettings.saveUnsavedEntries(" ", "ws://192.168.1.20:8765", "", onKeyKept = { keyKept = it }))
+        assertEquals(true, keyKept)
         assertTrue(File(settingsFile, "blocker").delete())
         assertTrue(settingsFile.delete())
         assertTrue(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", ""))

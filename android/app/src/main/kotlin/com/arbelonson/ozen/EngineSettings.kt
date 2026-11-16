@@ -293,10 +293,12 @@ class EngineSettings(
         addressDraft: String,
         pairingCodeDraft: String,
         onStored: (EntriesStored) -> Unit = {},
+        onKeyKept: (Boolean) -> Unit = {},
     ): Boolean {
         val stored = storeHomeComputerEntries(addressDraft, pairingCodeDraft)
         onStored(stored)
         val keyKept = cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
+        onKeyKept(keyKept)
         return keyKept && stored.addressKept
     }
 
