@@ -236,7 +236,7 @@
     ],
     "ambiguous": [
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
-      "halbes"
+      "halbes", "acht", "elf", "null"
     ],
     "notACountBefore": [
       "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"

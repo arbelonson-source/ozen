@@ -1075,6 +1075,17 @@
    {"kind": "emphasized", "input": "كل واحد منهم", "language": "ar", "expected": []},
    {"kind": "emphasized", "input": "مرة واحدة فقط", "language": "ar", "expected": []},
    {"kind": "listable", "input": "ثلاث حبات", "language": "ar", "expected": true},
-   {"kind": "listable", "input": "واحد من الأطباء", "language": "ar", "expected": false}
+   {"kind": "listable", "input": "واحد من الأطباء", "language": "ar", "expected": false},
+   {"kind": "emphasized", "input": "Gib acht auf den Hund", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Wir wohnen im Viertel", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Das Bahnhofsviertel ist laut", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Der Elf lachte", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Es ist schon spät, später", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Er hat null Ahnung", "language": "de", "expected": []},
+   {"kind": "emphasized", "input": "Mais tarde vou sair", "language": "pt", "expected": []},
+   {"kind": "emphasized", "input": "É tarde demais", "language": "pt", "expected": []},
+   {"kind": "emphasized", "input": "Vou a casa", "language": "pt", "expected": []},
+   {"kind": "emphasized", "input": "Vou a casa mais tarde", "language": "pt", "expected": []},
+   {"kind": "emphasized", "input": "Tome a cada oito horas", "language": "pt", "expected": ["oito horas"]}
  ]
 }
