@@ -1216,6 +1216,7 @@ private fun CaptionScreen(
                     ArrivingBanner(Unit.takeIf { state.startRefused }) { StartRefusedBanner() }
                     ArrivingBanner(emergencyWarning.takeIf { it != EmergencyChannelNotice.Warning.None }) { EmergencyChannelBanner(it) { AlertNotifier.openAlarmSettings(context) } }
                     ArrivingBanner(Unit.takeIf { awayAlertsBlocked }) { AwayAlertsBlockedBanner { openNotificationSettings(context) } }
+                    NightStartCard(state.soundsOnly)
                     ArrivingBanner(shownWord) { word ->
                         // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(

@@ -8,6 +8,7 @@ import kotlin.test.assertNull
 
 class StoppedCaptionsNoticeReviseTest {
     private val glitch = PipelineFailure(PipelineFailure.Kind.TranscriptionStopped, "stream ended")
+    private val stalled = PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "other")
     private val noMic = PipelineFailure(PipelineFailure.Kind.NoAudioInputs, "none")
 
     private fun posted(cause: StoppedCaptionsNotice.Cause): StoppedCaptionsNotice {
@@ -20,9 +21,9 @@ class StoppedCaptionsNoticeReviseTest {
         update(cause, appIsActive = false, isEnabled = true, now = now)
 
     @Test
-    fun aFailureThatTurnsIntoAnotherQuietlyChangesThePostedWords() {
+    fun aFailureThatTurnsIntoAnotherThatAsksForTheSameThingQuietlyChangesThePostedWords() {
         val notice = posted(StoppedCaptionsNotice.Cause.Failed(glitch))
-        val next = StoppedCaptionsNotice.Cause.Failed(noMic)
+        val next = StoppedCaptionsNotice.Cause.Failed(stalled)
         assertEquals(StoppedCaptionsNotice.Update.Revise(StoppedCaptionsNotice.content(next)), notice.away(next, 1.0))
         assertNull(notice.away(next, 2.0))
     }

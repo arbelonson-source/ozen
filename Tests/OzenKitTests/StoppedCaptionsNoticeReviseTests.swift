@@ -5,6 +5,7 @@ import Testing
 @Suite("StoppedCaptionsNotice revises its words")
 struct StoppedCaptionsNoticeReviseTests {
     private let glitch = PipelineFailure(kind: .transcriptionStopped, detail: "stream ended")
+    private let stalled = PipelineFailure(kind: .audioSessionFailed, detail: "other")
     private let noMic = PipelineFailure(kind: .noAudioInputs, detail: "none")
 
     private func posted(_ cause: StoppedCaptionsNotice.Cause) -> StoppedCaptionsNotice {
@@ -13,12 +14,12 @@ struct StoppedCaptionsNoticeReviseTests {
         return notice
     }
 
-    @Test("a failure that turns into another quietly changes the posted words")
+    @Test("a failure that turns into another that asks for the same thing quietly changes the posted words")
     func changedCauseRevises() {
         var notice = posted(.failed(glitch))
-        let update = notice.update(for: .failed(noMic), appIsActive: false, isEnabled: true, now: 1)
-        #expect(update == .revise(StoppedCaptionsNotice.content(for: .failed(noMic))))
-        #expect(notice.update(for: .failed(noMic), appIsActive: false, isEnabled: true, now: 2) == nil)
+        let update = notice.update(for: .failed(stalled), appIsActive: false, isEnabled: true, now: 1)
+        #expect(update == .revise(StoppedCaptionsNotice.content(for: .failed(stalled))))
+        #expect(notice.update(for: .failed(stalled), appIsActive: false, isEnabled: true, now: 2) == nil)
     }
 
     @Test("a failure that turns into a call that did not end well is revised too")

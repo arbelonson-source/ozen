@@ -121,7 +121,7 @@ struct StoppedCaptionsNoticeTests {
         #expect(old == .cancelScheduled(identifier: id))
         #expect(content.title == "הכתוביות נעצרו")
         let next = StoppedCaptionsNotice.Cause.failed(engineFailure(.noInternet))
-        #expect(notice.update(for: next, appIsActive: false, isEnabled: true) == .revise(StoppedCaptionsNotice.content(for: next)))
+        #expect(notice.update(for: next, appIsActive: false, isEnabled: true) == .realert(StoppedCaptionsNotice.content(for: next)))
         #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .withdraw(identifier: id))
     }
 
@@ -371,7 +371,7 @@ struct StoppedCaptionsNoticeTests {
         while now < 3600 {
             for (cause, length) in [(StoppedCaptionsNotice.Cause.soundAlertsNotWorking, 50.0), (nil, 20.0)] {
                 switch notice.update(for: cause, appIsActive: false, isEnabled: true, now: now) {
-                case .schedule?, .post?, .replace?, .revise?: schedules += 1
+                case .schedule?, .post?, .replace?, .revise?, .realert?: schedules += 1
                 case .cancelScheduled?, .withdraw?: withdrawals += 1
                 case nil: break
                 }

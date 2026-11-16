@@ -140,7 +140,7 @@ class StoppedCaptionsNoticeTest {
         if (post !is StoppedCaptionsNotice.Update.Post) fail("expected a post")
         assertEquals("הכתוביות נעצרו", post.content.title)
         val next = failed(engineFailure(EngineUnavailability.Kind.NoInternet))
-        assertEquals(StoppedCaptionsNotice.Update.Revise(StoppedCaptionsNotice.content(next)), notice.update(next, appIsActive = false, isEnabled = true))
+        assertEquals(StoppedCaptionsNotice.Update.Realert(StoppedCaptionsNotice.content(next)), notice.update(next, appIsActive = false, isEnabled = true))
         assertEquals(StoppedCaptionsNotice.Update.Withdraw(id), notice.update(null, appIsActive = false, isEnabled = true))
     }
 
@@ -204,7 +204,7 @@ class StoppedCaptionsNoticeTest {
         while (now < 3600.0) {
             for ((cause, length) in listOf(StoppedCaptionsNotice.Cause.SoundAlertsNotWorking to 50.0, null to 20.0)) {
                 when (notice.update(cause, appIsActive = false, isEnabled = true, now = now)) {
-                    is StoppedCaptionsNotice.Update.Schedule, is StoppedCaptionsNotice.Update.Post, is StoppedCaptionsNotice.Update.Replace, is StoppedCaptionsNotice.Update.Revise -> schedules++
+                    is StoppedCaptionsNotice.Update.Schedule, is StoppedCaptionsNotice.Update.Post, is StoppedCaptionsNotice.Update.Replace, is StoppedCaptionsNotice.Update.Revise, is StoppedCaptionsNotice.Update.Realert -> schedules++
                     is StoppedCaptionsNotice.Update.Cancel, is StoppedCaptionsNotice.Update.Withdraw -> withdrawals++
                     null -> Unit
                 }

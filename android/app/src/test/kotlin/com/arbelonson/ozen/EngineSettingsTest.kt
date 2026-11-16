@@ -382,6 +382,43 @@ class EngineSettingsTest {
         assertEquals("ws://192.168.1.21:8765", addressWhenChecked)
     }
 
+    private fun blockSettingsFile() {
+        assertTrue(settingsFile.delete() || !settingsFile.exists())
+        assertTrue(File(settingsFile.path).mkdirs())
+        File(settingsFile, "blocker").writeText("x")
+    }
+
+    @Test
+    fun `testing the connection still checks, and says so, when the phone could not keep the typed address`() = runBlocking<Unit> {
+        blockSettingsFile()
+        var stored: EngineSettings.EntriesStored? = null
+        val check = engineSettings.testConnection("ws://192.168.1.20:8765", "") { stored = it }
+        assertEquals(HomeServerCheck.Connected(12), check)
+        assertEquals("ws://192.168.1.20:8765", addressWhenChecked)
+        assertFalse(stored!!.addressKept)
+        assertTrue(File(settingsFile, "blocker").delete())
+        assertTrue(settingsFile.delete())
+        engineSettings.testConnection("ws://192.168.1.20:8765", "") { stored = it }
+        assertTrue(stored!!.addressKept)
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+    }
+
+    @Test
+    fun `closing settings reports an address the phone could not keep, tries again on the next close, and nothing typed is no failure`() = runBlocking<Unit> {
+        assertTrue(engineSettings.saveUnsavedEntries("", "", ""))
+        blockSettingsFile()
+        var stored: EngineSettings.EntriesStored? = null
+        assertFalse(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", "", onStored = { stored = it }))
+        assertFalse(stored!!.addressKept)
+        var keyKept: Boolean? = null
+        assertFalse(engineSettings.saveUnsavedEntries(" ", "ws://192.168.1.20:8765", "", onKeyKept = { keyKept = it }))
+        assertEquals(true, keyKept)
+        assertTrue(File(settingsFile, "blocker").delete())
+        assertTrue(settingsFile.delete())
+        assertTrue(engineSettings.saveUnsavedEntries("", "ws://192.168.1.20:8765", ""))
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+    }
+
     @Test
     fun `testing the connection with an address and a code both unsaved restarts captions on the home computer once`() = runBlocking<Unit> {
         engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)

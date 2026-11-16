@@ -243,6 +243,7 @@
     "numberClockLinks": [
       "vor", "nach"
     ],
+    "clockStopsBeforeCapitalized": true,
     "clockUnits": ["uhr"],
     "ambiguous": [
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",

@@ -71,6 +71,12 @@ class StoppedCaptionsNotice {
          * banner. The stop was already told; only the reason is brought up to date.
          */
         data class Revise(val content: AlertNotificationContent) : Update()
+
+        /**
+         * Like [Revise], but what she has to do changed, so the same notice
+         * goes out again with its normal alert. At most once per stop.
+         */
+        data class Realert(val content: AlertNotificationContent) : Update()
     }
 
     /** A notice is sitting in the notification shade. */
@@ -88,6 +94,10 @@ class StoppedCaptionsNotice {
      * different cause is told by itself.
      */
     private var toldCause: Cause? = null
+
+    /** What she was last told to do, and whether the one second alert of this stop is spent. */
+    private var shownAction: NoticeAction? = null
+    private var realerted = false
 
     /** The words of the sound-alerts notice scheduled or delivered, to tell when the reason changes. */
     private var scheduledContent: AlertNotificationContent? = null
@@ -158,12 +168,14 @@ class StoppedCaptionsNotice {
             toldCause = cause
             if (content == shown) return null
             postedContent = content
-            return Update.Revise(content)
+            return revision(cause, content)
         }
         if (!isEnabled || toldCause != null) return null
         val old = withdrawIfPosted(sweep = false, now = now)
         posted = true
         toldCause = cause
+        shownAction = action(cause)
+        realerted = false
         val new = if (cause == Cause.OtherAppHasMicrophone || isSoundAlertsDown(cause)) {
             postedAsSchedule = true
             postedContent = null
@@ -203,7 +215,17 @@ class StoppedCaptionsNotice {
         val content = content(cause)
         if (content == scheduledContent) return null
         scheduledContent = content
-        return Update.Revise(content)
+        return revision(cause, content)
+    }
+
+    /** Quiet unless what she has to do changed and this stop has not alerted a second time yet. */
+    private fun revision(cause: Cause, content: AlertNotificationContent): Update {
+        val action = action(cause)
+        val changesWhatToDo = shownAction != action
+        shownAction = action
+        if (!changesWhatToDo || realerted) return Update.Revise(content)
+        realerted = true
+        return Update.Realert(content)
     }
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
@@ -214,6 +236,8 @@ class StoppedCaptionsNotice {
         }
         posted = false
         toldCause = null
+        shownAction = null
+        realerted = false
     }
 
     /**
@@ -254,6 +278,8 @@ class StoppedCaptionsNotice {
         }
         val cancelling = posted && postedAsSchedule && !sweep
         posted = false
+        shownAction = null
+        realerted = false
         return if (cancelling) Update.Cancel(IDENTIFIER) else Update.Withdraw(IDENTIFIER)
     }
 

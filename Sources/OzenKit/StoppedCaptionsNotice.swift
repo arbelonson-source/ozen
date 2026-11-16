@@ -60,6 +60,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         /// is told at once: change its words in place, with no sound, buzz or
         /// banner. The stop was already told; only the reason is brought up to date.
         case revise(AlertNotificationContent)
+        /// Like `revise`, but what she has to do changed, so the same notice
+        /// goes out again with its normal alert. At most once per stop.
+        case realert(AlertNotificationContent)
     }
 
     /// How long another app has to keep the microphone before she is told.
@@ -87,6 +90,9 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     private var postedAsSchedule = false
     /// The words of the notice that went out at once, to tell when a new cause needs other ones.
     private var postedContent: AlertNotificationContent?
+    /// What she was last told to do, and whether the one second alert of this stop is spent.
+    private var shownAction: Action?
+    private var realerted = false
     /// The stop she has been told about: by the notice, or by opening the
     /// app and seeing the status. Not told again until captions run, but a
     /// different cause is told by itself.
@@ -184,12 +190,19 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             toldCause = cause
             guard content != shown else { return nil }
             postedContent = content
-            return .revise(content)
+            let action = Self.action(for: cause)
+            let changesWhatToDo = shownAction != action
+            shownAction = action
+            guard changesWhatToDo, !realerted else { return .revise(content) }
+            realerted = true
+            return .realert(content)
         }
         guard isEnabled, toldCause == nil else { return nil }
         let old = withdrawIfPosted(now: now)
         posted = true
         toldCause = cause
+        shownAction = Self.action(for: cause)
+        realerted = false
         let new: Update
         if cause == .otherAppHasMicrophone || cause == .soundAlertsNotWorking {
             postedAsSchedule = true
@@ -251,6 +264,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         }
         posted = false
         stoppedAt = nil
+        shownAction = nil
+        realerted = false
         return postedAsSchedule ? .cancelScheduled(identifier: Self.identifier) : .withdraw(identifier: Self.identifier)
     }
 
