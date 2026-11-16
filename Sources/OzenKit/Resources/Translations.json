@@ -1191,7 +1191,8 @@
   "Feel the vibration": "ንዝረቱን ይሰማዎት",
   "one hour earlier": "አንድ ሰዓት ቀደም ብሎ",
   "one hour later": "አንድ ሰዓት ዘግይቶ",
-  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።"
+  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "ማይክሮፎኑ ዝምታ ብቻ እየላከ ነው፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። ማይክሮፎኑ መገናኘቱንና ሌላ መተግበሪያ ወይም የስልክ ቅንብር እንደማይከለክለው ያረጋግጡ። Ozen ማዳመጡን ይቀጥላል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2385,7 +2386,8 @@
   "Feel the vibration": "الشعور بالاهتزاز",
   "one hour earlier": "تقديم ساعة",
   "one hour later": "تأخير ساعة",
-  "The first stop was at %1.": "كان التوقف الأول عند %1."
+  "The first stop was at %1.": "كان التوقف الأول عند %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "الميكروفون لا يرسل سوى الصمت، وقد يفوتكم رنين جرس الباب أو جهاز إنذار أو بكاء طفل. تأكدوا من توصيل الميكروفون ومن أن أي تطبيق آخر أو إعداد في الهاتف لا يحجبه. يواصل Ozen الاستماع."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3579,7 +3581,8 @@
   "Feel the vibration": "感受振动",
   "one hour earlier": "提前一小时",
   "one hour later": "推后一小时",
-  "The first stop was at %1.": "首次停止的时间是 %1。"
+  "The first stop was at %1.": "首次停止的时间是 %1。",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "麦克风只传来静音，因此你可能会错过门铃、警报或婴儿的哭声。请检查麦克风是否已连接，以及是否有其他应用或手机设置在阻止它。Ozen 会继续聆听。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4773,7 +4776,8 @@
   "Feel the vibration": "Sentir la vibration",
   "one hour earlier": "une heure plus tôt",
   "one hour later": "une heure plus tard",
-  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1."
+  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Le microphone n’envoie que du silence : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. Vérifiez que le microphone est branché et qu’aucune autre appli ni aucun réglage du téléphone ne le bloque. Ozen continue d’écouter."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5967,7 +5971,8 @@
   "Feel the vibration": "Vibration spüren",
   "one hour earlier": "eine Stunde früher",
   "one hour later": "eine Stunde später",
-  "The first stop was at %1.": "Der erste Stopp war um %1."
+  "The first stop was at %1.": "Der erste Stopp war um %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Das Mikrofon sendet nur Stille, daher könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Prüfen Sie, ob das Mikrofon verbunden ist und keine andere App und keine Einstellung des Telefons es blockiert. Ozen hört weiter zu."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7161,7 +7166,8 @@
   "Feel the vibration": "कंपन महसूस करें",
   "one hour earlier": "एक घंटा पहले करें",
   "one hour later": "एक घंटा बाद करें",
-  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।"
+  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "माइक्रोफ़ोन केवल सन्नाटा भेज रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की सूचना न मिले। जाँच लें कि माइक्रोफ़ोन जुड़ा है और कोई दूसरा ऐप या फ़ोन की सेटिंग उसे रोक नहीं रही है। Ozen सुनना जारी रखता है।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8355,7 +8361,8 @@
   "Feel the vibration": "Sentir a vibração",
   "one hour earlier": "uma hora mais cedo",
   "one hour later": "uma hora mais tarde",
-  "The first stop was at %1.": "A primeira parada foi às %1."
+  "The first stop was at %1.": "A primeira parada foi às %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "O microfone está a enviar apenas silêncio, por isso pode perder uma campainha, um alarme ou o choro de um bebé. Verifique se o microfone está ligado e se nenhuma outra aplicação ou definição do telefone o bloqueia. O Ozen continua a ouvir."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9549,7 +9556,8 @@
   "Feel the vibration": "Почувствовать вибрацию",
   "one hour earlier": "на час раньше",
   "one hour later": "на час позже",
-  "The first stop was at %1.": "Первая остановка была в %1."
+  "The first stop was at %1.": "Первая остановка была в %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Микрофон передаёт только тишину, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Проверьте, подключён ли микрофон и не блокирует ли его другое приложение или настройка телефона. Ozen продолжает слушать."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10743,7 +10751,8 @@
   "Feel the vibration": "Sentir la vibración",
   "one hour earlier": "una hora antes",
   "one hour later": "una hora después",
-  "The first stop was at %1.": "La primera parada fue a las %1."
+  "The first stop was at %1.": "La primera parada fue a las %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "El micrófono solo envía silencio, así que podrías perderte un timbre, una alarma o el llanto de un bebé. Comprueba que el micrófono esté conectado y que ninguna otra app ni ajuste del teléfono lo bloquee. Ozen sigue escuchando."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11937,6 +11946,7 @@
   "Feel the vibration": "Відчути вібрацію",
   "one hour earlier": "на годину раніше",
   "one hour later": "на годину пізніше",
-  "The first stop was at %1.": "Перша зупинка була о %1."
+  "The first stop was at %1.": "Перша зупинка була о %1.",
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Мікрофон передає лише тишу, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Перевірте, чи мікрофон підключено і чи його не блокує інший застосунок або налаштування телефона. Ozen продовжує слухати."
  }
 }

@@ -1208,7 +1208,7 @@ private fun CaptionScreen(
                     // The one warning that a smoke alarm may go unheard: first
                     // after the sounds heard just now (which last seconds), so
                     // at the largest text it is never below the scrolled-off part.
-                    ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner() }
+                    ArrivingBanner(Unit.takeIf { state.soundAlertsNotWorking }) { SoundAlertsNotWorkingBanner(state.soundAlertsMicrophoneSilent) }
                     ArrivingBanner(Unit.takeIf { state.startRefused }) { StartRefusedBanner() }
                     ArrivingBanner(Unit.takeIf { awayAlertsBlocked }) { AwayAlertsBlockedBanner { openNotificationSettings(context) } }
                     ArrivingBanner(shownWord) { word ->

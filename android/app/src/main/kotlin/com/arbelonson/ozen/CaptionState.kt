@@ -106,6 +106,8 @@ data class CaptionScreenState(
     val phoneSoundStopped: Boolean = false,
     /** Sound alerts are on but the classifier can't be made to work; said for as long as that lasts. */
     val soundAlertsNotWorking: Boolean = false,
+    /** With [soundAlertsNotWorking]: the microphone sends only silence, which the banner says. */
+    val soundAlertsMicrophoneSilent: Boolean = false,
     /** The phone refused to start listening while Ozen was in front; said until captions start again. */
     val startRefused: Boolean = false,
     /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
@@ -395,8 +397,8 @@ object CaptionState {
         state.value = state.value.copy(speaking = on)
     }
 
-    fun soundAlertsNotWorking(notWorking: Boolean) {
-        state.value = state.value.copy(soundAlertsNotWorking = notWorking)
+    fun soundAlertsNotWorking(notWorking: Boolean, microphoneSilent: Boolean = false) {
+        state.value = state.value.copy(soundAlertsNotWorking = notWorking, soundAlertsMicrophoneSilent = notWorking && microphoneSilent)
     }
 
     fun startRefused(refused: Boolean) {

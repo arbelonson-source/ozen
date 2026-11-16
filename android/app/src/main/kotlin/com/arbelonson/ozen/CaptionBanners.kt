@@ -162,12 +162,12 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
 
 /** Sound alerts are on but the classifier can't be made to work. It stays up for as long as that lasts: a close button would let it be forgotten while a smoke alarm goes unheard. */
 @Composable
-internal fun SoundAlertsNotWorkingBanner() {
+internal fun SoundAlertsNotWorkingBanner(microphoneSilent: Boolean = false) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Emergency,
         StoppedCaptionsNotice.soundAlertsNotWorkingTitle(),
-        StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
+        if (microphoneSilent) StoppedCaptionsNotice.soundAlertsMicrophoneSilentDetail() else StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
