@@ -221,6 +221,10 @@ data class TranscriptSessionRecord(
     }.toString()
 
     companion object {
+        /** Said when a cut-short conversation is opened or shared; the same words as on the iPhone. */
+        val cutShortNote: String
+            get() = tr("התמלול נעצר לפני סוף ההקלטה, ולכן חלק מהטקסט חסר.", "This transcript stops before the end of the recording, so some text is missing.")
+
         /**
          * Converts a live in-memory transcript into a saveable record. A
          * segment whose text is empty (an utterance the engine opened but
@@ -1449,6 +1453,11 @@ class TranscriptHistoryStore(
          * With [marksUncertain], a line the engine was unsure of says so.
          */
         fun exportText(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean = false, decimalComma: Boolean = false, currentLanguageCode: String = "he"): String {
+            val body = exportBody(record, utcOffsetAt, marksUncertain, decimalComma, currentLanguageCode)
+            return if (record.cutShort) "${TranscriptSessionRecord.cutShortNote}\n\n$body" else body
+        }
+
+        private fun exportBody(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean, decimalComma: Boolean, currentLanguageCode: String): String {
             val language = record.languageCode(currentLanguageCode)
             val comma = record.languageCode?.let { NumberText.usesDecimalComma(UILanguage.match(it) ?: UILanguage.Hebrew) } ?: decimalComma
             val formatted = record.segments.map { segment ->

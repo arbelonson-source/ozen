@@ -1252,6 +1252,11 @@ public struct TranscriptHistoryStore: Sendable {
     /// conversation shared in winter keeps the clock times it was said at.
     /// With `marksUncertain`, a line the engine was unsure of says so.
     public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false, currentLanguageCode: String = "he") -> String {
+        let body = exportBody(record, utcOffsetAt: offset, marksUncertain: marksUncertain, currentLanguageCode: currentLanguageCode)
+        return record.cutShort ? "\(TranscriptSessionRecord.cutShortNote)\n\n\(body)" : body
+    }
+
+    private static func exportBody(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool, currentLanguageCode: String) -> String {
         let formatted = record.segments
             .map { segment in
                 let time = record.timeText(of: segment, utcOffsetSeconds: offset(segment.startTimestamp))

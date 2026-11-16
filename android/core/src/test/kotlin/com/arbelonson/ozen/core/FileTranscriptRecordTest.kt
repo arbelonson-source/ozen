@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -94,5 +95,31 @@ class FileTranscriptRecordTest {
         assertTrue(!old.contains("fromRecording"))
         assertTrue(!TranscriptSessionRecord.fromJson(old).fromRecording)
         assertTrue(!TranscriptSessionRecord.fromJson(record.toJson().replace("\"fromRecording\":true", "\"fromRecording\":\"yes\"")).fromRecording)
+    }
+
+    @Test
+    fun aTranscriptThatStopsEarlyIsSavedAsCutShortAndSurvivesTheRoundTrip() {
+        val whole = FileTranscriptRecord.make("a.wav", lines, finishedAt = 5_060.0, recordingSeconds = 60.0, modelVariant = null)
+        assertFalse(whole.cutShort)
+        val early = FileTranscriptRecord.make("a.wav", lines, finishedAt = 5_060.0, recordingSeconds = 60.0, modelVariant = null, cutShort = true)
+        assertTrue(early.cutShort)
+        assertTrue(TranscriptSessionRecord.fromJson(early.toJson()).cutShort)
+        assertFalse(TranscriptSessionRecord.fromJson(whole.toJson()).cutShort)
+    }
+
+    @Test
+    fun aRecordSavedBeforeTheMarkerExistedReadsAsComplete() {
+        val json = """{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","startedAt":1,"engine":"whisperKit","segments":[],"fromRecording":true}"""
+        assertFalse(TranscriptSessionRecord.fromJson(json).cutShort)
+    }
+
+    @Test
+    fun aSharedCutShortTranscriptOpensWithTheNoteAndACompleteOneDoesNot() {
+        val whole = FileTranscriptRecord.make("a.wav", lines, finishedAt = 5_060.0, recordingSeconds = 60.0, modelVariant = null)
+        val early = whole.copy(cutShort = true)
+        val plain = TranscriptHistoryStore.exportText(whole)
+        assertFalse(plain.contains(TranscriptSessionRecord.cutShortNote))
+        assertEquals("${TranscriptSessionRecord.cutShortNote}\n\n$plain", TranscriptHistoryStore.exportText(early))
+        assertTrue(TranscriptHistoryStore.exportAllText(listOf(early), { 0 }, false)!!.contains(TranscriptSessionRecord.cutShortNote))
     }
 }

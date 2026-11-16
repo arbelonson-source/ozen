@@ -846,7 +846,7 @@ internal fun ConversationScreen(
                             if (shown.record.cutShort) {
                                 item(key = "cut-short") {
                                     Text(
-                                        tr("ההקלטה נקטעה לפני הסוף, כי אוזן נסגרה באמצע ההמרה לטקסט.", "This recording was cut short: Ozen was closed before it finished."),
+                                        TranscriptSessionRecord.cutShortNote,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.padding(horizontal = 16.dp).testTag("history-cut-short"),
                                     )
