@@ -149,6 +149,10 @@ object HomeServer {
         }
     }
 
+    /** What Save address says once the write is known: the failure when the phone could not keep the setting, so "saved" is never said untrue. */
+    fun addressSaveOutcome(address: String, pin: String?, writeFailed: Boolean): String =
+        if (writeFailed) SavingTroubleNotice.title else addressSavedAnnouncement(address, pin)
+
     /** The note Settings shows under the address when the home link is plain. */
     fun linkNotEncryptedText(): String =
         tr("החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.", "The link to the computer isn’t encrypted on the home Wi‑Fi. To encrypt it, scan the code from the computer again.")

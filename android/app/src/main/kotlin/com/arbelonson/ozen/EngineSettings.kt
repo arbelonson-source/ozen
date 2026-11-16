@@ -167,14 +167,21 @@ class EngineSettings(
         }
     }
 
-    fun saveHomeComputerAddress(draft: String) {
+    /** Whether the address reached the disk. An unchanged address counts as saved unless the last write failed, then it is written again. */
+    fun saveHomeComputerAddress(draft: String): Boolean {
         val address = draft.trim()
-        if (settings.current.value.homeServerAddress == address) return
+        if (settings.current.value.homeServerAddress == address) {
+            if (!settings.saveFailed.value) return true
+            settings.change {}
+            return !settings.saveFailed.value
+        }
         settings.change {
             it.homeServerAddress = address
             it.homeServerCertificatePin = null
         }
+        val written = !settings.saveFailed.value
         if (homeComputerIsTheEngine) restart()
+        return written
     }
 
     fun hasPairingCode(): Boolean = pairingCodeHeld.value

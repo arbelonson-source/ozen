@@ -783,12 +783,13 @@ struct SettingsView: View {
         homeServerCheckGeneration += 1
     }
 
-    private func saveHomeServerAddress() {
+    @discardableResult
+    private func saveHomeServerAddress() -> Task<Bool, Never> {
         let address = homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         homeServerAddressDraft = address
         homeServerAddressLoaded = address
         forgetHomeServerCheck()
-        Task { await viewModel.setHomeServerAddress(address) }
+        return Task { await viewModel.setHomeServerAddress(address) }
     }
 
     /// The button vanishes the moment it is pressed and the green line that
@@ -796,24 +797,29 @@ struct SettingsView: View {
     /// focus goes to the field instead of falling to the top of the screen.
     private func saveHomeServerAddressAndSay() {
         let savedAddressBefore = viewModel.settings.homeServerAddress
-        saveHomeServerAddress()
+        let pinBefore = viewModel.settings.homeServerCertificatePin
+        let write = saveHomeServerAddress()
+        let typed = homeServerAddressDraft
+        let pin = HomeServer.announcementPin(typed: typed, saved: savedAddressBefore, pin: pinBefore)
         savedFieldFocus = .address
-        announceAfterFocusMove(HomeServer.addressSavedAnnouncement(address: homeServerAddressDraft, pin: HomeServer.announcementPin(typed: homeServerAddressDraft, saved: savedAddressBefore, pin: viewModel.settings.homeServerCertificatePin)))
+        announceAfterFocusMove {
+            HomeServer.addressSaveOutcome(address: typed, pin: pin, writeFailed: !(await write.value))
+        }
     }
 
     private func saveHomeServerCodeAndSay() {
         guard saveHomeServerCode() else { return }
         savedFieldFocus = .code
-        announceAfterFocusMove(HomeServer.codeSavedText())
+        announceAfterFocusMove { HomeServer.codeSavedText() }
     }
 
     /// VoiceOver reads the field that just took focus and drops an
     /// announcement posted at the same moment, so this one waits a moment
     /// and is queued behind that speech.
-    private func announceAfterFocusMove(_ text: String) {
+    private func announceAfterFocusMove(_ text: @escaping () async -> String) {
         Task {
             try? await Task.sleep(for: .milliseconds(600))
-            Announcement.post(text)
+            Announcement.post(await text())
         }
     }
 

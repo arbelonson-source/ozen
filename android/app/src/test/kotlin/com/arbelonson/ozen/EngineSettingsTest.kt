@@ -279,6 +279,22 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `saving an address says whether it reached the disk, and an unchanged address counts as saved`() {
+        assertTrue(engineSettings.saveHomeComputerAddress("wss://pc.example.net"))
+        assertTrue(engineSettings.saveHomeComputerAddress(" wss://pc.example.net "))
+        assertTrue(settingsFile.delete())
+        assertTrue(File(settingsFile.path).mkdirs())
+        File(settingsFile, "blocker").writeText("x")
+        assertFalse(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
+        assertTrue(settings.saveFailed.value)
+        assertFalse(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
+        assertTrue(File(settingsFile, "blocker").delete())
+        assertTrue(settingsFile.delete())
+        assertTrue(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
+        assertEquals("wss://other.example.net", saved().homeServerAddress)
+    }
+
+    @Test
     fun `a typed address clears the certificate pin that came with a pairing, saving the same address again keeps it`() {
         val pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
         settings.change {
