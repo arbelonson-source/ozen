@@ -103,6 +103,7 @@ import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -638,7 +639,7 @@ class CaptionSession(
             seconds = { SystemClock.elapsedRealtime() / 1000.0 },
             changed = {
                 captionsBusy.value = it.isListening || it.isTransitioning
-                if (soundsOnlyChoice.chosen != pipeline.soundsOnlyChosen) soundsOnlyChoice.chosen = pipeline.soundsOnlyChosen
+                saveSoundsOnlyChoice()
                 conversations.listeningChanged()
             },
             publish = ::publish,
@@ -709,17 +710,33 @@ class CaptionSession(
 
     private val recordingHandover = CaptionsHandover()
 
-    /** Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright. */
+    /**
+     * Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright.
+     * The recording is read from a file, so sound alerts that were on keep listening meanwhile with the speech model let go.
+     * A night of sounds only is left running as it is.
+     */
     internal fun stopCaptionsForRecording() {
-        recordingHandover.begin(pipeline.phase)
+        val paused = recordingHandover.begin(pipeline.phase)
         replies.userTookControl()
-        pipeline.stopFromNotification()
+        if (!pipeline.soundsOnlyChosen) pipeline.stopFromNotification()
         pipeline.releaseModels()
+        if (paused && chosenSettings().soundAlerts.isEnabled) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { pipeline.listenForSoundsOnly(chosenSettings()) }
+        }
     }
 
     /** The user took the captions over (stopped, paused or started them): they are no longer ours to give back. */
     private fun dropRecordingHandover() {
-        if (recordingHandover.cancel()) publish()
+        if (recordingHandover.cancel()) {
+            saveSoundsOnlyChoice()
+            publish()
+        }
+    }
+
+    /** Sounds kept only while a recording is transcribed are not her night choice: after the app is ended, captions are what she wants back. */
+    private fun saveSoundsOnlyChoice() {
+        val chosen = pipeline.soundsOnlyChosen && !recordingHandover.pausedHere
+        if (soundsOnlyChoice.chosen != chosen) soundsOnlyChoice.chosen = chosen
     }
 
     /** The recording is over or its screen was left: captions paused for it carry on, others are not started. */
@@ -1077,7 +1094,7 @@ class CaptionSession(
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
             pausedForRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Paused,
-            soundAlertsPaused = settings.current.value.soundAlerts.isEnabled,
+            soundAlertsPaused = PhasePresentation.soundAlertsPausedForRecording(settings.current.value.soundAlerts.isEnabled, pipeline.isListeningForSoundsOnly),
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,

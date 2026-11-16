@@ -170,6 +170,9 @@ class PhasePresentation private constructor(
         }
 
     companion object {
+        /** Sound alerts are paused with the captions for a recording only when no microphone is listening for sounds meanwhile. */
+        fun soundAlertsPausedForRecording(alertsOn: Boolean, listeningForSounds: Boolean): Boolean = alertsOn && !listeningForSounds
+
         /**
          * About what two lines of the status button hold on an ordinary
          * phone: 17-18 Hebrew letters a line. A longer detail was cut off
@@ -215,7 +218,7 @@ class PhasePresentation private constructor(
                     tint = PhaseTint.Attention,
                 )
             }
-            if (onlySounds) {
+            if (onlySounds && !pausedForRecording) {
                 return PhasePresentation(
                     title = tr("מאזינה לצלילים בלבד", "Listening for sounds only"),
                     detail = tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),
