@@ -1975,7 +1975,7 @@ struct HomeServerCoverTests {
 
     @Test("a computer still out of reach is asked again and again; a refused code is left for a person")
     func keepsAskingOnlyWhenUnreachable() async throws {
-        for (kind, asksAgain) in [(EngineUnavailability.Kind.homeServerUnreachable, true), (.homeServerRejected, false)] {
+        func covered(_ kind: EngineUnavailability.Kind) async -> (CaptionPipeline, FakeEngine, FakeEngine) {
             let server = FakeEngine(kind: .homeServer, availability: .unavailable(kind, "test"))
             let phone = FakeEngine(kind: .whisperKit)
             let captions = CaptionPipeline(
@@ -1989,12 +1989,20 @@ struct HomeServerCoverTests {
             captions.homeServerSwitchBackQuietSeconds = 0
             await captions.start(settings: serverSettings)
             #expect(await eventually { captions.phase == .listening && captions.isCoveringForCloud })
-            let before = server.prepareCount
-            try await Task.sleep(for: .milliseconds(400))
-            #expect((server.prepareCount > before) == asksAgain, "\(kind)")
-            #expect(captions.activeEngineKind == .whisperKit)
-            captions.stop()
+            return (captions, server, phone)
         }
+        // Both run side by side on the same clock: the unreachable one asking
+        // again several times shows the refused one had its chances too.
+        let (refused, refusedServer, _) = await covered(.homeServerRejected)
+        let (unreachable, unreachableServer, _) = await covered(.homeServerUnreachable)
+        let refusedBefore = refusedServer.prepareCount
+        let before = unreachableServer.prepareCount
+        #expect(await eventually { unreachableServer.prepareCount >= before + 5 }, "homeServerUnreachable")
+        #expect(refusedServer.prepareCount == refusedBefore, "homeServerRejected")
+        #expect(unreachable.activeEngineKind == .whisperKit)
+        #expect(refused.activeEngineKind == .whisperKit)
+        unreachable.stop()
+        refused.stop()
     }
 
     @Test("a new server address builds a new engine instead of reusing the one for the old address")
