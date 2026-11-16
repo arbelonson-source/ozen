@@ -35,11 +35,13 @@ import com.arbelonson.ozen.ui.OzenSpacing
  * Emergency channel being off or silent. Listening starts whatever it finds.
  */
 object NightStartCheck {
-    enum class Problem { Battery, EmergencyOff, EmergencySilent, DoNotDisturb }
+    enum class Problem { Battery, NotificationsOff, EmergencyOff, EmergencySilent, DoNotDisturb }
 
-    fun problems(batteryExempt: Boolean, dndThrough: Boolean, alarmsAllowed: Boolean, alarmsPostable: Boolean): List<Problem> = buildList {
+    fun problems(batteryExempt: Boolean, dndThrough: Boolean, alarmsAllowed: Boolean, alarmsPostable: Boolean, notificationsAllowed: Boolean = true): List<Problem> = buildList {
         if (!batteryExempt) add(Problem.Battery)
-        if (!alarmsAllowed) {
+        if (!notificationsAllowed) {
+            add(Problem.NotificationsOff)
+        } else if (!alarmsAllowed) {
             add(if (alarmsPostable) Problem.EmergencySilent else Problem.EmergencyOff)
         } else if (!dndThrough) {
             add(Problem.DoNotDisturb)
@@ -51,6 +53,9 @@ object NightStartCheck {
         if (found.any { it !in dismissed }) found else emptyList()
 
     /** A card up while she fixes things in Settings: what is fixed leaves it. */
+    /** A closed problem that has since been fixed is forgotten, so it shows again if it comes back. */
+    fun stillDismissed(dismissed: List<Problem>, found: List<Problem>): List<Problem> = dismissed.filter { it in found }
+
     fun stillOpen(shown: List<Problem>, found: List<Problem>): List<Problem> = shown.filter { it in found }
 
     fun encode(list: Collection<Problem>): String = list.joinToString(",") { it.name }
@@ -64,10 +69,12 @@ object NightStartCheck {
         AlertNotifier.alarmsOverrideDoNotDisturb(context),
         AlertNotifier.alarmsAllowed(context),
         AlertNotifier.alarmsPostable(context),
+        AlertNotifier.allowed(context),
     )
 
     fun text(problem: Problem, phoneLabel: (String) -> String? = { null }): String = when (problem) {
         Problem.Battery -> NightAlerts.batteryText(false, phoneLabel = phoneLabel)
+        Problem.NotificationsOff -> tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off.")
         Problem.DoNotDisturb -> NightAlerts.dndText(false, alarmsAllowed = true, phoneLabel = phoneLabel)
         Problem.EmergencySilent -> NightAlerts.dndText(false, alarmsAllowed = false, phoneLabel = phoneLabel, alarmsSilent = true)
         Problem.EmergencyOff -> NightAlerts.dndText(false, alarmsAllowed = false, phoneLabel = phoneLabel)
@@ -91,9 +98,9 @@ internal fun NightStartCard(soundsOnly: Boolean) {
         wasOn = soundsOnly
     }
     LifecycleResumeEffect(Unit) {
-        if (shownText.isNotEmpty()) {
-            shownText = NightStartCheck.encode(NightStartCheck.stillOpen(NightStartCheck.decode(shownText), NightStartCheck.check(context)))
-        }
+        val found = NightStartCheck.check(context)
+        dismissedText = NightStartCheck.encode(NightStartCheck.stillDismissed(NightStartCheck.decode(dismissedText), found))
+        if (shownText.isNotEmpty()) shownText = NightStartCheck.encode(NightStartCheck.stillOpen(NightStartCheck.decode(shownText), found))
         onPauseOrDispose { }
     }
     val shown = NightStartCheck.decode(shownText)
@@ -110,10 +117,12 @@ internal fun NightStartCard(soundsOnly: Boolean) {
             Text(NightStartCheck.title(), style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
             problems.forEach { problem ->
                 Text(NightStartCheck.text(problem, phoneLabel), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
-                val battery = problem == NightStartCheck.Problem.Battery
-                TextButton(onClick = { if (battery) NightAlerts.openBatteryList(context) else AlertNotifier.openAlarmSettings(context) }) {
-                    Text(if (battery) tr("פתחו את הגדרות הסוללה", "Open the battery list") else tr("פתחו את הגדרות החירום", "Open the Emergency settings"))
+                val (label, open) = when (problem) {
+                    NightStartCheck.Problem.Battery -> tr("פתחו את הגדרות הסוללה", "Open the battery list") to { NightAlerts.openBatteryList(context) }
+                    NightStartCheck.Problem.NotificationsOff -> tr("פתיחת הגדרות הטלפון", "Open the phone’s settings") to { openNotificationSettings(context) }
+                    else -> tr("פתחו את הגדרות החירום", "Open the Emergency settings") to { AlertNotifier.openAlarmSettings(context) }
                 }
+                TextButton(onClick = open) { Text(label) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(

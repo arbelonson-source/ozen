@@ -5,8 +5,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class NightStartCheckTest {
-    private fun found(battery: Boolean = true, dnd: Boolean = true, allowed: Boolean = true, postable: Boolean = true) =
-        NightStartCheck.problems(battery, dnd, allowed, postable)
+    private fun found(battery: Boolean = true, dnd: Boolean = true, allowed: Boolean = true, postable: Boolean = true, notifications: Boolean = true) =
+        NightStartCheck.problems(battery, dnd, allowed, postable, notifications)
 
     @Test
     fun `nothing is wrong when all three are right`() {
@@ -58,5 +58,15 @@ class NightStartCheckTest {
         val list = listOf(Problem.Battery, Problem.EmergencySilent)
         assertEquals(list, NightStartCheck.decode(NightStartCheck.encode(list)))
         assertEquals(emptyList(), NightStartCheck.decode(""))
+    }
+
+    @Test
+    fun `all notifications off is its own problem, not a muted channel`() {
+        assertEquals(listOf(Problem.NotificationsOff), found(dnd = false, allowed = false, postable = false, notifications = false))
+    }
+
+    @Test
+    fun `a fixed dismissal is forgotten so the problem shows again`() {
+        assertEquals(listOf(Problem.Battery), NightStartCheck.stillDismissed(listOf(Problem.Battery, Problem.DoNotDisturb), listOf(Problem.Battery)))
     }
 }
