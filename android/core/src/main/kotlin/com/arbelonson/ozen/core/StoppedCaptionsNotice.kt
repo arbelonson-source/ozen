@@ -89,6 +89,9 @@ class StoppedCaptionsNotice {
      */
     private var toldCause: Cause? = null
 
+    /** The words of the sound-alerts notice scheduled or delivered, to tell when the reason changes. */
+    private var scheduledContent: AlertNotificationContent? = null
+
     /** When the away notice for sound alerts was scheduled, while it waits. */
     private var soundAlertsScheduledAt: Double? = null
     private var soundAlertsScheduledDelay = 0.0
@@ -143,7 +146,11 @@ class StoppedCaptionsNotice {
         ) {
             soundAlertsRecoveredAt = null
             toldCause = cause
-            return null
+            return reviseDelivered(cause)
+        }
+        if (isEnabled && isSoundAlertsDown(cause) && deliveredByNow(now)) {
+            toldCause = cause
+            return reviseDelivered(cause)
         }
         val shown = postedContent
         if (isEnabled && posted && !postedAsSchedule && !isDelayed(cause) && shown != null) {
@@ -161,6 +168,7 @@ class StoppedCaptionsNotice {
             postedAsSchedule = true
             postedContent = null
             val delay = if (isSoundAlertsDown(cause)) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
+            scheduledContent = content(cause)
             soundAlertsScheduledAt = if (isSoundAlertsDown(cause)) now else null
             soundAlertsScheduledDelay = delay
             Update.Schedule(content(cause), delay)
@@ -182,6 +190,21 @@ class StoppedCaptionsNotice {
     private fun isDelayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || isSoundAlertsDown(cause)
 
     private fun isSoundAlertsDown(cause: Cause) = cause == Cause.SoundAlertsNotWorking || cause == Cause.SoundAlertsMicrophoneSilent
+
+    /** The scheduled sound-alerts notice has been waiting its whole delay, so it is on the phone. */
+    private fun deliveredByNow(now: Double): Boolean {
+        if (!posted || !postedAsSchedule) return false
+        val since = soundAlertsScheduledAt ?: return false
+        return now - since >= soundAlertsScheduledDelay
+    }
+
+    /** A delivered sound-alerts notice whose reason changed gets the new words in place, quietly. */
+    private fun reviseDelivered(cause: Cause): Update? {
+        val content = content(cause)
+        if (content == scheduledContent) return null
+        scheduledContent = content
+        return Update.Revise(content)
+    }
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
     fun postFailed(now: Double = System.nanoTime() / 1e9) {
