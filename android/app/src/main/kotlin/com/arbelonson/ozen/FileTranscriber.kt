@@ -142,6 +142,7 @@ class FileTranscriber(
 
     fun close() {
         if (busy) return
+        captions.giveCaptionsBack()
         busyNotice.clear()
         shown.value = FileTranscription.Idle
         source = null

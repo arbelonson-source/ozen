@@ -24,6 +24,7 @@ import com.arbelonson.ozen.core.AwaySoundRecord
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.CaptionsHandover
 import com.arbelonson.ozen.core.DamagedModelCleanup
 import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.BuiltInWhileWaiting
@@ -706,10 +707,19 @@ class CaptionSession(
 
     internal fun captionsActive(): Boolean = pipeline.mayLoadModels
 
+    private val recordingHandover = CaptionsHandover()
+
+    /** Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright. */
     internal fun stopCaptionsForRecording() {
+        recordingHandover.begin(pipeline.phase)
         replies.userTookControl()
         pipeline.stopFromNotification()
         pipeline.releaseModels()
+    }
+
+    /** The recording is over or its screen was left: captions paused for it carry on, others are not started. */
+    internal fun giveCaptionsBack() {
+        if (recordingHandover.end(pipeline.phase)) listen()
     }
 
     internal suspend fun holdCaptionsForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.beginRecordingTranscription() }
@@ -717,7 +727,10 @@ class CaptionSession(
     internal suspend fun waitOutCaptionsLoad() = withContext(Dispatchers.Main.immediate) { pipeline.waitOutAbandonedLoad() }
 
     internal suspend fun recordingTranscriptionDone() =
-        withContext(NonCancellable + Dispatchers.Main.immediate) { pipeline.endRecordingTranscription() }
+        withContext(NonCancellable + Dispatchers.Main.immediate) {
+            pipeline.endRecordingTranscription()
+            giveCaptionsBack()
+        }
 
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
     internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
