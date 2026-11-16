@@ -10,6 +10,15 @@ public struct AlertNotificationContent: Sendable, Equatable {
     /// Groups sounds and words separately in Notification Center.
     public let threadIdentifier: String
     public let isUrgent: Bool
+    /// Shown or updated without a sound, banner or lit screen: the notice is
+    /// already there and only its words change.
+    public var isQuiet = false
+
+    public func quietly() -> AlertNotificationContent {
+        var copy = self
+        copy.isQuiet = true
+        return copy
+    }
 
     /// Whether a delivered notification's identifier is one of the sound or
     /// word alerts, as opposed to the app's other notices.

@@ -50,9 +50,12 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
 class AlertNotifier(private val context: Context) {
     fun post(content: AlertNotificationContent): Boolean = deliver(content).posted
 
+    /** Changes the words of a notice that is already up, with no sound, buzz or heads-up. */
+    fun revise(content: AlertNotificationContent): Boolean = deliver(content, quiet = true).posted
+
     class Delivery(val posted: Boolean, val buzz: AlertVibration? = null)
 
-    fun deliver(content: AlertNotificationContent): Delivery {
+    fun deliver(content: AlertNotificationContent, quiet: Boolean = false): Delivery {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
         val vibration = AwayAlerts.vibrationFor(content)
@@ -88,6 +91,7 @@ class AlertNotifier(private val context: Context) {
             .setGroup(content.threadIdentifier)
             .setContentIntent(open)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(quiet)
             .setVisibility(if (words) Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_PUBLIC)
             .apply {
                 if (words) {
@@ -103,6 +107,7 @@ class AlertNotifier(private val context: Context) {
             }
             .build()
         manager.notify(content.identifier, 0, notification)
+        if (quiet) return Delivery(true)
         val playing = manager.getNotificationChannel(channel.id) ?: channel
         val silenced = buzzMuted(
             playing.canBypassDnd(),

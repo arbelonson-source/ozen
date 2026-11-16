@@ -120,7 +120,8 @@ struct StoppedCaptionsNoticeTests {
         }
         #expect(old == .cancelScheduled(identifier: id))
         #expect(content.title == "הכתוביות נעצרו")
-        #expect(notice.update(for: .failed(engineFailure(.noInternet)), appIsActive: false, isEnabled: true) == nil)
+        let next = StoppedCaptionsNotice.Cause.failed(engineFailure(.noInternet))
+        #expect(notice.update(for: next, appIsActive: false, isEnabled: true) == .revise(StoppedCaptionsNotice.content(for: next)))
         #expect(notice.update(for: nil, appIsActive: false, isEnabled: true) == .withdraw(identifier: id))
     }
 
@@ -193,7 +194,8 @@ struct StoppedCaptionsNoticeTests {
         #expect(content.identifier == StoppedCaptionsNotice.identifier)
         #expect(content.title == "הכתוביות נעצרו")
         #expect(notice.update(for: .failed(glitch), appIsActive: false, isEnabled: true) == nil)
-        #expect(notice.update(for: .callEnded, appIsActive: false, isEnabled: true) == nil)
+        // A different immediate cause is not told again; only the words are brought up to date, quietly.
+        #expect(notice.update(for: .callEnded, appIsActive: false, isEnabled: true) == .revise(StoppedCaptionsNotice.content(for: .callEnded)))
     }
 
     @Test("once captions run again the notice is withdrawn, and a later stop is told again")
@@ -369,7 +371,7 @@ struct StoppedCaptionsNoticeTests {
         while now < 3600 {
             for (cause, length) in [(StoppedCaptionsNotice.Cause.soundAlertsNotWorking, 50.0), (nil, 20.0)] {
                 switch notice.update(for: cause, appIsActive: false, isEnabled: true, now: now) {
-                case .schedule?, .post?, .replace?: schedules += 1
+                case .schedule?, .post?, .replace?, .revise?: schedules += 1
                 case .cancelScheduled?, .withdraw?: withdrawals += 1
                 case nil: break
                 }

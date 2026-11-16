@@ -61,6 +61,13 @@ class StoppedCaptionsNotice {
 
         /** The cause changed: do [old] (drop what was told for the previous cause), then [new]. */
         data class Replace(val old: Update, val new: Update) : Update()
+
+        /**
+         * The notice is already up and the cause changed to another one that is
+         * told at once: change its words in place, with no sound, buzz or
+         * banner. The stop was already told; only the reason is brought up to date.
+         */
+        data class Revise(val content: AlertNotificationContent) : Update()
     }
 
     /** A notice is sitting in the notification shade. */
@@ -68,6 +75,9 @@ class StoppedCaptionsNotice {
 
     /** What is sitting there was scheduled for later, not delivered now. */
     private var postedAsSchedule = false
+
+    /** The words of the notice that went out at once, to tell when a new cause needs other ones. */
+    private var postedContent: AlertNotificationContent? = null
 
     /**
      * The stop she has been told about: by the notice, or by opening the
@@ -132,18 +142,28 @@ class StoppedCaptionsNotice {
             toldCause = cause
             return null
         }
+        val shown = postedContent
+        if (isEnabled && posted && !postedAsSchedule && !isDelayed(cause) && shown != null) {
+            val content = content(cause)
+            toldCause = cause
+            if (content == shown) return null
+            postedContent = content
+            return Update.Revise(content)
+        }
         if (!isEnabled || toldCause != null) return null
         val old = withdrawIfPosted(sweep = false, now = now)
         posted = true
         toldCause = cause
         val new = if (cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking) {
             postedAsSchedule = true
+            postedContent = null
             val delay = if (cause == Cause.SoundAlertsNotWorking) soundAlertsDelayLeft(now) else OTHER_APP_DELAY_SECONDS
             soundAlertsScheduledAt = if (cause == Cause.SoundAlertsNotWorking) now else null
             soundAlertsScheduledDelay = delay
             Update.Schedule(content(cause), delay)
         } else {
             postedAsSchedule = false
+            postedContent = content(cause)
             Update.Post(content(cause))
         }
         return if (old == null) new else Update.Replace(old, new)
@@ -151,12 +171,12 @@ class StoppedCaptionsNotice {
 
     /**
      * The causes that post at once are one stop, so a failure turning into a
-     * call that didn't end well is not told twice; each delayed cause is its own.
+     * call that didn't end well is not told twice (its words are only brought
+     * up to date, see [Update.Revise]); each delayed cause is its own.
      */
-    private fun sameStop(a: Cause, b: Cause): Boolean {
-        fun delayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking
-        return if (delayed(a) || delayed(b)) a == b else true
-    }
+    private fun sameStop(a: Cause, b: Cause): Boolean = if (isDelayed(a) || isDelayed(b)) a == b else true
+
+    private fun isDelayed(cause: Cause) = cause == Cause.OtherAppHasMicrophone || cause == Cause.SoundAlertsNotWorking
 
     /** The caller could not show the notice [update] returned, so it is tried again. */
     fun postFailed(now: Double = System.nanoTime() / 1e9) {

@@ -911,6 +911,9 @@ class CaptionSession(
                 otherAppNotice.cancel()
                 notifier.withdraw(update.identifier)
             }
+            is StoppedCaptionsNotice.Update.Revise -> {
+                if (!notifier.revise(update.content)) stoppedCaptions.postFailed()
+            }
             is StoppedCaptionsNotice.Update.Replace -> {
                 applyNoticeUpdate(update.old)
                 applyNoticeUpdate(update.new)
@@ -935,7 +938,7 @@ class CaptionSession(
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
                 soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
                 engine = pipeline.activeEngineKind,
-                spokenLanguage = chosenSettings().spokenLanguage,
+                spokenLanguage = (pipeline.activeSettings ?: chosenSettings()).spokenLanguage,
             )
         }
 
