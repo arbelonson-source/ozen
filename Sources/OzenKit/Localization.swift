@@ -221,6 +221,12 @@ public extension Date {
     func formatted(inAppLanguage date: Date.FormatStyle.DateStyle, time: Date.FormatStyle.TimeStyle) -> String {
         formatted(Date.FormatStyle(date: date, time: time, locale: Localization.locale))
     }
+
+    /// As above, read in the zone a conversation happened in when it kept one.
+    func formatted(inAppLanguage date: Date.FormatStyle.DateStyle, time: Date.FormatStyle.TimeStyle, utcOffsetSeconds: Int?) -> String {
+        guard let utcOffsetSeconds, let zone = TimeZone(secondsFromGMT: utcOffsetSeconds) else { return formatted(inAppLanguage: date, time: time) }
+        return formatted(Date.FormatStyle(date: date, time: time, locale: Localization.locale, timeZone: zone))
+    }
 }
 
 private final class LanguageStore: @unchecked Sendable {

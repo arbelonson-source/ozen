@@ -145,7 +145,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                     for (group in StarredConversation.grouping(shown)) {
                         val slots = SavedLine.slotsOf(group.lines.map { it.segment })
                         item(key = "conversation-${group.sessionID}") {
-                            StarredHeading(group.title, conversationHeading(group.startedAt, now = now))
+                            StarredHeading(group.title, conversationHeading(group.startedAt, now = now, utcOffsetSeconds = group.lines.firstOrNull()?.utcOffsetSeconds))
                         }
                         items(group.lines, key = { it.id.toString() }) { line ->
                             StarredLineView(

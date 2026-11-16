@@ -500,7 +500,7 @@ private struct SessionRow: View {
                     .font(.headline)
             }
             timeLayout {
-                Text(Date(timeIntervalSince1970: session.startedAt).formatted(inAppLanguage: .omitted, time: .shortened))
+                Text(Date(timeIntervalSince1970: session.startedAt).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: session.utcOffsetSeconds))
                     .font(session.title == nil ? .subheadline.weight(.semibold) : .subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let duration = session.durationSeconds {

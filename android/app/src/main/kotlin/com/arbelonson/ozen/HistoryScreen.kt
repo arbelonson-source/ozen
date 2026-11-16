@@ -839,7 +839,7 @@ internal fun ConversationScreen(
                             // the hold that opens its menu is said here, once, under the date.
                             item(key = "when") {
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                                    SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0, utcOffsetSeconds = shown.record.utcOffsetSeconds))
                                     Footnote(tr("לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה, להעתיק אותה או לתקן מילה.", "Press and hold a line to mark it as important, copy it or fix a word."))
                                 }
                             }
