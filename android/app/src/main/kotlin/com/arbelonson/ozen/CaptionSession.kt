@@ -24,6 +24,7 @@ import com.arbelonson.ozen.core.AwaySoundRecord
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.CaptionsHandover
 import com.arbelonson.ozen.core.DamagedModelCleanup
 import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.BuiltInWhileWaiting
@@ -645,7 +646,7 @@ class CaptionSession(
         )
         pipeline.onPhaseChange = phaseChanges::phaseChanged
         pipeline.onSoundAlertsAvailabilityChange = {
-            CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking)
+            CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking, pipeline.soundAlertsMicrophoneSilent)
             checkCaptionsStillRunning()
         }
         pipeline.onPreparationProgress = phaseChanges::preparationProgressed
@@ -706,10 +707,24 @@ class CaptionSession(
 
     internal fun captionsActive(): Boolean = pipeline.mayLoadModels
 
+    private val recordingHandover = CaptionsHandover()
+
+    /** Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright. */
     internal fun stopCaptionsForRecording() {
+        recordingHandover.begin(pipeline.phase)
         replies.userTookControl()
         pipeline.stopFromNotification()
         pipeline.releaseModels()
+    }
+
+    /** The user took the captions over (stopped, paused or started them): they are no longer ours to give back. */
+    private fun dropRecordingHandover() {
+        if (recordingHandover.cancel()) publish()
+    }
+
+    /** The recording is over or its screen was left: captions paused for it carry on, others are not started. */
+    internal fun giveCaptionsBack() {
+        if (recordingHandover.end(pipeline.phase)) listen()
     }
 
     internal suspend fun holdCaptionsForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.beginRecordingTranscription() }
@@ -717,7 +732,10 @@ class CaptionSession(
     internal suspend fun waitOutCaptionsLoad() = withContext(Dispatchers.Main.immediate) { pipeline.waitOutAbandonedLoad() }
 
     internal suspend fun recordingTranscriptionDone() =
-        withContext(NonCancellable + Dispatchers.Main.immediate) { pipeline.endRecordingTranscription() }
+        withContext(NonCancellable + Dispatchers.Main.immediate) {
+            pipeline.endRecordingTranscription()
+            giveCaptionsBack()
+        }
 
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
     internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
@@ -733,6 +751,9 @@ class CaptionSession(
 
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
     fun listen(afterRestart: Boolean = false) {
+        // A start while a recording is being transcribed would load a second model; captions paused for it come back when it ends.
+        if (recordingHandover.pausedHere && pipeline.isTranscribingRecording) return
+        dropRecordingHandover()
         restartRefused = false
         refusalCard.captionsStarted()
         CaptionState.startRefused(false)
@@ -753,12 +774,14 @@ class CaptionSession(
     }
 
     fun pause() {
+        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
         pipeline.pause()
     }
 
     fun stopFromNotification() {
+        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
         pipeline.stopFromNotification()
@@ -937,6 +960,7 @@ class CaptionSession(
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
                 soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
+                soundAlertsMicrophoneSilent = pipeline.soundAlertsMicrophoneSilent,
                 engine = pipeline.activeEngineKind,
                 spokenLanguage = (pipeline.activeSettings ?: chosenSettings()).spokenLanguage,
             )
@@ -1047,6 +1071,7 @@ class CaptionSession(
             speakerName = pipeline::displayName,
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
+            pausedForRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Paused,
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,

@@ -106,6 +106,8 @@ data class CaptionScreenState(
     val phoneSoundStopped: Boolean = false,
     /** Sound alerts are on but the classifier can't be made to work; said for as long as that lasts. */
     val soundAlertsNotWorking: Boolean = false,
+    /** With [soundAlertsNotWorking]: the microphone sends only silence, which the banner says. */
+    val soundAlertsMicrophoneSilent: Boolean = false,
     /** The phone refused to start listening while Ozen was in front; said until captions start again. */
     val startRefused: Boolean = false,
     /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
@@ -129,6 +131,8 @@ data class CaptionScreenState(
     val downloadSecondsRemaining: Double? = null,
     /** Paused only while the phone says something aloud: a tap stops the voice, not opens the microphone onto it. */
     val pausedForSpeech: Boolean = false,
+    /** Paused while a recording is turned into text; the captions come back by themselves and the listening notification stays up. */
+    val pausedForRecording: Boolean = false,
     /** The phone's own model captioning while the chosen engine can't, and why. */
     val coveringForCloud: Boolean = false,
     val coveredEngine: TranscriptionEngineKind? = null,
@@ -153,7 +157,7 @@ data class CaptionScreenState(
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
             coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
-            builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage,
+            builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage, pausedForRecording,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -222,6 +226,7 @@ object CaptionState {
         now: Double = System.currentTimeMillis() / 1_000.0,
         downloadSecondsRemaining: Double? = null,
         pausedForSpeech: Boolean = false,
+        pausedForRecording: Boolean = false,
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
@@ -262,6 +267,7 @@ object CaptionState {
             scheduledRetry = scheduledRetry,
             downloadSecondsRemaining = downloadSecondsRemaining,
             pausedForSpeech = pausedForSpeech,
+            pausedForRecording = pausedForRecording,
             coveringForCloud = coveringForCloud,
             coveredEngine = coveredEngine,
             coverReason = coverReason,
@@ -395,8 +401,8 @@ object CaptionState {
         state.value = state.value.copy(speaking = on)
     }
 
-    fun soundAlertsNotWorking(notWorking: Boolean) {
-        state.value = state.value.copy(soundAlertsNotWorking = notWorking)
+    fun soundAlertsNotWorking(notWorking: Boolean, microphoneSilent: Boolean = false) {
+        state.value = state.value.copy(soundAlertsNotWorking = notWorking, soundAlertsMicrophoneSilent = notWorking && microphoneSilent)
     }
 
     fun startRefused(refused: Boolean) {

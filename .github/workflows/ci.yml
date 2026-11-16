@@ -58,10 +58,11 @@ jobs:
       # other than keys. A Swift release signed by a newer key needs the
       # copy refreshed.
       - name: Install Swift 6.1.3
+        timeout-minutes: 10
         run: |
           base=https://download.swift.org/swift-6.1.3-release/ubuntu2404/swift-6.1.3-RELEASE
           file=swift-6.1.3-RELEASE-ubuntu24.04.tar.gz
-          fetch() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$@"; }
+          fetch() { curl -fsSL --connect-timeout 30 --speed-limit 10000 --speed-time 60 --retry 5 --retry-max-time 480 --retry-all-errors --retry-delay 5 -o "$@"; }
           fetch "$RUNNER_TEMP/$file" "$base/$file"
           fetch "$RUNNER_TEMP/$file.sig" "$base/$file.sig"
           gpg --import .github/swift-all-keys.asc

@@ -162,12 +162,12 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
 
 /** Sound alerts are on but the classifier can't be made to work. It stays up for as long as that lasts: a close button would let it be forgotten while a smoke alarm goes unheard. */
 @Composable
-internal fun SoundAlertsNotWorkingBanner() {
+internal fun SoundAlertsNotWorkingBanner(microphoneSilent: Boolean = false) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Emergency,
         StoppedCaptionsNotice.soundAlertsNotWorkingTitle(),
-        StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
+        if (microphoneSilent) StoppedCaptionsNotice.soundAlertsMicrophoneSilentDetail() else StoppedCaptionsNotice.soundAlertsNotWorkingDetail(),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
@@ -184,13 +184,13 @@ internal fun StartRefusedBanner() {
     )
 }
 
-/** Sound alerts are on but the phone has Emergency alerts off or silent: a smoke alarm would be dropped or make no sound. A tap opens that channel's page in the phone's settings. */
+/** Sound alerts are on but the phone has Emergency alerts off, silent or without its buzz: a smoke alarm would be dropped or make no sound or buzz. A tap opens that channel's page in the phone's settings. */
 @Composable
 internal fun EmergencyChannelBanner(warning: EmergencyChannelNotice.Warning, onOpenSettings: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Emergency,
-        EmergencyChannelNotice.title(),
+        EmergencyChannelNotice.title(warning),
         EmergencyChannelNotice.detail(warning),
         Modifier
             .clickable(role = Role.Button, onClick = onOpenSettings)

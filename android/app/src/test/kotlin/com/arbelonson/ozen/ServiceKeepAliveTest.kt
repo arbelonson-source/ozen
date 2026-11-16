@@ -14,4 +14,11 @@ class ServiceKeepAliveTest {
         assertEquals(false, ServiceKeepAlive.ends(PipelinePhase.Idle, pausedForSpeech = false, soundsOnly = true))
         assertEquals(false, ServiceKeepAlive.ends(PipelinePhase.Paused, pausedForSpeech = false, soundsOnly = true))
     }
+
+    @Test
+    fun staysUpWhilePausedForARecordingButNotOnceItIsOver() {
+        assertEquals(false, ServiceKeepAlive.ends(PipelinePhase.Paused, pausedForSpeech = false, soundsOnly = false, pausedForRecording = true))
+        assertEquals(true, ServiceKeepAlive.ends(PipelinePhase.Paused, pausedForSpeech = false, soundsOnly = false, pausedForRecording = false))
+        assertEquals(true, ServiceKeepAlive.ends(PipelinePhase.Idle, pausedForSpeech = false, soundsOnly = false, pausedForRecording = true))
+    }
 }

@@ -153,6 +153,7 @@ public struct FileTranscriptionDriver: Sendable {
         if Task.isCancelled { return .cancelled }
         if state.received == 0 { return .failed(endMissing ? .couldNotRead : .noAudio) }
         if let stop = await finishTail(&state, report) { return stop }
+        if TranscriptionProgress.endsEarly(heardSeconds: seconds(state.received), totalSeconds: durationSeconds) { endMissing = true }
         report(progress(state, done: endMissing ? nil : max(seconds(state.received), durationSeconds ?? 0)))
         return state.lines.isEmpty ? .failed(.noSpeech) : .finished(lines: state.lines, endMissing: endMissing)
     }
