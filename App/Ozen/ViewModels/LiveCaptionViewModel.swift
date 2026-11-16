@@ -1406,23 +1406,38 @@ public final class LiveCaptionViewModel {
         }
     }
 
-    /// Whether the setting reached the disk. Unchanged counts as saved unless
-    /// the last write failed, then it is written again.
-    @discardableResult
-    public func setHomeServerAddress(_ address: String) async -> Bool {
+    /// Writes the address at once and says whether it reached the disk and
+    /// whether it differs from the one before. Unchanged counts as written
+    /// unless the last write failed, then it is written again. Nothing here
+    /// waits for a restart, so what is said about the write is not late.
+    public func storeHomeServerAddress(_ address: String) -> (written: Bool, changed: Bool) {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.homeServerAddress != trimmed else {
-            return settingsSaveError == nil || persist()
+            return (settingsSaveError == nil || persist(), false)
         }
         settings.typeHomeServerAddress(trimmed)
         let written = persist()
-        // This restart carries the current beam too: one still settling
-        // from the slider would only reconnect a second time.
+        // The restart that follows carries the current beam too: one still
+        // settling from the slider would only reconnect a second time.
         beamRestart?.cancel()
+        return (written, true)
+    }
+
+    /// Captions on the home computer start again with a changed address.
+    public func restartForHomeServerAddress() async {
         if settings.engine == .homeServer {
             await restartIfRunning()
         }
-        return written
+    }
+
+    /// Whether the setting reached the disk.
+    @discardableResult
+    public func setHomeServerAddress(_ address: String) async -> Bool {
+        let result = storeHomeServerAddress(address)
+        if result.changed {
+            await restartForHomeServerAddress()
+        }
+        return result.written
     }
 
     /// A pairing link from a home computer's QR code, waiting for someone

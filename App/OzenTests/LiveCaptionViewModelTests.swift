@@ -92,6 +92,16 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.settings.homeServerCertificatePin == nil)
     }
 
+    @Test("The address write is reported at once, without waiting for any restart")
+    func addressWriteIsReportedWithoutRestart() {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        let first = viewModel.storeHomeServerAddress("  192.168.1.30 ")
+        #expect(first.written && first.changed)
+        #expect(viewModel.settings.homeServerAddress == "192.168.1.30")
+        let again = viewModel.storeHomeServerAddress("192.168.1.30")
+        #expect(again.written && !again.changed)
+    }
+
     @Test("Connect pairs with the computer the alert named, even though closing the alert already cleared it, and not with one scanned since")
     func connectUsesTheShownPairing() async throws {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
