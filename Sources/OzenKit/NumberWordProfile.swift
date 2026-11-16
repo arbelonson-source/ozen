@@ -9,6 +9,8 @@ struct NumberWordProfile: Decodable, Sendable {
     var clockLinks: Set<String> = []
     var ambiguous: Set<String> = []
     var notACountBefore: Set<String> = []
+    var countsAfter: Set<String> = []
+    var plainAlone: Set<String> = []
     var onceWords: Set<String> = []
     var repeatLinks: Set<String> = []
     var repeatUnits: Set<String> = []
@@ -40,6 +42,8 @@ struct NumberWordProfile: Decodable, Sendable {
         clockLinks = try set(.clockLinks)
         ambiguous = try set(.ambiguous)
         notACountBefore = try set(.notACountBefore)
+        countsAfter = try set(.countsAfter)
+        plainAlone = try set(.plainAlone)
         onceWords = try set(.onceWords)
         repeatLinks = try set(.repeatLinks)
         repeatUnits = try set(.repeatUnits)
@@ -53,7 +57,7 @@ struct NumberWordProfile: Decodable, Sendable {
         oneFollowsUnit = try box.decodeIfPresent(Bool.self, forKey: .oneFollowsUnit) ?? false
         attachedPrefixes = (try box.decodeIfPresent([String].self, forKey: .attachedPrefixes) ?? []).map(ArabicLetters.fold)
         known = numbers.union(fractions).union(units).union(periods).union(adverbPeriods).union(clockNouns)
-            .union(clockOrdinals).union(onceWords).union(ambiguous).union(notACountBefore)
+            .union(clockOrdinals).union(onceWords).union(ambiguous).union(notACountBefore).union(countsAfter).union(plainAlone)
     }
 
     /// The form of a word as the lists have it: lower case and, for Arabic,
@@ -75,7 +79,7 @@ struct NumberWordProfile: Decodable, Sendable {
     }
 
     private enum Key: String, CodingKey {
-        case numbers, scales, connectors, fractions, fractionLinks, clockLinks, ambiguous, notACountBefore
+        case numbers, scales, connectors, fractions, fractionLinks, clockLinks, ambiguous, notACountBefore, countsAfter, plainAlone
         case onceWords, repeatLinks, repeatUnits, periods, idioms, units
         case adverbPeriods, clockNouns, clockOrdinals, plainWords, oneFollowsUnit, letterFolding, attachedPrefixes
     }

@@ -236,8 +236,10 @@
     ],
     "ambiguous": [
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
-      "halbes", "acht", "elf", "null"
+      "halbes"
     ],
+    "plainAlone": ["acht", "elf", "null"],
+    "countsAfter": ["um", "bis", "ab", "gegen"],
     "notACountBefore": [
       "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"
     ],

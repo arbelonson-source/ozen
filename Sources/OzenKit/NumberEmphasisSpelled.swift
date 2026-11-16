@@ -133,6 +133,8 @@ extension NumberEmphasis {
                     let done = finish(last, end, lowered[last], afterFraction: afterFraction)
                     let alone = position == last
                     var spanStart = start
+                    if alone, profile.plainAlone.contains(core), !done.joined,
+                       !(previous.map(profile.countsAfter.contains) ?? false) { continue }
                     if alone, profile.ambiguous.contains(core) {
                         if let previous, profile.notACountBefore.contains(previous) { continue }
                         if !done.joined {
