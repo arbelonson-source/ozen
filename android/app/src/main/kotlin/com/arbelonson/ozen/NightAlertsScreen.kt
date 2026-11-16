@@ -48,6 +48,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
     var dnd by remember { mutableStateOf(AlertNotifier.alarmsOverrideDoNotDisturb(context)) }
     var alarmsAllowed by remember { mutableStateOf(AlertNotifier.alarmsAllowed(context)) }
     var alarmsSilent by remember { mutableStateOf(AlertNotifier.alarmsPostable(context) && !AlertNotifier.alarmsAllowed(context)) }
+    var noBuzz by remember { mutableStateOf(AlertNotifier.emergencyWarning(context, true, false) == EmergencyChannelNotice.Warning.NoBuzz) }
     var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
     var sent by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
@@ -55,6 +56,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
         dnd = AlertNotifier.alarmsOverrideDoNotDisturb(context)
         alarmsAllowed = AlertNotifier.alarmsAllowed(context)
         alarmsSilent = AlertNotifier.alarmsPostable(context) && !alarmsAllowed
+        noBuzz = AlertNotifier.emergencyWarning(context, true, false) == EmergencyChannelNotice.Warning.NoBuzz
         blocked = !AlertNotifier.allowed(context)
         onPauseOrDispose { }
     }
@@ -111,6 +113,17 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                     button = if (dnd) null else tr("פתחו את הגדרות החירום", "Open the Emergency settings"),
                     onButton = { AlertNotifier.openAlarmSettings(context) },
                 )
+            }
+            if (noBuzz) {
+                item {
+                    Step(
+                        done = false,
+                        title = EmergencyChannelNotice.title(EmergencyChannelNotice.Warning.NoBuzz),
+                        text = EmergencyChannelNotice.detail(EmergencyChannelNotice.Warning.NoBuzz),
+                        button = tr("פתחו את הגדרות החירום", "Open the Emergency settings"),
+                        onButton = { AlertNotifier.openAlarmSettings(context) },
+                    )
+                }
             }
             item {
                 Step(

@@ -5,8 +5,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class NightStartCheckTest {
-    private fun found(battery: Boolean = true, dnd: Boolean = true, allowed: Boolean = true, postable: Boolean = true, notifications: Boolean = true) =
-        NightStartCheck.problems(battery, dnd, allowed, postable, notifications)
+    private fun found(battery: Boolean = true, dnd: Boolean = true, allowed: Boolean = true, postable: Boolean = true, notifications: Boolean = true, buzz: Boolean = true) =
+        NightStartCheck.problems(battery, dnd, allowed, postable, notifications, buzz)
 
     @Test
     fun `nothing is wrong when all three are right`() {
@@ -88,5 +88,21 @@ class NightStartCheckTest {
     @Test
     fun `fixing the battery does not bring in a problem from the other kind`() {
         assertEquals(listOf(Problem.Battery), NightStartCheck.stillOpen(listOf(Problem.Battery), listOf(Problem.Battery, Problem.DoNotDisturb)))
+    }
+
+    @Test
+    fun `alerts that will not buzz are a problem, before Do Not Disturb`() {
+        assertEquals(listOf(Problem.EmergencyNoBuzz), found(buzz = false))
+        assertEquals(listOf(Problem.EmergencyNoBuzz, Problem.DoNotDisturb), found(dnd = false, buzz = false))
+        assertEquals(listOf(Problem.EmergencySilent), found(dnd = false, allowed = false, buzz = false))
+    }
+
+    @Test
+    fun `the no-buzz card uses the caption screen words and stays while it is still open`() {
+        com.arbelonson.ozen.core.Localization.withLanguage(com.arbelonson.ozen.core.UILanguage.English) {
+            val text = NightStartCheck.text(Problem.EmergencyNoBuzz)
+            assertEquals(EmergencyChannelNotice.detail(EmergencyChannelNotice.Warning.NoBuzz), text)
+        }
+        assertEquals(listOf(Problem.EmergencyNoBuzz), NightStartCheck.stillOpen(listOf(Problem.EmergencySilent), listOf(Problem.EmergencyNoBuzz)))
     }
 }
