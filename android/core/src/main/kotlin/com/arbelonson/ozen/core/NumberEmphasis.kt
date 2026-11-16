@@ -598,6 +598,13 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         return second to coreEnd(second)
     }
 
+    fun minuteWithClockUnit(index: Int): Pair<Int, Int>? {
+        if (index >= words.size || !isNumber(index) || lowered[index] in profile.ambiguous) return null
+        if (runEnd(index) != index || !joinsNext(index, coreEnd(index))) return null
+        if (lowered[index + 1] !in profile.clockUnits) return null
+        return (index + 1) to coreEnd(index + 1)
+    }
+
     fun numberClock(last: Int, end: Int, cued: Boolean = false): Pair<Int, Int>? {
         if (!joinsNext(last, end) || lowered[last + 1] !in profile.numberClockLinks ||
             !joinsNext(last + 1, coreEnd(last + 1)) || last + 2 >= words.size
@@ -615,7 +622,13 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         if ((cued || cuedByArticle) && one != null && one in profile.clockMinuteOnes && !joinsNext(minute, coreEnd(minute))) {
             return minute to coreEnd(minute)
         }
-        return minuteEnd(minute)
+        val found = minuteEnd(minute) ?: minuteWithClockUnit(minute) ?: return null
+        if (profile.clockStopsBeforeCapitalized && joinsNext(found.first, found.second)) {
+            val noun = lowered[found.first + 1]
+            val first = words[found.first + 1].core?.firstOrNull()
+            if (noun != null && noun !in profile.clockUnits && first?.isUpperCase() == true) return null
+        }
+        return found
     }
 
     fun hourClock(unit: Int, end: Int): Pair<Int, Int>? {
