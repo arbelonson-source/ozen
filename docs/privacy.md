@@ -76,6 +76,12 @@ turns off Android's cloud backup for itself.
 
 ### Recent sound
 
+When the home computer or a cloud service drops out, the phone's own model
+hears the last seconds again (up to about 20) from the short stretch of sound it holds in memory, so the
+words are not lost. That sound does not leave the phone. On Android, a long
+conversation shared as a text file carries its title and the phone's date
+and time in the file name, so check the title before sharing.
+
 While captions run, Ozen holds the last 30 seconds of sound in the phone's
 memory, only so that a problem can be looked into. It is never written down
 unless you mark a problem, with **Mark a problem now** (lesamen be'aya

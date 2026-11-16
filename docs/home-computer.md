@@ -166,7 +166,10 @@ if you have not saved it yet.
 | --- | --- | --- |
 | "Connected: the computer answered in" a number of ms | The computer is there and accepted the code. | Nothing. |
 | "The computer answered but didn’t accept the code." | The computer is on, but the code on the phone is not the one it expects. | Scan the QR code again, or type the code again. |
-| "No answer from the computer." | The phone cannot reach it. | Check that it is on and awake, and on the same Wi-Fi as the phone (or online, for a `wss://` address). |
+| "No answer from the computer." | The phone cannot reach it. | Check that it is on and awake, and on the same Wi-Fi as the phone (or online, for a `wss://` address). If it moved to a new network, scan its QR code again. On an iPhone, the message also says to check that Ozen is allowed under Settings › Privacy & Security › Local Network. |
+| "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is on, but it answered with an error or with something the phone does not understand. It used to be reported as "No answer", which sent people to check a computer that was fine. | Restart Ozen on the computer, or scan the QR code again. |
+| "The computer’s pairing changed. Scan its QR code again." | The computer has a new certificate (for example its certificate file was deleted), so the saved code no longer fits. | Scan the QR code again. |
+| "The home computer can’t caption …" (with the language's name) | The speech model on the computer does not know the language the phone is set to. | See [When the computer cannot caption the language](#when-the-computer-cannot-caption-the-language). |
 | "The address or code is missing" | One of the two is empty. | Fill in both. |
 | "Outside the home network, use the address that starts with wss://" | The address is a plain one for a computer out on the internet. The phone won't send the sound, the code and the names there unencrypted. | Type the computer's address that starts with `wss://`. |
 
@@ -207,6 +210,41 @@ phone. Do it before you need it.
 A wrong code is handled the same way: the phone carries on with its own
 model if it has the backup. Without it, the screen says the home computer
 did not accept the pairing code. Scan the QR code again.
+
+When the computer drops out in the middle of a sentence, the phone's own
+model hears the last seconds again (up to about 20 seconds since the last
+finished line) before it goes on with the live sound. A half-written line
+that began inside those seconds is replaced by the replayed line, so words
+do not show twice. If the replay brings no words, the half line stays.
+
+Some answers are not "off or asleep", and the screen says so:
+
+- **"The computer answered, but not as Ozen expected. Restart Ozen on the
+  computer, or scan its QR code again."** The computer is on, but replied
+  with an error or something the phone does not understand. The phone still
+  tries again by itself, and carries on with its own model if it has the
+  backup.
+- **"The address or code is missing".** Nothing is saved to ask. Tap the
+  line to open Settings and scan the QR code. Nothing is retried on a timer;
+  captions start as soon as an address is saved. Sound alerts keep listening
+  meanwhile.
+
+## When the computer cannot caption the language
+
+The computer's model knows some languages, not all. If the phone is set to
+one it does not know, the screen says "The home computer can’t caption …"
+with the language's name, and a tap opens the engine settings. Asking again
+would get the same answer, so the phone does not ask on a timer.
+
+- **With the backup**, the phone carries on with its own model, and the
+  status line says "The home computer can’t caption …, so the phone carries
+  on by itself".
+- **Without it**, captions wait and say so. Sound alerts keep listening
+  meanwhile, so a doorbell or smoke alarm still alerts.
+
+To get captions, pick another engine under **Transcription engine**
+(manoa timlul), or set the phone to a language the computer's model knows.
+Test connection says the same words, so it can be checked there.
 
 If the test finds no answer at home, see
 [Troubleshooting](troubleshooting.md#the-home-computer-settings--home-computer--test-connection):
