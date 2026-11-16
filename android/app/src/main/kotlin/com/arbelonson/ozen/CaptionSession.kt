@@ -798,10 +798,11 @@ class CaptionSession(
     }
 
     fun stopFromNotification() {
-        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
+        // Stopped first: letting go of the hand-over before would save the temporary sounds-only as her night choice.
         pipeline.stopFromNotification()
+        dropRecordingHandover()
     }
 
     /**
