@@ -197,6 +197,7 @@ class PhasePresentation private constructor(
             modelJustReady: Boolean = false,
             coverDetail: String? = null,
             spokenLanguage: UILanguage = UILanguage.Hebrew,
+            pausedForRecording: Boolean = false,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -278,6 +279,13 @@ class PhasePresentation private constructor(
                             systemImage = "speaker.wave.2.fill",
                             tint = PhaseTint.Attention,
                             action = Action.StopSpeaking,
+                        )
+                    } else if (pausedForRecording) {
+                        PhasePresentation(
+                            title = tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text"),
+                            detail = tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
+                            systemImage = "pause.circle.fill",
+                            tint = PhaseTint.Attention,
                         )
                     } else {
                         PhasePresentation(
