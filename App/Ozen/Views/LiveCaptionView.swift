@@ -147,7 +147,9 @@ struct LiveCaptionView: View {
             soundsOnly: viewModel.isListeningForSoundsOnly,
             builtInOffered: builtInOffered,
             modelGettingReady: viewModel.pipeline.waitingModelGettingReady,
-            modelJustReady: showingModelReady
+            modelJustReady: showingModelReady,
+            pausedForRecording: viewModel.captionsHeldForRecording,
+            soundAlertsPaused: viewModel.soundAlertsPausedForRecording
         )
     }
 

@@ -1087,6 +1087,7 @@ public final class LiveCaptionViewModel {
     public func perform(_ action: AppAction) async {
         switch action {
         case .startCaptions:
+            captionsHeldForRecording = false
             // Paused while the phone talks: captions come back by themselves
             // when it's done. Opening the microphone now would caption the
             // phone's own sentence. A phone that has gone quiet without
@@ -1102,6 +1103,7 @@ public final class LiveCaptionViewModel {
             }
             historySessionDidChangePhase()
         case .stopCaptions:
+            captionsHeldForRecording = false
             speechPause.userTookControl()
             await saveFitMeasurementIfReady()
             pipeline.stop()
@@ -1177,7 +1179,8 @@ public final class LiveCaptionViewModel {
 
     /// For the night: captions stop and the speech model is let go, while
     /// sound alerts keep listening (see `CaptionPipeline.listenForSoundsOnly`).
-    public func listenForSoundsOnly() async {
+    public func listenForSoundsOnly(forRecording: Bool = false) async {
+        if !forRecording { captionsHeldForRecording = false }
         speechPause.userTookControl()
         if pipeline.phase.isListening { await saveFitMeasurementIfReady() }
         await pipeline.listenForSoundsOnly()
@@ -1186,7 +1189,8 @@ public final class LiveCaptionViewModel {
         checkCaptionsStillRunning()
     }
 
-    public func togglePause() async {
+    public func togglePause(forRecording: Bool = false) async {
+        if !forRecording { captionsHeldForRecording = false }
         speechPause.userTookControl()
         if pipeline.phase == .paused {
             await pipeline.resume(settings: settings)
@@ -1914,6 +1918,15 @@ public final class LiveCaptionViewModel {
         let typed = HebrewText.normalize(phrase)
         guard !typed.isEmpty else { return nil }
         return settings.keywordAlerts.first { HebrewText.normalize($0.phrase) == typed }
+    }
+
+    /// A recording is being turned into text and captions were let go for
+    /// it; they come back by themselves when it ends.
+    public var captionsHeldForRecording = false
+
+    /// Sound alerts are on but not listening meanwhile.
+    public var soundAlertsPausedForRecording: Bool {
+        settings.soundAlerts.isEnabled && !pipeline.isListeningForSoundsOnly
     }
 
     /// Captions are paused only while the phone says something aloud, and

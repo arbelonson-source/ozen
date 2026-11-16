@@ -16,6 +16,7 @@ protocol RecordingTranscribeHost: AnyObject {
     var soundAlertsOn: Bool { get }
     func toggleCaptionsPause() async
     func keepSoundsListening() async
+    func setCaptionsHeldForRecording(_ held: Bool)
     func stopCaptions() async
     func beginRecordingTranscription()
     func waitOutCaptionsLoad() async
@@ -53,11 +54,15 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     }
 
     func toggleCaptionsPause() async {
-        await viewModel.togglePause()
+        await viewModel.togglePause(forRecording: true)
     }
 
     func keepSoundsListening() async {
-        await viewModel.listenForSoundsOnly()
+        await viewModel.listenForSoundsOnly(forRecording: true)
+    }
+
+    func setCaptionsHeldForRecording(_ held: Bool) {
+        viewModel.captionsHeldForRecording = held
     }
 
     func stopCaptions() async {
