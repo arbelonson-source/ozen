@@ -102,6 +102,12 @@ struct HistoryDetailView: View {
         let slots = SpeakerColorSlots(record.segments.map { (clusterID: $0.speakerClusterID, name: $0.speakerName) })
         return ScrollViewReader { proxy in
             List {
+                if record.cutShort {
+                    Section {
+                        Label(TranscriptSessionRecord.cutShortNote, systemImage: "exclamationmark.triangle")
+                            .accessibilityElement(children: .combine)
+                    }
+                }
                 if let stats, stats.totalWords > 0 {
                     ConversationSummarySection(stats: stats, slots: slots)
                 }

@@ -1200,7 +1200,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጠፍተዋል፣ ስለዚህ የጭስ ማንቂያ አይደርሰዎትም። ለማብራት ይንኩ።",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጸጥ ተብለዋል፣ ስለዚህ የጭስ ማንቂያ አይጮኽም ወይም አይንቀጠቀጥም። ለማስተካከል ይንኩ።",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "የOzen የአደጋ ማንቂያዎች በስልኩ ውስጥ ጸጥ ተብለዋል። ድምፁን መልሰው ያብሩ፣ ከዚያ በዚያው ገጽ ላይ %1 የሚለውን ያብሩ።",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "ማይክሮፎኑ ዝምታ ብቻ እየላከ ነው፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። ማይክሮፎኑ መገናኘቱንና ሌላ መተግበሪያ ወይም የስልክ ቅንብር እንደማይከለክለው ያረጋግጡ። Ozen ማዳመጡን ይቀጥላል።"
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "ማይክሮፎኑ ዝምታ ብቻ እየላከ ነው፤ ስለዚህ የበር ደወል፣ ማንቂያ ወይም የሕፃን ለቅሶ ሊያመልጥዎት ይችላል። ማይክሮፎኑ መገናኘቱንና ሌላ መተግበሪያ ወይም የስልክ ቅንብር እንደማይከለክለው ያረጋግጡ። Ozen ማዳመጡን ይቀጥላል።",
+  "This transcript stops before the end of the recording, so some text is missing.": "ጽሑፉ ከቅጂው መጨረሻ በፊት ይቆማል፤ ስለዚህ የተወሰነ ጽሑፍ ጎድሏል።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2403,7 +2404,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "تنبيهات الطوارئ متوقفة في إعدادات الهاتف، لذا لن يصلكم تنبيه إنذار الدخان. المسوا لتشغيلها.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "تنبيهات الطوارئ مضبوطة على الصامت في إعدادات الهاتف، لذا لن يصدر إنذار الدخان صوتًا ولا اهتزازًا. المسوا للإصلاح.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "تنبيهات الطوارئ في Ozen مضبوطة على الصامت في الهاتف. أعيدوا الصوت، ثم فعّلوا «%1» في الصفحة نفسها.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "الميكروفون لا يرسل سوى الصمت، وقد يفوتكم رنين جرس الباب أو جهاز إنذار أو بكاء طفل. تأكدوا من توصيل الميكروفون ومن أن أي تطبيق آخر أو إعداد في الهاتف لا يحجبه. يواصل Ozen الاستماع."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "الميكروفون لا يرسل سوى الصمت، وقد يفوتكم رنين جرس الباب أو جهاز إنذار أو بكاء طفل. تأكدوا من توصيل الميكروفون ومن أن أي تطبيق آخر أو إعداد في الهاتف لا يحجبه. يواصل Ozen الاستماع.",
+  "This transcript stops before the end of the recording, so some text is missing.": "يتوقف النص قبل نهاية التسجيل، لذلك ينقص بعض الكلام."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3606,7 +3608,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "紧急提醒在手机设置中已关闭，所以你收不到烟雾报警的提醒。点按即可打开。",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "紧急提醒在手机设置中被设为静音，所以烟雾报警既不会响铃也不会震动。点按即可修复。",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "手机中 Ozen 的紧急提醒被设为静音。请把声音打开，然后在同一页面上开启“%1”。",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "麦克风只传来静音，因此你可能会错过门铃、警报或婴儿的哭声。请检查麦克风是否已连接，以及是否有其他应用或手机设置在阻止它。Ozen 会继续聆听。"
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "麦克风只传来静音，因此你可能会错过门铃、警报或婴儿的哭声。请检查麦克风是否已连接，以及是否有其他应用或手机设置在阻止它。Ozen 会继续聆听。",
+  "This transcript stops before the end of the recording, so some text is missing.": "这份文字在录音结束前就停止了，因此缺少一部分内容。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4809,7 +4812,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Les alertes d’urgence sont désactivées dans les réglages du téléphone : une alarme incendie ne vous parviendra pas. Touchez pour les activer.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Les alertes d’urgence sont en mode silencieux dans les réglages du téléphone : une alarme incendie ne sonnera pas et ne fera pas vibrer. Touchez pour corriger.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Les alertes d’urgence d’Ozen sont en mode silencieux dans le téléphone. Réactivez le son, puis activez « %1 » sur la même page.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Le microphone n’envoie que du silence : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. Vérifiez que le microphone est branché et qu’aucune autre appli ni aucun réglage du téléphone ne le bloque. Ozen continue d’écouter."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Le microphone n’envoie que du silence : vous pourriez manquer une sonnette, une alarme ou des pleurs de bébé. Vérifiez que le microphone est branché et qu’aucune autre appli ni aucun réglage du téléphone ne le bloque. Ozen continue d’écouter.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Cette transcription s’arrête avant la fin de l’enregistrement ; il manque donc une partie du texte."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6012,7 +6016,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Notfallhinweise sind in den Einstellungen des Telefons ausgeschaltet, deshalb erreicht Sie ein Rauchmelder nicht. Zum Einschalten tippen.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Notfallhinweise sind in den Einstellungen des Telefons auf lautlos gestellt, deshalb gibt ein Rauchmelder weder Ton noch Vibration ab. Zum Beheben tippen.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Die Notfallhinweise von Ozen sind im Telefon auf lautlos gestellt. Schalten Sie den Ton wieder ein und aktivieren Sie dann „%1“ auf derselben Seite.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Das Mikrofon sendet nur Stille, daher könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Prüfen Sie, ob das Mikrofon verbunden ist und keine andere App und keine Einstellung des Telefons es blockiert. Ozen hört weiter zu."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Das Mikrofon sendet nur Stille, daher könnten Sie eine Türklingel, einen Alarm oder ein weinendes Baby verpassen. Prüfen Sie, ob das Mikrofon verbunden ist und keine andere App und keine Einstellung des Telefons es blockiert. Ozen hört weiter zu.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Diese Abschrift endet vor dem Ende der Aufnahme, es fehlt also ein Teil des Textes."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7215,7 +7220,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट बंद हैं, इसलिए धुएँ के अलार्म की सूचना आप तक नहीं पहुँचेगी। चालू करने के लिए छूएँ।",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट साइलेंट पर हैं, इसलिए धुएँ के अलार्म पर न आवाज़ होगी और न कंपन। ठीक करने के लिए छूएँ।",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "फ़ोन में Ozen के आपातकालीन अलर्ट साइलेंट पर हैं। आवाज़ वापस चालू करें, फिर उसी पेज पर “%1” चालू करें।",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "माइक्रोफ़ोन केवल सन्नाटा भेज रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की सूचना न मिले। जाँच लें कि माइक्रोफ़ोन जुड़ा है और कोई दूसरा ऐप या फ़ोन की सेटिंग उसे रोक नहीं रही है। Ozen सुनना जारी रखता है।"
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "माइक्रोफ़ोन केवल सन्नाटा भेज रहा है, इसलिए हो सकता है कि आपको दरवाज़े की घंटी, अलार्म या बच्चे के रोने की सूचना न मिले। जाँच लें कि माइक्रोफ़ोन जुड़ा है और कोई दूसरा ऐप या फ़ोन की सेटिंग उसे रोक नहीं रही है। Ozen सुनना जारी रखता है।",
+  "This transcript stops before the end of the recording, so some text is missing.": "यह ट्रांसक्रिप्ट रिकॉर्डिंग खत्म होने से पहले रुक जाती है, इसलिए कुछ टेक्स्ट गायब है।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8418,7 +8424,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Os alertas de emergência estão desativados nas definições do telefone, por isso um alarme de fumo não lhe chegará. Toque para os ativar.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Os alertas de emergência estão em modo silencioso nas definições do telefone, por isso um alarme de fumo não vai tocar nem vibrar. Toque para corrigir.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Os alertas de emergência do Ozen estão em modo silencioso no telefone. Volte a ligar o som e depois ative «%1» na mesma página.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "O microfone está a enviar apenas silêncio, por isso pode perder uma campainha, um alarme ou o choro de um bebé. Verifique se o microfone está ligado e se nenhuma outra aplicação ou definição do telefone o bloqueia. O Ozen continua a ouvir."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "O microfone está a enviar apenas silêncio, por isso pode perder uma campainha, um alarme ou o choro de um bebé. Verifique se o microfone está ligado e se nenhuma outra aplicação ou definição do telefone o bloqueia. O Ozen continua a ouvir.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Esta transcrição termina antes do fim da gravação, então falta parte do texto."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9621,7 +9628,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Экстренные оповещения выключены в настройках телефона, поэтому сигнал дымовой тревоги до вас не дойдёт. Нажмите, чтобы включить.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Экстренные оповещения переведены в беззвучный режим в настройках телефона, поэтому дымовая тревога не прозвучит и не завибрирует. Нажмите, чтобы исправить.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Экстренные оповещения Ozen переведены в беззвучный режим в телефоне. Верните звук, затем включите «%1» на той же странице.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Микрофон передаёт только тишину, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Проверьте, подключён ли микрофон и не блокирует ли его другое приложение или настройка телефона. Ozen продолжает слушать."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Микрофон передаёт только тишину, поэтому вы можете пропустить дверной звонок, сигнал тревоги или плач ребёнка. Проверьте, подключён ли микрофон и не блокирует ли его другое приложение или настройка телефона. Ozen продолжает слушать.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Эта расшифровка обрывается до конца записи, поэтому часть текста отсутствует."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10824,7 +10832,8 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Las alertas de emergencia están desactivadas en los ajustes del teléfono, así que una alarma de humo no te llegará. Toca para activarlas.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Las alertas de emergencia están en silencio en los ajustes del teléfono, así que una alarma de humo no sonará ni vibrará. Toca para corregirlo.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Las alertas de emergencia de Ozen están en silencio en el teléfono. Vuelve a activar el sonido y luego activa «%1» en la misma página.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "El micrófono solo envía silencio, así que podrías perderte un timbre, una alarma o el llanto de un bebé. Comprueba que el micrófono esté conectado y que ninguna otra app ni ajuste del teléfono lo bloquee. Ozen sigue escuchando."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "El micrófono solo envía silencio, así que podrías perderte un timbre, una alarma o el llanto de un bebé. Comprueba que el micrófono esté conectado y que ninguna otra app ni ajuste del teléfono lo bloquee. Ozen sigue escuchando.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Esta transcripción termina antes del final de la grabación, así que falta parte del texto."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12027,6 +12036,7 @@
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Екстрені сповіщення вимкнено в налаштуваннях телефона, тому сигнал димової тривоги до вас не дійде. Торкніться, щоб увімкнути.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Екстрені сповіщення переведено в беззвучний режим у налаштуваннях телефона, тому димова тривога не пролунає й не завібрує. Торкніться, щоб виправити.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Екстрені сповіщення Ozen переведено в беззвучний режим у телефоні. Поверніть звук, а потім увімкніть «%1» на тій самій сторінці.",
-  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Мікрофон передає лише тишу, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Перевірте, чи мікрофон підключено і чи його не блокує інший застосунок або налаштування телефона. Ozen продовжує слухати."
+  "The microphone is sending only silence, so you may miss a doorbell, an alarm or a baby crying. Check that the microphone is connected and that no other app or phone setting blocks it. Ozen keeps listening.": "Мікрофон передає лише тишу, тому ви можете пропустити дверний дзвінок, сигнал тривоги або плач дитини. Перевірте, чи мікрофон підключено і чи його не блокує інший застосунок або налаштування телефона. Ozen продовжує слухати.",
+  "This transcript stops before the end of the recording, so some text is missing.": "Ця розшифровка обривається до кінця запису, тому частини тексту бракує."
  }
 }
