@@ -1440,6 +1440,39 @@ public final class LiveCaptionViewModel {
         return result.written
     }
 
+    /// What closing Settings stored: used to start captions again once.
+    public struct HomeServerEntriesStored: Equatable {
+        public var addressChanged = false
+        public var codeSaved = false
+        public var codeFailed = false
+        public var needsRestart: Bool { addressChanged || codeSaved }
+    }
+
+    /// Stores a typed address and a typed pairing code without restarting
+    /// anything, so closing Settings with both unsaved restarts captions
+    /// once (`restartForHomeServerEntries`), not once for each.
+    public func storeHomeServerEntries(address: String?, code: String) -> HomeServerEntriesStored {
+        var stored = HomeServerEntriesStored()
+        if let address {
+            stored.addressChanged = storeHomeServerAddress(address).changed
+        }
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            stored.codeSaved = saveHomeServerCode(trimmed)
+            stored.codeFailed = !stored.codeSaved
+        }
+        if stored.codeSaved {
+            beamRestart?.cancel()
+        }
+        return stored
+    }
+
+    public func restartForHomeServerEntries(_ stored: HomeServerEntriesStored) async {
+        if stored.needsRestart, settings.engine == .homeServer {
+            await restartIfRunning()
+        }
+    }
+
     /// A pairing link from a home computer's QR code, waiting for someone
     /// to confirm it (see `HomeServerPairing`).
     public var pendingPairing: HomeServerPairing?

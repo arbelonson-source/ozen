@@ -169,34 +169,45 @@ class EngineSettings(
 
     /** Whether the address reached the disk. An unchanged address counts as saved unless the last write failed, then it is written again. */
     fun saveHomeComputerAddress(draft: String): Boolean {
+        val stored = storeHomeComputerAddress(draft)
+        if (stored.changed && homeComputerIsTheEngine) restart()
+        return stored.written
+    }
+
+    private class AddressStored(val written: Boolean, val changed: Boolean)
+
+    private fun storeHomeComputerAddress(draft: String): AddressStored {
         val address = draft.trim()
         if (settings.current.value.homeServerAddress == address) {
-            if (!settings.saveFailed.value) return true
+            if (!settings.saveFailed.value) return AddressStored(written = true, changed = false)
             settings.change {}
-            return !settings.saveFailed.value
+            return AddressStored(written = !settings.saveFailed.value, changed = false)
         }
         settings.change {
             it.homeServerAddress = address
             it.homeServerCertificatePin = null
         }
-        val written = !settings.saveFailed.value
-        if (homeComputerIsTheEngine) restart()
-        return written
+        return AddressStored(written = !settings.saveFailed.value, changed = true)
     }
 
     fun hasPairingCode(): Boolean = pairingCodeHeld.value
 
     suspend fun savePairingCode(draft: String): Boolean {
         return withContext(NonCancellable) {
-            val code = draft.trim()
-            if (code.isEmpty()) return@withContext false
-            credentialWork.withLock {
-                if (!withContext(io) { homeServerCode.save(code) }) return@withContext false
-                pairingCodeHeld.value = true
-            }
-            if (homeComputerIsTheEngine) restart()
-            true
+            val stored = storePairingCode(draft)
+            if (stored && homeComputerIsTheEngine) restart()
+            stored
         }
+    }
+
+    private suspend fun storePairingCode(draft: String): Boolean {
+        val code = draft.trim()
+        if (code.isEmpty()) return false
+        credentialWork.withLock {
+            if (!withContext(io) { homeServerCode.save(code) }) return false
+            pairingCodeHeld.value = true
+        }
+        return true
     }
 
     suspend fun deletePairingCode() {
@@ -254,8 +265,13 @@ class EngineSettings(
 
     /** False when a typed key could not be stored, so Settings can stay open and say so instead of closing on it. */
     suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String): Boolean {
-        HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
-        savePairingCode(pairingCodeDraft)
+        withContext(NonCancellable) {
+            val address = HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)
+            val addressChanged = address != null && storeHomeComputerAddress(address).changed
+            val codeStored = storePairingCode(pairingCodeDraft)
+            // Both entries are stored before captions start again, once.
+            if ((addressChanged || codeStored) && homeComputerIsTheEngine) restart()
+        }
         return cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
     }
 
