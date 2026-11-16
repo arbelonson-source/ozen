@@ -35,16 +35,17 @@ import com.arbelonson.ozen.ui.OzenSpacing
  * Emergency channel being off or silent. Listening starts whatever it finds.
  */
 object NightStartCheck {
-    enum class Problem { Battery, NotificationsOff, EmergencyOff, EmergencySilent, DoNotDisturb }
+    enum class Problem { Battery, NotificationsOff, EmergencyOff, EmergencySilent, EmergencyNoBuzz, DoNotDisturb }
 
-    fun problems(batteryExempt: Boolean, dndThrough: Boolean, alarmsAllowed: Boolean, alarmsPostable: Boolean, notificationsAllowed: Boolean = true): List<Problem> = buildList {
+    fun problems(batteryExempt: Boolean, dndThrough: Boolean, alarmsAllowed: Boolean, alarmsPostable: Boolean, notificationsAllowed: Boolean = true, alarmsBuzz: Boolean = true): List<Problem> = buildList {
         if (!batteryExempt) add(Problem.Battery)
         if (!notificationsAllowed) {
             add(Problem.NotificationsOff)
         } else if (!alarmsAllowed) {
             add(if (alarmsPostable) Problem.EmergencySilent else Problem.EmergencyOff)
-        } else if (!dndThrough) {
-            add(Problem.DoNotDisturb)
+        } else {
+            if (!alarmsBuzz) add(Problem.EmergencyNoBuzz)
+            if (!dndThrough) add(Problem.DoNotDisturb)
         }
     }
 
@@ -79,6 +80,7 @@ object NightStartCheck {
         AlertNotifier.alarmsAllowed(context),
         AlertNotifier.alarmsPostable(context),
         AlertNotifier.allowed(context),
+        AlertNotifier.emergencyWarning(context, true, false) != EmergencyChannelNotice.Warning.NoBuzz,
     )
 
     fun text(problem: Problem, phoneLabel: (String) -> String? = { null }): String = when (problem) {
@@ -87,6 +89,7 @@ object NightStartCheck {
         Problem.DoNotDisturb -> NightAlerts.dndText(false, alarmsAllowed = true, phoneLabel = phoneLabel)
         Problem.EmergencySilent -> NightAlerts.dndText(false, alarmsAllowed = false, phoneLabel = phoneLabel, alarmsSilent = true)
         Problem.EmergencyOff -> NightAlerts.dndText(false, alarmsAllowed = false, phoneLabel = phoneLabel)
+        Problem.EmergencyNoBuzz -> EmergencyChannelNotice.detail(EmergencyChannelNotice.Warning.NoBuzz)
     }
 }
 

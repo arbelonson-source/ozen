@@ -79,6 +79,12 @@ class NightAlertsTest {
     }
 
     @Test
+    fun `Emergency alerts that will not buzz are one more to check`() {
+        assertEquals(1, NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = true, alarmsBuzz = false))
+        assertEquals(0, NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = true, alarmsBuzz = true))
+    }
+
+    @Test
     fun `sounds at home turned off is one more to check`() {
         assertEquals(1, NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = false))
         assertEquals(3, NightAlerts.openItems(batteryExempt = false, dndThrough = false, soundsOn = false))

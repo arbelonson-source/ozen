@@ -1328,7 +1328,7 @@ internal fun TestAlertButton(sent: Boolean, content: AlertNotificationContent = 
 // alert with the screen off: the night row said "All set" right under the
 // warning that says so. As on the iPhone, that is one more to check.
 private fun nightItemsToCheck(context: android.content.Context, soundsOn: Boolean): Int =
-    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context), soundsOn, AlertNotifier.allowed(context))
+    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context), soundsOn, AlertNotifier.allowed(context), AlertNotifier.emergencyWarning(context, true, false) != EmergencyChannelNotice.Warning.NoBuzz)
 
 internal fun openNotificationSettings(context: android.content.Context) {
     context.startActivity(
