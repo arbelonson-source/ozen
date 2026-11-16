@@ -646,7 +646,7 @@ class CaptionSession(
         )
         pipeline.onPhaseChange = phaseChanges::phaseChanged
         pipeline.onSoundAlertsAvailabilityChange = {
-            CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking)
+            CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking, pipeline.soundAlertsMicrophoneSilent)
             checkCaptionsStillRunning()
         }
         pipeline.onPreparationProgress = phaseChanges::preparationProgressed
@@ -958,6 +958,7 @@ class CaptionSession(
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
                 soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
+                soundAlertsMicrophoneSilent = pipeline.soundAlertsMicrophoneSilent,
                 engine = pipeline.activeEngineKind,
                 spokenLanguage = (pipeline.activeSettings ?: chosenSettings()).spokenLanguage,
             )

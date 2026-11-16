@@ -9,6 +9,15 @@ object TranscriptionProgress {
         return (doneSeconds / totalSeconds).coerceIn(0.0, 1.0).toFloat()
     }
 
+    private const val EARLY_END_SHARE = 0.05
+    private const val EARLY_END_SECONDS = 10.0
+
+    fun endsEarly(heardSeconds: Double, totalSeconds: Double?): Boolean {
+        if (totalSeconds == null || !(totalSeconds > 0) || !heardSeconds.isFinite()) return false
+        val missing = totalSeconds - heardSeconds
+        return missing > EARLY_END_SECONDS && missing > totalSeconds * EARLY_END_SHARE
+    }
+
     fun percent(fraction: Float): Int = Math.floor(fraction * 100.0 + 1e-5).toInt().coerceIn(0, 100)
 
     fun secondsLeft(elapsedSeconds: Double, doneSeconds: Double, totalSeconds: Double?): Double? {

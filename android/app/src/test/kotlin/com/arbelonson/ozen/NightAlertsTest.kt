@@ -112,6 +112,18 @@ class NightAlertsTest {
     }
 
     @Test
+    fun `do not disturb advice says silent, not turned off, for a silenced Emergency channel`() {
+        val low = NotificationManager.IMPORTANCE_LOW
+        assertFalse(AlertNotifier.alarmsOn(notificationsOn = true, importance = low))
+        Localization.withLanguage(UILanguage.English) {
+            val silent = NightAlerts.dndText(through = false, alarmsAllowed = false, alarmsSilent = true)
+            assertTrue(silent.contains("set to silent") && !silent.contains("turned off"), silent)
+            val off = NightAlerts.dndText(through = false, alarmsAllowed = false, alarmsSilent = false)
+            assertTrue(off.contains("turned off"), off)
+        }
+    }
+
+    @Test
     fun `do not disturb advice names Emergency alerts turned off in the phone as the cause`() {
         val none = NotificationManager.IMPORTANCE_NONE
         val high = NotificationManager.IMPORTANCE_HIGH

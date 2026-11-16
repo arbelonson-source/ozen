@@ -258,20 +258,29 @@ class EngineSettings(
         return address && (codeSaved || codeDraft.isNotBlank())
     }
 
-    suspend fun testConnection(addressDraft: String): HomeServerCheck {
-        HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
-        return checkHomeComputer()
-    }
+    /** What `storeHomeComputerEntries` kept: whether the typed code reached the disk, and whether captions were started again. */
+    class EntriesStored(val codeStored: Boolean, val restarted: Boolean)
 
-    /** False when a typed key could not be stored, so Settings can stay open and say so instead of closing on it. */
-    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String): Boolean {
+    private suspend fun storeHomeComputerEntries(addressDraft: String, pairingCodeDraft: String): EntriesStored =
         withContext(NonCancellable) {
             val address = HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)
             val addressChanged = address != null && storeHomeComputerAddress(address).changed
             val codeStored = storePairingCode(pairingCodeDraft)
             // Both entries are stored before captions start again, once.
-            if ((addressChanged || codeStored) && homeComputerIsTheEngine) restart()
+            val restarted = (addressChanged || codeStored) && homeComputerIsTheEngine
+            if (restarted) restart()
+            EntriesStored(codeStored, restarted)
         }
+
+    /** Stores a typed code and address, restarts captions once for them, then tries the connection. */
+    suspend fun testConnection(addressDraft: String, pairingCodeDraft: String = "", onStored: (EntriesStored) -> Unit = {}): HomeServerCheck {
+        onStored(storeHomeComputerEntries(addressDraft, pairingCodeDraft))
+        return checkHomeComputer()
+    }
+
+    /** False when a typed key could not be stored, so Settings can stay open and say so instead of closing on it. */
+    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String): Boolean {
+        storeHomeComputerEntries(addressDraft, pairingCodeDraft)
         return cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
     }
 

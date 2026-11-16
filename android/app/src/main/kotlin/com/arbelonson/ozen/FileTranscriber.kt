@@ -319,7 +319,8 @@ class FileTranscriber(
         }
         cutter.finish(take)
         if (lines.isEmpty()) throw Problem(DecodeFeed.problemWithoutText(end))
-        return Transcript(lines, end != DecodeEnd.Whole)
+        val endsEarly = TranscriptionProgress.endsEarly(heard.toDouble() / SAMPLE_RATE, duration)
+        return Transcript(lines, end != DecodeEnd.Whole || endsEarly)
     }
 
     private companion object {

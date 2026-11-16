@@ -632,16 +632,25 @@ struct SettingsView: View {
                     // Settings would. Testing the saved ones showed
                     // "Connected" under an address that was never tried.
                     let typedAddress = HomeServer.unsavedAddress(draft: homeServerAddressDraft, saved: viewModel.settings.homeServerAddress)
-                    saveHomeServerCode()
+                    let code = homeServerCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let stored = viewModel.storeHomeServerEntries(address: typedAddress, code: code)
+                    if let typedAddress {
+                        homeServerAddressDraft = typedAddress
+                        homeServerAddressLoaded = typedAddress
+                    }
+                    if !code.isEmpty {
+                        homeServerCodeSaveFailed = stored.codeFailed
+                    }
+                    if stored.codeSaved {
+                        homeServerCodeDraft = ""
+                        hasHomeServerCode = true
+                    }
                     forgetHomeServerCheck()
                     let generation = homeServerCheckGeneration
                     Task {
-                        if let typedAddress {
-                            homeServerAddressDraft = typedAddress
-                            homeServerAddressLoaded = typedAddress
-                            await viewModel.setHomeServerAddress(typedAddress)
-                        }
-                        let check = await viewModel.checkHomeServer()
+                        // Both entries are stored first, so captions
+                        // reconnect once, not once for each.
+                        let check = await viewModel.restartThenCheckHomeServer(stored)
                         isCheckingHomeServer = false
                         guard generation == homeServerCheckGeneration else { return }
                         homeServerCheck = check

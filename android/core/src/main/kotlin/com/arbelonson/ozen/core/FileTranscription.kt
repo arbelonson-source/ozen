@@ -118,12 +118,12 @@ val endMissingMessage: String
 fun FileTranscription.announcement(previous: FileTranscription): String? = when {
     this is FileTranscription.Working && previous is FileTranscription.Working && stage == previous.stage -> null
     this is FileTranscription.Working -> stage.title
-    this is FileTranscription.Done && previous is FileTranscription.Done -> null
+    this is FileTranscription.Done && previous is FileTranscription.Done && name == previous.name -> null
     this is FileTranscription.Done -> {
         val details = (listOf(history.message) + listOfNotNull(endMissingMessage.takeIf { endMissing })).joinToString(" ")
         tr("ההקלטה הומרה לטקסט. %1", "Recording turned into text. %1", listOf(details))
     }
-    this is FileTranscription.Failed && previous is FileTranscription.Failed && problem == previous.problem -> null
+    this is FileTranscription.Failed && previous is FileTranscription.Failed && name == previous.name && problem == previous.problem -> null
     this is FileTranscription.Failed -> problem.message
     else -> null
 }

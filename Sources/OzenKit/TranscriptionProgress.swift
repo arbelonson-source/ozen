@@ -30,4 +30,13 @@ public enum TranscriptionProgress {
         if rest == 0 { return tr("נותרו בערך %1 שע׳", "About %1 h left", args: ["\(hours)"]) }
         return tr("נותרו בערך %1 שע׳ ו־%2 דק׳", "About %1 h %2 min left", args: ["\(hours)", "\(rest)"])
     }
+
+    static let earlyEndShare = 0.05
+    static let earlyEndSeconds = 10.0
+
+    public static func endsEarly(heardSeconds: Double, totalSeconds: Double?) -> Bool {
+        guard let totalSeconds, totalSeconds > 0, heardSeconds.isFinite else { return false }
+        let missing = totalSeconds - heardSeconds
+        return missing > earlyEndSeconds && missing > totalSeconds * earlyEndShare
+    }
 }

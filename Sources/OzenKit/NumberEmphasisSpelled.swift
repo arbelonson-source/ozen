@@ -73,16 +73,43 @@ extension NumberEmphasis {
             return (cursor + 1, wordEnd(cursor + 1))
         }
 
-        func numberClock(after last: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
-            guard joinsNext(last, end), let link = lowered[last + 1], profile.numberClockLinks.contains(link),
-                  joinsNext(last + 1, wordEnd(last + 1)), last + 2 < words.count, isNumber(last + 2),
-                  let minute = lowered[last + 2], !profile.ambiguous.contains(minute)
-            else { return nil }
-            let second = runEnd(from: last + 2)
+        func minuteEnd(at index: Int) -> (last: Int, end: String.Index)? {
+            guard index < words.count, isNumber(index), let minute = lowered[index], !profile.ambiguous.contains(minute) else { return nil }
+            let second = runEnd(from: index)
             let tail = finish(second, wordEnd(second), lowered[second], afterFraction: false)
             if tail.joined { return nil }
             if joinsNext(second, wordEnd(second)), let after = lowered[second + 1], profile.periods.contains(after) { return nil }
             return (second, wordEnd(second))
+        }
+
+        func numberClock(after last: Int, _ end: String.Index, cued: Bool = false) -> (last: Int, end: String.Index)? {
+            guard joinsNext(last, end), let link = lowered[last + 1], profile.numberClockLinks.contains(link),
+                  joinsNext(last + 1, wordEnd(last + 1)), last + 2 < words.count
+            else { return nil }
+            var minute = last + 2
+            var cuedByArticle = false
+            if let article = lowered[minute], profile.numberClockArticles.contains(article), joinsNext(minute, wordEnd(minute)), minute + 1 < words.count {
+                minute += 1
+                cuedByArticle = profile.clockOneCues.contains(article)
+            }
+            if (cued || cuedByArticle), let one = lowered[minute], profile.clockMinuteOnes.contains(one), !joinsNext(minute, wordEnd(minute)) {
+                return (minute, wordEnd(minute))
+            }
+            return minuteEnd(at: minute)
+        }
+
+        func hourClock(after unit: Int, _ end: String.Index) -> (last: Int, end: String.Index)? {
+            guard let word = lowered[unit], profile.clockUnits.contains(word), joinsNext(unit, end) else { return nil }
+            if let direct = minuteEnd(at: unit + 1) { return direct }
+            guard let link = lowered[unit + 1], profile.clockUnitLinks.contains(link), joinsNext(unit + 1, wordEnd(unit + 1)) else { return nil }
+            if let minute = minuteEnd(at: unit + 2) { return minute }
+            var cursor = unit + 1
+            while joinsNext(cursor, wordEnd(cursor)), cursor + 1 < words.count, let next = lowered[cursor + 1], profile.fractionLinks.contains(next) {
+                cursor += 1
+            }
+            guard joinsNext(cursor, wordEnd(cursor)), cursor + 1 < words.count, let fraction = lowered[cursor + 1],
+                  profile.fractions.contains(fraction) else { return nil }
+            return (cursor + 1, wordEnd(cursor + 1))
         }
 
         func finish(_ last: Int, _ end: String.Index, _ core: String?, afterFraction: Bool) -> (last: Int, end: String.Index, joined: Bool) {
@@ -145,10 +172,17 @@ extension NumberEmphasis {
                     let done = finish(last, end, lowered[last], afterFraction: afterFraction)
                     let alone = position == last
                     var spanStart = start
-                    let clock = !afterFraction && !done.joined && !profile.ambiguous.contains(core) ? numberClock(after: last, end) : nil
+                    let cued = previous.map(profile.clockOneCues.contains) ?? false
+                    var clock = !afterFraction && !done.joined && !profile.ambiguous.contains(core) ? numberClock(after: last, end, cued: cued) : nil
+                    var hourOne = false
+                    if clock == nil, !afterFraction, !done.joined, alone, cued, profile.clockHourOnes.contains(core) {
+                        clock = numberClock(after: last, end)
+                        hourOne = clock != nil
+                    }
+                    if clock == nil, !afterFraction, done.joined { clock = hourClock(after: done.last, done.end) }
                     if clock == nil, alone, profile.plainAlone.contains(core), !done.joined,
                        !(previous.map(profile.countsAfter.contains) ?? false) { continue }
-                    if alone, profile.ambiguous.contains(core) {
+                    if alone, !hourOne, profile.ambiguous.contains(core) {
                         if let previous, profile.notACountBefore.contains(previous) { continue }
                         if !done.joined {
                             guard profile.oneFollowsUnit, let previous, profile.units.contains(previous),

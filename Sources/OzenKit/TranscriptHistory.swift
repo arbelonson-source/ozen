@@ -95,6 +95,10 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     /// was when the person ran the transcription. Records saved before this
     /// existed read as live conversations.
     public var fromRecording: Bool
+    /// The text ends before the recording does: turning it into text
+    /// stopped partway, or the end of the file could not be read. Records
+    /// saved before this existed read as complete.
+    public var cutShort: Bool
 
     public init(
         id: UUID = UUID(),
@@ -106,7 +110,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         segments: [SavedSegment],
         title: String? = nil,
         languageCode: String? = nil,
-        fromRecording: Bool = false
+        fromRecording: Bool = false,
+        cutShort: Bool = false
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -118,6 +123,12 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         self.title = title
         self.languageCode = languageCode
         self.fromRecording = fromRecording
+        self.cutShort = cutShort
+    }
+
+    /// Said when a cut-short conversation is opened from History.
+    public static var cutShortNote: String {
+        tr("התמלול נעצר לפני סוף ההקלטה, ולכן חלק מהטקסט חסר.", "This transcript stops before the end of the recording, so some text is missing.")
     }
 
     /// How a line's time reads: the time into the recording for a
@@ -180,7 +191,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode, fromRecording
+        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode, fromRecording, cutShort
     }
 
     // Decoding is tolerant of missing keys on the fields a later build
@@ -203,6 +214,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         // A value the reader cannot make sense of reads as none.
         languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(Self.plausibleLanguageCode)
         fromRecording = container.lenient(Bool.self, forKey: .fromRecording) ?? false
+        cutShort = container.lenient(Bool.self, forKey: .cutShort) ?? false
     }
 
     /// A language tag as the settings write it ("he", "en", "pt-BR"): letters

@@ -809,11 +809,18 @@ private fun HomeComputerSection(
     val testConnection = {
         checking = true
         val typed = address
+        val typedCode = code
         scope.launch {
-            saveCode()
             forgetCheck()
-            val generation = checkGeneration
-            val result = engineSettings.testConnection(typed)
+            var generation = checkGeneration
+            val result = engineSettings.testConnection(typed, typedCode) { stored ->
+                if (typedCode.isNotBlank()) codeSaveFailed = !stored.codeStored
+                if (stored.codeStored) {
+                    if (code == typedCode) code = ""
+                    forgetCheck()
+                    generation = checkGeneration
+                }
+            }
             checking = false
             if (generation == checkGeneration) check = result
         }

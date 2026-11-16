@@ -61,6 +61,15 @@ class FileTranscriptionAnnouncementTest {
     }
 
     @Test
+    fun aDifferentFileFailingTheSameWayIsStillSaid() = english {
+        val first = FileTranscription.Failed("a.m4a", FileTranscriptionProblem.Offline)
+        val other = FileTranscription.Failed("b.m4a", FileTranscriptionProblem.Offline)
+        assertEquals(FileTranscriptionProblem.Offline.message, other.announcement(first))
+        val finished = done(HistorySave.Off)
+        assertTrue(finished.copy(name = "b.m4a").announcement(finished) != null)
+    }
+
+    @Test
     fun gettingReadyToStartSaysNothing() {
         assertNull(ready.announcement(FileTranscription.Idle))
         assertNull(FileTranscription.Idle.announcement(FileTranscription.Failed("a.m4a", FileTranscriptionProblem.Offline)))

@@ -134,6 +134,28 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.stats.engineRestarts == before)
     }
 
+    @Test("Test connection with an address and a code both unsaved restarts captions once, then checks")
+    func testConnectionRestartsOnce() async {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.saveHomeServerCode = { _ in true }
+        await viewModel.start()
+        await viewModel.setEngine(.homeServer)
+        let before = viewModel.stats.engineRestarts
+        var checks = 0
+        let stored = viewModel.storeHomeServerEntries(address: "192.168.1.42", code: "typed")
+        #expect(viewModel.stats.engineRestarts == before)
+        _ = await viewModel.restartThenCheckHomeServer(stored) {
+            checks += 1
+            return HomeServerCheck(availability: .available, seconds: 0.1)
+        }
+        #expect(viewModel.stats.engineRestarts == before + 1)
+        #expect(checks == 1)
+
+        let nothing = viewModel.storeHomeServerEntries(address: nil, code: "")
+        _ = await viewModel.restartThenCheckHomeServer(nothing) { HomeServerCheck(availability: .available, seconds: 0.1) }
+        #expect(viewModel.stats.engineRestarts == before + 1)
+    }
+
     @Test("The address write is reported at once, without waiting for any restart")
     func addressWriteIsReportedWithoutRestart() {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
