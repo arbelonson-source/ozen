@@ -914,6 +914,9 @@ class CaptionSession(
             is StoppedCaptionsNotice.Update.Revise -> {
                 if (!notifier.revise(update.content)) stoppedCaptions.postFailed()
             }
+            is StoppedCaptionsNotice.Update.Realert -> {
+                if (!notifier.realert(update.content)) stoppedCaptions.postFailed()
+            }
             is StoppedCaptionsNotice.Update.Replace -> {
                 applyNoticeUpdate(update.old)
                 applyNoticeUpdate(update.new)
