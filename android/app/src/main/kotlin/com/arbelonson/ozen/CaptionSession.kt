@@ -751,6 +751,8 @@ class CaptionSession(
 
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
     fun listen(afterRestart: Boolean = false) {
+        // A start while a recording is being transcribed would load a second model; captions paused for it come back when it ends.
+        if (recordingHandover.pausedHere && pipeline.isTranscribingRecording) return
         dropRecordingHandover()
         restartRefused = false
         refusalCard.captionsStarted()
