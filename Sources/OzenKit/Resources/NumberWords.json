@@ -234,6 +234,9 @@
     "clockLinks": [
       "vor", "nach"
     ],
+    "numberClockLinks": [
+      "vor", "nach"
+    ],
     "ambiguous": [
       "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
       "halbes"
