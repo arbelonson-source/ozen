@@ -230,7 +230,8 @@ final class TranscribeRecordingModel {
                 finishedAt: now().timeIntervalSince1970,
                 recordingSeconds: ready.durationSeconds,
                 modelVariant: model.variant,
-                languageCode: ready.language.engineLanguageCode
+                languageCode: ready.language.engineLanguageCode,
+                cutShort: endMissing || stoppedBy != nil
             )
             do {
                 history = try host.saveRecord(record) ? .saved(record.id) : .failed

@@ -598,14 +598,23 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         return second to coreEnd(second)
     }
 
-    fun numberClock(last: Int, end: Int): Pair<Int, Int>? {
+    fun numberClock(last: Int, end: Int, cued: Boolean = false): Pair<Int, Int>? {
         if (!joinsNext(last, end) || lowered[last + 1] !in profile.numberClockLinks ||
             !joinsNext(last + 1, coreEnd(last + 1)) || last + 2 >= words.size
         ) {
             return null
         }
         var minute = last + 2
-        if (lowered[minute] in profile.numberClockArticles && joinsNext(minute, coreEnd(minute))) minute += 1
+        var cuedByArticle = false
+        val article = lowered[minute]
+        if (article != null && article in profile.numberClockArticles && joinsNext(minute, coreEnd(minute)) && minute + 1 < words.size) {
+            minute += 1
+            cuedByArticle = article in profile.clockOneCues
+        }
+        val one = lowered[minute]
+        if ((cued || cuedByArticle) && one != null && one in profile.clockMinuteOnes && !joinsNext(minute, coreEnd(minute))) {
+            return minute to coreEnd(minute)
+        }
         return minuteEnd(minute)
     }
 
@@ -674,18 +683,24 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 }
                 val done = finish(runLast, runStop, lowered[runLast], afterFraction)
                 var numberStart = word.coreStart
-                val clock = when {
+                val cued = previous != null && previous in profile.clockOneCues
+                var hourOne = false
+                var clock = when {
                     afterFraction -> null
                     done.joined -> hourClock(done.last, done.end)
-                    core !in profile.ambiguous -> numberClock(runLast, runStop)
+                    core !in profile.ambiguous -> numberClock(runLast, runStop, cued)
                     else -> null
+                }
+                if (clock == null && !afterFraction && !done.joined && position == runLast && cued && core in profile.clockHourOnes) {
+                    clock = numberClock(runLast, runStop)
+                    hourOne = clock != null
                 }
                 if (clock == null && position == runLast && core in profile.plainAlone && !done.joined &&
                     !(previous != null && previous in profile.countsAfter)
                 ) {
                     continue
                 }
-                if (position == runLast && core in profile.ambiguous) {
+                if (position == runLast && !hourOne && core in profile.ambiguous) {
                     if (previous != null && previous in profile.notACountBefore) continue
                     if (!done.joined) {
                         val unitBefore = profile.oneFollowsUnit && previous != null && previous in profile.units &&

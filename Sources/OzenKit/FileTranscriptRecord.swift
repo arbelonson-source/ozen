@@ -8,7 +8,8 @@ public enum FileTranscriptRecord {
         recordingSeconds: Double?,
         modelVariant: String?,
         id: UUID = UUID(),
-        languageCode: String? = nil
+        languageCode: String? = nil,
+        cutShort: Bool = false
     ) -> TranscriptSessionRecord {
         let startedAt = finishedAt - max(recordingSeconds ?? 0, lines.map(\.endSeconds).max() ?? 0)
         let segments = lines.compactMap { line -> SavedSegment? in
@@ -33,7 +34,8 @@ public enum FileTranscriptRecord {
             segments: segments,
             title: title(from: fileName),
             languageCode: languageCode,
-            fromRecording: true
+            fromRecording: true,
+            cutShort: cutShort
         )
     }
 

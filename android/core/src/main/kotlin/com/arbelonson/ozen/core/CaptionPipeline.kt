@@ -513,7 +513,22 @@ class CaptionPipeline(
      * Sound alerts are on, and the classifier can't be made to work: it
      * keeps being tried again, and this clears when one works.
      */
-    val soundAlertsNotWorking: Boolean get() = soundClassifierUnavailable && soundPolicy.preferences.isEnabled
+    val soundAlertsNotWorking: Boolean get() = (soundClassifierUnavailable || soundsOnlyMicrophoneSilent) && soundPolicy.preferences.isEnabled
+
+    /**
+     * Sounds alone are listened for and the microphone has sent nothing but
+     * exact zeros for [SOUNDS_ONLY_SILENCE_SECONDS]: an unrouted or blocked
+     * microphone, not a quiet room (a real one always has a noise floor).
+     * Listening goes on and this clears the moment real audio returns.
+     */
+    val soundAlertsMicrophoneSilent: Boolean get() = soundsOnlyMicrophoneSilent && soundPolicy.preferences.isEnabled
+
+    private var soundsOnlyMicrophoneSilent = false
+        set(value) {
+            if (field == value) return
+            field = value
+            onSoundAlertsAvailabilityChange?.invoke()
+        }
 
     /**
      * Sound alerts are on and something is meant to be listening: captions
@@ -562,6 +577,8 @@ class CaptionPipeline(
 
     @Volatile
     private var soundsOnlyChunks = 0
+
+    private var soundsOnlySilence = AudioStallWatchdog(silenceSeconds = SOUNDS_ONLY_SILENCE_SECONDS)
 
     private var staleCommitTask: Job? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
@@ -3543,7 +3560,10 @@ class CaptionPipeline(
         // Counted as the microphone hands chunks over, not as the classifier
         // takes them: a classifier slow for a few seconds is not a
         // microphone that stopped.
-        val counted = if (chosen) source.onEach { soundsOnlyChunks += 1 } else source
+        val counted = if (chosen) source.onEach {
+            soundsOnlyChunks += 1
+            soundsOnlySilence.heard(it, systemInterrupted)
+        } else source
         fan = FlowAudioFanOut(
             scope,
             counted,
@@ -3580,6 +3600,7 @@ class CaptionPipeline(
      */
     private fun watchSoundsOnly(fan: FlowAudioFanOut) {
         soundsOnlySince = now()
+        soundsOnlySilence.reset()
         audio.onCaptureLost = { soundsOnlyLost(fan, "the microphone never settled after it changed") }
         soundsOnlyWatch?.cancel()
         soundsOnlyWatch = scope.launch {
@@ -3588,6 +3609,7 @@ class CaptionPipeline(
             while (isActive) {
                 delay(SOUNDS_ONLY_STALL_CHECK_SECONDS.seconds)
                 if (fanOut !== fan) return@launch
+                soundsOnlyMicrophoneSilent = soundsOnlySilence.isSilent
                 val count = soundsOnlyChunks
                 if (count != seen || systemInterrupted) {
                     seen = count
@@ -3675,6 +3697,7 @@ class CaptionPipeline(
         soundTask?.cancel()
         soundTask = null
         soundClassifierUnavailable = false
+        soundsOnlyMicrophoneSilent = false
         fanOut?.cancel()
         fanOut = null
         audio.stopCapture()
@@ -3854,6 +3877,7 @@ class CaptionPipeline(
         soundTask?.cancel()
         soundTask = null
         soundClassifierUnavailable = false
+        soundsOnlyMicrophoneSilent = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
         soundsOnlyWatch?.cancel()
@@ -4084,6 +4108,14 @@ class CaptionPipeline(
         internal const val SOUNDS_ONLY_HEALTHY_SECONDS = 60.0
         internal const val SOUNDS_ONLY_STALL_CHECK_SECONDS = 2.0
         internal const val SOUNDS_ONLY_STALL_CHECKS = 3
+
+        /**
+         * Exact zeros for this long, in sounds-only listening, warn that the
+         * microphone sends only silence. Captions stop after 8 s of it; here
+         * the wait is longer because only a warning is raised (it clears
+         * by itself) and a night should not be flagged by a short dropout.
+         */
+        internal const val SOUNDS_ONLY_SILENCE_SECONDS = 30.0
 
         /**
          * Below this likeness to the recording's own average, a window is
