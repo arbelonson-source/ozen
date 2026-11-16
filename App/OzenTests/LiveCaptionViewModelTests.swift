@@ -156,6 +156,25 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.stats.engineRestarts == before + 1)
     }
 
+    @Test("closing Settings or testing with an address the phone could not write reports it, writes it again next time, and typing nothing is no failure")
+    func addressTheDiskRefusedIsReported() throws {
+        let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: blocker.appendingPathComponent("settings.json")),
+            pipeline: fakePipeline()
+        )
+        #expect(!viewModel.storeHomeServerEntries(address: nil, code: "").addressFailed)
+        let failed = viewModel.storeHomeServerEntries(address: "192.168.1.50", code: "")
+        #expect(failed.addressFailed && failed.addressChanged)
+        let again = viewModel.storeHomeServerEntries(address: nil, code: "")
+        #expect(again.addressFailed)
+        try FileManager.default.removeItem(at: blocker)
+        let fixed = viewModel.storeHomeServerEntries(address: nil, code: "")
+        #expect(!fixed.addressFailed)
+        #expect(viewModel.settings.homeServerAddress == "192.168.1.50")
+    }
+
     @Test("The address write is reported at once, without waiting for any restart")
     func addressWriteIsReportedWithoutRestart() {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())

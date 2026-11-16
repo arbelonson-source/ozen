@@ -186,6 +186,7 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -236,11 +237,27 @@ fun SettingsScreen(
     // A key the phone failed to store keeps Settings open with the reason,
     // rather than closing as if the cloud were set up.
     var keyNotStored by rememberSaveable { mutableStateOf(false) }
+    var addressNotKept by rememberSaveable { mutableStateOf(false) }
     val finishClosing: (Boolean) -> Unit = { withKey ->
         closing.launch {
-            val kept = engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value)
-            if (kept) onClose() else keyNotStored = true
+            var addressKept = true
+            val kept = engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value) { addressKept = it.addressKept }
+            if (kept) onClose() else if (!addressKept) addressNotKept = true else keyNotStored = true
         }
+    }
+    if (addressNotKept) {
+        AlertDialog(
+            onDismissRequest = { addressNotKept = false },
+            title = { Text(SavingTroubleNotice.title) },
+            text = { Text(tr("הכתובת של המחשב בבית לא נשמרה בטלפון, ותיעלם אחרי הפעלה מחדש.", "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    addressNotKept = false
+                    finishClosing(true)
+                }) { Text(tr("נסו שוב", "Try again")) }
+            },
+            dismissButton = { TextButton(onClick = { addressNotKept = false; onClose() }) { Text(tr("לסגור בכל זאת", "Close anyway")) } },
+        )
     }
     if (keyNotStored) {
         AlertDialog(
@@ -748,6 +765,7 @@ private fun HomeComputerSection(
     var checking by remember { mutableStateOf(false) }
     var check by remember { mutableStateOf<HomeServerCheck?>(null) }
     var checkGeneration by remember { mutableIntStateOf(0) }
+    var addressNotKept by remember { mutableStateOf(false) }
     var confirmingCodeDelete by rememberSaveable { mutableStateOf(false) }
     val forgetCheck = {
         check = null
@@ -755,6 +773,7 @@ private fun HomeComputerSection(
     }
     val saveAddress = {
         forgetCheck()
+        addressNotKept = false
         engineSettings.saveHomeComputerAddress(address)
     }
     // The button vanishes the moment it is pressed, so the save is said
@@ -812,8 +831,13 @@ private fun HomeComputerSection(
         val typedCode = code
         scope.launch {
             forgetCheck()
+            addressNotKept = false
             var generation = checkGeneration
             val result = engineSettings.testConnection(typed, typedCode) { stored ->
+                if (!stored.addressKept) {
+                    addressNotKept = true
+                    ScreenReader.said(context, SavingTroubleNotice.title)
+                }
                 if (typedCode.isNotBlank()) codeSaveFailed = !stored.codeStored
                 if (stored.codeStored) {
                     if (code == typedCode) code = ""
@@ -909,6 +933,7 @@ private fun HomeComputerSection(
                         if (checking && !ReducedMotion.isOn()) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     check?.let { HomeComputerCheckLabel(it, address, current.spokenLanguage) }
+                    if (addressNotKept) Warning(SavingTroubleNotice.title + ". " + tr("הכתובת לא נשמרה בטלפון.", "The address wasn’t kept on the phone."))
                 }
             }
         }

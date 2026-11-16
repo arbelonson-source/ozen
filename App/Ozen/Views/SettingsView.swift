@@ -70,6 +70,8 @@ struct SettingsView: View {
     @State private var closingAfterCloudConsent = false
     @State private var confirmingWalkthrough = false
     @State private var homeServerCodeSaveFailed = false
+    @State private var homeServerAddressNotKept = false
+    @State private var addressWarned = false
     @AccessibilityFocusState private var savedFieldFocus: HomeServerField?
 
     private enum HomeServerField { case address, code }
@@ -618,6 +620,10 @@ struct SettingsView: View {
             if !homeServerCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Button(tr("שמירת הקוד", "Save code"), action: saveHomeServerCodeAndSay)
             }
+            if homeServerAddressNotKept {
+                Label(SavingTroubleNotice.title + ". " + tr("הכתובת לא נשמרה בטלפון.", "The address wasn’t kept on the phone."), systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.readable(.red))
+            }
             if homeServerCodeSaveFailed {
                 Label(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.red))
@@ -646,6 +652,8 @@ struct SettingsView: View {
                         hasHomeServerCode = true
                     }
                     forgetHomeServerCheck()
+                    homeServerAddressNotKept = stored.addressFailed
+                    if stored.addressFailed { Announcement.post(SavingTroubleNotice.title) }
                     let generation = homeServerCheckGeneration
                     Task {
                         // Both entries are stored first, so captions
@@ -780,7 +788,8 @@ struct SettingsView: View {
 
     /// Typed but never saved with Return or the button: kept as Settings
     /// closes instead of silently dropped.
-    private func saveUnsavedEntries() {
+    @discardableResult
+    private func saveUnsavedEntries() -> Bool {
         let address = HomeServer.unsavedAddress(draft: homeServerAddressDraft, saved: viewModel.settings.homeServerAddress)
         if let address {
             homeServerAddressDraft = address
@@ -800,6 +809,8 @@ struct SettingsView: View {
         if stored.needsRestart {
             Task { await viewModel.restartForHomeServerEntries(stored) }
         }
+        homeServerAddressNotKept = stored.addressFailed
+        return !stored.addressFailed
     }
 
     private func forgetHomeServerCheck() {
@@ -814,6 +825,7 @@ struct SettingsView: View {
         homeServerAddressLoaded = address
         forgetHomeServerCheck()
         let result = viewModel.storeHomeServerAddress(address)
+        homeServerAddressNotKept = !result.written
         if result.changed {
             Task { await viewModel.restartForHomeServerAddress() }
         }
@@ -887,8 +899,11 @@ struct SettingsView: View {
         if hasUnsavedCloudKey {
             closingAfterCloudConsent = true
             askingCloudConsent = true
-        } else {
+        } else if saveUnsavedEntries() || addressWarned {
             dismiss()
+        } else {
+            addressWarned = true
+            Announcement.post(SavingTroubleNotice.title + ". " + tr("הכתובת לא נשמרה בטלפון.", "The address wasn’t kept on the phone."))
         }
     }
 

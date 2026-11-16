@@ -1199,7 +1199,10 @@
   "Emergency alerts are muted": "የአደጋ ማንቂያዎች ድምፅ አልባ ናቸው",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጠፍተዋል፣ ስለዚህ የጭስ ማንቂያ አይደርሰዎትም። ለማብራት ይንኩ።",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጸጥ ተብለዋል፣ ስለዚህ የጭስ ማንቂያ አይጮኽም ወይም አይንቀጠቀጥም። ለማስተካከል ይንኩ።",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "የOzen የአደጋ ማንቂያዎች በስልኩ ውስጥ ጸጥ ተብለዋል። ድምፁን መልሰው ያብሩ፣ ከዚያ በዚያው ገጽ ላይ %1 የሚለውን ያብሩ።"
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "የOzen የአደጋ ማንቂያዎች በስልኩ ውስጥ ጸጥ ተብለዋል። ድምፁን መልሰው ያብሩ፣ ከዚያ በዚያው ገጽ ላይ %1 የሚለውን ያብሩ።",
+  "The address wasn’t kept on the phone.": "አድራሻው በስልኩ ላይ አልተቀመጠም።",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "የቤት ኮምፒዩተሩ አድራሻ በስልኩ ላይ አልተቀመጠም፣ ስልኩ እንደገና ሲነሳ ይጠፋል።",
+  "Close anyway": "ለማንኛውም ዝጋ"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2401,7 +2404,10 @@
   "Emergency alerts are muted": "تنبيهات الطوارئ صامتة",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "تنبيهات الطوارئ متوقفة في إعدادات الهاتف، لذا لن يصلكم تنبيه إنذار الدخان. المسوا لتشغيلها.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "تنبيهات الطوارئ مضبوطة على الصامت في إعدادات الهاتف، لذا لن يصدر إنذار الدخان صوتًا ولا اهتزازًا. المسوا للإصلاح.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "تنبيهات الطوارئ في Ozen مضبوطة على الصامت في الهاتف. أعيدوا الصوت، ثم فعّلوا «%1» في الصفحة نفسها."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "تنبيهات الطوارئ في Ozen مضبوطة على الصامت في الهاتف. أعيدوا الصوت، ثم فعّلوا «%1» في الصفحة نفسها.",
+  "The address wasn’t kept on the phone.": "لم يُحفظ العنوان على الهاتف.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "لم يُحفظ عنوان الكمبيوتر المنزلي على الهاتف وسيضيع بعد إعادة التشغيل.",
+  "Close anyway": "إغلاق على أي حال"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3603,7 +3609,10 @@
   "Emergency alerts are muted": "紧急提醒已静音",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "紧急提醒在手机设置中已关闭，所以你收不到烟雾报警的提醒。点按即可打开。",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "紧急提醒在手机设置中被设为静音，所以烟雾报警既不会响铃也不会震动。点按即可修复。",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "手机中 Ozen 的紧急提醒被设为静音。请把声音打开，然后在同一页面上开启“%1”。"
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "手机中 Ozen 的紧急提醒被设为静音。请把声音打开，然后在同一页面上开启“%1”。",
+  "The address wasn’t kept on the phone.": "地址没有保存在手机上。",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "家用电脑的地址没有保存在手机上，重启后会丢失。",
+  "Close anyway": "仍然关闭"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4805,7 +4814,10 @@
   "Emergency alerts are muted": "Les alertes d’urgence sont coupées",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Les alertes d’urgence sont désactivées dans les réglages du téléphone : une alarme incendie ne vous parviendra pas. Touchez pour les activer.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Les alertes d’urgence sont en mode silencieux dans les réglages du téléphone : une alarme incendie ne sonnera pas et ne fera pas vibrer. Touchez pour corriger.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Les alertes d’urgence d’Ozen sont en mode silencieux dans le téléphone. Réactivez le son, puis activez « %1 » sur la même page."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Les alertes d’urgence d’Ozen sont en mode silencieux dans le téléphone. Réactivez le son, puis activez « %1 » sur la même page.",
+  "The address wasn’t kept on the phone.": "L’adresse n’a pas été conservée sur le téléphone.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "L’adresse de l’ordinateur à la maison n’a pas été conservée sur le téléphone et sera perdue après un redémarrage.",
+  "Close anyway": "Fermer quand même"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6007,7 +6019,10 @@
   "Emergency alerts are muted": "Notfallhinweise sind stummgeschaltet",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Notfallhinweise sind in den Einstellungen des Telefons ausgeschaltet, deshalb erreicht Sie ein Rauchmelder nicht. Zum Einschalten tippen.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Notfallhinweise sind in den Einstellungen des Telefons auf lautlos gestellt, deshalb gibt ein Rauchmelder weder Ton noch Vibration ab. Zum Beheben tippen.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Die Notfallhinweise von Ozen sind im Telefon auf lautlos gestellt. Schalten Sie den Ton wieder ein und aktivieren Sie dann „%1“ auf derselben Seite."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Die Notfallhinweise von Ozen sind im Telefon auf lautlos gestellt. Schalten Sie den Ton wieder ein und aktivieren Sie dann „%1“ auf derselben Seite.",
+  "The address wasn’t kept on the phone.": "Die Adresse wurde nicht auf dem Telefon behalten.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Die Adresse des Heimcomputers wurde nicht auf dem Telefon behalten und geht nach einem Neustart verloren.",
+  "Close anyway": "Trotzdem schließen"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7209,7 +7224,10 @@
   "Emergency alerts are muted": "आपातकालीन अलर्ट म्यूट हैं",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट बंद हैं, इसलिए धुएँ के अलार्म की सूचना आप तक नहीं पहुँचेगी। चालू करने के लिए छूएँ।",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट साइलेंट पर हैं, इसलिए धुएँ के अलार्म पर न आवाज़ होगी और न कंपन। ठीक करने के लिए छूएँ।",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "फ़ोन में Ozen के आपातकालीन अलर्ट साइलेंट पर हैं। आवाज़ वापस चालू करें, फिर उसी पेज पर “%1” चालू करें।"
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "फ़ोन में Ozen के आपातकालीन अलर्ट साइलेंट पर हैं। आवाज़ वापस चालू करें, फिर उसी पेज पर “%1” चालू करें।",
+  "The address wasn’t kept on the phone.": "पता फ़ोन पर नहीं रखा गया।",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "घर के कंप्यूटर का पता फ़ोन पर नहीं रखा गया और रीस्टार्ट के बाद खो जाएगा।",
+  "Close anyway": "फिर भी बंद करें"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8411,7 +8429,10 @@
   "Emergency alerts are muted": "Os alertas de emergência estão silenciados",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Os alertas de emergência estão desativados nas definições do telefone, por isso um alarme de fumo não lhe chegará. Toque para os ativar.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Os alertas de emergência estão em modo silencioso nas definições do telefone, por isso um alarme de fumo não vai tocar nem vibrar. Toque para corrigir.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Os alertas de emergência do Ozen estão em modo silencioso no telefone. Volte a ligar o som e depois ative «%1» na mesma página."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Os alertas de emergência do Ozen estão em modo silencioso no telefone. Volte a ligar o som e depois ative «%1» na mesma página.",
+  "The address wasn’t kept on the phone.": "O endereço não foi guardado no telemóvel.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "O endereço do computador lá de casa não foi guardado no telemóvel e perder-se-á após um reinício.",
+  "Close anyway": "Fechar mesmo assim"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9613,7 +9634,10 @@
   "Emergency alerts are muted": "Экстренные оповещения отключены",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Экстренные оповещения выключены в настройках телефона, поэтому сигнал дымовой тревоги до вас не дойдёт. Нажмите, чтобы включить.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Экстренные оповещения переведены в беззвучный режим в настройках телефона, поэтому дымовая тревога не прозвучит и не завибрирует. Нажмите, чтобы исправить.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Экстренные оповещения Ozen переведены в беззвучный режим в телефоне. Верните звук, затем включите «%1» на той же странице."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Экстренные оповещения Ozen переведены в беззвучный режим в телефоне. Верните звук, затем включите «%1» на той же странице.",
+  "The address wasn’t kept on the phone.": "Адрес не сохранён на телефоне.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адрес домашнего компьютера не сохранён на телефоне и пропадёт после перезапуска.",
+  "Close anyway": "Всё равно закрыть"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10815,7 +10839,10 @@
   "Emergency alerts are muted": "Las alertas de emergencia están silenciadas",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Las alertas de emergencia están desactivadas en los ajustes del teléfono, así que una alarma de humo no te llegará. Toca para activarlas.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Las alertas de emergencia están en silencio en los ajustes del teléfono, así que una alarma de humo no sonará ni vibrará. Toca para corregirlo.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Las alertas de emergencia de Ozen están en silencio en el teléfono. Vuelve a activar el sonido y luego activa «%1» en la misma página."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Las alertas de emergencia de Ozen están en silencio en el teléfono. Vuelve a activar el sonido y luego activa «%1» en la misma página.",
+  "The address wasn’t kept on the phone.": "La dirección no se guardó en el teléfono.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "La dirección del ordenador de casa no se guardó en el teléfono y se perderá tras reiniciar.",
+  "Close anyway": "Cerrar de todos modos"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12017,6 +12044,9 @@
   "Emergency alerts are muted": "Екстрені сповіщення вимкнено",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Екстрені сповіщення вимкнено в налаштуваннях телефона, тому сигнал димової тривоги до вас не дійде. Торкніться, щоб увімкнути.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Екстрені сповіщення переведено в беззвучний режим у налаштуваннях телефона, тому димова тривога не пролунає й не завібрує. Торкніться, щоб виправити.",
-  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Екстрені сповіщення Ozen переведено в беззвучний режим у телефоні. Поверніть звук, а потім увімкніть «%1» на тій самій сторінці."
+  "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Екстрені сповіщення Ozen переведено в беззвучний режим у телефоні. Поверніть звук, а потім увімкніть «%1» на тій самій сторінці.",
+  "The address wasn’t kept on the phone.": "Адресу не збережено на телефоні.",
+  "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адресу домашнього комп’ютера не збережено на телефоні, і вона зникне після перезапуску.",
+  "Close anyway": "Усе одно закрити"
  }
 }

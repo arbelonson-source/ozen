@@ -258,18 +258,27 @@ class EngineSettings(
         return address && (codeSaved || codeDraft.isNotBlank())
     }
 
-    /** What `storeHomeComputerEntries` kept: whether the typed code reached the disk, and whether captions were started again. */
-    class EntriesStored(val codeStored: Boolean, val restarted: Boolean)
+    /**
+     * What `storeHomeComputerEntries` kept: whether the typed code reached the disk, whether captions were started again,
+     * and whether the address is on the disk (false when the phone could not write it, so it would revert after a relaunch).
+     */
+    class EntriesStored(val codeStored: Boolean, val restarted: Boolean, val addressKept: Boolean = true)
 
     private suspend fun storeHomeComputerEntries(addressDraft: String, pairingCodeDraft: String): EntriesStored =
         withContext(NonCancellable) {
             val address = HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)
-            val addressChanged = address != null && storeHomeComputerAddress(address).changed
+            // An address kept only in memory by a failed write is written again, not taken for saved.
+            val addressStored = when {
+                address != null -> storeHomeComputerAddress(address)
+                settings.saveFailed.value -> storeHomeComputerAddress(settings.current.value.homeServerAddress)
+                else -> AddressStored(written = true, changed = false)
+            }
+            val addressChanged = addressStored.changed
             val codeStored = storePairingCode(pairingCodeDraft)
             // Both entries are stored before captions start again, once.
             val restarted = (addressChanged || codeStored) && homeComputerIsTheEngine
             if (restarted) restart()
-            EntriesStored(codeStored, restarted)
+            EntriesStored(codeStored, restarted, addressStored.written)
         }
 
     /** Stores a typed code and address, restarts captions once for them, then tries the connection. */
@@ -278,10 +287,17 @@ class EngineSettings(
         return checkHomeComputer()
     }
 
-    /** False when a typed key could not be stored, so Settings can stay open and say so instead of closing on it. */
-    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String): Boolean {
-        storeHomeComputerEntries(addressDraft, pairingCodeDraft)
-        return cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
+    /** False when a typed key or the address could not be stored, so Settings can stay open and say so instead of closing on it. */
+    suspend fun saveUnsavedEntries(
+        cloudKeyDraft: String,
+        addressDraft: String,
+        pairingCodeDraft: String,
+        onStored: (EntriesStored) -> Unit = {},
+    ): Boolean {
+        val stored = storeHomeComputerEntries(addressDraft, pairingCodeDraft)
+        onStored(stored)
+        val keyKept = cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
+        return keyKept && stored.addressKept
     }
 
     companion object {
