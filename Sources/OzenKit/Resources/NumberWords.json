@@ -135,5 +135,263 @@
       "дня", "дней", "неделя", "недели", "недель", "неделю", "месяц", "месяца", "месяцев", "год", "года",
       "лет", "раз", "раза"
     ]
+  },
+  "french": {
+    "numbers": [
+      "zéro", "un", "une", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze",
+      "treize", "quatorze", "quinze", "seize", "vingt", "vingts", "trente", "quarante", "cinquante", "soixante",
+      "septante", "huitante", "nonante", "cent", "cents", "mille", "million", "millions", "milliard", "milliards",
+      "douzaine"
+    ],
+    "scales": [
+      "vingt", "trente", "quarante", "cinquante", "soixante", "septante", "huitante", "nonante", "cent", "cents",
+      "mille", "million", "millions", "milliard", "milliards"
+    ],
+    "connectors": [
+      "et"
+    ],
+    "fractions": [
+      "demi", "demie", "demis", "moitié", "quart", "quarts", "tiers"
+    ],
+    "fractionLinks": [
+      "de", "du", "d'un", "d'une", "la", "le", "un", "une"
+    ],
+    "clockLinks": [],
+    "ambiguous": [
+      "un", "une", "neuf"
+    ],
+    "notACountBefore": [
+      "le", "la", "les", "ce", "cet", "cette", "ces", "chaque", "aucun", "aucune", "autre", "autres", "tout",
+      "toute", "tous", "toutes", "pas", "sans", "ni", "quel", "quelle"
+    ],
+    "onceWords": [
+      "fois"
+    ],
+    "repeatLinks": [
+      "par", "chaque"
+    ],
+    "repeatUnits": [],
+    "periods": [
+      "jour", "jours", "semaine", "semaines", "mois", "an", "ans", "année", "années", "heure", "heures", "nuit",
+      "nuits", "matin", "soir"
+    ],
+    "idioms": [
+      "un", "une", "deux"
+    ],
+    "units": [
+      "comprimé", "comprimés", "cachet", "cachets", "pilule", "pilules", "gélule", "gélules", "capsule", "capsules",
+      "goutte", "gouttes", "cuillère", "cuillères", "cuillerée", "cuillerées", "verre", "verres", "tasse", "tasses",
+      "dose", "doses", "injection", "injections", "bouffée", "bouffées", "unité", "unités", "mg", "milligramme",
+      "milligrammes", "mcg", "microgramme", "microgrammes", "ml", "millilitre", "millilitres", "litre", "litres",
+      "cl", "cc", "g", "gramme", "grammes", "kg", "kilo", "kilos", "kilogramme", "kilogrammes", "cm", "centimètre",
+      "centimètres", "mètre", "mètres", "kilomètre", "kilomètres", "km", "degré", "degrés", "pourcent", "euro",
+      "euros", "dollar", "dollars", "centime", "centimes", "seconde", "secondes", "minute", "minutes", "heure",
+      "heures", "jours", "semaine", "semaines", "mois", "an", "ans", "année", "années", "d'heure"
+    ]
+  },
+  "german": {
+    "numbers": [
+      "null", "eins", "zwei", "zwo", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf",
+      "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn", "zwanzig",
+      "einundzwanzig", "zweiundzwanzig", "dreiundzwanzig", "vierundzwanzig", "fünfundzwanzig", "sechsundzwanzig",
+      "siebenundzwanzig", "achtundzwanzig", "neunundzwanzig", "dreißig", "einunddreißig", "zweiunddreißig",
+      "dreiunddreißig", "vierunddreißig", "fünfunddreißig", "sechsunddreißig", "siebenunddreißig", "achtunddreißig",
+      "neununddreißig", "dreissig", "einunddreissig", "zweiunddreissig", "dreiunddreissig", "vierunddreissig",
+      "fünfunddreissig", "sechsunddreissig", "siebenunddreissig", "achtunddreissig", "neununddreissig", "vierzig",
+      "einundvierzig", "zweiundvierzig", "dreiundvierzig", "vierundvierzig", "fünfundvierzig", "sechsundvierzig",
+      "siebenundvierzig", "achtundvierzig", "neunundvierzig", "fünfzig", "einundfünfzig", "zweiundfünfzig",
+      "dreiundfünfzig", "vierundfünfzig", "fünfundfünfzig", "sechsundfünfzig", "siebenundfünfzig", "achtundfünfzig",
+      "neunundfünfzig", "sechzig", "einundsechzig", "zweiundsechzig", "dreiundsechzig", "vierundsechzig",
+      "fünfundsechzig", "sechsundsechzig", "siebenundsechzig", "achtundsechzig", "neunundsechzig", "siebzig",
+      "einundsiebzig", "zweiundsiebzig", "dreiundsiebzig", "vierundsiebzig", "fünfundsiebzig", "sechsundsiebzig",
+      "siebenundsiebzig", "achtundsiebzig", "neunundsiebzig", "achtzig", "einundachtzig", "zweiundachtzig",
+      "dreiundachtzig", "vierundachtzig", "fünfundachtzig", "sechsundachtzig", "siebenundachtzig", "achtundachtzig",
+      "neunundachtzig", "neunzig", "einundneunzig", "zweiundneunzig", "dreiundneunzig", "vierundneunzig",
+      "fünfundneunzig", "sechsundneunzig", "siebenundneunzig", "achtundneunzig", "neunundneunzig", "hundert",
+      "einhundert", "tausend", "eintausend", "million", "millionen", "milliarde", "milliarden", "dutzend",
+      "zweihundert", "zweitausend", "dreihundert", "dreitausend", "vierhundert", "viertausend", "fünfhundert",
+      "fünftausend", "sechshundert", "sechstausend", "siebenhundert", "siebentausend", "achthundert", "achttausend",
+      "neunhundert", "neuntausend", "eineinhalb", "anderthalb", "zweieinhalb", "dreieinhalb", "viereinhalb",
+      "fünfeinhalb", "einmal", "zweimal", "dreimal", "viermal", "fünfmal", "sechsmal", "siebenmal", "achtmal",
+      "neunmal", "zehnmal", "halb", "halbe", "halben", "halber", "halbem", "halbes", "ein", "eine", "einen", "einem",
+      "einer", "eines"
+    ],
+    "scales": [
+      "hundert", "einhundert", "tausend", "eintausend", "million", "millionen", "milliarde", "milliarden",
+      "zweihundert", "dreihundert", "vierhundert", "fünfhundert", "sechshundert", "siebenhundert", "achthundert",
+      "neunhundert", "zweitausend", "dreitausend", "viertausend", "fünftausend", "sechstausend", "siebentausend",
+      "achttausend", "neuntausend"
+    ],
+    "connectors": [
+      "und"
+    ],
+    "fractions": [
+      "hälfte", "viertel", "drittel"
+    ],
+    "fractionLinks": [
+      "der", "die", "das", "des", "von", "einer", "eine", "ein", "eines"
+    ],
+    "clockLinks": [
+      "vor", "nach"
+    ],
+    "ambiguous": [
+      "ein", "eine", "einen", "einem", "einer", "eines", "einmal", "halb", "halbe", "halben", "halber", "halbem",
+      "halbes"
+    ],
+    "notACountBefore": [
+      "jeder", "jede", "jedes", "jeden", "jedem", "kein", "keine", "keinen", "keinem", "nicht"
+    ],
+    "onceWords": [],
+    "repeatLinks": [
+      "am", "pro", "je", "jeden", "jede", "jedes", "alle"
+    ],
+    "repeatUnits": [
+      "mal", "einmal", "zweimal", "dreimal", "viermal", "fünfmal", "sechsmal", "siebenmal", "achtmal", "neunmal",
+      "zehnmal"
+    ],
+    "periods": [
+      "tag", "tage", "tagen", "woche", "wochen", "monat", "monate", "monaten", "jahr", "jahre", "jahren", "stunde",
+      "stunden", "nacht", "nächte", "morgen", "abend", "mittag"
+    ],
+    "idioms": [
+      "ein", "eine", "zwei"
+    ],
+    "units": [
+      "tablette", "tabletten", "pille", "pillen", "kapsel", "kapseln", "tropfen", "löffel", "teelöffel", "esslöffel",
+      "glas", "gläser", "tasse", "tassen", "dosis", "dosen", "spritze", "spritzen", "injektion", "injektionen",
+      "hub", "hübe", "einheit", "einheiten", "mg", "milligramm", "mcg", "mikrogramm", "ml", "milliliter", "liter",
+      "cl", "g", "gramm", "kg", "kilo", "kilogramm", "cm", "zentimeter", "meter", "kilometer", "km", "grad",
+      "prozent", "euro", "dollar", "cent", "pfund", "sekunde", "sekunden", "minute", "minuten", "stunde", "stunden",
+      "tage", "tagen", "woche", "wochen", "monat", "monate", "monaten", "jahr", "jahre", "jahren", "mal", "uhr",
+      "täglich", "wöchentlich", "monatlich", "stündlich", "jährlich"
+    ]
+  },
+  "portuguese": {
+    "numbers": [
+      "zero", "um", "uma", "dois", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze",
+      "doze", "treze", "catorze", "quatorze", "quinze", "dezasseis", "dezesseis", "dezassete", "dezessete",
+      "dezoito", "dezanove", "dezenove", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta",
+      "oitenta", "noventa", "cem", "cento", "duzentos", "duzentas", "trezentos", "trezentas", "quatrocentos",
+      "quatrocentas", "quinhentos", "quinhentas", "seiscentos", "seiscentas", "setecentos", "setecentas",
+      "oitocentos", "oitocentas", "novecentos", "novecentas", "mil", "milhão", "milhões", "dúzia"
+    ],
+    "scales": [
+      "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa", "cem", "cento",
+      "duzentos", "duzentas", "trezentos", "trezentas", "quatrocentos", "quatrocentas", "quinhentos", "quinhentas",
+      "seiscentos", "seiscentas", "setecentos", "setecentas", "oitocentos", "oitocentas", "novecentos", "novecentas",
+      "mil", "milhão", "milhões"
+    ],
+    "connectors": [
+      "e"
+    ],
+    "fractions": [
+      "meia", "meio", "metade", "terço", "terços"
+    ],
+    "fractionLinks": [
+      "de", "do", "da", "um", "uma", "o", "a"
+    ],
+    "clockLinks": [],
+    "ambiguous": [
+      "um", "uma"
+    ],
+    "notACountBefore": [
+      "o", "a", "os", "as", "este", "esta", "esse", "essa", "aquele", "aquela", "nenhum", "nenhuma", "algum",
+      "alguma", "cada", "outro", "outra", "todo", "toda", "qualquer", "sem", "nem"
+    ],
+    "onceWords": [
+      "vez"
+    ],
+    "repeatLinks": [
+      "por", "cada", "ao", "à", "a"
+    ],
+    "repeatUnits": [
+      "vezes"
+    ],
+    "periods": [
+      "dia", "semana", "mês", "ano", "hora", "noite", "manhã", "tarde", "dias", "semanas", "meses", "anos", "horas",
+      "noites"
+    ],
+    "idioms": [
+      "um", "uma", "dois", "duas"
+    ],
+    "units": [
+      "comprimido", "comprimidos", "pastilha", "pastilhas", "cápsula", "cápsulas", "gota", "gotas", "colher",
+      "colheres", "chávena", "chávenas", "xícara", "xícaras", "copo", "copos", "dose", "doses", "injeção",
+      "injecção", "injeções", "injecções", "inalação", "inalações", "unidade", "unidades", "mg", "miligrama",
+      "miligramas", "mcg", "micrograma", "microgramas", "ml", "mililitro", "mililitros", "litro", "litros", "cc",
+      "g", "grama", "gramas", "kg", "quilo", "quilos", "quilograma", "quilogramas", "cm", "centímetro",
+      "centímetros", "metro", "metros", "quilómetro", "quilómetros", "quilômetro", "quilômetros", "milha", "milhas",
+      "grau", "graus", "porcento", "euro", "euros", "dólar", "dólares", "cêntimo", "cêntimos", "centavo", "centavos",
+      "segundo", "segundos", "minuto", "minutos", "hora", "horas", "dias", "semana", "semanas", "mês", "meses",
+      "ano", "anos", "vezes"
+    ]
+  },
+  "ukrainian": {
+    "numbers": [
+      "нуль", "один", "одна", "одне", "одну", "одного", "однієї", "одній", "одним", "одною", "однією", "одному",
+      "дві", "два", "двох", "двом", "двома", "двоє", "три", "трьох", "трьом", "трьома", "троє", "чотири", "чотирьох",
+      "чотирьом", "чотирма", "четверо", "п'ять", "пʼять", "п'яти", "пʼяти", "п'ятьма", "пʼятьма", "п'ятьох",
+      "пʼятьох", "шість", "шести", "шістьма", "сім", "семи", "сімох", "вісім", "восьми", "вісьма", "вісьмома",
+      "дев'ять", "девʼять", "дев'яти", "девʼяти", "десять", "десяти", "одинадцять", "одинадцяти", "дванадцять",
+      "дванадцяти", "тринадцять", "тринадцяти", "чотирнадцять", "чотирнадцяти", "п'ятнадцять", "пʼятнадцять",
+      "п'ятнадцяти", "пʼятнадцяти", "шістнадцять", "шістнадцяти", "сімнадцять", "сімнадцяти", "вісімнадцять",
+      "вісімнадцяти", "дев'ятнадцять", "девʼятнадцять", "дев'ятнадцяти", "девʼятнадцяти", "двадцять", "двадцяти",
+      "тридцять", "тридцяти", "сорок", "сорока", "п'ятдесят", "пʼятдесят", "п'ятдесяти", "пʼятдесяти", "шістдесят",
+      "шістдесяти", "сімдесят", "сімдесяти", "вісімдесят", "вісімдесяти", "дев'яносто", "девʼяносто", "дев'яноста",
+      "девʼяноста", "сто", "ста", "двісті", "двохсот", "триста", "трьохсот", "чотириста", "чотирьохсот", "п'ятсот",
+      "пʼятсот", "п'ятисот", "пʼятисот", "шістсот", "шестисот", "сімсот", "семисот", "вісімсот", "восьмисот",
+      "дев'ятсот", "девʼятсот", "дев'ятисот", "девʼятисот", "тисяча", "тисячі", "тисячу", "тисяч", "мільйон",
+      "мільйона", "мільйонів", "півтора", "півтори", "дюжина", "двічі", "тричі"
+    ],
+    "scales": [],
+    "connectors": [
+      "з", "із", "зі"
+    ],
+    "fractions": [
+      "половина", "половини", "половину", "половиною", "чверть", "чверті", "третина", "третини", "пів"
+    ],
+    "fractionLinks": [
+      "чайної", "столової", "чайну", "столову", "чайна", "столова"
+    ],
+    "clockLinks": [],
+    "ambiguous": [
+      "один", "одна", "одне", "одну", "одного", "однієї", "одній", "одним", "одною", "однією", "одному", "сорока"
+    ],
+    "notACountBefore": [
+      "ні", "не", "кожен", "кожна", "кожне", "кожну", "кожного", "інший", "інша", "інше", "інші", "цей", "ця", "це",
+      "той", "та", "те", "жоден", "жодна", "жодне", "жодного", "жодної", "без"
+    ],
+    "onceWords": [],
+    "repeatLinks": [
+      "на", "в", "у", "кожен", "кожну", "кожні"
+    ],
+    "repeatUnits": [
+      "раз", "разів", "рази", "двічі", "тричі"
+    ],
+    "periods": [
+      "день", "дня", "дні", "днів", "добу", "доба", "доби", "діб", "тиждень", "тижня", "тижні", "тижнів", "місяць",
+      "місяця", "місяці", "місяців", "рік", "року", "роки", "років", "годину", "години", "годин", "ніч", "ночі",
+      "ранок", "вечір"
+    ],
+    "idioms": [
+      "один", "одна", "одне", "два", "дві"
+    ],
+    "units": [
+      "таблетка", "таблетки", "таблетку", "таблеток", "пігулка", "пігулки", "пігулку", "пігулок", "капсула",
+      "капсули", "капсулу", "капсул", "крапля", "краплі", "краплю", "крапель", "ложка", "ложки", "ложку", "ложок",
+      "чашка", "чашки", "чашку", "чашок", "склянка", "склянки", "склянку", "склянок", "доза", "дози", "дозу", "доз",
+      "укол", "уколи", "уколів", "ін'єкція", "інʼєкція", "ін'єкції", "інʼєкції", "ін'єкцій", "інʼєкцій", "ін'єкцію",
+      "інʼєкцію", "вдих", "вдихи", "вдихів", "одиниця", "одиниці", "одиницю", "одиниць", "штука", "штуки", "штуку",
+      "штук", "мг", "міліграм", "міліграма", "міліграми", "міліграмів", "мкг", "мікрограм", "мікрограма",
+      "мікрограми", "мікрограмів", "мл", "мілілітр", "мілілітра", "мілілітри", "мілілітрів", "літр", "літра",
+      "літри", "літрів", "г", "гр", "грам", "грама", "грами", "грамів", "кг", "кілограм", "кілограма", "кілограми",
+      "кілограмів", "кіло", "см", "сантиметр", "сантиметра", "сантиметри", "сантиметрів", "метр", "метра", "метри",
+      "метрів", "кілометр", "кілометра", "кілометри", "кілометрів", "миля", "милі", "миль", "градус", "градуси",
+      "градусів", "відсоток", "відсотка", "відсотки", "відсотків", "гривня", "гривні", "гривню", "гривень",
+      "копійка", "копійки", "копійок", "долар", "долара", "долари", "доларів", "євро", "шекель", "шекеля", "шекелі",
+      "шекелів", "секунда", "секунди", "секунду", "секунд", "хвилина", "хвилини", "хвилину", "хвилин", "година",
+      "години", "годину", "годин", "дня", "дні", "днів", "доба", "добу", "доби", "діб", "тиждень", "тижня", "тижні",
+      "тижнів", "місяць", "місяця", "місяці", "місяців", "рік", "року", "роки", "років", "раз", "разів", "рази"
+    ]
   }
 }
