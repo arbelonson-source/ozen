@@ -54,11 +54,11 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     }
 
     func toggleCaptionsPause() async {
-        await viewModel.togglePause()
+        await viewModel.togglePause(forRecording: true)
     }
 
     func keepSoundsListening() async {
-        await viewModel.listenForSoundsOnly()
+        await viewModel.listenForSoundsOnly(forRecording: true)
     }
 
     func setCaptionsHeldForRecording(_ held: Bool) {

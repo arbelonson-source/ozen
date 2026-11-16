@@ -200,6 +200,18 @@ struct LiveCaptionViewModelTests {
         #expect(HomeServerCodeStore.read() == "firstcode")
     }
 
+    @Test("the recording wording clears when the person pauses or resumes by hand, but not when the recording does it")
+    func recordingHoldClearsOnManualChange() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-hold-\(UUID()).json")
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: file), pipeline: fakePipeline())
+        await viewModel.start()
+        viewModel.captionsHeldForRecording = true
+        await viewModel.togglePause(forRecording: true)
+        #expect(viewModel.captionsHeldForRecording)
+        await viewModel.togglePause()
+        #expect(!viewModel.captionsHeldForRecording)
+    }
+
     @Test("a reply typed but not yet said outlives the speaking sheet, captions stopping and starting, and is never saved to disk")
     func typedReplyIsKept() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-draft-\(UUID()).json")
