@@ -94,7 +94,7 @@ class HomeServerSecureMismatchTest {
 
     @Test
     fun `a real server that answers the request to open with something else is named the same way`() {
-        for (reply in listOf("HELLO there\r\n\r\n", "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")) {
+        for (reply in listOf("HELLO there\r\n\r\n", "HELLO", "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")) {
             ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { server ->
                 val thread = Thread {
                     server.accept().use { client ->

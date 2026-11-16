@@ -292,7 +292,10 @@ private class WebSocketConnection(
         val line = StringBuilder()
         while (true) {
             val byte = input.read()
-            if (byte < 0) throw EOFException("the connection closed while opening")
+            if (byte < 0) {
+                if (line.isNotEmpty()) throw NotAWebSocketAnswer("the answer ended before its first line did: $line")
+                throw EOFException("the connection closed while opening")
+            }
             if (byte == '\n'.code) return line.toString().trimEnd('\r')
             line.append(byte.toChar())
             if (line.length > 8_192) throw IOException("an answer line is too long")
