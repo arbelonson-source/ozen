@@ -1173,6 +1173,15 @@ private fun AlertsSection(
     }
     val blockedText = tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off.")
     AnnounceWhenShown(notifyInBackground && blocked, blockedText)
+    // An equal start and end is the whole day, deliberately; two equal hours
+    // on screen don't say that, so the note does, and it is read out only
+    // when its words change while shown, never on appearing or scrolling in.
+    val quietHoursNote = if (quietHours.startHour == quietHours.endHour) {
+        tr("כששעות השקט מתחילות ומסתיימות באותה שעה, הן נמשכות כל היום. על צלילים דחופים, כמו אזעקה, עדיין תגיע התראה.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
+    } else {
+        tr("על צלילים דחופים, כמו אזעקה, עדיין תגיע התראה.", "Urgent sounds like a siren still alert.")
+    }
+    AnnounceWhenTextChanges(notifyInBackground && quietHours.isEnabled, quietHoursNote)
     SectionHeader(tr("התראות", "Alerts"))
     SettingsGroup(dividerInset = 56.dp) {
         item {
@@ -1237,19 +1246,12 @@ private fun AlertsSection(
             if (quietHours.isEnabled) {
                 item { HourStepper(tr("מתחילות", "Starts"), HourStepperText.start(), quietHours.startHour) { onQuietHours(QuietHours(true, it, quietHours.endHour)) } }
                 item { HourStepper(tr("מסתיימות", "Ends"), HourStepperText.end(), quietHours.endHour) { onQuietHours(QuietHours(true, quietHours.startHour, it)) } }
-                // An equal start and end is the whole day, deliberately; two
-                // equal hours on screen don't say that, so the note does, and
-                // the screen reader reads it out when it changes.
                 item {
                     Text(
-                        if (quietHours.startHour == quietHours.endHour) {
-                            tr("כששעות השקט מתחילות ומסתיימות באותה שעה, הן נמשכות כל היום. על צלילים דחופים, כמו אזעקה, עדיין תגיע התראה.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
-                        } else {
-                            tr("על צלילים דחופים, כמו אזעקה, עדיין תגיע התראה.", "Urgent sounds like a siren still alert.")
-                        },
+                        quietHoursNote,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }

@@ -784,12 +784,16 @@ struct SettingsView: View {
     }
 
     @discardableResult
-    private func saveHomeServerAddress() -> Task<Bool, Never> {
+    private func saveHomeServerAddress() -> Bool {
         let address = homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         homeServerAddressDraft = address
         homeServerAddressLoaded = address
         forgetHomeServerCheck()
-        return Task { await viewModel.setHomeServerAddress(address) }
+        let result = viewModel.storeHomeServerAddress(address)
+        if result.changed {
+            Task { await viewModel.restartForHomeServerAddress() }
+        }
+        return result.written
     }
 
     /// The button vanishes the moment it is pressed and the green line that
@@ -798,12 +802,12 @@ struct SettingsView: View {
     private func saveHomeServerAddressAndSay() {
         let savedAddressBefore = viewModel.settings.homeServerAddress
         let pinBefore = viewModel.settings.homeServerCertificatePin
-        let write = saveHomeServerAddress()
+        let written = saveHomeServerAddress()
         let typed = homeServerAddressDraft
         let pin = HomeServer.announcementPin(typed: typed, saved: savedAddressBefore, pin: pinBefore)
         savedFieldFocus = .address
         announceAfterFocusMove {
-            HomeServer.addressSaveOutcome(address: typed, pin: pin, writeFailed: !(await write.value))
+            HomeServer.addressSaveOutcome(address: typed, pin: pin, writeFailed: !written)
         }
     }
 

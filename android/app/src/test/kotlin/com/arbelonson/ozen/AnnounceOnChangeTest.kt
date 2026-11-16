@@ -27,4 +27,22 @@ class AnnounceOnChangeTest {
         assertFalse(tracker.observe(false))
         assertTrue(tracker.observe(true))
     }
+
+    @Test
+    fun `words that change while the note is showing are announced, appearing is not`() {
+        val tracker = AnnounceOnChange()
+        assertFalse(tracker.observeChange(false, "one"))
+        assertFalse(tracker.observeChange(true, "one"))
+        assertFalse(tracker.observeChange(true, "one"))
+        assertTrue(tracker.observeChange(true, "two"))
+        assertFalse(tracker.observeChange(true, "two"))
+    }
+
+    @Test
+    fun `words that change while the notice is hidden and appearing are not announced`() {
+        val tracker = AnnounceOnChange()
+        assertFalse(tracker.observeChange(false, "one"))
+        assertFalse(tracker.observeChange(false, "two"))
+        assertFalse(tracker.observeChange(true, "two"))
+    }
 }
