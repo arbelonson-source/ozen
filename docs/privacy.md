@@ -76,6 +76,16 @@ turns off Android's cloud backup for itself.
 
 ### Recent sound
 
+When the home computer or a cloud service drops out and the phone has its
+own speech model, that model hears the last seconds again (up to about 20)
+from the short stretch of sound the phone holds in memory. The replay is
+done on the phone and sends nothing new anywhere. Those seconds may already
+have gone to the cloud service or the home computer while it was working,
+before it dropped out. Without a model on the phone, nothing is replayed.
+On Android, a long
+conversation shared as a text file carries its title and the phone's date
+and time in the file name, so check the title before sharing.
+
 While captions run, Ozen holds the last 30 seconds of sound in the phone's
 memory, only so that a problem can be looked into. It is never written down
 unless you mark a problem, with **Mark a problem now** (lesamen be'aya

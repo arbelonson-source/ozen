@@ -7,6 +7,19 @@ ours, and each service's key stays in the phone's Keychain. If the key stops
 working, the credit runs out or the internet goes, a Whisper model already on
 the phone takes over and the status line says so.
 
+The words on the screen say which of these it is. A key the service turned
+down says "The service didn’t accept this key. Check that you copied all of
+it." (copy the whole key again). A service that is slow or stuck says "Cloud
+transcription isn’t available right now", which is not a missing key: the
+phone's own model takes over after the first time-out, but only if a
+speech model is already on the phone. It then hears the last seconds again,
+and captions go back to the cloud once it answers. Without such a model,
+the phone has nothing to take over with: captions wait, the screen says
+cloud transcription isn’t available right now, and the phone keeps trying
+the service. When captions stop and you are away from Ozen, the notice says
+the same thing, then "Open Ozen to continue." See
+[Troubleshooting](troubleshooting.md#what-the-status-button-says).
+
 Ozen offers Soniox, Deepgram, OpenAI, Groq, ElevenLabs, Google Gemini,
 Speechmatics, AssemblyAI and OpenRouter (which passes the audio on to a
 Google Gemini model).

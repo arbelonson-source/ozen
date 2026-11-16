@@ -177,6 +177,16 @@ to make it smaller. A small label shows the size while you do it. Settings
 also has **Text size** (godel text), with a preview sentence and a button to
 go back to the usual size.
 
+### Numbers stand out
+
+Numbers (a time, how many pills, a phone number) are shown in a heavier
+weight and a second color, so they are not missed. This works for digits,
+and also for numbers said as words ("three pills at ten thirty") when the
+captions are in Hebrew, English, Spanish, Russian, French, German,
+Portuguese or Ukrainian. In the other languages only digits stand out.
+"Bold numbers" (hadgashat misparim) in Settings, under Display, turns it
+off.
+
 ### Typing a reply
 
 Tap **Say**. Type what you want to say in the box, then tap **Play**
@@ -254,6 +264,9 @@ This is on by default. The switch is **Captions on the lock screen too**
 for Ozen in the iPhone's own settings, Ozen's Settings says so and offers a
 button to open them. If iOS closes the app, the lock screen says "Captions aren’t updating. Open Ozen." (ha-ktuviyot lo
 mitaadkenot. pitchu et Ozen) instead of showing an old sentence as new.
+That warning, like "Captions stopped. Open Ozen." and the other notes about
+captions pausing, is shown above the lines, so it is read first, also with
+VoiceOver.
 
 **Siri and Shortcuts.** Ozen understands, in Hebrew or in English, commands
 such as "Hey Siri, start captions in Ozen" and "Hey Siri, stop captions in

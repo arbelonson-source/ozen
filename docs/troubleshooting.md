@@ -53,6 +53,14 @@ leaves the rest of the journal.
 
 ## What the status button says
 
+When captions stop and you are away from Ozen, a notification "Captions
+stopped" arrives. It now names the cause, then says to open Ozen. Examples:
+"The microphone isn't responding. Open Ozen to continue.", "Transcription
+stopped. Open Ozen to continue.", "Loading the model failed. Open Ozen to
+continue." and, for a cloud service that is slow, "Cloud transcription isn't
+available right now. Open Ozen to continue." The cause is the same one the
+status button gives in the table below, so look it up there.
+
 | The button says | What it means | What to do |
 | --- | --- | --- |
 | "Listening" (me'azina) | Captions are running. | Nothing. If no words appear, check the microphone (below). |
@@ -81,10 +89,17 @@ leaves the rest of the journal.
 | "No microphone access" (ein gisha la-mikrofon) | Microphone permission was turned off for Ozen. | Tap it: it opens iOS Settings. Turn Microphone on. |
 | "No speech recognition permission" (ein ishur le-zihuy dibur) | Speech recognition permission is off (Apple's engine only). | Tap it: it opens iOS Settings. |
 | "… isn't available in … on this device" (… lo zamin be-safa … ba-machshir ha-ze) | Apple's engine has no on-device support for the language being captioned (Hebrew, for example) on this iPhone. | Tap to switch to Whisper in Settings. |
-| "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key for the chosen service, or the service turned it down, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste a key from the chosen service's site and tap Save; [Cloud services](cloud-services.md#getting-a-key) says where each one keeps its keys. |
+| "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key for the chosen service, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste a key from the chosen service's site and tap Save; [Cloud services](cloud-services.md#getting-a-key) says where each one keeps its keys. |
+| "The service didn't accept this key. Check that you copied all of it." | The cloud service turned the key down, often because only part of it was copied. With no Whisper model on the phone this is the whole button; with one, the button says "Listening" with these words and the phone carries on by itself. Settings says the same when the key is saved. | Tap it: Settings opens. Copy the whole key again from the chosen service's site and tap Save. The cloud is tried again the next time captions start. |
+| "Cloud transcription isn't available right now" | The cloud service did not answer in time: a slow or stuck connection, or the service itself having trouble. This is not a missing key. If a Whisper model is on the phone it takes over after the first time-out and hears the last seconds again, and the cloud is asked quietly meanwhile. Without a model, captions wait and the cloud is tried again. Captions go back to it once it answers. | Nothing, if the phone is carrying on by itself. Otherwise tap to try again, or check the connection. |
 | "Cloud transcription's budget ran out" (nigmar ha-kredit le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
 | "No internet connection" (ein chibur la-internet) | Cloud captions can't reach the internet, and no Whisper model is on the phone to take over. | Check Wi-Fi or cellular data. It retries by itself; or switch to Whisper, which works offline. |
 | "Trying again on its own · Tap to try now" (menasim shuv otomatit · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
+| "The address or code is missing" | The home computer is chosen, but the phone has no address or no pairing code for it. The computer was never asked, so it may be fine. With a Whisper model on the phone the button says "Listening" with these words and the phone carries on by itself. | Tap it: Settings opens. Scan the QR code from "Ozen - pair a phone" in the computer's Start menu, or type the address and the code. Captions start once they are saved. Nothing is retried on a timer meanwhile; if sound alerts are on, they keep listening. |
+| "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is on and awake, but it answered with an error or with something the phone does not understand. It is not off, so there is nothing to wake. | Restart Ozen on the computer, or scan the QR code again. The phone keeps trying by itself, and its own model carries on if the backup is downloaded; otherwise the status line says "Tap to add a backup on the phone". |
+| "The home computer can't caption …" (the language's name is shown) | The model on the home computer does not know the language the phone is set to. Asking again would get the same answer, so the phone does not. With a Whisper model on the phone it carries on by itself, and the button says so. Without one, captions wait, and sound alerts, if on, keep listening. | Tap it: Settings opens. Pick another engine, or another language. [The home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language) says more. |
+| "The computer's pairing changed. Scan its QR code again." | The computer made a new certificate (for example its certificate file was deleted), so the saved code no longer matches. | Scan the QR code again from "Ozen - pair a phone" in the computer's Start menu. |
+| "The home computer didn't accept the pairing code" | The code on the phone is not the one on the computer. | Scan the QR code again. |
 
 ## Sound alerts aren’t working
 
@@ -113,8 +128,12 @@ described in the status button table above.
 | It says | What it means | What to do |
 | --- | --- | --- |
 | "Connected" with a time in ms | The computer answered and took the code. | Nothing. |
-| "No answer from the computer" | The phone can't reach it: it is off, asleep, not on the internet, or (at home) Windows treats the Wi-Fi as a public network. | Wake or turn on the computer. At home, see "When the phone can't reach it" in `server/README.md`. Captions carry on from the phone's own model meanwhile if its backup is downloaded (Settings → Home computer → "Download a backup to the phone"); without it they wait for the computer and start again by themselves within about 15 seconds of it answering (sound alerts keep listening meanwhile), and the status line says "Tap to add a backup on the phone"; a backup that finishes downloading during the wait takes over by itself. The first time the backup takes over, and again after an iOS update, the phone spends a few minutes setting the model up ("Setting the model up for this phone"); the very first time it also needs the internet once. |
+| "No answer from the computer" | The phone can't reach it: it is off, asleep, not on the internet, got a new address on a new network, or (at home) Windows treats the Wi-Fi as a public network. On an iPhone the message also says to check that Ozen is allowed under Settings › Privacy & Security › Local Network. | Wake or turn on the computer. If it moved to a new network, scan its QR code again. At home, see "When the phone can't reach it" in `server/README.md`. Captions carry on from the phone's own model meanwhile if its backup is downloaded (Settings → Home computer → "Download a backup to the phone"); without it they wait for the computer and start again by themselves within about 15 seconds of it answering (sound alerts keep listening meanwhile), and the status line says "Tap to add a backup on the phone"; a backup that finishes downloading during the wait takes over by itself. The first time the backup takes over, and again after an iOS update, the phone spends a few minutes setting the model up ("Setting the model up for this phone"); the very first time it also needs the internet once. |
 | "The computer answered but didn't accept the code" | The code on the phone isn't the one in `C:\ozen\pairing-code` (setup was run on a new computer, or the code was typed wrong). | Scan the QR code again from "Ozen - pair a phone" in the computer's Start menu. |
+| "The computer's pairing changed. Scan its QR code again." | The computer's certificate is no longer the one the phone saved. | Scan the QR code again. |
+| "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is there, but replied with an error or with something the phone does not understand. Before, the test said "No answer" here, which sent people to check a computer that was on. | Restart Ozen on the computer, or scan the QR code again. |
+| "The home computer can't caption …" (the language's name is shown) | The computer's model does not know the language the phone is set to. | Pick another language or another engine, or see [the home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language). |
+| "The address or code is missing" | One of the two is empty. | Fill in both. |
 
 ## Sound alerts at night
 
@@ -166,6 +185,16 @@ says where to look on the common ones.
   whatever was said after them is missing, so it is worth asking again. (In
   the History list, the saved-conversation card and notifications, a "…"
   only means the text was shortened to fit.)
+
+  After the home computer or a cloud service drops out, and only if the
+  phone has its own speech model (for the home computer, the downloaded
+  backup), that model hears the last seconds again (up to about 20 seconds,
+  since the last finished line), so the sentence is less likely to be
+  lost. Without a model, nothing is replayed. Once that replay shows
+  words, a half-written line that began inside the replayed audio is
+  replaced by the replayed line, on the screen and in History, so the same
+  words do not show twice. If the replay has no words, the cut-off line
+  stays: words already read are never taken away.
 - **A card on the empty caption screen offers "much more accurate Hebrew
   with a different model".** The phone was set up when the small, fast
   model was the default, and that one gets most Hebrew words wrong. Tapping
@@ -184,7 +213,12 @@ says where to look on the common ones.
 - **The orange microphone dot stays on while captions are stopped.** When
   captions can't run for now (the home computer is off or asleep, the
   cloud is out of reach) and are waiting to try again, the microphone stays
-  on for sound alerts alone, so a doorbell or smoke alarm still alerts.
+  on for sound alerts alone, so a doorbell or smoke alarm still alerts. The
+  same holds, when sound alerts are on, when the wait is for something only
+  a person can fix: no home
+  computer address saved, a plain `ws://` address the phone refuses, or a
+  home computer that can't caption the chosen language. Nothing is retried
+  on a timer then, and saving an address starts captions again.
   Nothing is captioned or sent anywhere meanwhile. Stopping captions turns
   the microphone off.
 - **The app is in English (or Hebrew) and should be the other.** Settings →
@@ -196,6 +230,24 @@ says where to look on the common ones.
   read. The damaged file is kept next to it as `ozen-settings.damaged.json`;
   send the diagnostics report and say so.
 
+- **A screen reader says something when Save is tapped.** In Settings →
+  Home computer, **Save address** and **Save code** are announced, and focus
+  stays on the field: "Computer address saved", or "Computer address
+  removed" when the field was emptied, and "Pairing code saved on the
+  phone". If the address has a caution under it, the announcement carries it
+  too: "Outside the home network, use the address that starts with wss://",
+  "That address doesn’t look right", or "The link to the computer isn’t
+  encrypted on the home Wi‑Fi. To encrypt it, scan the code from the
+  computer again." On Android, the notices and warnings in Settings (a key
+  or code that was not saved, notifications that are off) are read out when
+  they appear.
+- **A long conversation shared from Android has a file name.** Over about
+  50,000 characters, a conversation is shared as a text file. It is named
+  after the conversation's title (or "Conversation from Ozen") and the
+  phone's date and time, and starred lines as "Starred lines from Ozen" with
+  the date and time, so two shares can be told apart. Characters a file
+  system does not allow become "_", hidden direction marks are dropped, and a
+  very long title is shortened so the time always stays.
 - **Speaker numbers start again from 1.** After a long quiet stretch (a new
   conversation), or when the screen is cleared, unnamed voices are numbered
   from "Speaker 1" (dover 1) again, so a phone left listening all week
@@ -214,7 +266,9 @@ says where to look on the common ones.
 - **Captions on the lock screen.** The newest lines show there while
   captions run, and stay (saying "Captions paused for a call", "Captions
   starting" while the app brings them back by itself, or "Captions
-  stopped") when something interrupts them; under such a note a line
+  stopped") when something interrupts them. That warning shows above the
+  lines, so it is the first thing read, with VoiceOver too, even at large
+  text sizes; under such a note a line
   said more than a minute ago is left off. After a minute with nothing
   said, only the newest line stays, with "said N minutes ago" (ne'emar
   lifnei N dakot) under it; after a quarter of an hour it gives way to
@@ -252,7 +306,8 @@ says where to look on the common ones.
   has a Delete button and an accuracy score.
 - **Some words are in a different color.** Numbers (a time, how many pills,
   a phone number), written in digits or spoken as words (when the captions are
-  in Hebrew or English: "three pills at ten thirty"), stand out so they aren't missed: yellow among white text,
+  in Hebrew, English, Spanish, Russian, French, German, Portuguese or
+  Ukrainian: "three pills at ten thirty"), stand out so they aren't missed: yellow among white text,
   white among yellow text, dark blue on a white background. Settings → Display (tetzuga) →
   "Bold numbers" (hadgashat misparim) turns it off.
 - **One person gets two speaker numbers, or two people share one.** Voices
