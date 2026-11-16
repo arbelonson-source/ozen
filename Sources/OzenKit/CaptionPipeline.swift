@@ -768,7 +768,15 @@ public final class CaptionPipeline {
             recentAudio.append(chunk, writer: writer)
         }
         fanOut = fan
-        let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
+        let engineAudio: AsyncStream<[Float]>
+        if replay.isEmpty {
+            engineAudio = fan.outputs[0]
+            await engine.setDecodeProgress(nil)
+        } else {
+            let replayed = replaying(replay, then: fan.outputs[0], byDecoding: engine.reportsDecodeProgress)
+            engineAudio = replayed.audio
+            await engine.setDecodeProgress(replayed.report)
+        }
         let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]
         let soundObservations = soundDetector.map { $0.observations(audio: whileSoundAlertsAreOn(fan.outputs[2]), availability: soundAvailabilityReporter()) }
@@ -2604,7 +2612,12 @@ public final class CaptionPipeline {
     /// queued for it: a slow or still loading model reads the replay late,
     /// and its words must still replace the cut-off lines then. The count
     /// runs when the engine pulls a chunk from the stream returned here.
-    private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
+    /// An engine that reads ahead of its decoding (`reportsDecodeProgress`)
+    /// is counted by what it says it has decoded instead: `report` is for
+    /// its `setDecodeProgress`, and the pulls then count nothing.
+    private func replaying(
+        _ replay: [Float], then live: AsyncStream<[Float]>, byDecoding: Bool
+    ) -> (audio: AsyncStream<[Float]>, report: (@Sendable (Int) -> Void)?) {
         let step = Int(Self.sampleRate / 5)
         let (queue, continuation) = AsyncStream<ReplayChunk>.makeStream(
             bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
@@ -2627,13 +2640,20 @@ public final class CaptionPipeline {
         let reader = ReplayReader(queue.makeAsyncIterator())
         let run = runID
         let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
-        return AsyncStream(unfolding: { [weak self] in
+        let audio = AsyncStream<[Float]>(unfolding: { [weak self] in
             guard let chunk = await reader.next() else { return nil }
-            if chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
+            if !byDecoding, chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
                 await self?.endReplayOverlap(run: run)
             }
             return chunk.samples
         })
+        guard byDecoding else { return (audio, nil) }
+        let replayCount = replay.count
+        let report: @Sendable (Int) -> Void = { [weak self] position in
+            guard reader.decodedLive(position - replayCount, grace: grace) else { return }
+            Task { @MainActor in self?.endReplayOverlap(run: run) }
+        }
+        return (audio, report)
     }
 
     /// Only the replay of the current run may end the overlap check: an
@@ -3642,4 +3662,17 @@ private final class ReplayReader: @unchecked Sendable {
     }
 
     func next() async -> ReplayChunk? { await iterator.next() }
+
+    private let decodeLock = NSLock()
+    private var liveDecoded = 0
+
+    /// True once, on the report that takes the decoded live audio past the
+    /// grace. Reports come from the engine's own task, not the reader's.
+    func decodedLive(_ count: Int, grace: Int) -> Bool {
+        decodeLock.withLock {
+            let before = liveDecoded
+            liveDecoded = max(before, count)
+            return before < grace && liveDecoded >= grace
+        }
+    }
 }

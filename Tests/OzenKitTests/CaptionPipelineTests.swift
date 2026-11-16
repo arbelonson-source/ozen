@@ -169,6 +169,20 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// Runs after each chunk `stream` reads, with that chunk; the read loop
     /// waits for it, so a test can park the engine at an exact point.
     var afterChunk: (@Sendable ([Float]) async -> Void)?
+    /// Whether this engine says how far its decoding has got, like the
+    /// phone's model; see `reportDecoded`.
+    var reportsDecoding = false
+    var reportsDecodeProgress: Bool { reportsDecoding }
+    private var decodeReport: (@Sendable (Int) -> Void)?
+
+    func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async {
+        lock.withLock { decodeReport = report }
+    }
+
+    /// Says the decoding has got through this many samples of the stream.
+    func reportDecoded(_ position: Int) {
+        lock.withLock { decodeReport }?(position)
+    }
     /// Waits this long between progress reports, as a real download does.
     var progressSpacing: Duration?
     /// Megabytes `prepare` would still download; nil when the model is there.

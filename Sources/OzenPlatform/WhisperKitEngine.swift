@@ -37,6 +37,13 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// Rebuilt with the vocabulary; catches the prompt coming back as a
     /// caption on a quiet window.
     private var echoDetector: PromptEchoDetector?
+    private var decodeProgress: (@Sendable (Int) -> Void)?
+
+    public nonisolated var reportsDecodeProgress: Bool { true }
+
+    public func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async {
+        decodeProgress = report
+    }
 
     // How often the live preview re-runs is decided per pass by
     // `InferenceCadence` (0.6 s on a cool phone, slower when hot, in Low
@@ -371,6 +378,16 @@ public actor WhisperKitEngine: TranscriptionEngine {
         }
         defer { intakeTask.cancel() }
 
+        // Reports how far the decoding has got in the audio this stream was
+        // given, for the replay grace (`reportsDecodeProgress`). `gone` is
+        // what was dropped from the front of the intake so far.
+        let report = decodeProgress
+        var gone = 0
+        func trim(_ count: Int) {
+            intake.drop(prefix: count)
+            gone += count
+        }
+
         let livePass = liveOptions(languageCode: languageCode)
         let finalPass = finalOptions(languageCode: languageCode)
         let speechFilter = filter.forSpeech(in: languageCode)
@@ -398,7 +415,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 // (that's where hallucinations come from), just keep a
                 // little lead-in audio and wait.
                 if total > keepSamples {
-                    intake.drop(prefix: total - keepSamples)
+                    report?(gone + total)
+                    trim(total - keepSamples)
                 }
                 if status.finished { break }
                 try await Task.sleep(for: .milliseconds(80))
@@ -484,8 +502,9 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // may not have been scored yet.
             if !status.finished && intake.hasVoice(upTo: end) == false && lastShownText.isEmpty {
                 tally.recordSkippedWithoutVoice()
+                report?(gone + end)
                 if isFinal {
-                    intake.drop(prefix: end)
+                    trim(end)
                     utteranceID = UUID()
                     samplesAtLastPass = 0
                     lastLivePassSeconds = nil
@@ -495,7 +514,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     // it would wait on a pass over all of it. The half
                     // second kept is longer than a chunk, so a word just
                     // starting (not yet scored) stays.
-                    intake.drop(prefix: total - keepSamples)
+                    trim(total - keepSamples)
                     samplesAtLastPass = keepSamples
                 }
                 continue
@@ -609,8 +628,10 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 lastShownConfidence = shownConfidence
             }
 
+            // After the words went out, so the pipeline sees them first.
+            report?(gone + end)
             if isFinal {
-                intake.drop(prefix: end)
+                trim(end)
                 utteranceID = UUID()
                 samplesAtLastPass = 0
                 lastShownText = ""

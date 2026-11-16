@@ -327,5 +327,55 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.filter { $0.text.hasPrefix("line D starts") }.count == 1)
     }
 
+    /// A phone model that took all the audio at once, as the real one does
+    /// (it reads ahead of its decoding); returns how much of the stream was
+    /// the replay.
+    private func eagerReadReplayLength(_ phone: FakeEngine) async -> Int {
+        #expect(await eventually { phone.samplesSeen.filter { abs($0) == 0.3 }.count == 160_000 })
+        return phone.samplesSeen.count - 160_000
+    }
+
+    @Test("a model that took all the audio at once but has decoded little of it still replaces the half line")
+    func decodePositionHoldsTheGrace() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        phone.reportsDecoding = true
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 32_000)
+        try? await Task.sleep(for: .milliseconds(200))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.last?.text == "line B starts and ends" })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+    }
+
+    @Test("a replay with no words keeps the half line once the model has decoded more than the grace of live audio")
+    func decodedPastTheGraceKeepsTheHalfLine() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        phone.reportsDecoding = true
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 32_000)
+        phone.reportDecoded(replayLength + 160_000)
+        try? await Task.sleep(for: .milliseconds(200))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.count == 3 })
+        #expect(pipeline.segments.first?.text == "line A is done")
+        #expect(pipeline.segments[1].text.hasPrefix("line B starts"))
+        #expect(pipeline.segments.last?.text == "live words")
+    }
+
+    @Test("a model that says nothing about its decoding is counted by the audio it took, as before")
+    func noDecodePositionCountsPulls() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 32_000)
+        try? await Task.sleep(for: .milliseconds(200))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.count == 3 })
+        #expect(pipeline.segments[1].text.hasPrefix("line B starts"))
+        #expect(pipeline.segments.last?.text == "live words")
+    }
+
     private static let graceSamples = CaptionPipeline.replayWordsGraceSeconds * 16_000
 }
