@@ -56,7 +56,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -162,14 +161,13 @@ internal fun SoundAlertsScreen(
             Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), Icons.Rounded.RecordVoiceOver, AlertVibration.speechResumed),
         )
         val feelIcon: @Composable () -> Unit = { Icon(Icons.Rounded.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-        val feelText = tr("הקישו כדי להרגיש את הרטט", "Tap to feel the vibration")
-        val feelHint = Modifier.semantics { stateDescription = feelText }
+        val feelLabel = tr("הרגשת הרטט", "Feel the vibration")
         SettingsGroup(dividerInset = 56.dp) {
             for ((title, icon, importance) in sounds) {
-                item { SettingRow(title, modifier = feelHint, icon = icon, onClick = { onFeel(AlertVibration.pattern(importance), importance) }, trailing = feelIcon) }
+                item { SettingRow(title, onClickLabel = feelLabel, icon = icon, onClick = { onFeel(AlertVibration.pattern(importance), importance) }, trailing = feelIcon) }
             }
             for ((title, icon, vibration) in others) {
-                item { SettingRow(title, modifier = feelHint, icon = icon, onClick = { onFeel(vibration, null) }, trailing = feelIcon) }
+                item { SettingRow(title, onClickLabel = feelLabel, icon = icon, onClick = { onFeel(vibration, null) }, trailing = feelIcon) }
             }
         }
         Footnote(
