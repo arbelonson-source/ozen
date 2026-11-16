@@ -68,10 +68,16 @@ object NightAlerts {
         )
     }
 
-    fun dndText(through: Boolean, alarmsAllowed: Boolean, phoneLabel: (String) -> String? = { null }): String {
+    fun dndText(through: Boolean, alarmsAllowed: Boolean, phoneLabel: (String) -> String? = { null }, alarmsSilent: Boolean = false): String {
         if (through) return tr("צלילים דחופים, כמו גלאי עשן, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
         val override = label(SystemLabels.OVERRIDE_DND, tr("התעלמות ממצב 'נא לא להפריע'", "Override Do Not Disturb"), phoneLabel)
-        return if (!alarmsAllowed) {
+        return if (!alarmsAllowed && alarmsSilent) {
+            tr(
+                "התראות ״חירום״ של אוזן במצב שקט בטלפון. הגבירו אותן, ובאותו דף הפעילו גם את ״%1״.",
+                "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.",
+                listOf(override),
+            )
+        } else if (!alarmsAllowed) {
             tr(
                 "התראות ״חירום״ של אוזן כבויות בטלפון. הפעילו אותן, ובאותו דף הפעילו גם את ״%1״.",
                 "Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on %1 on the same page.",
