@@ -383,6 +383,25 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `testing the connection with an address and a code both unsaved restarts captions on the home computer once`() = runBlocking<Unit> {
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        restarts = 0
+        var stored: EngineSettings.EntriesStored? = null
+        val check = engineSettings.testConnection("ws://192.168.1.20:8765", " code-typed ") { stored = it }
+        assertEquals(HomeServerCheck.Connected(12), check)
+        assertEquals("ws://192.168.1.20:8765", addressWhenChecked)
+        assertEquals("code-typed", codes.read())
+        assertTrue(stored!!.codeStored)
+        assertEquals(1, restarts)
+        engineSettings.testConnection("ws://192.168.1.20:8765", "code-two")
+        assertEquals(2, restarts)
+        engineSettings.testConnection("ws://192.168.1.21:8765", "")
+        assertEquals(3, restarts)
+        engineSettings.testConnection("ws://192.168.1.21:8765", "")
+        assertEquals(3, restarts)
+    }
+
+    @Test
     fun `the speed slider saves each step at once, kept inside the computer's range`() {
         engineSettings.chooseBeam(3)
         assertEquals(3, saved().homeServerBeam)
