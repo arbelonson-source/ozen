@@ -36,13 +36,13 @@ struct FileTranscriptKeeperTests {
         let shelf = Shelf()
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(4))
+        keeper.linesSoFar(lines(4), run: keeper.id)
         #expect(shelf.saved.isEmpty)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         #expect(shelf.saved.count == 1)
-        keeper.linesSoFar(lines(9))
+        keeper.linesSoFar(lines(9), run: keeper.id)
         #expect(shelf.saved.count == 1)
-        keeper.linesSoFar(lines(10))
+        keeper.linesSoFar(lines(10), run: keeper.id)
         #expect(shelf.saved.count == 2)
     }
 
@@ -51,15 +51,15 @@ struct FileTranscriptKeeperTests {
         let shelf = Shelf()
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(1))
+        keeper.linesSoFar(lines(1), run: keeper.id)
         shelf.clock += 29
-        keeper.linesSoFar(lines(2))
+        keeper.linesSoFar(lines(2), run: keeper.id)
         #expect(shelf.saved.isEmpty)
         shelf.clock += 1
-        keeper.linesSoFar(lines(2))
+        keeper.linesSoFar(lines(2), run: keeper.id)
         #expect(shelf.saved.count == 1)
         shelf.clock += 60
-        keeper.linesSoFar(lines(2))
+        keeper.linesSoFar(lines(2), run: keeper.id)
         #expect(shelf.saved.count == 1)
     }
 
@@ -68,8 +68,8 @@ struct FileTranscriptKeeperTests {
         let shelf = Shelf()
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
-        keeper.linesSoFar(lines(10))
+        keeper.linesSoFar(lines(5), run: keeper.id)
+        keeper.linesSoFar(lines(10), run: keeper.id)
         #expect(Set(shelf.saved.map(\.id)) == [keeper.id])
         #expect(shelf.saved.allSatisfy { $0.cutShort })
         #expect(shelf.saved.map { $0.segments.count } == [5, 10])
@@ -93,7 +93,7 @@ struct FileTranscriptKeeperTests {
         shelf.on = false
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(12))
+        keeper.linesSoFar(lines(12), run: keeper.id)
         #expect(shelf.saved.isEmpty)
         #expect(shelf.deleted.isEmpty)
     }
@@ -103,9 +103,9 @@ struct FileTranscriptKeeperTests {
         let shelf = Shelf()
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         shelf.on = false
-        keeper.linesSoFar(lines(6))
+        keeper.linesSoFar(lines(6), run: keeper.id)
         #expect(shelf.deleted == [keeper.id])
     }
 
@@ -117,14 +117,14 @@ struct FileTranscriptKeeperTests {
         keeper.discard()
         #expect(shelf.deleted.isEmpty)
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         keeper.discard()
         #expect(shelf.deleted == [keeper.id])
         keeper.discard()
         #expect(shelf.deleted.count == 1)
 
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         keeper.finished()
         keeper.discard()
         #expect(shelf.deleted.count == 1)
@@ -136,10 +136,10 @@ struct FileTranscriptKeeperTests {
         shelf.fails = true
         let keeper = keeper(shelf)
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         #expect(shelf.saved.isEmpty)
         shelf.fails = false
-        keeper.linesSoFar(lines(6))
+        keeper.linesSoFar(lines(6), run: keeper.id)
         #expect(shelf.saved.count == 1)
     }
 
@@ -149,13 +149,39 @@ struct FileTranscriptKeeperTests {
         let keeper = keeper(shelf)
         keeper.begin(details)
         keeper.discard()
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         #expect(shelf.saved.isEmpty)
         keeper.begin(details)
-        keeper.linesSoFar(lines(5))
+        keeper.linesSoFar(lines(5), run: keeper.id)
         #expect(shelf.saved.count == 1)
         keeper.finished()
-        keeper.linesSoFar(lines(10))
+        keeper.linesSoFar(lines(10), run: keeper.id)
         #expect(shelf.saved.count == 1)
+    }
+
+    @Test("lines from the previous run after a new one begins are ignored")
+    func previousRun() {
+        let shelf = Shelf()
+        let keeper = keeper(shelf)
+        keeper.begin(details)
+        let old = keeper.id
+        keeper.begin(details)
+        keeper.linesSoFar(lines(5), run: old)
+        #expect(shelf.saved.isEmpty)
+        keeper.linesSoFar(lines(5), run: keeper.id)
+        #expect(shelf.saved.count == 1)
+    }
+
+    @Test("a checkpoint never ends later than the moment it is saved")
+    func notInTheFuture() {
+        let shelf = Shelf()
+        let keeper = keeper(shelf)
+        keeper.begin(details)
+        shelf.clock += 40
+        keeper.linesSoFar(lines(5), run: keeper.id)
+        let record = shelf.saved[0]
+        #expect(record.endedAt != nil)
+        #expect(record.endedAt! <= shelf.clock)
+        #expect(record.startedAt <= shelf.clock)
     }
 }

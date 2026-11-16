@@ -196,6 +196,7 @@ final class TranscribeRecordingModel {
             network: { network }
         )
         keeper.begin(.init(fileName: ready.name, recordingSeconds: ready.durationSeconds, modelVariant: model.variant, languageCode: ready.language.engineLanguageCode))
+        let runID = keeper.id
         let result: FileTranscriptionDriver.Outcome.Result
         if Task.isCancelled {
             // Stopped while captions' model was still loading: its own is
@@ -203,7 +204,7 @@ final class TranscribeRecordingModel {
             result = .cancelled
         } else {
             result = await transcriber.transcribe(request, url: file.url) { [weak self] progress in
-                Task { @MainActor in self?.apply(progress) }
+                Task { @MainActor in self?.apply(progress, run: runID) }
             }
         }
         running = nil
@@ -222,13 +223,13 @@ final class TranscribeRecordingModel {
         }
     }
 
-    private func apply(_ progress: FileTranscriptionDriver.Progress) {
+    private func apply(_ progress: FileTranscriptionDriver.Progress, run runID: UUID) {
         guard case .working(var working) = state else { return }
         working.stage = progress.stage
         working.fraction = progress.fraction
         working.timeLeftSeconds = progress.timeLeftSeconds
         working.lines = progress.lines
-        keeper.linesSoFar(progress.lines)
+        keeper.linesSoFar(progress.lines, run: runID)
         state = .working(working)
     }
 

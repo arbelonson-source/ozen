@@ -62,9 +62,9 @@ public final class FileTranscriptKeeper {
         active = true
     }
 
-    /// Every line so far; saves when enough are new, or enough time has passed since the last save.
-    public func linesSoFar(_ lines: [TranscribedLine]) {
-        guard active else { return }
+    /// Every line so far, from the run whose id `run` is (lines from an earlier run are ignored); saves when enough are new, or enough time has passed since the last save.
+    public func linesSoFar(_ lines: [TranscribedLine], run: UUID) {
+        guard active, run == id else { return }
         guard historyOn() else {
             discard()
             return
@@ -76,7 +76,7 @@ public final class FileTranscriptKeeper {
         let record = FileTranscriptRecord.make(
             fileName: details.fileName,
             lines: lines,
-            finishedAt: began + reach,
+            finishedAt: min(began + reach, now()),
             recordingSeconds: details.recordingSeconds,
             modelVariant: details.modelVariant,
             id: id,
