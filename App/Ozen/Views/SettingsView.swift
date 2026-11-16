@@ -71,7 +71,8 @@ struct SettingsView: View {
     @State private var confirmingWalkthrough = false
     @State private var homeServerCodeSaveFailed = false
     @State private var homeServerAddressNotKept = false
-    @State private var addressWarned = false
+    @State private var addressNotKeptAlert = false
+    @State private var keyAlsoNotKept = false
     @AccessibilityFocusState private var savedFieldFocus: HomeServerField?
 
     private enum HomeServerField { case address, code }
@@ -163,12 +164,26 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settingsScreen")
             .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
+            .alert(SavingTroubleNotice.title, isPresented: $addressNotKeptAlert) {
+                Button(tr("נסו שוב", "Try again")) {
+                    if keyAlsoNotKept {
+                        closingAfterCloudConsent = true
+                        allowAndSaveCloudKey()
+                    } else {
+                        closeStoringEntries(keyKept: true)
+                    }
+                }
+                Button(tr("לסגור בכל זאת", "Close anyway")) { dismiss() }
+            } message: {
+                let address = tr("הכתובת של המחשב בבית לא נשמרה בטלפון, ותיעלם אחרי הפעלה מחדש.", "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.")
+                Text(keyAlsoNotKept ? address + " " + tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again.") : address)
+            }
             // On the Form, not the key field: asked by Close with the
             // field scrolled away, the question never appeared.
             .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
                 Button(tr("לאשר ולשמור", "Allow and save"), action: allowAndSaveCloudKey)
                 Button(tr("ביטול", "Cancel"), role: .cancel) {
-                    if closingAfterCloudConsent { dismiss() }
+                    if closingAfterCloudConsent { closeStoringEntries(keyKept: true) }
                     closingAfterCloudConsent = false
                 }
             } message: {
@@ -899,11 +914,18 @@ struct SettingsView: View {
         if hasUnsavedCloudKey {
             closingAfterCloudConsent = true
             askingCloudConsent = true
-        } else if saveUnsavedEntries() || addressWarned {
-            dismiss()
         } else {
-            addressWarned = true
-            Announcement.post(SavingTroubleNotice.title + ". " + tr("הכתובת לא נשמרה בטלפון.", "The address wasn’t kept on the phone."))
+            closeStoringEntries(keyKept: true)
+        }
+    }
+
+    /// Settings closes only when the address reached the disk; otherwise an alert says so, as on Android.
+    private func closeStoringEntries(keyKept: Bool) {
+        if saveUnsavedEntries() {
+            if keyKept { dismiss() }
+        } else {
+            keyAlsoNotKept = !keyKept
+            addressNotKeptAlert = true
         }
     }
 
@@ -912,9 +934,11 @@ struct SettingsView: View {
     private func allowAndSaveCloudKey() {
         let closing = closingAfterCloudConsent
         closingAfterCloudConsent = false
-        if saveCloudKey() {
-            if closing { dismiss() }
-        } else {
+        let keyKept = saveCloudKey()
+        if closing {
+            closeStoringEntries(keyKept: keyKept)
+        }
+        if !keyKept {
             Announcement.post(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
         }
     }
