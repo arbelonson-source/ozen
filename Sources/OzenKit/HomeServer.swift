@@ -415,6 +415,8 @@ public enum HomeServerCheck: Sendable, Equatable {
     case unreachable
     case notSetUp
     case needsEncryptedAddress
+    case answeredWrongly
+    case languageNotCovered
 
     public init(availability: EngineAvailability, seconds: Double) {
         switch availability {
@@ -432,6 +434,8 @@ public enum HomeServerCheck: Sendable, Equatable {
                 switch why.detail {
                 case HomeServer.noAddress: self = .notSetUp
                 case HomeServer.needsEncryption: self = .needsEncryptedAddress
+                case HomeServer.unsupportedLanguage: self = .languageNotCovered
+                case let detail where detail.hasPrefix(HomeServer.answeredWronglyPrefix): self = .answeredWrongly
                 default: self = .unreachable
                 }
             default: self = .unreachable
