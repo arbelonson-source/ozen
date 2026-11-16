@@ -48,4 +48,14 @@ class CaptionsHandoverTest {
         assertTrue(handover.begin(PipelinePhase.Listening))
         assertFalse(handover.begin(PipelinePhase.Listening))
     }
+
+    @Test
+    fun captionsTheUserTookOverAreNotGivenBack() {
+        val handover = CaptionsHandover()
+        handover.begin(PipelinePhase.Listening)
+        assertTrue(handover.cancel())
+        assertFalse(handover.pausedHere)
+        assertFalse(handover.end(PipelinePhase.Paused))
+        assertFalse(handover.cancel())
+    }
 }

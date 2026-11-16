@@ -15,4 +15,10 @@ class CaptionsHandover {
         pausedHere = false
         return phase == PipelinePhase.Paused
     }
+
+    fun cancel(): Boolean {
+        val was = pausedHere
+        pausedHere = false
+        return was
+    }
 }

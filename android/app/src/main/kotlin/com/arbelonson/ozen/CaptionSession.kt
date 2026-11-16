@@ -717,6 +717,11 @@ class CaptionSession(
         pipeline.releaseModels()
     }
 
+    /** The user took the captions over (stopped, paused or started them): they are no longer ours to give back. */
+    private fun dropRecordingHandover() {
+        if (recordingHandover.cancel()) publish()
+    }
+
     /** The recording is over or its screen was left: captions paused for it carry on, others are not started. */
     internal fun giveCaptionsBack() {
         if (recordingHandover.end(pipeline.phase)) listen()
@@ -746,6 +751,7 @@ class CaptionSession(
 
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
     fun listen(afterRestart: Boolean = false) {
+        dropRecordingHandover()
         restartRefused = false
         refusalCard.captionsStarted()
         CaptionState.startRefused(false)
@@ -766,12 +772,14 @@ class CaptionSession(
     }
 
     fun pause() {
+        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
         pipeline.pause()
     }
 
     fun stopFromNotification() {
+        dropRecordingHandover()
         light.stop()
         replies.userTookControl()
         pipeline.stopFromNotification()
@@ -1060,6 +1068,7 @@ class CaptionSession(
             speakerName = pipeline::displayName,
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
+            pausedForRecording = recordingHandover.pausedHere && pipeline.phase == PipelinePhase.Paused,
             coveringForCloud = pipeline.isCoveringForCloud,
             coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,

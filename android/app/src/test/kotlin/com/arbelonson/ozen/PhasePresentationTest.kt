@@ -39,6 +39,7 @@ class PhasePresentationTest {
         scheduledRetry: ScheduledRetry? = null,
         downloadSecondsRemaining: Double? = null,
         pausedForSpeech: Boolean = false,
+        pausedForRecording: Boolean = false,
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
@@ -53,7 +54,7 @@ class PhasePresentationTest {
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
         pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
         builtInOffered = builtInOffered, modelGettingReady = modelGettingReady, modelJustReady = modelJustReady,
-        coverDetail = coverDetail, spokenLanguage = spokenLanguage,
+        coverDetail = coverDetail, spokenLanguage = spokenLanguage, pausedForRecording = pausedForRecording,
     )
 
     @Test
@@ -753,5 +754,15 @@ class PhasePresentationTest {
         assertEquals(shown(CloudSpeechError.RateLimited.unavailability, cloud).title, slow.title)
         assertNotEquals(shown(CloudSpeechError.Offline.unavailability, cloud).title, slow.title)
         assertEquals(Action.Retry, slow.action)
+    }
+
+    @Test
+    fun pausedForARecordingSaysSoAndOffersNoTap() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, pausedForRecording = true)
+            assertEquals("Captions are paused while a recording is turned into text", shown.title)
+            assertEquals(PhasePresentation.Action.None, shown.action)
+            assertEquals("Paused", present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit).title)
+        }
     }
 }

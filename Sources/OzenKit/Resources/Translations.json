@@ -1195,7 +1195,9 @@
   "Feel the vibration": "ንዝረቱን ይሰማዎት",
   "one hour earlier": "አንድ ሰዓት ቀደም ብሎ",
   "one hour later": "አንድ ሰዓት ዘግይቶ",
-  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።"
+  "The first stop was at %1.": "የመጀመሪያው መቆም በ%1 ነበር።",
+  "Captions are paused while a recording is turned into text": "ቅጂ ወደ ጽሑፍ ሲቀየር ካፕሽኖች ተቋርጠዋል",
+  "They come back when it’s done": "ሲጨርስ ይመለሳሉ"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2393,7 +2395,9 @@
   "Feel the vibration": "الشعور بالاهتزاز",
   "one hour earlier": "تقديم ساعة",
   "one hour later": "تأخير ساعة",
-  "The first stop was at %1.": "كان التوقف الأول عند %1."
+  "The first stop was at %1.": "كان التوقف الأول عند %1.",
+  "Captions are paused while a recording is turned into text": "توقفت الترجمة النصية مؤقتًا أثناء تحويل تسجيل إلى نص",
+  "They come back when it’s done": "ستعود عند الانتهاء"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3591,7 +3595,9 @@
   "Feel the vibration": "感受振动",
   "one hour earlier": "提前一小时",
   "one hour later": "推后一小时",
-  "The first stop was at %1.": "首次停止的时间是 %1。"
+  "The first stop was at %1.": "首次停止的时间是 %1。",
+  "Captions are paused while a recording is turned into text": "录音转写为文字期间，字幕已暂停",
+  "They come back when it’s done": "转写完成后会自动恢复"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4789,7 +4795,9 @@
   "Feel the vibration": "Sentir la vibration",
   "one hour earlier": "une heure plus tôt",
   "one hour later": "une heure plus tard",
-  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1."
+  "The first stop was at %1.": "Le premier arrêt a eu lieu à %1.",
+  "Captions are paused while a recording is turned into text": "Les sous-titres sont en pause pendant la transcription d’un enregistrement",
+  "They come back when it’s done": "Ils reviennent dès que c’est terminé"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -5987,7 +5995,9 @@
   "Feel the vibration": "Vibration spüren",
   "one hour earlier": "eine Stunde früher",
   "one hour later": "eine Stunde später",
-  "The first stop was at %1.": "Der erste Stopp war um %1."
+  "The first stop was at %1.": "Der erste Stopp war um %1.",
+  "Captions are paused while a recording is turned into text": "Die Untertitel pausieren, während eine Aufnahme in Text umgewandelt wird",
+  "They come back when it’s done": "Sie kommen zurück, sobald das fertig ist"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7185,7 +7195,9 @@
   "Feel the vibration": "कंपन महसूस करें",
   "one hour earlier": "एक घंटा पहले करें",
   "one hour later": "एक घंटा बाद करें",
-  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।"
+  "The first stop was at %1.": "पहली बार रुकना %1 पर हुआ था।",
+  "Captions are paused while a recording is turned into text": "रिकॉर्डिंग को टेक्स्ट में बदलने के दौरान कैप्शन रुके हुए हैं",
+  "They come back when it’s done": "काम पूरा होते ही वे अपने आप लौट आएँगे"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8383,7 +8395,9 @@
   "Feel the vibration": "Sentir a vibração",
   "one hour earlier": "uma hora mais cedo",
   "one hour later": "uma hora mais tarde",
-  "The first stop was at %1.": "A primeira parada foi às %1."
+  "The first stop was at %1.": "A primeira parada foi às %1.",
+  "Captions are paused while a recording is turned into text": "As legendas estão em pausa enquanto uma gravação é transcrita",
+  "They come back when it’s done": "Elas voltam quando terminar"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9581,7 +9595,9 @@
   "Feel the vibration": "Почувствовать вибрацию",
   "one hour earlier": "на час раньше",
   "one hour later": "на час позже",
-  "The first stop was at %1.": "Первая остановка была в %1."
+  "The first stop was at %1.": "Первая остановка была в %1.",
+  "Captions are paused while a recording is turned into text": "Субтитры приостановлены, пока запись преобразуется в текст",
+  "They come back when it’s done": "Они вернутся, когда это закончится"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10779,7 +10795,9 @@
   "Feel the vibration": "Sentir la vibración",
   "one hour earlier": "una hora antes",
   "one hour later": "una hora después",
-  "The first stop was at %1.": "La primera parada fue a las %1."
+  "The first stop was at %1.": "La primera parada fue a las %1.",
+  "Captions are paused while a recording is turned into text": "Los subtítulos están en pausa mientras se transcribe una grabación",
+  "They come back when it’s done": "Vuelven cuando termine"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -11977,6 +11995,8 @@
   "Feel the vibration": "Відчути вібрацію",
   "one hour earlier": "на годину раніше",
   "one hour later": "на годину пізніше",
-  "The first stop was at %1.": "Перша зупинка була о %1."
+  "The first stop was at %1.": "Перша зупинка була о %1.",
+  "Captions are paused while a recording is turned into text": "Субтитри призупинено, поки запис перетворюється на текст",
+  "They come back when it’s done": "Вони повернуться, коли це завершиться"
  }
 }
