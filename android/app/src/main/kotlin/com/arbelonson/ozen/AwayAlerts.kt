@@ -42,6 +42,9 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
     fun takePostedIdentifiers(): List<String> = policy.takePostedIdentifiers()
 
     companion object {
+        /** The notice with this identifier is among the notification tags still in the shade. */
+        fun isShowing(activeTags: List<String?>, identifier: String): Boolean = identifier in activeTags
+
         fun vibrationFor(content: AlertNotificationContent): AlertVibration =
             if (content.isUrgent && content.threadIdentifier == AlertNotifier.SOUNDS_THREAD) AlertVibration.pattern(SoundEvent.Importance.Critical) else AlertVibration.keyword
     }
@@ -50,8 +53,15 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
 class AlertNotifier(private val context: Context) {
     fun post(content: AlertNotificationContent): Boolean = deliver(content).posted
 
-    /** Changes the words of a notice that is already up, with no sound, buzz or heads-up. */
-    fun revise(content: AlertNotificationContent): Boolean = deliver(content, quiet = true).posted
+    /**
+     * Changes the words of a notice that is still showing, with no sound, buzz
+     * or heads-up. One she swiped away is not brought back; that counts as done.
+     */
+    fun revise(content: AlertNotificationContent): Boolean {
+        val showing = context.getSystemService(NotificationManager::class.java).activeNotifications.map { it.tag }
+        if (!AwayAlerts.isShowing(showing, content.identifier)) return true
+        return deliver(content, quiet = true).posted
+    }
 
     class Delivery(val posted: Boolean, val buzz: AlertVibration? = null)
 
