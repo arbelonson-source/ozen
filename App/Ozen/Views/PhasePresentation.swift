@@ -101,7 +101,9 @@ struct PhasePresentation {
         soundsOnly: Bool = false,
         builtInOffered: Bool = false,
         modelGettingReady: Bool = false,
-        modelJustReady: Bool = false
+        modelJustReady: Bool = false,
+        pausedForRecording: Bool = false,
+        soundAlertsPaused: Bool = false
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
@@ -123,6 +125,22 @@ struct PhasePresentation {
                 systemImage: "phone.fill",
                 tint: .orange,
                 action: .resume
+            )
+            return
+        }
+
+        if pausedForRecording, !interruptedBySystem, !pausedForSpeech, phase == .paused || (soundsOnly && phase == .idle) {
+            // Said as on Android: captions stopped because a recording is
+            // being turned into text, and come back by themselves. A tap
+            // still does what it did.
+            self.init(
+                title: soundAlertsPaused
+                    ? tr("הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט", "Captions and sound alerts are paused while a recording is turned into text")
+                    : tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text"),
+                detail: tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
+                systemImage: "pause.circle.fill",
+                tint: .orange,
+                action: phase == .idle ? .start : .resume
             )
             return
         }

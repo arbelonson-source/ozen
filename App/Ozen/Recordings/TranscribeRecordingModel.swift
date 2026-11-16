@@ -127,6 +127,7 @@ final class TranscribeRecordingModel {
             // and either would load a model beside the recording's.
             await host.stopCaptions()
         }
+        if step != .leaveAlone { host.setCaptionsHeldForRecording(true) }
         state = .ready(makeReady())
     }
 
@@ -168,6 +169,7 @@ final class TranscribeRecordingModel {
         if handover.end(phase: host.captionsPhase) {
             await host.toggleCaptionsPause()
         }
+        host.setCaptionsHeldForRecording(false)
         discardShares()
         file.finish()
     }

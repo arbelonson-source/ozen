@@ -317,11 +317,13 @@ struct TranscribeRecordingModelTests {
         await screen.stopCaptions()
         #expect(host.soundsKept == 1)
         #expect(host.toggles == 0)
+        #expect(host.heldForRecording)
         screen.start()
         await screen.runFinished()
         await screen.close()
         #expect(host.toggles == 1)
         #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
     }
 
     @Test("sounds-only that does not take falls back to the plain pause")

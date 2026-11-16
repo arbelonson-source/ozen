@@ -1916,6 +1916,15 @@ public final class LiveCaptionViewModel {
         return settings.keywordAlerts.first { HebrewText.normalize($0.phrase) == typed }
     }
 
+    /// A recording is being turned into text and captions were let go for
+    /// it; they come back by themselves when it ends.
+    public var captionsHeldForRecording = false
+
+    /// Sound alerts are on but not listening meanwhile.
+    public var soundAlertsPausedForRecording: Bool {
+        settings.soundAlerts.isEnabled && !pipeline.isListeningForSoundsOnly
+    }
+
     /// Captions are paused only while the phone says something aloud, and
     /// come back by themselves after.
     public var captionsHeldForSpeech: Bool {

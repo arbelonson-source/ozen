@@ -42,6 +42,10 @@ final class RecordingHostFake: RecordingTranscribeHost {
         }
     }
 
+    private(set) var heldForRecording = false
+
+    func setCaptionsHeldForRecording(_ held: Bool) { heldForRecording = held }
+
     func keepSoundsListening() async {
         soundsKept += 1
         if soundsOnlyTakes, captionsPhase.isListening { captionsPhase = .paused }
