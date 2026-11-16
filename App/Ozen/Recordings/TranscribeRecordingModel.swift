@@ -112,7 +112,11 @@ final class TranscribeRecordingModel {
 
     func stopCaptions() async {
         guard case .ready = state else { return }
-        let step = handover.begin(phase: host.captionsPhase, soundAlertsOn: host.soundAlertsOn)
+        let step = handover.begin(
+            phase: host.captionsPhase,
+            soundAlertsOn: host.soundAlertsOn,
+            waitingForRetry: host.captionsMayLoadModels
+        )
         if step == .keepSounds {
             // The speech model is let go, the microphone and sound alerts
             // go on, so a doorbell is still heard meanwhile.
@@ -122,9 +126,13 @@ final class TranscribeRecordingModel {
             }
         } else if step == .pause {
             await host.toggleCaptionsPause()
+        } else if step == .stop || step == .stopKeepSounds {
+            // Still loading, or failed with a retry lined up: stopped so no
+            // second model loads beside the recording's, and started again
+            // when it ends.
+            await host.stopCaptions()
+            if step == .stopKeepSounds { await host.keepSoundsListening() }
         } else if host.captionsMayLoadModels {
-            // Starting, or failed with a retry lined up: nothing to pause,
-            // and either would load a model beside the recording's.
             await host.stopCaptions()
         }
         if step != .leaveAlone { host.setCaptionsHeldForRecording(true) }
@@ -166,7 +174,8 @@ final class TranscribeRecordingModel {
         running = nil
         awake.release()
         letCaptionsGo()
-        if handover.end(phase: host.captionsPhase) {
+        if handover.startsAgain, !host.captionsHeldForRecording { handover.cancel() }
+        if handover.comeback(phase: host.captionsPhase) != .none {
             await host.toggleCaptionsPause()
         }
         host.setCaptionsHeldForRecording(false)

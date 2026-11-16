@@ -39,10 +39,16 @@ final class RecordingHostFake: RecordingTranscribeHost {
             captionsPhase = .paused
         } else if captionsPhase == .paused {
             captionsPhase = .listening
+        } else if captionsPhase == .idle {
+            captionsPhase = .listening
+            starts += 1
         }
     }
 
-    private(set) var heldForRecording = false
+    private(set) var starts = 0
+    var heldForRecording = false
+
+    var captionsHeldForRecording: Bool { heldForRecording }
 
     func setCaptionsHeldForRecording(_ held: Bool) { heldForRecording = held }
 
@@ -53,6 +59,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
 
     func stopCaptions() async {
         log.append("stop")
+        heldForRecording = false
         captionsPhase = .idle
         retryLinedUp = false
     }

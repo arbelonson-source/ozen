@@ -129,7 +129,7 @@ struct PhasePresentation {
             return
         }
 
-        if pausedForRecording, !interruptedBySystem, !pausedForSpeech, phase == .paused || (soundsOnly && phase == .idle) {
+        if pausedForRecording, !interruptedBySystem, !pausedForSpeech, phase == .paused || phase == .idle {
             // Said as on Android: captions stopped because a recording is
             // being turned into text, and come back by themselves. A tap
             // still does what it did.
