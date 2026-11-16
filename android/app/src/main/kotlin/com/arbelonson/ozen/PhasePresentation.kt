@@ -214,7 +214,7 @@ class PhasePresentation private constructor(
                     tint = PhaseTint.Attention,
                 )
             }
-            if (onlySounds) {
+            if (onlySounds && !pausedForRecording) {
                 return PhasePresentation(
                     title = tr("מאזינה לצלילים בלבד", "Listening for sounds only"),
                     detail = tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),

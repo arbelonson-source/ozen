@@ -765,4 +765,14 @@ class PhasePresentationTest {
             assertEquals("Paused", present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit).title)
         }
     }
+
+    @Test
+    fun pausedForARecordingWhileSoundsKeepListeningSaysOnlyCaptionsAreOffAndOffersNoTap() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, pausedForRecording = true, soundsOnly = true)
+            assertEquals("Captions are paused while a recording is turned into text", shown.title)
+            assertEquals(PhasePresentation.Action.None, shown.action)
+            assertEquals("Listening for sounds only", present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit, soundsOnly = true).title)
+        }
+    }
 }

@@ -103,6 +103,7 @@ import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -709,12 +710,19 @@ class CaptionSession(
 
     private val recordingHandover = CaptionsHandover()
 
-    /** Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright. */
+    /**
+     * Running captions are paused (and come back by [giveCaptionsBack]); a start still loading or a retry is stopped outright.
+     * The recording is read from a file, so sound alerts that were on keep listening meanwhile with the speech model let go.
+     * A night of sounds only is left running as it is.
+     */
     internal fun stopCaptionsForRecording() {
-        recordingHandover.begin(pipeline.phase)
+        val paused = recordingHandover.begin(pipeline.phase)
         replies.userTookControl()
-        pipeline.stopFromNotification()
+        if (!pipeline.soundsOnlyChosen) pipeline.stopFromNotification()
         pipeline.releaseModels()
+        if (paused && chosenSettings().soundAlerts.isEnabled) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { pipeline.listenForSoundsOnly(chosenSettings()) }
+        }
     }
 
     /** The user took the captions over (stopped, paused or started them): they are no longer ours to give back. */
