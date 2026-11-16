@@ -38,8 +38,8 @@ object ListeningCut {
         return Record(started, alive, version)
     }
 
-    fun notice(record: Record?, now: Double, version: Long): Notice? {
-        if (record == null || record.version != version) return null
+    fun notice(record: Record?, now: Double): Notice? {
+        if (record == null) return null
         val gap = now - record.aliveAt
         if (!gap.isFinite() || gap <= LEAST_GAP_SECONDS) return null
         return Notice(record.aliveAt, gap)

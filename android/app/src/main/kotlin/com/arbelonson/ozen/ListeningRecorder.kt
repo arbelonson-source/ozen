@@ -62,7 +62,7 @@ class ListeningRecorder(
         val raw = runCatching { store.read() }.getOrNull() ?: return null
         val record = ListeningCut.parse(raw)
         val at = now()
-        val notice = ListeningCut.notice(record, at, version)
+        val notice = ListeningCut.notice(record, at)
         if (notice == null && record != null && record.version == version && at - record.aliveAt in 0.0..ListeningCut.LEAST_GAP_SECONDS) {
             leftover = Leftover.Kept
             return null

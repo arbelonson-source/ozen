@@ -61,7 +61,7 @@ class ListeningCutTest {
 
     @Test
     fun `listening that was cut at 01_10 and seen at 04_20 gives a notice about 01_10 and the length`() {
-        val notice = ListeningCut.notice(ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION), now = at(4, 20), version = VERSION)
+        val notice = ListeningCut.notice(ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION), now = at(4, 20))
         assertNotNull(notice)
         assertEquals(at(1, 10), notice.stoppedAt, 0.001)
         assertEquals(3 * 3_600.0 + 10 * 60, notice.offSeconds, 0.001)
@@ -79,29 +79,29 @@ class ListeningCutTest {
     @Test
     fun `a gap of two minutes or less is a quick restart and says nothing`() {
         val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
-        assertNull(ListeningCut.notice(record, now = at(1, 10) + 119, version = VERSION))
-        assertNull(ListeningCut.notice(record, now = at(1, 10) + 120, version = VERSION))
-        assertNotNull(ListeningCut.notice(record, now = at(1, 10) + 121, version = VERSION))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 119))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 120))
+        assertNotNull(ListeningCut.notice(record, now = at(1, 10) + 121))
     }
 
     @Test
-    fun `a record from before an app update says nothing`() {
-        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
-        assertNull(ListeningCut.notice(record, now = at(4, 20), version = VERSION + 1))
+    fun `a record from before an app update still gives its notice`() {
+        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION - 1)
+        assertEquals(at(1, 10), ListeningCut.notice(record, now = at(4, 20))?.stoppedAt)
     }
 
     @Test
     fun `no record says nothing`() {
-        assertNull(ListeningCut.notice(null, now = at(4, 20), version = VERSION))
+        assertNull(ListeningCut.notice(null, now = at(4, 20)))
     }
 
     @Test
     fun `a corrupt record or a time in the future says nothing and does not crash`() {
         for (raw in listOf("", "garbage", "listening 1", "listening 1 2", "listening a b 7", "listening NaN NaN 7", "listening -5 -5 7", "listening 9 3 7")) {
-            assertNull(ListeningCut.notice(ListeningCut.parse(raw), now = at(4, 20), version = VERSION), raw)
+            assertNull(ListeningCut.notice(ListeningCut.parse(raw), now = at(4, 20)), raw)
         }
         assertNull(ListeningCut.parse(null))
-        assertNull(ListeningCut.notice(ListeningCut.Record(startedAt = at(5, 0), aliveAt = at(6, 0), version = VERSION), now = at(4, 20), version = VERSION))
+        assertNull(ListeningCut.notice(ListeningCut.Record(startedAt = at(5, 0), aliveAt = at(6, 0), version = VERSION), now = at(4, 20)))
     }
 
     @Test
@@ -267,6 +267,14 @@ class ListeningCutTest {
         store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
         clock = at(1, 11)
         assertNull(recorder().take())
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `taking a record from before an app update far in the past gives its notice and clears it`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
+        clock = at(4, 20)
+        assertEquals(at(1, 10), recorder().take()?.stoppedAt)
         assertNull(store.value)
     }
 
