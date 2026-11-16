@@ -55,8 +55,17 @@ object NightStartCheck {
     /** A closed problem that has since been fixed is forgotten, so it shows again if it comes back. */
     fun stillDismissed(dismissed: List<Problem>, found: List<Problem>): List<Problem> = dismissed.filter { it in found }
 
-    /** A card up while she fixes things in Settings: what is fixed leaves it. */
-    fun stillOpen(shown: List<Problem>, found: List<Problem>): List<Problem> = shown.filter { it in found }
+    private fun family(problem: Problem): Int = if (problem == Problem.Battery) 0 else 1
+
+    /**
+     * A card up while she fixes things in Settings: a fixed problem leaves it.
+     * One that turns into another of the same kind (Emergency alerts off,
+     * then silent, then Do Not Disturb) stays, in its new words.
+     */
+    fun stillOpen(shown: List<Problem>, found: List<Problem>): List<Problem> {
+        val families = shown.map(::family).toSet()
+        return found.filter { family(it) in families }
+    }
 
     fun encode(list: Collection<Problem>): String = list.joinToString(",") { it.name }
 

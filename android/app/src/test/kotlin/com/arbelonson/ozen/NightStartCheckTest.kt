@@ -69,4 +69,24 @@ class NightStartCheckTest {
     fun `a fixed dismissal is forgotten so the problem shows again`() {
         assertEquals(listOf(Problem.Battery), NightStartCheck.stillDismissed(listOf(Problem.Battery, Problem.DoNotDisturb), listOf(Problem.Battery)))
     }
+
+    @Test
+    fun `emergency alerts going from off to silent keep the card with the new words`() {
+        assertEquals(listOf(Problem.EmergencySilent), NightStartCheck.stillOpen(listOf(Problem.EmergencyOff), listOf(Problem.EmergencySilent)))
+    }
+
+    @Test
+    fun `silent alerts that are then fixed leave the card`() {
+        assertEquals(emptyList(), NightStartCheck.stillOpen(listOf(Problem.EmergencySilent), emptyList()))
+    }
+
+    @Test
+    fun `notifications turned back on but the channel muted keep the card`() {
+        assertEquals(listOf(Problem.EmergencyOff), NightStartCheck.stillOpen(listOf(Problem.NotificationsOff), listOf(Problem.EmergencyOff)))
+    }
+
+    @Test
+    fun `fixing the battery does not bring in a problem from the other kind`() {
+        assertEquals(listOf(Problem.Battery), NightStartCheck.stillOpen(listOf(Problem.Battery), listOf(Problem.Battery, Problem.DoNotDisturb)))
+    }
 }
