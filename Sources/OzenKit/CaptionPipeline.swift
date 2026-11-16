@@ -769,12 +769,14 @@ public final class CaptionPipeline {
         }
         fanOut = fan
         let engineAudio: AsyncStream<[Float]>
+        var crossing: ReplayReader?
         if replay.isEmpty {
             engineAudio = fan.outputs[0]
             await engine.setDecodeProgress(nil)
         } else {
             let replayed = replaying(replay, then: fan.outputs[0], byDecoding: engine.reportsDecodeProgress)
             engineAudio = replayed.audio
+            crossing = replayed.report == nil ? nil : replayed.reader
             await engine.setDecodeProgress(replayed.report)
         }
         let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
@@ -815,6 +817,7 @@ public final class CaptionPipeline {
                 for try await token in tokens {
                     guard self.runID == run else { break }
                     self.handle(token: token)
+                    if let crossing, crossing.tokenHandled() { self.endReplayOverlap(run: run) }
                 }
             } catch let error as CloudSpeechError {
                 knownFailure = error.unavailability
@@ -2617,7 +2620,7 @@ public final class CaptionPipeline {
     /// its `setDecodeProgress`, and the pulls then count nothing.
     private func replaying(
         _ replay: [Float], then live: AsyncStream<[Float]>, byDecoding: Bool
-    ) -> (audio: AsyncStream<[Float]>, report: (@Sendable (Int) -> Void)?) {
+    ) -> (audio: AsyncStream<[Float]>, reader: ReplayReader, report: (@Sendable (Int, Int) -> Void)?) {
         let step = Int(Self.sampleRate / 5)
         let (queue, continuation) = AsyncStream<ReplayChunk>.makeStream(
             bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
@@ -2647,13 +2650,15 @@ public final class CaptionPipeline {
             }
             return chunk.samples
         })
-        guard byDecoding else { return (audio, nil) }
+        guard byDecoding else { return (audio, reader, nil) }
         let replayCount = replay.count
-        let report: @Sendable (Int) -> Void = { [weak self] position in
-            guard reader.decodedLive(position - replayCount, grace: grace) else { return }
-            Task { @MainActor in self?.endReplayOverlap(run: run) }
+        let report: @Sendable (Int, Int) -> Void = { [weak self] position, tokens in
+            guard reader.decodedLive(position - replayCount, grace: grace, tokens: tokens) else { return }
+            Task { @MainActor in
+                if reader.crossingDue() { self?.endReplayOverlap(run: run) }
+            }
         }
-        return (audio, report)
+        return (audio, reader, report)
     }
 
     /// Only the replay of the current run may end the overlap check: an
@@ -3666,13 +3671,38 @@ private final class ReplayReader: @unchecked Sendable {
     private let decodeLock = NSLock()
     private var liveDecoded = 0
 
+    private var tokensHandled = 0
+    private var crossingAfter: Int?
+
     /// True once, on the report that takes the decoded live audio past the
-    /// grace. Reports come from the engine's own task, not the reader's.
-    func decodedLive(_ count: Int, grace: Int) -> Bool {
+    /// grace; the crossing then waits until the pipeline has handled the
+    /// `tokens` the engine had yielded by then (`crossingDue`), so words
+    /// found by the pass that got there are applied first. Reports come
+    /// from the engine's own task, not the reader's.
+    func decodedLive(_ count: Int, grace: Int, tokens: Int) -> Bool {
         decodeLock.withLock {
             let before = liveDecoded
             liveDecoded = max(before, count)
-            return before < grace && liveDecoded >= grace
+            guard before < grace, liveDecoded >= grace else { return false }
+            crossingAfter = tokens
+            return true
+        }
+    }
+
+    /// Counts one token the pipeline has handled; true when that makes a
+    /// waiting crossing due.
+    func tokenHandled() -> Bool {
+        decodeLock.withLock { tokensHandled += 1 }
+        return crossingDue()
+    }
+
+    /// True once, when a crossing is waiting and all the tokens that came
+    /// before it have been handled.
+    func crossingDue() -> Bool {
+        decodeLock.withLock {
+            guard let after = crossingAfter, tokensHandled >= after else { return false }
+            crossingAfter = nil
+            return true
         }
     }
 }

@@ -281,9 +281,12 @@ public protocol TranscriptionEngine: Sendable {
     /// How the engine says how many input samples its decoding has got
     /// through, counted from the first sample of the stream: audio it read
     /// ahead of a slow pass is not counted until a pass has covered it, and
-    /// the words that pass found are sent before the report. Set before
+    /// the words that pass found are yielded before the report is made. Set before
     /// every `stream`; nil clears it. Engines that report nothing ignore it.
-    func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async
+    /// The report is `(position, tokens)`: `tokens` is how many tokens the
+    /// engine had yielded on that stream when it reported, so the pipeline
+    /// can act on the position only after it has handled all of them.
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async
 
     /// What the engine knows about how its work has gone (how long passes
     /// take, how much it threw away), for the journal when a problem is
@@ -308,7 +311,7 @@ public protocol TranscriptionEngine: Sendable {
 public extension TranscriptionEngine {
     var reportsDecodeProgress: Bool { false }
 
-    func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async {}
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {}
 
     func setVocabulary(_ terms: [String]) async {}
 

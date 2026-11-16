@@ -37,11 +37,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// Rebuilt with the vocabulary; catches the prompt coming back as a
     /// caption on a quiet window.
     private var echoDetector: PromptEchoDetector?
-    private var decodeProgress: (@Sendable (Int) -> Void)?
+    private var decodeProgress: (@Sendable (Int, Int) -> Void)?
 
     public nonisolated var reportsDecodeProgress: Bool { true }
 
-    public func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async {
+    public func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {
         decodeProgress = report
     }
 
@@ -383,6 +383,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
         // what was dropped from the front of the intake so far.
         let report = decodeProgress
         var gone = 0
+        var yielded = 0
         func trim(_ count: Int) {
             intake.drop(prefix: count)
             gone += count
@@ -415,7 +416,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 // (that's where hallucinations come from), just keep a
                 // little lead-in audio and wait.
                 if total > keepSamples {
-                    report?(gone + total)
+                    report?(gone + total, yielded)
                     trim(total - keepSamples)
                 }
                 if status.finished { break }
@@ -502,7 +503,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // may not have been scored yet.
             if !status.finished && intake.hasVoice(upTo: end) == false && lastShownText.isEmpty {
                 tally.recordSkippedWithoutVoice()
-                report?(gone + end)
+                report?(gone + end, yielded)
                 if isFinal {
                     trim(end)
                     utteranceID = UUID()
@@ -624,12 +625,14 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
                     voicedChunks: text.isEmpty ? nil : voicedChunks
                 ))
+                yielded += 1
                 lastShownText = shown
                 lastShownConfidence = shownConfidence
             }
 
-            // After the words went out, so the pipeline sees them first.
-            report?(gone + end)
+            // With the count of tokens yielded so far: the pipeline acts on
+            // the position only once it has handled that many.
+            report?(gone + end, yielded)
             if isFinal {
                 trim(end)
                 utteranceID = UUID()

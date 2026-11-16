@@ -173,15 +173,16 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// phone's model; see `reportDecoded`.
     var reportsDecoding = false
     var reportsDecodeProgress: Bool { reportsDecoding }
-    private var decodeReport: (@Sendable (Int) -> Void)?
+    private var decodeReport: (@Sendable (Int, Int) -> Void)?
 
-    func setDecodeProgress(_ report: (@Sendable (Int) -> Void)?) async {
+    func setDecodeProgress(_ report: (@Sendable (_ position: Int, _ tokens: Int) -> Void)?) async {
         lock.withLock { decodeReport = report }
     }
 
-    /// Says the decoding has got through this many samples of the stream.
-    func reportDecoded(_ position: Int) {
-        lock.withLock { decodeReport }?(position)
+    /// Says the decoding has got through this many samples of the stream,
+    /// with `tokens` yielded so far (as the real engine counts them).
+    func reportDecoded(_ position: Int, tokens: Int = 0) {
+        lock.withLock { decodeReport }?(position, tokens)
     }
     /// Waits this long between progress reports, as a real download does.
     var progressSpacing: Duration?

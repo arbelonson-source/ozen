@@ -377,5 +377,21 @@ struct ReplayHalfLineTests {
         #expect(pipeline.segments.last?.text == "live words")
     }
 
+    @Test("a decode report past the grace that is handled before the pass's words still lets those words replace the half line")
+    func crossingWaitsForTheWordsBeforeIt() async {
+        let (pipeline, audio, cloud, phone) = rig()
+        phone.reportsDecoding = true
+        await halfLineThenDropWithSlowModel(pipeline, audio, cloud)
+        let replayLength = await eagerReadReplayLength(phone)
+        phone.reportDecoded(replayLength + 160_000, tokens: 1)
+        try? await Task.sleep(for: .milliseconds(300))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "line B starts and ends", isFinal: true, timestamp: 2_000))
+        #expect(await eventually { pipeline.segments.last?.text == "line B starts and ends" })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends"])
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "live words", isFinal: true, timestamp: 2_001))
+        #expect(await eventually { pipeline.segments.count == 3 })
+        #expect(pipeline.segments.map(\.text) == ["line A is done", "line B starts and ends", "live words"])
+    }
+
     private static let graceSamples = CaptionPipeline.replayWordsGraceSeconds * 16_000
 }
