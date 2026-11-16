@@ -6,6 +6,8 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import android.os.Build
+import com.arbelonson.ozen.core.AudioTrackChoice
 import com.arbelonson.ozen.core.SampleRateConverter
 import java.nio.ByteOrder
 
@@ -64,8 +66,14 @@ object AudioFileDecoder {
         }
     }
 
-    private fun audioTrack(extractor: MediaExtractor): Int? =
-        (0 until extractor.trackCount).firstOrNull { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+    private fun audioTrack(extractor: MediaExtractor): Int? {
+        val audio = (0 until extractor.trackCount).filter { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+        val defaults = audio.map { isDefault(extractor.getTrackFormat(it)) }
+        return AudioTrackChoice.index(defaults)?.let { audio[it] }
+    }
+
+    private fun isDefault(format: MediaFormat): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && format.containsKey(MediaFormat.KEY_IS_DEFAULT) && format.getInteger(MediaFormat.KEY_IS_DEFAULT) == 1
 
     private fun decodeLoop(extractor: MediaExtractor, codec: MediaCodec, input: MediaFormat, sampleRate: Int, onPiece: (FloatArray) -> Boolean): DecodeOutcome {
         var rate = input.getInteger(MediaFormat.KEY_SAMPLE_RATE)
