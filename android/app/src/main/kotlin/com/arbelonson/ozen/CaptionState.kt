@@ -135,6 +135,8 @@ data class CaptionScreenState(
     val pausedForRecording: Boolean = false,
     /** Sound alerts were on when the recording paused the captions, and are off for the same time. */
     val soundAlertsPaused: Boolean = false,
+    /** A start that was loading or waiting for a retry was stopped for the recording and starts again after it, so the notification stays up. */
+    val startsAgainAfterRecording: Boolean = false,
     /** The phone's own model captioning while the chosen engine can't, and why. */
     val coveringForCloud: Boolean = false,
     val coveredEngine: TranscriptionEngineKind? = null,
@@ -230,6 +232,7 @@ object CaptionState {
         pausedForSpeech: Boolean = false,
         pausedForRecording: Boolean = false,
         soundAlertsPaused: Boolean = false,
+        startsAgainAfterRecording: Boolean = false,
         coveringForCloud: Boolean = false,
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
@@ -272,6 +275,7 @@ object CaptionState {
             pausedForSpeech = pausedForSpeech,
             pausedForRecording = pausedForRecording,
             soundAlertsPaused = soundAlertsPaused,
+            startsAgainAfterRecording = startsAgainAfterRecording,
             coveringForCloud = coveringForCloud,
             coveredEngine = coveredEngine,
             coverReason = coverReason,

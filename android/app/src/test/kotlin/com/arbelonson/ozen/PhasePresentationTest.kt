@@ -778,6 +778,24 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun aStartStoppedForARecordingSaysCaptionsAreWaitingNotThatTheyAreOff() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(PipelinePhase.Idle, TranscriptionEngineKind.WhisperKit, pausedForRecording = true, soundsOnly = true)
+            assertEquals("Captions are paused while a recording is turned into text", shown.title)
+            assertEquals(PhasePresentation.Action.None, shown.action)
+            assertEquals("Captions are off", present(PipelinePhase.Idle, TranscriptionEngineKind.WhisperKit).title)
+        }
+    }
+
+    @Test
+    fun aStartStoppedForARecordingWithSoundsThatCannotListenSaysSoundAlertsArePausedToo() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = present(PipelinePhase.Idle, TranscriptionEngineKind.WhisperKit, pausedForRecording = true, soundAlertsPaused = true)
+            assertEquals("Captions and sound alerts are paused while a recording is turned into text", shown.title)
+        }
+    }
+
+    @Test
     fun soundAlertsCountAsPausedForARecordingOnlyWhenNothingListensForSounds() {
         assertEquals(true, PhasePresentation.soundAlertsPausedForRecording(alertsOn = true, listeningForSounds = false))
         assertEquals(false, PhasePresentation.soundAlertsPausedForRecording(alertsOn = true, listeningForSounds = true))
