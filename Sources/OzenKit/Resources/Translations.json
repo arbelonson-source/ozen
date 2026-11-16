@@ -1199,6 +1199,8 @@
   "Emergency alerts are muted": "የአደጋ ማንቂያዎች ድምፅ አልባ ናቸው",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጠፍተዋል፣ ስለዚህ የጭስ ማንቂያ አይደርሰዎትም። ለማብራት ይንኩ።",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "የአደጋ ማንቂያዎች በስልኩ ቅንብሮች ውስጥ ጸጥ ተብለዋል፣ ስለዚህ የጭስ ማንቂያ አይጮኽም ወይም አይንቀጠቀጥም። ለማስተካከል ይንኩ።",
+  "Emergency alerts won’t buzz": "የአደጋ ማንቂያዎች አይንቀጠቀጡም",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "የአደጋ ማንቂያዎች አይንቀጠቀጡም፦ በስልኩ ቅንብሮች ውስጥ ለእነሱ ንዝረት ጠፍቷል። ለማስተካከል ይንኩ።",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "የOzen የአደጋ ማንቂያዎች በስልኩ ውስጥ ጸጥ ተብለዋል። ድምፁን መልሰው ያብሩ፣ ከዚያ በዚያው ገጽ ላይ %1 የሚለውን ያብሩ።"
  },
  "arabic": {
@@ -2401,6 +2403,8 @@
   "Emergency alerts are muted": "تنبيهات الطوارئ صامتة",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "تنبيهات الطوارئ متوقفة في إعدادات الهاتف، لذا لن يصلكم تنبيه إنذار الدخان. المسوا لتشغيلها.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "تنبيهات الطوارئ مضبوطة على الصامت في إعدادات الهاتف، لذا لن يصدر إنذار الدخان صوتًا ولا اهتزازًا. المسوا للإصلاح.",
+  "Emergency alerts won’t buzz": "تنبيهات الطوارئ لن تهتز",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "تنبيهات الطوارئ لن تهتز: الاهتزاز متوقف لها في إعدادات الهاتف. المسوا للإصلاح.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "تنبيهات الطوارئ في Ozen مضبوطة على الصامت في الهاتف. أعيدوا الصوت، ثم فعّلوا «%1» في الصفحة نفسها."
  },
  "chineseSimplified": {
@@ -3603,6 +3607,8 @@
   "Emergency alerts are muted": "紧急提醒已静音",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "紧急提醒在手机设置中已关闭，所以你收不到烟雾报警的提醒。点按即可打开。",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "紧急提醒在手机设置中被设为静音，所以烟雾报警既不会响铃也不会震动。点按即可修复。",
+  "Emergency alerts won’t buzz": "紧急提醒不会震动",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "紧急提醒不会震动：手机设置中已关闭它们的震动。点按即可修复。",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "手机中 Ozen 的紧急提醒被设为静音。请把声音打开，然后在同一页面上开启“%1”。"
  },
  "french": {
@@ -4805,6 +4811,8 @@
   "Emergency alerts are muted": "Les alertes d’urgence sont coupées",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Les alertes d’urgence sont désactivées dans les réglages du téléphone : une alarme incendie ne vous parviendra pas. Touchez pour les activer.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Les alertes d’urgence sont en mode silencieux dans les réglages du téléphone : une alarme incendie ne sonnera pas et ne fera pas vibrer. Touchez pour corriger.",
+  "Emergency alerts won’t buzz": "Les alertes d’urgence ne feront pas vibrer",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Les alertes d’urgence ne feront pas vibrer : la vibration est désactivée pour elles dans les réglages du téléphone. Touchez pour corriger.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Les alertes d’urgence d’Ozen sont en mode silencieux dans le téléphone. Réactivez le son, puis activez « %1 » sur la même page."
  },
  "german": {
@@ -6007,6 +6015,8 @@
   "Emergency alerts are muted": "Notfallhinweise sind stummgeschaltet",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Notfallhinweise sind in den Einstellungen des Telefons ausgeschaltet, deshalb erreicht Sie ein Rauchmelder nicht. Zum Einschalten tippen.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Notfallhinweise sind in den Einstellungen des Telefons auf lautlos gestellt, deshalb gibt ein Rauchmelder weder Ton noch Vibration ab. Zum Beheben tippen.",
+  "Emergency alerts won’t buzz": "Notfallhinweise vibrieren nicht",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Notfallhinweise vibrieren nicht: Die Vibration ist dafür in den Einstellungen des Telefons ausgeschaltet. Tippen zum Beheben.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Die Notfallhinweise von Ozen sind im Telefon auf lautlos gestellt. Schalten Sie den Ton wieder ein und aktivieren Sie dann „%1“ auf derselben Seite."
  },
  "hindi": {
@@ -7209,6 +7219,8 @@
   "Emergency alerts are muted": "आपातकालीन अलर्ट म्यूट हैं",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट बंद हैं, इसलिए धुएँ के अलार्म की सूचना आप तक नहीं पहुँचेगी। चालू करने के लिए छूएँ।",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "फ़ोन की सेटिंग में आपातकालीन अलर्ट साइलेंट पर हैं, इसलिए धुएँ के अलार्म पर न आवाज़ होगी और न कंपन। ठीक करने के लिए छूएँ।",
+  "Emergency alerts won’t buzz": "आपातकालीन अलर्ट से फ़ोन नहीं कांपेगा",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "आपातकालीन अलर्ट से फ़ोन नहीं कांपेगा: फ़ोन की सेटिंग में उनके लिए वाइब्रेशन बंद है। ठीक करने के लिए टैप करें।",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "फ़ोन में Ozen के आपातकालीन अलर्ट साइलेंट पर हैं। आवाज़ वापस चालू करें, फिर उसी पेज पर “%1” चालू करें।"
  },
  "portuguese": {
@@ -8411,6 +8423,8 @@
   "Emergency alerts are muted": "Os alertas de emergência estão silenciados",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Os alertas de emergência estão desativados nas definições do telefone, por isso um alarme de fumo não lhe chegará. Toque para os ativar.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Os alertas de emergência estão em modo silencioso nas definições do telefone, por isso um alarme de fumo não vai tocar nem vibrar. Toque para corrigir.",
+  "Emergency alerts won’t buzz": "Os alertas de emergência não vão vibrar",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Os alertas de emergência não vão vibrar: a vibração está desativada para eles nas configurações do telefone. Toque para corrigir.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Os alertas de emergência do Ozen estão em modo silencioso no telefone. Volte a ligar o som e depois ative «%1» na mesma página."
  },
  "russian": {
@@ -9613,6 +9627,8 @@
   "Emergency alerts are muted": "Экстренные оповещения отключены",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Экстренные оповещения выключены в настройках телефона, поэтому сигнал дымовой тревоги до вас не дойдёт. Нажмите, чтобы включить.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Экстренные оповещения переведены в беззвучный режим в настройках телефона, поэтому дымовая тревога не прозвучит и не завибрирует. Нажмите, чтобы исправить.",
+  "Emergency alerts won’t buzz": "Экстренные оповещения не будут вибрировать",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Экстренные оповещения не будут вибрировать: вибрация для них отключена в настройках телефона. Нажмите, чтобы исправить.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Экстренные оповещения Ozen переведены в беззвучный режим в телефоне. Верните звук, затем включите «%1» на той же странице."
  },
  "spanish": {
@@ -10815,6 +10831,8 @@
   "Emergency alerts are muted": "Las alertas de emergencia están silenciadas",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Las alertas de emergencia están desactivadas en los ajustes del teléfono, así que una alarma de humo no te llegará. Toca para activarlas.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Las alertas de emergencia están en silencio en los ajustes del teléfono, así que una alarma de humo no sonará ni vibrará. Toca para corregirlo.",
+  "Emergency alerts won’t buzz": "Las alertas de emergencia no vibrarán",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Las alertas de emergencia no vibrarán: la vibración está desactivada para ellas en los ajustes del teléfono. Toca para corregirlo.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Las alertas de emergencia de Ozen están en silencio en el teléfono. Vuelve a activar el sonido y luego activa «%1» en la misma página."
  },
  "ukrainian": {
@@ -12017,6 +12035,8 @@
   "Emergency alerts are muted": "Екстрені сповіщення вимкнено",
   "Emergency alerts are turned off in the phone’s settings, so a smoke alarm won’t reach you. Tap to turn them on.": "Екстрені сповіщення вимкнено в налаштуваннях телефона, тому сигнал димової тривоги до вас не дійде. Торкніться, щоб увімкнути.",
   "Emergency alerts are set to silent in the phone’s settings, so a smoke alarm won’t sound or buzz. Tap to fix.": "Екстрені сповіщення переведено в беззвучний режим у налаштуваннях телефона, тому димова тривога не пролунає й не завібрує. Торкніться, щоб виправити.",
+  "Emergency alerts won’t buzz": "Екстрені сповіщення не вібруватимуть",
+  "Emergency alerts won’t buzz: vibration is off for them in the phone’s settings. Tap to fix.": "Екстрені сповіщення не вібруватимуть: вібрацію для них вимкнено в налаштуваннях телефона. Торкніться, щоб виправити.",
   "Ozen’s Emergency alerts are set to silent in the phone. Turn the sound back on, then turn on %1 on the same page.": "Екстрені сповіщення Ozen переведено в беззвучний режим у телефоні. Поверніть звук, а потім увімкніть «%1» на тій самій сторінці."
  }
 }
