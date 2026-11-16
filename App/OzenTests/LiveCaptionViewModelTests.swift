@@ -158,7 +158,8 @@ struct LiveCaptionViewModelTests {
 
     @Test("closing Settings or testing with an address the phone could not write reports it, writes it again next time, and typing nothing is no failure")
     func addressTheDiskRefusedIsReported() throws {
-        let blocker = try blockedFolder()
+        let blocker = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-blocked-\(UUID())")
+        try Data("x".utf8).write(to: blocker)
         defer { try? FileManager.default.removeItem(at: blocker) }
         let viewModel = LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: blocker.appendingPathComponent("settings.json")),
