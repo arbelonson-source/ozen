@@ -625,7 +625,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     timestamp: Date().timeIntervalSince1970,
                     confidence: shownConfidence,
                     uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
-                    voicedChunks: text.isEmpty ? nil : voicedChunks
+                    voicedChunks: text.isEmpty ? nil : voicedChunks,
+                    speechStartSample: status.firstSpeechStart.map { gone + $0 }
                 ))
                 yielded += 1
                 lastShownText = shown

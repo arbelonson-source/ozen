@@ -622,6 +622,7 @@ class OnDeviceWhisperEngine(
                         confidence = shownConfidence,
                         uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
                         voicedChunks = if (text.isEmpty()) null else voicedChunks,
+                        speechStartSample = status.firstSpeechStart?.let { gone + it },
                     ),
                 )
                 yielded += 1

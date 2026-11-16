@@ -74,6 +74,14 @@ data class TranscriptToken(
      * `WhisperResultFilter.isUnvoicedPhrase`). Null means nothing counted.
      */
     val voicedChunks: Int? = null,
+    /**
+     * Where the speech behind this text begins, in samples counted from the
+     * first sample the engine was given on this stream (as
+     * `setDecodeProgress` counts), when the engine can say. The replay's
+     * grace uses it: words that begin after it are live speech. Null means
+     * nothing is said, and the words count as before the grace.
+     */
+    val speechStartSample: Int? = null,
 )
 
 /**

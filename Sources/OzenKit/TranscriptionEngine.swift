@@ -51,6 +51,12 @@ public struct TranscriptToken: Sendable, Equatable {
     /// audio behind this text, when the phone's own Whisper scored it (see
     /// `WhisperResultFilter.isUnvoicedPhrase`). Nil means nothing counted.
     public var voicedChunks: Int?
+    /// Where the speech behind this text begins, in samples counted from the
+    /// first sample the engine was given on this stream (as
+    /// `setDecodeProgress` counts), when the engine can say. The replay's
+    /// grace uses it: words that begin after it are live speech. Nil means
+    /// nothing is said, and the words count as before the grace.
+    public var speechStartSample: Int?
     /// Set by the pipeline, which knows which engine and model are running.
     public var scoredBy: CaptionConfidence.Scorer? = nil
 
@@ -63,7 +69,8 @@ public struct TranscriptToken: Sendable, Equatable {
         confidence: Float? = nil,
         startsNewSpeakerTurn: Bool = false,
         uncertainWords: [String] = [],
-        voicedChunks: Int? = nil
+        voicedChunks: Int? = nil,
+        speechStartSample: Int? = nil
     ) {
         self.utteranceID = utteranceID
         self.text = text
@@ -74,6 +81,7 @@ public struct TranscriptToken: Sendable, Equatable {
         self.startsNewSpeakerTurn = startsNewSpeakerTurn
         self.uncertainWords = uncertainWords
         self.voicedChunks = voicedChunks
+        self.speechStartSample = speechStartSample
     }
 }
 

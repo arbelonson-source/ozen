@@ -85,6 +85,26 @@ class ReplayDecodeProgressTest {
     }
 
     @Test
+    fun `a pass past the grace whose speech begins after it keeps the half line`() = runTest {
+        val rig = rig(decoding = true)
+        val replayLength = halfLineThenDropWithEagerModel(rig)
+        rig.phone.reportDecoded(replayLength + 160_000, tokens = 1)
+        rig.phone.emit(token("live words").copy(speechStartSample = replayLength + 140_000))
+        assertTrue(eventually { rig.captions.segments.size == 2 })
+        assertEquals(listOf("half line", "live words"), rig.captions.segments.map { it.text.removeSuffix("…") })
+    }
+
+    @Test
+    fun `a pass past the grace whose speech begins before it still replaces the half line`() = runTest {
+        val rig = rig(decoding = true)
+        val replayLength = halfLineThenDropWithEagerModel(rig)
+        rig.phone.reportDecoded(replayLength + 160_000, tokens = 1)
+        rig.phone.emit(token("half line and the rest").copy(speechStartSample = replayLength - 20_000))
+        assertTrue(eventually { rig.captions.segments.last().text == "half line and the rest" })
+        assertEquals(listOf("half line and the rest"), rig.captions.segments.map { it.text })
+    }
+
+    @Test
     fun `a model that says nothing about its decoding is counted by the audio it took as before`() = runTest {
         val rig = rig(decoding = false)
         val replayLength = halfLineThenDropWithEagerModel(rig)
