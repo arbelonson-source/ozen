@@ -114,4 +114,25 @@ struct CaptionsStopAnnouncerTests {
         #expect(kept.count == CaptionStepsReached.kept)
         #expect(kept.first?.at == 5)
     }
+
+    @Test("the stop text names the cause and then the next step")
+    func stopTextHasNextStep() {
+        let text = CaptionsStopAnnouncer.stoppedText(title: "No microphone found", detail: "Tap to try again", in: .english)
+        #expect(text == "Captions stopped: No microphone found. Tap to try again")
+    }
+
+    @Test("the stop text leaves out an empty step and one the title already says")
+    func stopTextWithoutRepeat() {
+        #expect(CaptionsStopAnnouncer.stoppedText(title: "Stalled", detail: nil, in: .english) == "Captions stopped: Stalled")
+        #expect(CaptionsStopAnnouncer.stoppedText(title: "Stalled", detail: "  ", in: .english) == "Captions stopped: Stalled")
+        #expect(CaptionsStopAnnouncer.stoppedText(title: "Stalled, tap to try again", detail: "Tap to try again", in: .english) == "Captions stopped: Stalled, tap to try again")
+    }
+
+    @Test("the next step follows the cause with the language's own full stop")
+    func stopTextUsesOwnFullStop() {
+        let chinese = CaptionsStopAnnouncer.stoppedText(title: "T", detail: "S", in: .chineseSimplified)
+        #expect(chinese == "字幕已停止：T。S")
+        let hindi = CaptionsStopAnnouncer.stoppedText(title: "T", detail: "S", in: .hindi)
+        #expect(hindi == "कैप्शन रुक गए: T। S")
+    }
 }

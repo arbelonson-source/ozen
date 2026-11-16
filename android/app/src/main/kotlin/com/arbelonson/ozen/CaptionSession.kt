@@ -1083,7 +1083,7 @@ class CaptionSession(
 
     private fun stoppedText(phase: PipelinePhase): String {
         val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry, spokenLanguage = chosenSettings().spokenLanguage)
-        return tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
+        return CaptionsStopAnnouncer.stoppedText(status.title, status.detail)
     }
 
     private val microphoneOn: Boolean get() = BatteryAdvisor.watches(pipeline.phase, pipeline.soundsOnlyChosen)
