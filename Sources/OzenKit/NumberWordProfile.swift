@@ -10,6 +10,9 @@ struct NumberWordProfile: Decodable, Sendable {
     var numberClockLinks: Set<String> = []
     var numberClockArticles: Set<String> = []
     var clockUnits: Set<String> = []
+    var clockHourOnes: Set<String> = []
+    var clockMinuteOnes: Set<String> = []
+    var clockOneCues: Set<String> = []
     var clockUnitLinks: Set<String> = []
     var ambiguous: Set<String> = []
     var notACountBefore: Set<String> = []
@@ -47,6 +50,9 @@ struct NumberWordProfile: Decodable, Sendable {
         numberClockLinks = try set(.numberClockLinks)
         numberClockArticles = try set(.numberClockArticles)
         clockUnits = try set(.clockUnits)
+        clockHourOnes = try set(.clockHourOnes)
+        clockMinuteOnes = try set(.clockMinuteOnes)
+        clockOneCues = try set(.clockOneCues)
         clockUnitLinks = try set(.clockUnitLinks)
         ambiguous = try set(.ambiguous)
         notACountBefore = try set(.notACountBefore)
@@ -87,7 +93,7 @@ struct NumberWordProfile: Decodable, Sendable {
     }
 
     private enum Key: String, CodingKey {
-        case numbers, scales, connectors, fractions, fractionLinks, clockLinks, numberClockLinks, numberClockArticles, clockUnits, clockUnitLinks, ambiguous, notACountBefore, countsAfter, plainAlone
+        case numbers, scales, connectors, fractions, fractionLinks, clockLinks, numberClockLinks, numberClockArticles, clockUnits, clockHourOnes, clockMinuteOnes, clockOneCues, clockUnitLinks, ambiguous, notACountBefore, countsAfter, plainAlone
         case onceWords, repeatLinks, repeatUnits, periods, idioms, units
         case adverbPeriods, clockNouns, clockOrdinals, plainWords, oneFollowsUnit, letterFolding, attachedPrefixes
     }
