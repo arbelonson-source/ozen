@@ -19,6 +19,8 @@ protocol RecordingTranscribeHost: AnyObject {
     func waitOutCaptionsLoad() async
     func endRecordingTranscription()
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool
+    func saveUnfinished(_ record: TranscriptSessionRecord) throws -> Bool
+    func deleteRecord(id: UUID) throws
 }
 
 @MainActor
@@ -68,6 +70,14 @@ final class LiveRecordingHost: RecordingTranscribeHost {
 
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool {
         try viewModel.historyStore.save(record)
+    }
+
+    func saveUnfinished(_ record: TranscriptSessionRecord) throws -> Bool {
+        try viewModel.historyStore.save(record, updateSearchCaches: false)
+    }
+
+    func deleteRecord(id: UUID) throws {
+        try viewModel.historyStore.delete(id: id)
     }
 }
 
