@@ -375,10 +375,20 @@ public struct WhisperResultFilter: Sendable, Equatable {
         emphasisFrom: Int = Int.max
     ) -> (text: String, words: Int, emphasized: Int) {
         var words = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        var emphasis = [Bool](repeating: false, count: words.count)
-        guard maxRepeats >= 1, words.count > maxRepeats else { return (text, words.filter { !normalize($0).isEmpty }.count, 0) }
-        let numberLimit = maxRepeats > 1 ? max(maxRepeats, maxNumberRepeats) : maxRepeats
         var changed = false
+        if maxRepeats >= 1, emphasisFrom == Int.max {
+            for index in words.indices {
+                if let shortened = collapsingUnspacedRuns(words[index], maxRepeats: maxRepeats, maxNumberRepeats: maxNumberRepeats) {
+                    words[index] = shortened
+                    changed = true
+                }
+            }
+        }
+        var emphasis = [Bool](repeating: false, count: words.count)
+        guard maxRepeats >= 1, words.count > maxRepeats else {
+            return (changed ? words.joined(separator: " ") : text, words.filter { !normalize($0).isEmpty }.count, 0)
+        }
+        let numberLimit = maxRepeats > 1 ? max(maxRepeats, maxNumberRepeats) : maxRepeats
         for phraseLength in 1...maxPhraseWords {
             let keys = words.map(normalize)
             var result: [String] = []
@@ -417,6 +427,71 @@ public struct WhisperResultFilter: Sendable, Equatable {
         }
         let spoken = words.indices.filter { !normalize(words[$0]).isEmpty }
         return (changed ? words.joined(separator: " ") : text, spoken.count, spoken.filter { emphasis[$0] }.count)
+    }
+
+    /// A loop in a script written without spaces ("好的好的好的好的好的好的",
+    /// "はいはいはいはいはい") has no words to split on, so `collapse` looks inside
+    /// each word for a unit of one to six characters said back to back more
+    /// than `maxRepeats` times and cuts it to that many, like the spaced
+    /// path. A single character is cut only past six copies, because "谢谢谢谢"
+    /// and "哈哈哈" are ordinary speech. Numerals may repeat up to
+    /// `maxNumberRepeats` times, like spoken digits. nil when nothing is cut.
+    private static func collapsingUnspacedRuns(_ word: String, maxRepeats: Int, maxNumberRepeats: Int) -> String? {
+        let scalars = Array(word.unicodeScalars)
+        guard scalars.count > maxRepeats, scalars.contains(where: { isRunScript($0.value) }) else { return nil }
+        var current = scalars
+        var changed = false
+        for unit in 1...6 {
+            var result: [Unicode.Scalar] = []
+            var index = 0
+            while index < current.count {
+                let end = index + unit
+                guard end <= current.count, current[index..<end].allSatisfy({ isRunScript($0.value) }),
+                      unit == 1 || Set(current[index..<end]).count > 1 else {
+                    result.append(current[index])
+                    index += 1
+                    continue
+                }
+                var repeats = 1
+                while index + (repeats + 1) * unit <= current.count,
+                      current[(index + repeats * unit)..<(index + (repeats + 1) * unit)].elementsEqual(current[index..<end]) {
+                    repeats += 1
+                }
+                var limit = unit == 1 ? max(maxRepeats, 6) : maxRepeats
+                if maxRepeats > 1, current[index..<end].allSatisfy({ isUnspacedNumeral($0.value) }) {
+                    limit = max(limit, maxNumberRepeats)
+                }
+                if repeats > limit {
+                    result.append(contentsOf: current[index..<(index + limit * unit)])
+                    index += repeats * unit
+                    changed = true
+                } else {
+                    result.append(current[index])
+                    index += 1
+                }
+            }
+            current = result
+        }
+        guard changed else { return nil }
+        var view = String.UnicodeScalarView()
+        view.append(contentsOf: current)
+        return String(view)
+    }
+
+    private static func isRunScript(_ value: UInt32) -> Bool {
+        switch value {
+        case 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF, 0x20000...0x2FA1F, 0x30000...0x3134F,
+             0x3041...0x309F, 0x30A0...0x30FF, 0x31F0...0x31FF, 0xFF66...0xFF9F,
+             0x1100...0x11FF, 0x3130...0x318F, 0xAC00...0xD7AF,
+             0x0E01...0x0EFF, 0x1000...0x109F, 0x1780...0x17FF:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func isUnspacedNumeral(_ value: UInt32) -> Bool {
+        "零〇一二三四五六七八九十百千万萬两兩".unicodeScalars.contains { $0.value == value }
     }
 
     /// Whether a word, already through `normalize`, is a number: written in
