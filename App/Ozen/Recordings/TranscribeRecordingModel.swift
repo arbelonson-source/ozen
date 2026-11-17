@@ -268,6 +268,12 @@ final class TranscribeRecordingModel {
             keeper.discard()
             state = .ready(makeReady())
         }
+        // Captions come back when the text is done, fails or is stopped, not
+        // only when the screen closes. The speech model of the run is let go
+        // first, so captions never load theirs beside it.
+        letCaptionsGo()
+        await comeBack()
+        host.setCaptionsHeldForRecording(false)
     }
 
     private func apply(_ progress: FileTranscriptionDriver.Progress, run runID: UUID) {
