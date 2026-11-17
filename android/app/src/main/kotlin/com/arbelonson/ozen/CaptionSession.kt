@@ -46,6 +46,7 @@ import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.TorchFlash
 import com.arbelonson.ozen.core.TorchRunner
+import com.arbelonson.ozen.core.errorGuardedScope
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -106,7 +107,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -136,7 +136,7 @@ class CaptionSession(
     private val soundsOnlyChoice: SoundsOnlyStore = PreferencesSoundsOnlyStore(context),
     private val awaySoundStore: AwaySoundStore = PreferencesAwaySoundStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
-    private val scope = MainScope()
+    private val scope: CoroutineScope = errorGuardedScope { pipeline.unexpectedError(it) }
     private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val light = TorchRunner(CameraLight(context.applicationContext), lightScope)
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -1409,6 +1409,9 @@ class CaptionSession(
     var reportSender: suspend (String) -> Boolean = { text ->
         settings.current.value.let { homeComputerEngine(it).sendReport(text, it.languageCode) }
     }
+
+    /** An error that nothing caught in a coroutine of the app: captions stop with the usual notice and retry. */
+    fun unexpectedError(error: Throwable) = pipeline.unexpectedError(error)
 
     private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
 

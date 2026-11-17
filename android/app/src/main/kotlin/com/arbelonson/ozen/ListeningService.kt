@@ -16,9 +16,9 @@ import com.arbelonson.ozen.core.LockScreenCaptions
 import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.LockScreenUpdateThrottle
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.errorGuardedScope
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -28,7 +28,11 @@ import kotlinx.coroutines.launch
 class ListeningService : Service() {
     private val captions get() = (application as OzenApplication).captions
     private val settings get() = (application as OzenApplication).settings
-    private val scope = MainScope()
+    private val scope = errorGuardedScope {
+        watching = null
+        flush = null
+        captions.unexpectedError(it)
+    }
     private var watching: Job? = null
     private val throttle = LockScreenUpdateThrottle()
     private var flush: Job? = null
