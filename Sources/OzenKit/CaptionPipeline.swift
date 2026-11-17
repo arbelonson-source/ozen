@@ -390,6 +390,9 @@ public final class CaptionPipeline {
     /// the steps and makes them instant.
     public var soundsOnlyWatchSleep: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }
     private var staleCommitTask: Task<Void, Never>?
+    private var staleCommitNap: Task<Void, Never>?
+    public static let idleCheckSeconds = 1.0
+    public var staleCommitSleep: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }
     private var soundsOnlyWatchTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
     /// The newest voice print heard for each recent line, so a line the
@@ -862,12 +865,25 @@ public final class CaptionPipeline {
             }
         }
 
+        let sleep = staleCommitSleep
         staleCommitTask = Task { [weak self] in
+            var carriedSeconds = 0.0
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(AudioStallWatchdog.tickSeconds))
                 guard let self, self.runID == run else { return }
+                let idle = !self.stabilizer.hasOpenLine
+                let planned = idle ? Self.idleCheckSeconds : AudioStallWatchdog.tickSeconds
+                let started = self.now()
+                let nap = Task { await sleep(planned) }
+                self.staleCommitNap = idle ? nap : nil
+                await withTaskCancellationHandler { await nap.value } onCancel: { nap.cancel() }
+                self.staleCommitNap = nil
+                guard !Task.isCancelled, self.runID == run else { return }
+                let elapsed = nap.isCancelled ? min(planned, self.now() - started) : planned
                 self.commitStaleSegments()
-                self.checkAudioIsArriving()
+                let total = carriedSeconds + elapsed
+                let ticks = self.audioWatchdog.ticks(forElapsed: total)
+                carriedSeconds = max(0, total - Double(ticks) * AudioStallWatchdog.tickSeconds)
+                self.checkAudioIsArriving(elapsedTicks: ticks)
             }
         }
     }
@@ -2183,6 +2199,7 @@ public final class CaptionPipeline {
         noteFinished(segment, previously: previously)
         upsert(segment)
         stats.hasOpenLine = stabilizer.hasOpenLine
+        if stats.hasOpenLine { staleCommitNap?.cancel() }
         scanForKeywords(in: withHandFixes(segment))
     }
 
@@ -2476,9 +2493,9 @@ public final class CaptionPipeline {
     /// A tap that stopped delivering (see `AudioStallWatchdog`) becomes a
     /// visible failure, which automatic recovery answers with a fresh
     /// audio engine: the same thing a manual stop and start would do.
-    private func checkAudioIsArriving() {
+    private func checkAudioIsArriving(elapsedTicks ticks: Int = 1) {
         guard phase.isListening else { return }
-        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted || audio.isRecoveringSession) else { return }
+        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted || audio.isRecoveringSession, elapsedTicks: ticks) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s", inputName: countPickFailure())
@@ -3666,6 +3683,7 @@ public final class CaptionPipeline {
         soundsOnlyWatchTask = nil
         staleCommitTask?.cancel()
         staleCommitTask = nil
+        staleCommitNap = nil
         fanOut?.cancel()
         fanOut = nil
         audio.stopCapture()
