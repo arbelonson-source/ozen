@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -124,30 +124,52 @@ internal fun NightStartCard(soundsOnly: Boolean) {
     val texts = shown.map { NightStartCheck.text(it, phoneLabel) }
     AnnounceWhenShown(shown.isNotEmpty(), (listOf(NightStartCheck.title()) + texts).joinToString(" "))
     ArrivingBanner(shown.takeIf { it.isNotEmpty() }) { problems ->
-        val colors = MaterialTheme.colorScheme
-        Column(
-            Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
-                .padding(OzenSpacing.Page).semantics { liveRegion = LiveRegionMode.Polite }.testTag("night-start-card"),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(NightStartCheck.title(), style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-            problems.forEach { problem ->
-                Text(NightStartCheck.text(problem, phoneLabel), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
-                val (label, open) = when (problem) {
-                    NightStartCheck.Problem.Battery -> tr("פתחו את הגדרות הסוללה", "Open the battery list") to { NightAlerts.openBatteryList(context) }
-                    NightStartCheck.Problem.NotificationsOff -> tr("פתיחת הגדרות הטלפון", "Open the phone’s settings") to { openNotificationSettings(context) }
-                    else -> tr("פתחו את הגדרות החירום", "Open the Emergency settings") to { AlertNotifier.openAlarmSettings(context) }
+        NightStartCardBody(
+            problems,
+            phoneLabel,
+            open = { problem ->
+                when (problem) {
+                    NightStartCheck.Problem.Battery -> NightAlerts.openBatteryList(context)
+                    NightStartCheck.Problem.NotificationsOff -> openNotificationSettings(context)
+                    else -> AlertNotifier.openAlarmSettings(context)
                 }
-                TextButton(onClick = open) { Text(label) }
+            },
+            onDismiss = {
+                dismissedText = NightStartCheck.encode((NightStartCheck.decode(dismissedText) + problems).toSet())
+                shownText = ""
+            },
+        )
+    }
+}
+
+/** The card itself. Each button is named for the problem it fixes, so two Emergency buttons can be told apart by ear. */
+@Composable
+internal fun NightStartCardBody(
+    problems: List<NightStartCheck.Problem>,
+    phoneLabel: (String) -> String?,
+    open: (NightStartCheck.Problem) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
+            .padding(OzenSpacing.Page).testTag("night-start-card"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(NightStartCheck.title(), style = MaterialTheme.typography.titleMedium, color = colors.onSurface, modifier = Modifier.semantics { heading() })
+        problems.forEach { problem ->
+            val text = NightStartCheck.text(problem, phoneLabel)
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
+            val label = when (problem) {
+                NightStartCheck.Problem.Battery -> tr("פתחו את הגדרות הסוללה", "Open the battery list")
+                NightStartCheck.Problem.NotificationsOff -> tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")
+                else -> tr("פתחו את הגדרות החירום", "Open the Emergency settings")
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(
-                    onClick = {
-                        dismissedText = NightStartCheck.encode((NightStartCheck.decode(dismissedText) + problems).toSet())
-                        shownText = ""
-                    },
-                    modifier = Modifier.widthIn(min = OzenSpacing.MinTouch).testTag("night-start-dismiss"),
-                ) { Text(tr("אישור", "OK")) }
+            TextButton(onClick = { open(problem) }, modifier = Modifier.semantics { contentDescription = "$label: $text" }) { Text(label) }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss, modifier = Modifier.widthIn(min = OzenSpacing.MinTouch).testTag("night-start-dismiss")) {
+                Text(tr("סגירה", "Close"))
             }
         }
     }
