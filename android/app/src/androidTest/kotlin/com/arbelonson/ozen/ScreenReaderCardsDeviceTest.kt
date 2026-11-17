@@ -210,4 +210,42 @@ class ScreenReaderCardsDeviceTest {
         show { AwayAlertsBlockedBanner(onOpenSettings = {}) }
         assertEquals("Open the phone’s settings", tapLabelOf(AwayAlertsNotice.title()))
     }
+
+    private val nightProblems = listOf(NightStartCheck.Problem.EmergencyNoBuzz, NightStartCheck.Problem.DoNotDisturb)
+
+    @Test
+    fun theBeforeYouSleepTitleIsAHeadingToTalkBack() {
+        show { NightStartCardBody(nightProblems, { null }, open = {}, onDismiss = {}) }
+        compose.onNodeWithText(NightStartCheck.title()).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun theBeforeYouSleepButtonsNameTheProblemTheyFix() {
+        val opened = CopyOnWriteArrayList<NightStartCheck.Problem>()
+        show { NightStartCardBody(nightProblems, { null }, open = { opened += it }, onDismiss = {}) }
+        compose.waitForIdle()
+        val labels = nightProblems.map { problem ->
+            val text = NightStartCheck.text(problem)
+            val node = compose.onNode(androidx.compose.ui.test.hasContentDescription("Open the Emergency settings: $text")).fetchSemanticsNode()
+            node.config.getOrNull(SemanticsProperties.ContentDescription)?.single()
+        }
+        assertEquals(labels.toString(), 2, labels.toSet().size)
+        compose.onNode(androidx.compose.ui.test.hasContentDescription("Open the Emergency settings: " + NightStartCheck.text(NightStartCheck.Problem.DoNotDisturb))).performClick()
+        assertEquals(listOf(NightStartCheck.Problem.DoNotDisturb), opened.toList())
+    }
+
+    @Test
+    fun theBeforeYouSleepDismissButtonSaysItClosesTheCard() {
+        var closed = false
+        show { NightStartCardBody(nightProblems, { null }, open = {}, onDismiss = { closed = true }) }
+        compose.onNodeWithTag("night-start-dismiss").assert(androidx.compose.ui.test.hasText("Close"))
+        compose.onNodeWithTag("night-start-dismiss").performClick()
+        assertTrue(closed)
+    }
+
+    @Test
+    fun theBeforeYouSleepCardIsNotAlsoALiveRegionBecauseItIsSaidWhenItAppears() {
+        show { NightStartCardBody(nightProblems, { null }, open = {}, onDismiss = {}) }
+        compose.onNodeWithTag("night-start-card").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+    }
 }
