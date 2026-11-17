@@ -621,10 +621,19 @@ class WhisperResultFilter(
 
         private fun collapse(text: String, maxRepeats: Int, maxPhraseWords: Int, maxNumberRepeats: Int, emphasisFrom: Int): Collapsed {
             var words = splitOnWhisperWhitespace(text)
-            var emphasis = List(words.size) { false }
-            if (maxRepeats < 1 || words.size <= maxRepeats) return Collapsed(text, words.count { normalize(it).isNotEmpty() }, 0)
-            val numberLimit = if (maxRepeats > 1) maxOf(maxRepeats, maxNumberRepeats) else maxRepeats
             var changed = false
+            if (maxRepeats >= 1 && emphasisFrom == Int.MAX_VALUE) {
+                words = words.map { word ->
+                    val shortened = collapsingUnspacedRuns(word, maxRepeats, maxNumberRepeats)
+                    if (shortened != null) changed = true
+                    shortened ?: word
+                }
+            }
+            var emphasis = List(words.size) { false }
+            if (maxRepeats < 1 || words.size <= maxRepeats) {
+                return Collapsed(if (changed) words.joinToString(" ") else text, words.count { normalize(it).isNotEmpty() }, 0)
+            }
+            val numberLimit = if (maxRepeats > 1) maxOf(maxRepeats, maxNumberRepeats) else maxRepeats
             for (phraseLength in 1..maxPhraseWords) {
                 val keys = words.map { normalize(it) }
                 val result = mutableListOf<String>()
@@ -665,6 +674,78 @@ class WhisperResultFilter(
             val spoken = words.indices.filter { normalize(words[it]).isNotEmpty() }
             return Collapsed(if (changed) words.joinToString(" ") else text, spoken.size, spoken.count { emphasis[it] })
         }
+
+        /**
+         * A loop in a script written without spaces ("好的好的好的好的好的好的",
+         * "はいはいはいはいはい") has no words to split on, so [collapse] looks inside
+         * each word for a unit of one to eight characters said back to back more
+         * than [maxRepeats] times and cuts it to that many, like the spaced
+         * path. A unit may carry CJK or full-width punctuation ("好的，"), but
+         * needs at least one character of such a script; the last copy may lack
+         * its trailing punctuation ("好的，好的，好的，好的"). A single character
+         * is cut only past six copies, because "谢谢谢谢" and "哈哈哈" are
+         * ordinary speech. Numerals may repeat up to [maxNumberRepeats] times,
+         * like spoken digits. Null when nothing is cut.
+         */
+        private fun collapsingUnspacedRuns(word: String, maxRepeats: Int, maxNumberRepeats: Int): String? {
+            val points = word.codePoints().toArray()
+            if (points.size <= maxRepeats || points.none(::isRunScript)) return null
+            var current = points.toList()
+            var changed = false
+            for (unit in 1..8) {
+                val result = ArrayList<Int>()
+                var index = 0
+                while (index < current.size) {
+                    val end = index + unit
+                    if (end > current.size ||
+                        !current.subList(index, end).all { isRunScript(it) || isRunPunctuation(it) } ||
+                        current.subList(index, end).none(::isRunScript) ||
+                        (unit > 1 && current.subList(index, end).toSet().size == 1)
+                    ) {
+                        result.add(current[index])
+                        index += 1
+                        continue
+                    }
+                    val chunk = current.subList(index, end).toList()
+                    var repeats = 1
+                    while (index + (repeats + 1) * unit <= current.size &&
+                        current.subList(index + repeats * unit, index + (repeats + 1) * unit) == chunk
+                    ) {
+                        repeats += 1
+                    }
+                    val core = chunk.dropLastWhile { !isRunScript(it) }
+                    val tailStart = index + repeats * unit
+                    val hasTail = core.size < unit && tailStart + core.size <= current.size &&
+                        current.subList(tailStart, tailStart + core.size) == core
+                    val copies = repeats + if (hasTail) 1 else 0
+                    var limit = if (unit == 1) maxOf(maxRepeats, 6) else maxRepeats
+                    if (maxRepeats > 1 && chunk.filter(::isRunScript).all(::isUnspacedNumeral)) limit = maxOf(limit, maxNumberRepeats)
+                    if (copies > limit) {
+                        repeat(if (hasTail) limit - 1 else limit) { result.addAll(chunk) }
+                        if (hasTail) result.addAll(core)
+                        index = tailStart + if (hasTail) core.size else 0
+                        changed = true
+                    } else {
+                        result.add(current[index])
+                        index += 1
+                    }
+                }
+                current = result
+            }
+            if (!changed) return null
+            return String(current.toIntArray(), 0, current.size)
+        }
+
+        private fun isRunPunctuation(value: Int): Boolean = value in 0x3000..0x303F || value in 0xFF01..0xFF0F ||
+            value in 0xFF1A..0xFF20 || value in 0xFF5B..0xFF65 || value == 0x2026
+
+        private fun isRunScript(value: Int): Boolean = value in 0x3400..0x4DBF || value in 0x4E00..0x9FFF ||
+            value in 0xF900..0xFAFF || value in 0x20000..0x2FA1F || value in 0x30000..0x3134F ||
+            value in 0x3041..0x309F || value in 0x30A0..0x30FF || value in 0x31F0..0x31FF || value in 0xFF66..0xFF9F ||
+            value in 0x1100..0x11FF || value in 0x3130..0x318F || value in 0xAC00..0xD7AF ||
+            value in 0x0E01..0x0EFF || value in 0x1000..0x109F || value in 0x1780..0x17FF
+
+        private fun isUnspacedNumeral(value: Int): Boolean = "零〇一二三四五六七八九十百千万萬亿億两兩".any { it.code == value }
 
         /**
          * Whether a word, already through [normalize], is a number: written in
