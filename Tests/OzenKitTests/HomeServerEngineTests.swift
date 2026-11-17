@@ -1737,11 +1737,13 @@ struct HomeServerCoverTests {
         let audio = FakeAudioCapturer()
         let server = FakeEngine(kind: .homeServer)
         let phone = FakeEngine(kind: .whisperKit)
+        let clock = TestClock()
         let captions = CaptionPipeline(
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            now: { clock.now }
         )
         captions.homeServerRecheckSeconds = 2
         captions.homeServerWaitSeconds = 2
@@ -1772,9 +1774,12 @@ struct HomeServerCoverTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(captions.activeEngineKind == .whisperKit)
-        #expect(await eventually { captions.activeEngineKind == .homeServer })
-        // The next check is 2 s after the first; the breath came about 0.9 s after it.
-        #expect(ContinuousClock.now - firstCheck < .milliseconds(1_700))
+        #expect(await eventually(within: .seconds(30)) {
+            clock.advance(1)
+            return captions.activeEngineKind == .homeServer
+        })
+        // The first check, then the switch itself: no second check was needed.
+        #expect(server.prepareCount - asked <= 2)
     }
 
     @Test("talk with no breath through a whole search stays on the phone's model until a later check finds one")
