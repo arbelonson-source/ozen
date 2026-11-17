@@ -131,6 +131,28 @@ object SoundEventCatalog {
     )
 
     /**
+     * Labels one physical sound is often scored under at once, beyond the
+     * ones that already share a cooldown: a smoke alarm also reads as an
+     * alarm clock or a beep, one siren as another kind of siren.
+     */
+    private val lookalikeGroups: List<Set<String>> = listOf(
+        setOf("smoke_detector", "alarm_clock", "beep"),
+        setOf("civil_defense_siren", "siren", "ambulance_siren", "police_siren", "fire_engine_siren"),
+        setOf("telephone_bell_ringing", "ringtone", "telephone"),
+    )
+
+    /**
+     * Whether two labels may be one physical sound: the same sound, or a
+     * known lookalike pair. Anything else heard together is two sounds.
+     */
+    fun mayBeSameSound(first: String, second: String): Boolean {
+        if (first == second) return true
+        val key = event(first)?.cooldownKey
+        if (key != null && key == event(second)?.cooldownKey) return true
+        return lookalikeGroups.any { first in it && second in it }
+    }
+
+    /**
      * One entry per sound, for the Settings list: two labels for one
      * sound are switched together, and in Hebrew they read the same, so
      * they were two identical rows. The first label stands for both.

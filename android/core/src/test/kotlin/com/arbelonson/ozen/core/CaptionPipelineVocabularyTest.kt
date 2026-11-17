@@ -173,6 +173,67 @@ class CaptionPipelineAlertHookTest {
         detector.push(SoundObservation("door_bell", 0.9, 1_030.0))
         assertTrue(eventually { raised == listOf("smoke_detector", "door_bell") })
     }
+
+    @Test
+    fun `a different sound heard in the same reading is announced too, and its next window adds nothing`() = runTest {
+        val detector = FakeSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        val raised = ArrayList<String>()
+        pipeline.onSoundAlert = { raised.add(it.event.identifier) }
+        pipeline.start(AppSettings.default)
+        detector.push(SoundObservation("smoke_detector", 0.95, 1_000.0))
+        detector.push(SoundObservation("door_bell", 0.8, 1_000.0))
+        assertTrue(eventually { pipeline.soundAlerts.size == 2 })
+        assertEquals(listOf("smoke_detector", "door_bell"), raised)
+        assertEquals("smoke_detector", pipeline.bannerSoundAlert?.event?.identifier)
+
+        detector.push(SoundObservation("door_bell", 0.8, 1_001.0))
+        detector.push(SoundObservation("baby_crying", 0.9, 1_040.0))
+        detector.push(SoundObservation("door_bell", 0.8, 1_040.0))
+        assertTrue(eventually { pipeline.soundAlerts.size == 4 })
+        assertEquals(listOf("smoke_detector", "door_bell", "baby_crying", "door_bell"), raised)
+    }
+
+    @Test
+    fun `a less important sound of one reading is announced but never takes the screen from the stronger one`() = runTest {
+        val detector = FakeSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        val raised = ArrayList<String>()
+        pipeline.onSoundAlert = { raised.add(it.event.identifier) }
+        pipeline.start(AppSettings.default)
+        detector.push(SoundObservation("smoke_detector", 0.95, 1_000.0))
+        detector.push(SoundObservation("door_bell", 0.8, 1_000.0))
+        assertTrue(eventually { raised.size == 2 })
+        assertEquals("smoke_detector", pipeline.screenSoundAlert?.event?.identifier)
+        assertEquals("smoke_detector", pipeline.bannerSoundAlert?.event?.identifier)
+    }
+
+    @Test
+    fun `a lookalike of any sound already taken from the reading is held back`() = runTest {
+        val detector = FakeSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        val raised = ArrayList<String>()
+        pipeline.onSoundAlert = { raised.add(it.event.identifier) }
+        pipeline.start(AppSettings.default)
+        detector.push(SoundObservation("smoke_detector", 0.95, 1_000.0))
+        detector.push(SoundObservation("door_bell", 0.8, 1_000.0))
+        detector.push(SoundObservation("alarm_clock", 0.7, 1_000.0))
+        assertTrue(eventually { pipeline.soundAlerts.size == 3 })
+        assertEquals(listOf("smoke_detector", "door_bell"), raised)
+    }
+
+    @Test
+    fun `an air raid siren also scored as a police siren is one notification`() = runTest {
+        val detector = FakeSoundDetector()
+        val (pipeline, _, _) = makePipeline(soundDetector = detector)
+        val raised = ArrayList<String>()
+        pipeline.onSoundAlert = { raised.add(it.event.identifier) }
+        pipeline.start(AppSettings.default)
+        detector.push(SoundObservation("civil_defense_siren", 0.95, 1_000.0))
+        detector.push(SoundObservation("police_siren", 0.8, 1_000.0))
+        assertTrue(eventually { pipeline.soundAlerts.size == 2 })
+        assertEquals(listOf("civil_defense_siren"), raised)
+    }
 }
 
 class CaptionPipelineSilenceSpeakerTest {

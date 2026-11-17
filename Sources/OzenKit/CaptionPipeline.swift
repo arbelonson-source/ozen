@@ -1199,6 +1199,8 @@ public final class CaptionPipeline {
     /// window is about a second long.
     static let soundReportDelaySeconds: TimeInterval = 1.5
 
+    private var readingSoundAlerts: [SoundAlert] = []
+
     private func handle(soundObservation observation: SoundObservation) {
         // Judged by when the classifier produced the reading, not when it
         // got here, and dropped before the policy, so the phone's own buzz
@@ -1211,15 +1213,26 @@ public final class CaptionPipeline {
         guard let alert = soundPolicy.evaluate(observation) else { return }
         soundAlerts.append(alert)
         // A reading comes most important first, then surest: a later label
-        // of it as urgent as the first is still the less likely one.
-        let weakerInSameReading = screenSoundAlert.map { $0.timestamp == alert.timestamp && $0.event.importance >= alert.event.importance } ?? false
+        // of it as urgent as one already taken is still the less likely
+        // one, but only when it can be the same sound; another sound is its
+        // own alert, announced without taking the screen from the one
+        // above it.
+        if readingSoundAlerts.first?.timestamp != alert.timestamp { readingSoundAlerts = [] }
+        let weakerInSameReading = readingSoundAlerts.contains {
+            $0.event.importance >= alert.event.importance
+                && SoundEventCatalog.mayBeSameSound($0.event.identifier, alert.event.identifier)
+        }
         if !weakerInSameReading {
-            if alert.takesBanner(from: currentBannerSoundAlert) {
-                bannerSoundAlert = alert
-                bannerSoundAlertRaisedAt = now()
+            let outranked = readingSoundAlerts.contains { $0.event.importance >= alert.event.importance }
+            readingSoundAlerts.append(alert)
+            if !outranked {
+                if alert.takesBanner(from: currentBannerSoundAlert) {
+                    bannerSoundAlert = alert
+                    bannerSoundAlertRaisedAt = now()
+                }
+                screenSoundAlert = alert
+                screenSoundAlertRaisedAt = now()
             }
-            screenSoundAlert = alert
-            screenSoundAlertRaisedAt = now()
             onSoundAlert?(alert)
         }
         if soundAlerts.count > Self.maxSoundAlerts {
