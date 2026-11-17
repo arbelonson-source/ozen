@@ -4190,6 +4190,49 @@ struct CaptionPipelineAudioStallTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("captions asked to resume during a voice recording come back once the recording ends", .timeLimit(.minutes(1)))
+    func resumeDuringVoiceRecordingWaits() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        pipeline.pause()
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        await pipeline.resume()
+        #expect(pipeline.phase == .paused)
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await recording.value
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
+    @Test("captions asked to start during a voice recording start once the recording ends", .timeLimit(.minutes(1)))
+    func startDuringVoiceRecordingWaits() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        pipeline.stop()
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .idle)
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await recording.value
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
+    @Test("a stop during a voice recording cancels the held resume", .timeLimit(.minutes(1)))
+    func stopCancelsHeldResume() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        pipeline.pause()
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        await pipeline.resume()
+        pipeline.stop()
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await recording.value
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(!pipeline.phase.isListening)
+    }
+
     @Test("a microphone that comes back during a voice recording brings captions back once the recording ends")
     func microphoneChangeDuringVoiceRecordingWaits() async {
         let (pipeline, audio, _) = makePipeline()

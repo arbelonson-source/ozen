@@ -459,7 +459,11 @@ public final class CaptionPipeline {
     private var soundsOnlyAskedDuringCall = false
     /// A retry that came due while a voice sample was recording, with the
     /// settings it was asked with; it runs when the recording ends.
-    private struct HeldRetry { let settings: AppSettings? }
+    private struct HeldRetry {
+        enum Kind { case retry, resume, start }
+        let settings: AppSettings?
+        var kind: Kind = .retry
+    }
     private var retryAfterRecording: HeldRetry?
     private var recordingTranscriptions = 0
     /// Whether any recording is being turned into text: with two running,
@@ -534,7 +538,11 @@ public final class CaptionPipeline {
     }
 
     public func start(settings: AppSettings) async {
-        guard !phase.isListening, !phase.isTransitioning, !isRecordingVoice else { return }
+        guard !phase.isListening, !phase.isTransitioning else { return }
+        guard !isRecordingVoice else {
+            if phase == .idle { retryAfterRecording = HeldRetry(settings: settings, kind: .start) }
+            return
+        }
         soundsOnlyAskedDuringCall = false
         // Only a second model loading on the phone is worth waiting for: the
         // home computer, the cloud and Apple's recognizer load nothing here,
@@ -962,7 +970,13 @@ public final class CaptionPipeline {
     /// paused would otherwise vanish on resume, silently restarting with
     /// whatever was in effect before the pause.
     public func resume(settings: AppSettings? = nil) async {
-        guard phase == .paused, !isRecordingVoice, var effective = settings ?? activeSettings else { return }
+        guard phase == .paused, var effective = settings ?? activeSettings else { return }
+        // A voice sample holds the microphone: the resume waits for it to
+        // end, instead of being dropped with nothing to bring captions back.
+        guard !isRecordingVoice else {
+            retryAfterRecording = HeldRetry(settings: settings, kind: .resume)
+            return
+        }
         soundsOnlyAskedDuringCall = false
         // A pause is not a new start: the phone's model that was covering
         // for the cloud or the home computer (the caller's settings still
@@ -1779,7 +1793,12 @@ public final class CaptionPipeline {
             await resume()
         } else if let held = retryAfterRecording {
             retryAfterRecording = nil
-            await retry(settings: held.settings)
+            switch held.kind {
+            case .retry: await retry(settings: held.settings)
+            case .resume: await resume(settings: held.settings)
+            case .start:
+                if let settings = held.settings ?? activeSettings, phase == .idle { await start(settings: settings) }
+            }
         } else if soundsOnlyChosen {
             await listenForSoundsOnly()
         } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil || comesBackWithoutTimer(failure) {
