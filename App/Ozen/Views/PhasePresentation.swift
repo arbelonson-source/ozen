@@ -208,6 +208,9 @@ struct PhasePresentation {
                 : tr("בזיהוי הדיבור המובנה בטלפון, עד שהמודל יירד ב־Wi‑Fi · הקישו כדי להשהות", "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause")
             self.init(title: tr("מאזינה", "Listening"), detail: detail, systemImage: "waveform", tint: .green, action: .pause)
 
+        case .listening where coveringForCloud && engine == .homeServer && coveredEngine == .cloud:
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור לענן, ממשיכים עם המחשב בבית · הקישו כדי להשהות", "Can’t reach the cloud, so the home computer carries on · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud:
             // Still captioning, so still green: the words keep coming, only
             // from the phone's own model while the cloud can't be used.

@@ -2528,9 +2528,15 @@ public final class CaptionPipeline {
         // Someone may have stopped, retried or restarted captions since
         // the failure; then the engine cache is theirs to fill, not ours.
         guard case .failed(let before) = phase, before == failure else { return }
+        var settings = settings
         let engine = cachedEngine(for: settings)
-        let needsDownload = await engine.pendingDownloadMegabytes() != nil
+        var needsDownload = await engine.pendingDownloadMegabytes() != nil
         guard case .failed(let current) = phase, current == failure else { return }
+        if needsDownload, let home = await homeComputerCover(replacing: settings, after: failure) {
+            guard case .failed(let still) = phase, still == failure else { return }
+            settings = home
+            needsDownload = false
+        }
         // Read again after the check: a name added or a microphone picked
         // during it reached `activeSettings`, not the copy made before it.
         // A different model picked meanwhile is not the one checked.
@@ -2576,6 +2582,20 @@ public final class CaptionPipeline {
             cloudSwitchedBackAt = nil
             recheckCloud()
         }
+    }
+
+    /// With no phone model to take over from a cloud that can't be reached,
+    /// a paired home computer that answers on the local network captions
+    /// instead; the cloud is asked again as for the phone's model.
+    private func homeComputerCover(replacing phone: AppSettings, after failure: PipelineFailure) async -> AppSettings? {
+        guard let kind = failure.engineUnavailability?.kind, kind == .noInternet || kind == .temporarilyUnavailable,
+              let chosen = activeSettings, chosen.engine == .cloud,
+              !chosen.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty
+        else { return nil }
+        var home = phone
+        home.engine = .homeServer
+        guard await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available else { return nil }
+        return home
     }
 
     /// What was said while the home computer or the cloud was already gone,

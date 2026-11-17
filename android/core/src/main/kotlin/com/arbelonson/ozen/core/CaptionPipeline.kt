@@ -2817,16 +2817,26 @@ class CaptionPipeline(
      * takes over: a surprise download of hundreds of megabytes is not a
      * fair way to find out the cloud stopped.
      */
-    private suspend fun coverForCloud(settings: AppSettings, failure: PipelineFailure, retryIfNotCovered: Boolean = true) {
+    private suspend fun coverForCloud(phoneSettings: AppSettings, failure: PipelineFailure, retryIfNotCovered: Boolean = true) {
+        var settings = phoneSettings
         try {
             // Someone may have stopped, retried or restarted captions since
             // the failure; then the engine cache is theirs to fill, not ours.
             val before = phase
             if (before !is PipelinePhase.Failed || before.reason != failure) return
             val engine = cachedEngine(settings)
-            val needsDownload = !engine.hasModelOnPhone()
+            var needsDownload = !engine.hasModelOnPhone()
             val current = phase
             if (current !is PipelinePhase.Failed || current.reason != failure) return
+            if (needsDownload) {
+                val home = homeComputerCover(settings, failure)
+                val still = phase
+                if (home != null) {
+                    if (still !is PipelinePhase.Failed || still.reason != failure) return
+                    settings = home
+                    needsDownload = false
+                }
+            }
             // Read again after the check: a name added or a microphone picked
             // during it reached the active settings, not the copy made before
             // it. A different model picked meanwhile is not the one checked.
@@ -2881,6 +2891,22 @@ class CaptionPipeline(
         } finally {
             coverSettled(failure)
         }
+    }
+
+    /**
+     * With no phone model to take over from a cloud that can't be reached,
+     * a paired home computer that answers on the local network captions
+     * instead; the cloud is asked again as for the phone's model.
+     */
+    private suspend fun homeComputerCover(phone: AppSettings, failure: PipelineFailure): AppSettings? {
+        val kind = failure.engineUnavailability?.kind
+        if (kind != EngineUnavailability.Kind.NoInternet && kind != EngineUnavailability.Kind.TemporarilyUnavailable) return null
+        val chosen = settingsInUse ?: return null
+        if (chosen.engine != TranscriptionEngineKind.Cloud || chosen.homeServerAddress.isBlank()) return null
+        val home = phone.copy()
+        home.engine = TranscriptionEngineKind.HomeServer
+        if (probeEngine(home).checkAvailability(home.languageCode) != EngineAvailability.Available) return null
+        return home
     }
 
     /**

@@ -35,7 +35,7 @@ private suspend fun TestScope.waitingFor(kind: TranscriptionEngineKind, retryWai
     captions.onEvent = { event -> notes.add(event.description) }
     val settings = AppSettings.default
     settings.engine = kind
-    settings.homeServerAddress = "10.0.0.5"
+    if (kind == homeKind) settings.homeServerAddress = "10.0.0.5"
     captions.start(settings)
     val waitNote = if (kind == homeKind) "waiting for the home computer" else "waiting for the cloud"
     assertTrue(eventually { notes.any { it.startsWith(waitNote) } }, "$notes")
