@@ -1413,6 +1413,9 @@ class CaptionSession(
     /** An error that nothing caught in a coroutine of the app: captions stop with the usual notice and retry. */
     fun unexpectedError(error: Throwable) = pipeline.unexpectedError(error)
 
+    /** The lock screen watcher failed again and again and was left stopped. */
+    fun noteWatcherGaveUp() = note("lock screen watcher stopped after repeated errors")
+
     private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
 
     private fun appVersion(): String {

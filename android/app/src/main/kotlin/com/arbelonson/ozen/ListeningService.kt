@@ -11,11 +11,13 @@ import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import com.arbelonson.ozen.core.LockScreenCaptionContent
 import com.arbelonson.ozen.core.LockScreenCaptions
 import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.LockScreenUpdateThrottle
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.RestartingWatcher
 import com.arbelonson.ozen.core.errorGuardedScope
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.Job
@@ -29,11 +31,18 @@ class ListeningService : Service() {
     private val captions get() = (application as OzenApplication).captions
     private val settings get() = (application as OzenApplication).settings
     private val scope = errorGuardedScope {
-        watching = null
         flush = null
         captions.unexpectedError(it)
     }
-    private var watching: Job? = null
+    private var finished = false
+    private val watcher = RestartingWatcher(
+        scope = scope,
+        now = { SystemClock.elapsedRealtime() / 1_000.0 },
+        shouldRun = { running && !finished },
+        onError = { captions.unexpectedError(it) },
+        onGaveUp = { captions.noteWatcherGaveUp() },
+        body = { watch() },
+    )
     private val throttle = LockScreenUpdateThrottle()
     private var flush: Job? = null
     private var drawnPublic: Boolean? = null
@@ -42,6 +51,7 @@ class ListeningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         running = true
+        finished = false
         if (intent?.action == ACTION_PAUSE) {
             captions.stopFromNotification()
             finish()
@@ -72,7 +82,7 @@ class ListeningService : Service() {
         if (sharing) takePhoneSound(intent)
         drawn(content, public)
         if (soundsOnly) captions.listenForSoundsOnly() else captions.listen(afterRestart = intent == null)
-        if (watching == null) watching = scope.launch { watch() }
+        watcher.start()
         return START_STICKY
     }
 
@@ -99,6 +109,7 @@ class ListeningService : Service() {
         captions.endPhoneSound()
         captions.stopCameraLight()
         showingOnLockScreen = false
+        watcher.stop()
         scope.cancel()
         val phase = captions.pipeline.phase
         if ((phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) || captions.pipeline.soundsOnlyChosen) captions.stopFromNotification()
@@ -180,6 +191,7 @@ class ListeningService : Service() {
     }
 
     private fun finish() {
+        finished = true
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
