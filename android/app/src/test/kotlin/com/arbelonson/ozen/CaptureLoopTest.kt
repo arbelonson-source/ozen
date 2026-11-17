@@ -96,6 +96,49 @@ class CaptureLoopTest {
     }
 
     @Test
+    fun aNewlyPickedSourceGetsItsOwnFullSetOfTries() {
+        version = 1
+        stopAfterReads = 40
+        script = { _, _ ->
+            clock += 100
+            100
+        }
+        open = {
+            when (opens) {
+                CaptureLoop.MAX_SWAP_ATTEMPTS - 1 -> {
+                    version = 2
+                    null
+                }
+                CaptureLoop.MAX_SWAP_ATTEMPTS -> null
+                else -> if (opens < CaptureLoop.MAX_SWAP_ATTEMPTS) null else "second"
+            }
+        }
+        val loop = loop()
+        assertFalse(loop.run())
+        assertEquals(listOf("second"), adopted)
+        assertEquals("second", loop.current)
+        assertEquals(listOf("first"), retired)
+    }
+
+    @Test
+    fun aNewSourceRequestedDuringAPauseIsTriedAtOnce() {
+        version = 1
+        stopAfterReads = 5
+        open = {
+            if (opens == 1) {
+                version = 2
+                null
+            } else {
+                "second"
+            }
+        }
+        val loop = loop()
+        assertFalse(loop.run())
+        assertEquals(2, opens)
+        assertEquals("second", loop.current)
+    }
+
+    @Test
     fun emptyReadsSleepInsteadOfSpinning() {
         script = { _, _ -> 0 }
         stopAfterReads = 50

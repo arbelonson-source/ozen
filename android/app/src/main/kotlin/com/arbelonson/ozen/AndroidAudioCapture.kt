@@ -410,8 +410,10 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
  * tested: reads chunks, swaps the recording when the source changes, and
  * reports whether the capture was lost. A swap that fails (null or any
  * exception) keeps the old recording, is not counted as done, and is tried
- * again after a growing pause; after [MAX_SWAP_ATTEMPTS] failures the capture
- * counts as lost, so the existing restart path opens everything afresh.
+ * again after a growing pause; after [MAX_SWAP_ATTEMPTS] failures for one
+ * requested source the capture counts as lost (a newly requested source starts
+ * with a fresh count and is tried at once), so the existing restart path
+ * opens everything afresh.
  */
 internal class CaptureLoop<R : Any>(
     first: R,
@@ -434,8 +436,14 @@ internal class CaptureLoop<R : Any>(
         val buffer = ShortArray(AndroidAudioCapture.CHUNK)
         var failures = 0
         var retryAt = 0L
+        var tryingFor = seen
         while (running()) {
             val wanted = version()
+            if (wanted != tryingFor) {
+                tryingFor = wanted
+                failures = 0
+                retryAt = 0L
+            }
             if (wanted != seen && now() >= retryAt) {
                 val next = try {
                     open()
