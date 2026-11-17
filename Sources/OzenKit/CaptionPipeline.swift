@@ -206,6 +206,7 @@ public final class CaptionPipeline {
     public var cloudFlapWindowSeconds: Double = 300
     private var cloudSwitchedBackAt: ContinuousClock.Instant?
     private var cloudFlaps = 0
+    private var homeComputerTriedAfterPhoneModel = false
     public var currentCloudRecheckSeconds: Double {
         cloudRecheckSeconds * Double(1 << cloudFlaps)
     }
@@ -596,6 +597,7 @@ public final class CaptionPipeline {
         pendingReplay = []
         pendingReplayDedupe = []
         pendingReplayedLines = []
+        homeSilentUntil = [:]
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -603,6 +605,7 @@ public final class CaptionPipeline {
             coverReason = nil
             coverDetail = nil
             coveredSettings = nil
+            homeComputerTriedAfterPhoneModel = false
             homeServerRecheck?.cancel()
             homeServerRecheck = nil
             cloudRecheck?.cancel()
@@ -1033,7 +1036,8 @@ public final class CaptionPipeline {
             return
         }
         if settings.engine == .cloud || settings.engine == .homeServer {
-            settings.engine = .whisperKit
+            let homeCoversCloud = coveredSettings?.engine == .cloud && activeSettings?.engine == .homeServer
+            settings.engine = homeCoversCloud ? .homeServer : .whisperKit
         }
         nextStartCoversCloud = true
     }
@@ -2513,8 +2517,22 @@ public final class CaptionPipeline {
         guard let settings = activeSettings, settings.engine == .cloud, !isCoveringForCloud else { return false }
         var onPhone = settings
         onPhone.engine = .whisperKit
-        return await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil
+        if await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil { return true }
+        guard !settings.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        var home = settings
+        home.engine = .homeServer
+        let key = engineCacheKey(home)
+        if let until = homeSilentUntil[key], now() < until { return false }
+        let answers = await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available
+        homeSilentUntil[key] = answers ? nil : now() + Self.homeSilentSeconds
+        return answers
     }
+
+    /// A home computer that did not answer the hand-over check is not asked
+    /// again on every cloud timeout for this long: away from home each
+    /// check can wait for its own timeout, on top of the request's.
+    static let homeSilentSeconds: TimeInterval = 60
+    private var homeSilentUntil: [String: TimeInterval] = [:]
 
     private func engineCacheKey(_ settings: AppSettings) -> String {
         "\(settings.engine.rawValue)|\(settings.whisperModelVariant)|\(settings.allowServerFallbackForAppleSpeech)|\(settings.cloudProvider.rawValue)|\(settings.chosenCloudModel)|\(settings.homeServerAddress)|\(settings.homeServerCertificatePin ?? "")|\(settings.homeServerBeam)"
@@ -2610,15 +2628,16 @@ public final class CaptionPipeline {
         var needsDownload = await engine.pendingDownloadMegabytes() != nil
         guard case .failed(let current) = phase, current == failure else { return }
         if needsDownload {
-            let home = await homeComputerCover(replacing: settings, after: failure)
+            let home = await homeComputerCover(replacing: settings, after: failure, chosen: activeSettings)
             guard case .failed(let still) = phase, still == failure else { return }
             // The phone's model may have finished downloading during the
-            // check: it keeps its place first.
-            if let home, await engine.pendingDownloadMegabytes() != nil {
-                guard case .failed(let last) = phase, last == failure else { return }
-                settings = home
+            // check, whatever it answered: it keeps its place first.
+            let phoneReady = await engine.pendingDownloadMegabytes() == nil
+            guard case .failed(let last) = phase, last == failure else { return }
+            if phoneReady {
                 needsDownload = false
-            } else if home != nil {
+            } else if let home {
+                settings = home
                 needsDownload = false
             }
         }
@@ -2645,10 +2664,14 @@ public final class CaptionPipeline {
         logEvent(.note("cloud unavailable, the phone's own model took over"))
         prepareReplay()
         nextStartCoversCloud = true
-        coverReason = failure.engineUnavailability?.kind
-        coverDetail = failure.engineUnavailability?.detail
-        coveredSettings = activeSettings
+        let homeCoversCloud = isCoveringForCloud && coveredSettings?.engine == .cloud && activeSettings?.engine == .homeServer
+        if !homeCoversCloud {
+            coverReason = failure.engineUnavailability?.kind
+            coverDetail = failure.engineUnavailability?.detail
+            coveredSettings = activeSettings
+        }
         await start(settings: onPhone)
+        await homeComputerAfterPhoneModelFailed(after: failure)
         if coverReason == .homeServerUnreachable, coveredSettings?.engine == .homeServer {
             if let back = homeServerSwitchedBackAt, back.duration(to: .now) < .seconds(homeServerFlapWindowSeconds) {
                 homeServerFlaps = min(homeServerFlaps + 1, 4)
@@ -2672,15 +2695,38 @@ public final class CaptionPipeline {
     /// With no phone model to take over from a cloud that can't be reached,
     /// a paired home computer that answers on the local network captions
     /// instead; the cloud is asked again as for the phone's model.
-    private func homeComputerCover(replacing phone: AppSettings, after failure: PipelineFailure) async -> AppSettings? {
+    private func homeComputerCover(replacing phone: AppSettings, after failure: PipelineFailure, chosen: AppSettings?) async -> AppSettings? {
         guard let kind = failure.engineUnavailability?.kind, kind == .noInternet || kind == .temporarilyUnavailable,
-              let chosen = activeSettings, chosen.engine == .cloud,
+              let chosen, chosen.engine == .cloud,
               !chosen.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty
         else { return nil }
         var home = phone
         home.engine = .homeServer
         guard await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available else { return nil }
         return home
+    }
+
+    /// A phone model that is installed but fails to load while it covers
+    /// the cloud: the home computer is tried once as the next cover, with
+    /// the same conditions as when no model is installed. Once per cover,
+    /// so a computer that then fails does not send captions back and forth.
+    private func homeComputerAfterPhoneModelFailed(after failure: PipelineFailure) async {
+        guard isCoveringForCloud, !homeComputerTriedAfterPhoneModel,
+              case .failed(let loadFailure) = phase, loadFailure.engineUnavailability?.kind == .modelLoadFailed,
+              let onPhone = activeSettings, onPhone.engine == .whisperKit
+        else { return }
+        guard await homeComputerCover(replacing: onPhone, after: failure, chosen: coveredSettings) != nil,
+              case .failed(let still) = phase, still == loadFailure, !isRecordingVoice,
+              let latest = activeSettings, engineCacheKey(latest) == engineCacheKey(onPhone)
+        else { return }
+        var home = latest
+        home.engine = .homeServer
+        homeComputerTriedAfterPhoneModel = true
+        cancelScheduledRetry()
+        logEvent(.note("the phone's model didn't load, the home computer took over"))
+        prepareReplay()
+        nextStartCoversCloud = true
+        await start(settings: home)
     }
 
     /// What was said while the home computer or the cloud was already gone,
@@ -3690,6 +3736,7 @@ public final class CaptionPipeline {
     }
 
     private func tearDownSession() {
+        homeSilentUntil = [:]
         runID = UUID()
         stats.soundDetectionRunning = false
         currentEngine = nil

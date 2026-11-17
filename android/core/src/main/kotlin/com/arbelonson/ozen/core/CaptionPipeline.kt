@@ -355,6 +355,7 @@ class CaptionPipeline(
     var cloudFlapWindowSeconds: Double = 300.0
     private var cloudSwitchedBackAt: TimeMark? = null
     private var cloudFlaps = 0
+    private var homeComputerTriedAfterPhoneModel = false
     val currentCloudRecheckSeconds: Double
         get() = cloudRecheckSeconds * (1 shl cloudFlaps).toDouble()
     private var coveredSettings: AppSettings? = null
@@ -783,6 +784,7 @@ class CaptionPipeline(
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
         pendingReplayedLines = emptySet()
+        homeSilentUntil.clear()
         settingsInUse = settings.copy()
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -790,6 +792,7 @@ class CaptionPipeline(
             coverReason = null
             coverDetail = null
             coveredSettings = null
+            homeComputerTriedAfterPhoneModel = false
             homeServerRecheck?.cancel()
             homeServerRecheck = null
             cloudRecheck?.cancel()
@@ -1322,7 +1325,9 @@ class CaptionPipeline(
             return resumed.settings
         }
         if (settings.engine == TranscriptionEngineKind.Cloud || settings.engine == TranscriptionEngineKind.HomeServer) {
-            settings.engine = TranscriptionEngineKind.WhisperKit
+            val homeCoversCloud = coveredSettings?.engine == TranscriptionEngineKind.Cloud &&
+                settingsInUse?.engine == TranscriptionEngineKind.HomeServer
+            settings.engine = if (homeCoversCloud) TranscriptionEngineKind.HomeServer else TranscriptionEngineKind.WhisperKit
         }
         nextStartCoversCloud = true
         return settings
@@ -2805,8 +2810,22 @@ class CaptionPipeline(
         if (settings.engine != TranscriptionEngineKind.Cloud || isCoveringForCloud) return false
         val onPhone = settings.copy()
         onPhone.engine = TranscriptionEngineKind.WhisperKit
-        return probeEngine(onPhone).hasModelOnPhone()
+        if (probeEngine(onPhone).hasModelOnPhone()) return true
+        if (settings.homeServerAddress.isBlank()) return false
+        val home = settings.copy()
+        home.engine = TranscriptionEngineKind.HomeServer
+        val key = engineCacheKey(home)
+        val until = homeSilentUntil[key]
+        if (until != null && now() < until) return false
+        val answers = probeEngine(home).checkAvailability(home.languageCode) == EngineAvailability.Available
+        if (answers) homeSilentUntil.remove(key) else homeSilentUntil[key] = now() + HOME_SILENT_SECONDS
+        return answers
     }
+
+    // A home computer that did not answer the hand-over check is not asked
+    // again on every cloud timeout for this long: away from home each check
+    // can wait for its own timeout, on top of the request's.
+    private val homeSilentUntil = HashMap<String, Double>()
 
     /**
      * For asking the home computer or the cloud whether it answers again
@@ -2961,17 +2980,18 @@ class CaptionPipeline(
             val current = phase
             if (current !is PipelinePhase.Failed || current.reason != failure) return
             if (needsDownload) {
-                val home = homeComputerCover(settings, failure)
+                val home = homeComputerCover(settings, failure, settingsInUse)
                 val still = phase
                 if (still !is PipelinePhase.Failed || still.reason != failure) return
                 // The phone's model may have finished downloading during the
-                // check: it keeps its place first.
-                if (home != null) {
-                    if (!engine.hasModelOnPhone()) {
-                        val last = phase
-                        if (last !is PipelinePhase.Failed || last.reason != failure) return
-                        settings = home
-                    }
+                // check, whatever it answered: it keeps its place first.
+                val phoneReady = engine.hasModelOnPhone()
+                val last = phase
+                if (last !is PipelinePhase.Failed || last.reason != failure) return
+                if (phoneReady) {
+                    needsDownload = false
+                } else if (home != null) {
+                    settings = home
                     needsDownload = false
                 }
             }
@@ -2998,10 +3018,15 @@ class CaptionPipeline(
             logEvent(PipelineEvent.Kind.Note("cloud unavailable, the phone's own model took over"))
             prepareReplay()
             nextStartCoversCloud = true
-            coverReason = failure.engineUnavailability?.kind
-            coverDetail = failure.engineUnavailability?.detail
-            coveredSettings = settingsInUse?.copy()
+            val homeCoversCloud = isCoveringForCloud && coveredSettings?.engine == TranscriptionEngineKind.Cloud &&
+                settingsInUse?.engine == TranscriptionEngineKind.HomeServer
+            if (!homeCoversCloud) {
+                coverReason = failure.engineUnavailability?.kind
+                coverDetail = failure.engineUnavailability?.detail
+                coveredSettings = settingsInUse?.copy()
+            }
             start(onPhone)
+            homeComputerAfterPhoneModelFailed(failure)
             if (coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&
                 coveredSettings?.engine == TranscriptionEngineKind.HomeServer
             ) {
@@ -3036,15 +3061,41 @@ class CaptionPipeline(
      * a paired home computer that answers on the local network captions
      * instead; the cloud is asked again as for the phone's model.
      */
-    private suspend fun homeComputerCover(phone: AppSettings, failure: PipelineFailure): AppSettings? {
+    private suspend fun homeComputerCover(phone: AppSettings, failure: PipelineFailure, chosen: AppSettings?): AppSettings? {
         val kind = failure.engineUnavailability?.kind
         if (kind != EngineUnavailability.Kind.NoInternet && kind != EngineUnavailability.Kind.TemporarilyUnavailable) return null
-        val chosen = settingsInUse ?: return null
-        if (chosen.engine != TranscriptionEngineKind.Cloud || chosen.homeServerAddress.isBlank()) return null
+        if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud || chosen.homeServerAddress.isBlank()) return null
         val home = phone.copy()
         home.engine = TranscriptionEngineKind.HomeServer
         if (probeEngine(home).checkAvailability(home.languageCode) != EngineAvailability.Available) return null
         return home
+    }
+
+    /**
+     * A phone model that is installed but fails to load while it covers
+     * the cloud: the home computer is tried once as the next cover, with
+     * the same conditions as when no model is installed. Once per cover,
+     * so a computer that then fails does not send captions back and forth.
+     */
+    private suspend fun homeComputerAfterPhoneModelFailed(failure: PipelineFailure) {
+        if (!isCoveringForCloud || homeComputerTriedAfterPhoneModel) return
+        val loadFailure = (phase as? PipelinePhase.Failed)?.reason ?: return
+        if (loadFailure.engineUnavailability?.kind != EngineUnavailability.Kind.ModelLoadFailed) return
+        val onPhone = settingsInUse ?: return
+        if (onPhone.engine != TranscriptionEngineKind.WhisperKit) return
+        if (homeComputerCover(onPhone, failure, coveredSettings) == null) return
+        val still = phase
+        if (still !is PipelinePhase.Failed || still.reason != loadFailure || isRecordingVoice) return
+        val latest = settingsInUse ?: return
+        if (engineCacheKey(latest) != engineCacheKey(onPhone)) return
+        val home = latest.copy()
+        home.engine = TranscriptionEngineKind.HomeServer
+        homeComputerTriedAfterPhoneModel = true
+        cancelScheduledRetry()
+        logEvent(PipelineEvent.Kind.Note("the phone's model didn't load, the home computer took over"))
+        prepareReplay()
+        nextStartCoversCloud = true
+        start(home)
     }
 
     /**
@@ -4079,6 +4130,7 @@ class CaptionPipeline(
     }
 
     private fun tearDownSession() {
+        homeSilentUntil.clear()
         runID = UUID.randomUUID()
         meanwhileRestartTask?.cancel()
         meanwhileRestartTask = null
@@ -4266,6 +4318,7 @@ class CaptionPipeline(
     companion object {
         const val IDLE_CHECK_SECONDS = 1.0
         private const val UNEXPECTED_MESSAGE_LIMIT = 200
+        private const val HOME_SILENT_SECONDS = 60.0
 
         /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
         const val FALLBACK_AFTER_FAILURES = 2
