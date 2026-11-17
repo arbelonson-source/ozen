@@ -189,6 +189,6 @@ class OnDeviceWhisperEnginePreviewsTest {
         val rig = pvRigOf(demand = { PV_NOBODY })
         val tokens = rig.pvStream(pvSpeech(8.0), pvSilence(1.0)).toList()
         val stamp = tokens.single().timestamp
-        assertTrue(stamp in 1.0..3.0, "stamped at $stamp s, line began at about 0 s and ended at 8 s")
+        assertTrue(stamp in 0.5..2.0, "stamped at $stamp s, line began at about 0 s and ended at 8 s")
     }
 }

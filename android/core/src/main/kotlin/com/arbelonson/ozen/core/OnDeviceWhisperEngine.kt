@@ -502,6 +502,7 @@ class OnDeviceWhisperEngine(
             }
             val end = window.size
             samplesAtLastPass = total
+            val decidedAt = wallClockSeconds()
 
             // Kitchen clatter and a running tap pass the energy detector
             // and come back from Whisper as confident Hebrew. A stretch in
@@ -639,7 +640,7 @@ class OnDeviceWhisperEngine(
                         utteranceID = utteranceID,
                         text = shown,
                         isFinal = isFinal,
-                        timestamp = wallClockSeconds() - if (isFinal && previewsSkipped && lastShownText.isEmpty()) maxOf(0.0, windowSeconds - firstPassSpeechSeconds) else 0.0,
+                        timestamp = if (isFinal && previewsSkipped && lastShownText.isEmpty()) decidedAt - maxOf(0.0, (total - (status.firstSpeechStart ?: total)).toDouble() / sampleRate - firstPassSpeechSeconds) else wallClockSeconds(),
                         confidence = shownConfidence,
                         uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
                         voicedChunks = if (text.isEmpty()) null else voicedChunks,

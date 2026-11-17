@@ -497,6 +497,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
             }
             let end = window.count
             samplesAtLastPass = total
+            let decidedAt = Date().timeIntervalSince1970
 
             // Kitchen clatter and a running tap pass the energy detector
             // and come back from Whisper as confident Hebrew. A stretch in
@@ -626,7 +627,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     utteranceID: utteranceID,
                     text: shown,
                     isFinal: isFinal,
-                    timestamp: Date().timeIntervalSince1970 - (isFinal && previewsSkipped && lastShownText.isEmpty ? max(0, windowSeconds - InferenceCadence.firstPassSpeechSeconds) : 0),
+                    timestamp: isFinal && previewsSkipped && lastShownText.isEmpty ? decidedAt - max(0, Double(total - (status.firstSpeechStart ?? total)) / sampleRate - InferenceCadence.firstPassSpeechSeconds) : Date().timeIntervalSince1970,
                     confidence: shownConfidence,
                     uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
                     voicedChunks: text.isEmpty ? nil : voicedChunks,
