@@ -114,4 +114,21 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun `a microphone that will not open does not reset the count however long the waits`() = runTest {
+        val (pipeline, detector, audio, scope) = waitingForRoom()
+        try {
+            pipeline.start(AppSettings.default)
+            assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+            audio.startError = Crash("microphone busy")
+            detector.fail(Crash("first"))
+            testScheduler.advanceTimeBy(2_000_000)
+            testScheduler.runCurrent()
+            assertTrue(pipeline.notes().any { it.contains("sound alerts stopped") })
+            assertEquals(CaptionPipeline.SOUNDS_ONLY_RETRY_SECONDS.size, audio.calls.count { it == "startCapture" } - 1)
+        } finally {
+            scope.cancel()
+        }
+    }
 }

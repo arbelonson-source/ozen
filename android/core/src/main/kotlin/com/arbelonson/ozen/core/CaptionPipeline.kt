@@ -1829,7 +1829,7 @@ class CaptionPipeline(
 
     private var meanwhileRestartTask: Job? = null
     private var meanwhileRestartAttempts = 0
-    private var meanwhileRestartAt: Double? = null
+    private var meanwhileRunningSince: Double? = null
 
     /**
      * An unexpected error while captions are already failed leaves the
@@ -1844,8 +1844,9 @@ class CaptionPipeline(
         if (!meanwhileSoundsWanted(failure)) return
         if (isListeningForSoundsOnly && soundTask?.isActive == true) return
         if (meanwhileRestartTask?.isActive == true) return
-        val last = meanwhileRestartAt
-        if (last != null && now() - last >= SOUNDS_ONLY_HEALTHY_SECONDS) meanwhileRestartAttempts = 0
+        val began = meanwhileRunningSince
+        meanwhileRunningSince = null
+        if (began != null && now() - began >= SOUNDS_ONLY_HEALTHY_SECONDS) meanwhileRestartAttempts = 0
         val wait = SOUNDS_ONLY_RETRY_SECONDS.getOrNull(meanwhileRestartAttempts)
         stopListeningForSounds()
         if (wait == null) {
@@ -1859,9 +1860,13 @@ class CaptionPipeline(
             meanwhileRestartTask = null
             val current = phase as? PipelinePhase.Failed ?: return@launch
             if (isListeningForSoundsOnly || !meanwhileSoundsWanted(current.reason)) return@launch
-            meanwhileRestartAt = now()
             listenForSoundsMeanwhile(current.reason)
-            if (isListeningForSoundsOnly) onPhaseChange?.invoke(phase) else restartMeanwhileSounds(current.reason)
+            if (isListeningForSoundsOnly) {
+                meanwhileRunningSince = now()
+                onPhaseChange?.invoke(phase)
+            } else {
+                restartMeanwhileSounds(current.reason)
+            }
         }
     }
 
