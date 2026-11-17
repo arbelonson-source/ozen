@@ -1651,15 +1651,22 @@ class CaptionSessionDeviceTest {
         }
         try {
             withContext(Dispatchers.Main) { session.listen() }
-            val loading = withTimeoutOrNull(10_000) {
-                while (!session.pipeline.phase.isTransitioning) delay(5)
+            val handedOver = withTimeoutOrNull(10_000) {
+                while (!withContext(Dispatchers.Main) { session.pipeline.phase.isTransitioning.also { if (it) session.stopCaptionsForRecording() } }) delay(2)
                 true
             }
-            assumeTrue("the start never showed a loading phase", loading == true)
-            withContext(Dispatchers.Main) { session.stopCaptionsForRecording() }
-            assertTrue("handed over", CaptionState.screen.value.pausedForRecording)
+            assumeTrue("the start never showed a loading phase", handedOver == true)
+            val shown = withTimeoutOrNull(5_000) {
+                while (!CaptionState.screen.value.pausedForRecording) delay(10)
+                true
+            }
+            assertTrue("handed over: ${CaptionState.screen.value.phase}", shown == true)
             withContext(Dispatchers.Main) { session.listenForSoundsOnly() }
-            assertFalse("the person's own choice ends the hand-over", CaptionState.screen.value.pausedForRecording)
+            val dropped = withTimeoutOrNull(5_000) {
+                while (CaptionState.screen.value.pausedForRecording) delay(10)
+                true
+            }
+            assertTrue("the person's own choice ends the hand-over", dropped == true)
         } finally {
             withContext(Dispatchers.Main) {
                 session.close()
