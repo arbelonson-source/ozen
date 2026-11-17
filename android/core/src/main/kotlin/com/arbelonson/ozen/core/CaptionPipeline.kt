@@ -1516,6 +1516,8 @@ class CaptionPipeline(
         }
     }
 
+    private var readingSoundAlerts: List<SoundAlert> = emptyList()
+
     private fun handleSoundObservation(observation: SoundObservation) {
         // Judged by when the classifier produced the reading, not when it
         // got here, and dropped before the policy, so the phone's own buzz
@@ -1529,19 +1531,26 @@ class CaptionPipeline(
         val alert = soundPolicy.evaluate(observation) ?: return
         soundAlerts = soundAlerts + alert
         // A reading comes most important first, then surest: a later label
-        // of it as urgent as the first is still the less likely one, but
-        // only when it can be the same sound; another sound is its own alert.
-        val shownNow = screenSoundAlert
-        val weakerInSameReading = shownNow != null &&
-            shownNow.timestamp == alert.timestamp && shownNow.event.importance >= alert.event.importance &&
-            SoundEventCatalog.mayBeSameSound(shownNow.event.identifier, alert.event.identifier)
+        // of it as urgent as one already taken is still the less likely
+        // one, but only when it can be the same sound; another sound is its
+        // own alert, announced without taking the screen from the one
+        // above it.
+        if (readingSoundAlerts.firstOrNull()?.timestamp != alert.timestamp) readingSoundAlerts = emptyList()
+        val weakerInSameReading = readingSoundAlerts.any {
+            it.event.importance >= alert.event.importance &&
+                SoundEventCatalog.mayBeSameSound(it.event.identifier, alert.event.identifier)
+        }
         if (!weakerInSameReading) {
-            if (alert.takesBanner(currentBannerSoundAlert)) {
-                bannerSoundAlert = alert
-                bannerSoundAlertRaisedAt = now()
+            val outranked = readingSoundAlerts.any { it.event.importance >= alert.event.importance }
+            readingSoundAlerts = readingSoundAlerts + alert
+            if (!outranked) {
+                if (alert.takesBanner(currentBannerSoundAlert)) {
+                    bannerSoundAlert = alert
+                    bannerSoundAlertRaisedAt = now()
+                }
+                screenSoundAlert = alert
+                screenSoundAlertRaisedAt = now()
             }
-            screenSoundAlert = alert
-            screenSoundAlertRaisedAt = now()
             onSoundAlert?.invoke(alert)
         }
         if (soundAlerts.size > MAX_SOUND_ALERTS) {

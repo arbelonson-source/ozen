@@ -3777,6 +3777,34 @@ struct CaptionPipelineAlertHookTests {
         #expect(raised == ["smoke_detector", "door_bell", "baby_crying", "door_bell"])
     }
 
+    @Test("a less important sound of one reading is announced but never takes the screen from the stronger one")
+    func lesserSoundKeepsScreen() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        var raised: [String] = []
+        pipeline.onSoundAlert = { raised.append($0.event.identifier) }
+        await pipeline.start(settings: .default)
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.95, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_000))
+        #expect(await eventually { raised.count == 2 })
+        #expect(pipeline.screenSoundAlert?.event.identifier == "smoke_detector")
+        #expect(pipeline.bannerSoundAlert?.event.identifier == "smoke_detector")
+    }
+
+    @Test("a lookalike of any sound already taken from the reading is held back")
+    func lookalikeOfAnyTakenHeldBack() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        var raised: [String] = []
+        pipeline.onSoundAlert = { raised.append($0.event.identifier) }
+        await pipeline.start(settings: .default)
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.95, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "alarm_clock", confidence: 0.7, timestamp: 1_000))
+        #expect(await eventually { pipeline.soundAlerts.count == 3 })
+        #expect(raised == ["smoke_detector", "door_bell"])
+    }
+
     @Test("an air raid siren also scored as a police siren is one notification")
     func sirenLabelsOfOneReadingOneNotification() async {
         let detector = FakeSoundDetector()
