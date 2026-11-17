@@ -122,4 +122,19 @@ class FileTranscriptRecordTest {
         assertEquals("${TranscriptSessionRecord.cutShortNote}\n\n$plain", TranscriptHistoryStore.exportText(early))
         assertTrue(TranscriptHistoryStore.exportAllText(listOf(early), { 0 }, false)!!.contains(TranscriptSessionRecord.cutShortNote))
     }
+
+    @Test
+    fun aTranscribedRecordingKeepsThePhonesOffsetFromWhenItStarted() {
+        val phone = java.util.TimeZone.getDefault()
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Jerusalem"))
+        try {
+            val winter = FileTranscriptRecord.make("a.wav", lines, finishedAt = 1_794_695_460.0, recordingSeconds = 60.0, modelVariant = null)
+            assertEquals(7_200, winter.utcOffsetSeconds)
+            val summer = FileTranscriptRecord.make("a.wav", lines, finishedAt = 1_782_900_060.0, recordingSeconds = 60.0, modelVariant = null)
+            assertEquals(10_800, summer.utcOffsetSeconds)
+            assertEquals(7_200, TranscriptSessionRecord.fromJson(winter.toJson()).utcOffsetSeconds)
+        } finally {
+            java.util.TimeZone.setDefault(phone)
+        }
+    }
 }
