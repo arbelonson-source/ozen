@@ -28,7 +28,12 @@ Protocol, version 1. Text frames are JSON, binary frames are audio.
                                               {"type": "report_saved"})
   server -> phone
     {"type": "ready", "model": "...", "version": 1}
-    {"type": "error", "code": "unauthorized" | "bad_request", "detail": "..."}
+    {"type": "error", "code": "unauthorized" | "bad_request" | "unsupported_language"
+                              | "transcription_failed" | "models_unavailable",
+     "detail": "..."}
+      The last two come after "ready", just before the server closes with
+      1011, so the phone can say the computer answered but could not
+      caption instead of calling it unreachable.
     {"type": "text", "utterance": 7, "text": "...", "final": false,
      "confidence": 0.93, "end_s": 12.4,
      "segments": [{"text": "...", "no_speech": 0.02, "logprob": -0.3, "compression": 1.4}]}
@@ -504,6 +509,7 @@ class OnDemandTranscriber:
         self._clock = clock
         self._loaded = None
         self._loading = None
+        self.load_error = None
         self.connections = 0
         self.last_used = clock()
 
@@ -552,6 +558,7 @@ class OnDemandTranscriber:
         except Exception as error:
             if self._loading is loading:
                 self._loading = None
+            self.load_error = error
             log.error("could not load the speech models (%s); the phone uses its own model until they can", error)
             raise
         if self._loading is loading:
@@ -885,6 +892,14 @@ async def refuse(ws, code, detail):
         pass
 
 
+async def close_failed(ws, code):
+    """Says why before closing with 1011, so the phone does not take a
+    computer that answered for one that cannot be reached."""
+    with contextlib.suppress(websockets.ConnectionClosed):
+        await ws.send(json.dumps({"type": "error", "code": code, "detail": ""}))
+    await ws.close(code=1011, reason="transcription failed")
+
+
 def worker_failed(error):
     """A phone that hangs up while a line is on its way ends the worker
     with ConnectionClosed; that is a goodbye, not a failed session."""
@@ -975,7 +990,9 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
         def worker_done(task):
             if not task.cancelled() and worker_failed(task.exception()):
                 log.error("session from %s failed: %r", peer, task.exception())
-                asyncio.ensure_future(ws.close(code=1011, reason="transcription failed"))
+                loading = on_demand and task.exception() is transcriber.load_error
+                code = "models_unavailable" if loading else "transcription_failed"
+                asyncio.ensure_future(close_failed(ws, code))
 
         worker.add_done_callback(worker_done)
         async for message in ws:

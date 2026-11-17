@@ -248,6 +248,9 @@ public actor HomeServerEngine: TranscriptionEngine {
         // A frame for a line that already got its final would otherwise
         // get a fresh id and show the same words again as a new line.
         var finished = Set<Int>()
+        // An error frame the computer sends before it closes: it answered,
+        // so the loss is not "can't be reached".
+        var closedBecause: String?
         while true {
             let frame: String
             do {
@@ -289,7 +292,11 @@ public actor HomeServerEngine: TranscriptionEngine {
                     // Checked again for real next time: the pipeline asks
                     // whether the computer is back.
                     verified = nil
-                    continuation.finish(throwing: EngineUnavailability.homeServerUnreachable("connection lost: \(error)"))
+                    if let closedBecause {
+                        continuation.finish(throwing: EngineUnavailability.homeServerUnreachable("\(HomeServer.answeredWronglyPrefix)server said \(closedBecause)"))
+                    } else {
+                        continuation.finish(throwing: EngineUnavailability.homeServerUnreachable("connection lost: \(error)"))
+                    }
                 }
                 return
             }
@@ -298,6 +305,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             // the stall check from ever handing captions to the phone.
             guard let message = HomeServerMessage(json: frame) else { continue }
             noteReply()
+            if case .refused(let code, _) = message, !code.isEmpty { closedBecause = code }
             guard case .text(let number, let received, let isFinal, let confidence, let segments) = message,
                   !finished.contains(number)
             else { continue }

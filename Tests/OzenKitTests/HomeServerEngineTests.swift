@@ -620,6 +620,59 @@ struct HomeServerEngineTests {
         #expect((garbage as? EngineUnavailability)?.kind == .homeServerUnreachable)
     }
 
+    @Test("a computer that says why it closed after ready is told apart from one that cannot be reached, and is still retried")
+    func closeReasonIsNamed() async {
+        for code in ["transcription_failed", "models_unavailable"] {
+            let socket = ScriptedSocket(helloReply: ready)
+            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1)
+            let (audio, feed) = AsyncStream<[Float]>.makeStream()
+            let tokens = server.stream(languageCode: "he", audio: audio)
+            let reading = Task { () -> Error? in
+                do {
+                    for try await _ in tokens {}
+                    return nil
+                } catch {
+                    return error
+                }
+            }
+            feed.yield([Float](repeating: 0.0005, count: 1600))
+            var waited = 0
+            while await socket.sentBytes == 0, waited < 500 {
+                try? await Task.sleep(for: .milliseconds(10))
+                waited += 1
+            }
+            await socket.deliver(#"{"type":"error","code":"\#(code)","detail":""}"#)
+            await socket.drop()
+            let why = await reading.value as? EngineUnavailability
+            feed.finish()
+            #expect(why?.kind == .homeServerUnreachable, "\(code)")
+            #expect(HomeServer.answeredWrongly(why), "\(code): \(String(describing: why))")
+            #expect(why?.detail.contains(code) == true, "\(code)")
+        }
+    }
+
+    @Test("a connection that closes with no word from the computer still counts as unreachable")
+    func silentCloseStaysUnreachable() async {
+        let socket = ScriptedSocket(helloReply: ready)
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1)
+        let (audio, feed) = AsyncStream<[Float]>.makeStream()
+        let tokens = server.stream(languageCode: "he", audio: audio)
+        let reading = Task { () -> Error? in
+            do {
+                for try await _ in tokens {}
+                return nil
+            } catch {
+                return error
+            }
+        }
+        try? await Task.sleep(for: .milliseconds(100))
+        await socket.drop()
+        let why = await reading.value as? EngineUnavailability
+        feed.finish()
+        #expect(why?.kind == .homeServerUnreachable)
+        #expect(!HomeServer.answeredWrongly(why))
+    }
+
     @Test("a diagnostics report goes to the server, which says it kept it; a server that doesn't answer is a failure")
     func sendsReport() async {
         let saving = ScriptedSocket(helloReply: ready)
