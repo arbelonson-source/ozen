@@ -431,39 +431,52 @@ public struct WhisperResultFilter: Sendable, Equatable {
 
     /// A loop in a script written without spaces ("好的好的好的好的好的好的",
     /// "はいはいはいはいはい") has no words to split on, so `collapse` looks inside
-    /// each word for a unit of one to six characters said back to back more
+    /// each word for a unit of one to eight characters said back to back more
     /// than `maxRepeats` times and cuts it to that many, like the spaced
-    /// path. A single character is cut only past six copies, because "谢谢谢谢"
-    /// and "哈哈哈" are ordinary speech. Numerals may repeat up to
-    /// `maxNumberRepeats` times, like spoken digits. nil when nothing is cut.
+    /// path. A unit may carry CJK or full-width punctuation ("好的，"), but
+    /// needs at least one character of such a script; the last copy may lack
+    /// its trailing punctuation ("好的，好的，好的，好的"). A single character
+    /// is cut only past six copies, because "谢谢谢谢" and "哈哈哈" are
+    /// ordinary speech. Numerals may repeat up to `maxNumberRepeats` times,
+    /// like spoken digits. nil when nothing is cut.
     private static func collapsingUnspacedRuns(_ word: String, maxRepeats: Int, maxNumberRepeats: Int) -> String? {
         let scalars = Array(word.unicodeScalars)
         guard scalars.count > maxRepeats, scalars.contains(where: { isRunScript($0.value) }) else { return nil }
         var current = scalars
         var changed = false
-        for unit in 1...6 {
+        for unit in 1...8 {
             var result: [Unicode.Scalar] = []
             var index = 0
             while index < current.count {
                 let end = index + unit
-                guard end <= current.count, current[index..<end].allSatisfy({ isRunScript($0.value) }),
+                guard end <= current.count,
+                      current[index..<end].allSatisfy({ isRunScript($0.value) || isRunPunctuation($0.value) }),
+                      current[index..<end].contains(where: { isRunScript($0.value) }),
                       unit == 1 || Set(current[index..<end]).count > 1 else {
                     result.append(current[index])
                     index += 1
                     continue
                 }
+                let chunk = Array(current[index..<end])
                 var repeats = 1
                 while index + (repeats + 1) * unit <= current.count,
-                      current[(index + repeats * unit)..<(index + (repeats + 1) * unit)].elementsEqual(current[index..<end]) {
+                      current[(index + repeats * unit)..<(index + (repeats + 1) * unit)].elementsEqual(chunk) {
                     repeats += 1
                 }
+                var core = chunk
+                while let last = core.last, !isRunScript(last.value) { core.removeLast() }
+                let tailStart = index + repeats * unit
+                let hasTail = core.count < unit && tailStart + core.count <= current.count
+                    && current[tailStart..<(tailStart + core.count)].elementsEqual(core)
+                let copies = repeats + (hasTail ? 1 : 0)
                 var limit = unit == 1 ? max(maxRepeats, 6) : maxRepeats
-                if maxRepeats > 1, current[index..<end].allSatisfy({ isUnspacedNumeral($0.value) }) {
+                if maxRepeats > 1, chunk.filter({ isRunScript($0.value) }).allSatisfy({ isUnspacedNumeral($0.value) }) {
                     limit = max(limit, maxNumberRepeats)
                 }
-                if repeats > limit {
-                    result.append(contentsOf: current[index..<(index + limit * unit)])
-                    index += repeats * unit
+                if copies > limit {
+                    for _ in 0..<(hasTail ? limit - 1 : limit) { result.append(contentsOf: chunk) }
+                    if hasTail { result.append(contentsOf: core) }
+                    index = tailStart + (hasTail ? core.count : 0)
                     changed = true
                 } else {
                     result.append(current[index])
@@ -476,6 +489,13 @@ public struct WhisperResultFilter: Sendable, Equatable {
         var view = String.UnicodeScalarView()
         view.append(contentsOf: current)
         return String(view)
+    }
+
+    private static func isRunPunctuation(_ value: UInt32) -> Bool {
+        switch value {
+        case 0x3000...0x303F, 0xFF01...0xFF0F, 0xFF1A...0xFF20, 0xFF5B...0xFF65, 0x2026: return true
+        default: return false
+        }
     }
 
     private static func isRunScript(_ value: UInt32) -> Bool {
@@ -491,7 +511,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
     }
 
     private static func isUnspacedNumeral(_ value: UInt32) -> Bool {
-        "零〇一二三四五六七八九十百千万萬两兩".unicodeScalars.contains { $0.value == value }
+        "零〇一二三四五六七八九十百千万萬亿億两兩".unicodeScalars.contains { $0.value == value }
     }
 
     /// Whether a word, already through `normalize`, is a number: written in
