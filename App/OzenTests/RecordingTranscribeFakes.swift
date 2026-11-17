@@ -28,6 +28,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
     var duringWaitOut: (@MainActor () -> Void)?
     var duringStop: (@MainActor () async -> Void)?
     var duringKeepSounds: (@MainActor () async -> Void)?
+    var duringToggle: (@MainActor () async -> Void)?
 
     var captionsMayLoadModels: Bool { captionsPhase.isListening || captionsPhase.isTransitioning || retryLinedUp }
 
@@ -37,6 +38,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
 
     func toggleCaptionsPause() async {
         toggles += 1
+        await duringToggle?()
         if captionsPhase.isListening {
             captionsPhase = .paused
         } else if captionsPhase == .paused {

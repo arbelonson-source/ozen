@@ -297,7 +297,7 @@ struct TranscribeRecordingModelTests {
         await screen.close()
     }
 
-    @Test("captions that are running must be stopped first, and come back when the screen closes")
+    @Test("captions that are running must be stopped first, and come back when the text is done")
     func captionsHandedOver() async throws {
         let host = RecordingHostFake()
         host.installed = [recommended]
@@ -312,7 +312,8 @@ struct TranscribeRecordingModelTests {
         #expect(ready(screen)?.captionsRunning == false)
         screen.start()
         await screen.runFinished()
-        #expect(host.toggles == 1)
+        #expect(host.toggles == 2)
+        #expect(host.captionsPhase == .listening)
         await screen.close()
         #expect(host.toggles == 2)
         #expect(host.captionsPhase == .listening)
@@ -677,5 +678,166 @@ struct TranscribeRecordingModelTests {
         await screen.close()
         #expect(host.toggles == 0)
         #expect(host.captionsPhase == .paused)
+    }
+
+    @Test("captions come back when the text is done, with the screen still open")
+    func comesBackWhenDone() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        guard case .done = screen.state else {
+            Issue.record("\(screen.state)")
+            return
+        }
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+        #expect(host.log == ["hold", "wait out load", "let go"])
+        await screen.close()
+    }
+
+    @Test("closing after the comeback resumes or stops nothing a second time")
+    func closeAfterComebackDoesNothing() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        await screen.runFinished()
+        #expect(host.starts == 1)
+        let logBefore = host.log
+        await screen.close()
+        await screen.close()
+        #expect(host.starts == 1)
+        #expect(host.toggles == 1)
+        #expect(host.log == logBefore)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("a second run on the same screen holds captions again and gives them back again")
+    func secondRunHoldsAgain() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let transcriber = RecordingTranscriberFake { _, _ in .cancelled }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        await screen.runFinished()
+        #expect(host.captionsPhase == .listening)
+        #expect(ready(screen)?.captionsRunning == true)
+        await screen.stopCaptions()
+        #expect(host.captionsPhase == .paused)
+        #expect(host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        #expect(host.log.filter { $0 == "hold" }.count == 2)
+        #expect(host.log.filter { $0 == "let go" }.count == 2)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+        #expect(host.toggles == 4)
+        await screen.close()
+        #expect(host.toggles == 4)
+    }
+
+    @Test("a stop by the person during the run keeps captions off after it")
+    func personsStopDuringRunStaysOff() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let gate = RecordingTestGate()
+        let transcriber = RecordingTranscriberFake { _, _ in
+            await gate.wait()
+            return .finished(lines: [], endMissing: false)
+        }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        #expect(await recordingWaitUntil { transcriber.requests.count == 1 })
+        await host.stopCaptions()
+        await gate.open()
+        await screen.runFinished()
+        #expect(host.captionsPhase == .idle)
+        #expect(host.starts == 0)
+        #expect(!host.heldForRecording)
+        await screen.close()
+        #expect(host.captionsPhase == .idle)
+        #expect(host.starts == 0)
+    }
+
+    @Test("a cancelled run gives captions back with the screen still open")
+    func cancelGivesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let gate = RecordingTestGate()
+        let transcriber = RecordingTranscriberFake { _, _ in
+            await gate.wait()
+            return .cancelled
+        }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        #expect(await recordingWaitUntil { transcriber.requests.count == 1 })
+        screen.stop()
+        await gate.open()
+        await screen.runFinished()
+        #expect(ready(screen) != nil)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+        await screen.close()
+        #expect(host.toggles == 2)
+    }
+
+    @Test("a failed run gives captions back with the screen still open")
+    func failureGivesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let transcriber = RecordingTranscriberFake { _, _ in .failed(.couldNotRead) }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        await screen.runFinished()
+        guard case .failed = screen.state else {
+            Issue.record("\(screen.state)")
+            return
+        }
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+        await screen.close()
+        #expect(host.toggles == 2)
+    }
+
+    @Test("Start cannot begin another run while captions are still resuming")
+    func noSecondRunWhileResuming() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let transcriber = RecordingTranscriberFake { _, _ in .cancelled }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        host.duringToggle = {
+            host.duringToggle = nil
+            screen.start()
+        }
+        screen.start()
+        await screen.runFinished()
+        #expect(transcriber.requests.count == 1)
+        #expect(host.log.filter { $0 == "hold" }.count == 1)
+        await screen.close()
     }
 }
