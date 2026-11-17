@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackgroundCleanupTest {
     private var loaded = 1
+    private var loading = 0
     private var restful = true
     private var allowed = true
     private var rests = 0
@@ -25,6 +26,7 @@ class BackgroundCleanupTest {
         restVoice = { rests++ },
         voiceResting = { restful },
         loadedModels = { loaded },
+        loadingModels = { loading },
         mayRelease = { allowed },
         release = {
             released += it
@@ -97,6 +99,22 @@ class BackgroundCleanupTest {
         restful = true
         advanceTimeBy(30_000)
         runCurrent()
+        assertFalse(cleanup.isWatching)
+    }
+
+    @Test
+    fun aModelStillLoadingKeepsTheWatchGoingUntilItIsReleased() = runTest {
+        loaded = 0
+        loading = 1
+        val cleanup = cleanup()
+        cleanup.start()
+        advanceTimeBy(95_000)
+        assertTrue(cleanup.isWatching)
+        loading = 0
+        loaded = 1
+        advanceTimeBy(60_000)
+        runCurrent()
+        assertEquals(1, released.size)
         assertFalse(cleanup.isWatching)
     }
 

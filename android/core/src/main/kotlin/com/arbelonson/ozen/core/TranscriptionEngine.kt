@@ -368,6 +368,9 @@ interface TranscriptionEngine {
     /** Whether an on-phone model is loaded right now: what [release] gives back. */
     val holdsModel: Boolean get() = false
 
+    /** Whether an on-phone model is being loaded right now, and so may be held a moment later. */
+    val isLoadingModel: Boolean get() = false
+
     /**
      * Hands over the timing of the passes counted so far, when there are enough of them and they have not been
      * handed over yet; the pipeline asks before a stop or a pause, as the engine stays loaded through both.

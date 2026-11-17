@@ -12,6 +12,7 @@ internal class BackgroundCleanup(
     private val restVoice: () -> Unit,
     private val voiceResting: () -> Boolean,
     private val loadedModels: () -> Int,
+    private val loadingModels: () -> Int,
     private val mayRelease: () -> Boolean,
     private val release: (Long) -> Unit,
 ) {
@@ -28,7 +29,7 @@ internal class BackgroundCleanup(
                 restVoice()
                 val away = (clock() - leftAt) / 1_000
                 if (away >= seconds && mayRelease() && loadedModels() > 0) release(away)
-                if (loadedModels() == 0 && voiceResting()) return@launch
+                if (loadedModels() == 0 && loadingModels() == 0 && voiceResting()) return@launch
             }
         }
     }

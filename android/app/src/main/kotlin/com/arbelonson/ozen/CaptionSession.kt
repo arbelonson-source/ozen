@@ -476,6 +476,7 @@ class CaptionSession(
             restVoice = voice::rest,
             voiceResting = { voice.isResting },
             loadedModels = { pipeline.loadedModelCount },
+            loadingModels = { pipeline.loadingModelCount },
             mayRelease = {
                 val phase = pipeline.phase
                 BackgroundModelRelease.shouldRelease(
