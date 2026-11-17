@@ -3583,10 +3583,10 @@ class CaptionPipeline(
      */
     private fun listenForSoundsMeanwhile(failure: PipelineFailure) {
         stopListeningForSounds()
-        soundsOnlyStoppedByItself = false
         if (failure.kind != PipelineFailure.Kind.EngineUnavailable || systemInterrupted || isRecordingVoice) return
         if (soundDetector == null || !soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
+        soundsOnlyStoppedByItself = false
         beginSoundsOnly(source)
     }
 

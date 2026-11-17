@@ -169,4 +169,29 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun `the stopped notice stays while a switch back on cannot open the microphone`() = runTest {
+        val (pipeline, detector, audio, scope) = waitingForRoom()
+        try {
+            pipeline.start(AppSettings.default)
+            assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+            audio.startError = Crash("microphone busy")
+            detector.fail(Crash("first"))
+            testScheduler.advanceTimeBy(2_000_000)
+            testScheduler.runCurrent()
+            assertTrue(pipeline.soundsOnlyStoppedByItself)
+            pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+            pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+            testScheduler.runCurrent()
+            assertTrue(pipeline.soundsOnlyStoppedByItself)
+            audio.startError = null
+            pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+            pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+            assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+            assertFalse(pipeline.soundsOnlyStoppedByItself)
+        } finally {
+            scope.cancel()
+        }
+    }
 }
