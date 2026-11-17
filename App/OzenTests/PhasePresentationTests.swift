@@ -233,6 +233,13 @@ struct PhasePresentationTests {
         #expect(nothing.detail == nil && nothing.detailFitsInStatus)
     }
 
+    @Test("the home computer covering for the cloud says so, not that the phone carries on")
+    func homeComputerCoveringForCloud() {
+        let shown = PhasePresentation(phase: .listening, engine: .homeServer, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .cloud, coverReason: .noInternet)
+        #expect(shown.detail == "אין חיבור לענן, ממשיכים עם המחשב בבית · הקישו כדי להשהות")
+        #expect(shown.action == .pause && shown.tint == .green)
+    }
+
     @Test("covering for the cloud says what only the family can fix, and the button still pauses, as it does for no internet")
     func coveringForCloudActionableReasons() {
         func covering(_ reason: EngineUnavailability.Kind) -> PhasePresentation {

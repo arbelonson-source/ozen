@@ -395,6 +395,12 @@ class PhasePresentation private constructor(
                         Action.Pause,
                     )
 
+                coveringForCloud && engine == TranscriptionEngineKind.HomeServer && coveredEngine == TranscriptionEngineKind.Cloud ->
+                    listening(
+                        tr("אין חיבור לענן, ממשיכים עם המחשב בבית · הקישו כדי להשהות", "Can’t reach the cloud, so the home computer carries on · Tap to pause"),
+                        Action.Pause,
+                    )
+
                 // Still captioning, so still active: the words keep coming, only
                 // from the phone's own model while the cloud can't be used.
                 coveringForCloud ->

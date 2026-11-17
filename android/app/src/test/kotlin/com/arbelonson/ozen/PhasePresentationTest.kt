@@ -728,6 +728,16 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `the home computer covering for the cloud says so, not that the phone carries on`() {
+        val shown = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.HomeServer,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud, coverReason = EngineUnavailability.Kind.NoInternet,
+        )
+        assertEquals("אין חיבור לענן, ממשיכים עם המחשב בבית · הקישו כדי להשהות", shown.detail)
+        assertEquals(Action.Pause, shown.action)
+    }
+
+    @Test
     fun `no saved address, a refused key and a slow cloud each say what is wrong, on the screen and in the cover line`() {
         fun shown(why: EngineUnavailability, engine: TranscriptionEngineKind) = present(failure(why), engine)
         fun covering(reason: EngineUnavailability.Kind, detail: String, covered: TranscriptionEngineKind) = present(
