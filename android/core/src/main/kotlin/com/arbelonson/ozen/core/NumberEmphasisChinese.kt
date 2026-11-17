@@ -46,7 +46,7 @@ internal object ChineseNumberEmphasis {
     }
 
     fun hasListableNumber(text: String): Boolean = ranges(text).any { range ->
-        text.substring(range.start, range.endExclusive).any { it.isDigit() || it in "零〇二三四五六七八九十百千万亿两半" }
+        text.substring(range.start, range.endExclusive).any { it.isDigit() || it in "零〇二三四五六七八九十百千万亿两半兩萬億" }
     }
 }
 
@@ -124,7 +124,16 @@ private fun validateChineseRun(run: String): Pair<Boolean, Boolean> {
     return Pair(true, false)
 }
 
-private class ChineseLine(private val text: String) {
+private val traditionalLetters = "兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變"
+private val simplifiedLetters = "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变"
+private val pointNouns = listOf(
+    "意见", "不同", "建议", "内容", "原因", "要求", "看法", "想法", "区别", "差别", "问题", "理由", "好处", "优点", "缺点",
+    "特点", "相同", "变化", "说明", "结论", "经验", "体会", "规定", "补充", "注意",
+)
+
+private class ChineseLine(original: String) {
+    private val text: String = original.map { traditionalLetters.indexOf(it).let { index -> if (index >= 0) simplifiedLetters[index] else it } }.joinToString("")
+
     val size: Int get() = text.length
 
     fun starts(i: Int, word: String): Boolean = i >= 0 && i + word.length <= text.length && text.startsWith(word, i)
@@ -224,8 +233,8 @@ private class ChineseLine(private val text: String) {
         if (number.isOne && starts(e, "片") && starts(e + 1, "药")) return Pair(e + 1, true)
         val word = firstMatch(e, if (number.isOne) unitsAfterOne else chineseUnits) ?: return null
         if (word == "次") {
-            if (starts(e + 1, "性")) return null
-            if (number.isOne && start > 0 && text[start - 1] in "上下这那前后每") return null
+            if (starts(e + 1, "性") || starts(e + 1, "元")) return null
+            if (number.isOne && start > 0 && text[start - 1] in "上下这那前后每有再") return null
         }
         if (word == "年" && starts(e + 1, "级")) return null
         var end = e + word.length
@@ -239,6 +248,7 @@ private class ChineseLine(private val text: String) {
     private fun clock(number: ChineseNumber, start: Int): Pair<Int, Int>? {
         val p = number.end + 1
         if (!number.digits && start > 0 && text[start - 1] in "这那") return null
+        if (firstMatch(p, pointNouns) != null) return null
         val tenth = readNumber(p)
         if (tenth != null && tenth.count == 1 && (!tenth.isOne || tenth.digits)) {
             val word = firstMatch(tenth.end, decimalUnits)

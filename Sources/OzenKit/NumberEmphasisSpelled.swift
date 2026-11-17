@@ -7,6 +7,10 @@ extension NumberEmphasis {
         func joinsNext(_ index: Int, _ end: String.Index) -> Bool {
             index + 1 < words.count && end == words[index].text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
         }
+        func startsSentence(at start: String.Index) -> Bool {
+            guard let last = text[..<start].last(where: { !$0.isWhitespace || $0.isNewline }) else { return true }
+            return ".!?।…\n".contains(last)
+        }
         func wordEnd(_ index: Int) -> String.Index { words[index].coreRange?.upperBound ?? words[index].text.endIndex }
         func isNumber(_ index: Int) -> Bool { lowered[index].map(profile.numbers.contains) ?? false }
         func hasDigit(_ index: Int) -> Bool { words[index].text.contains(where: \.isNumber) }
@@ -194,6 +198,9 @@ extension NumberEmphasis {
                        !(previous.map(profile.countsAfter.contains) ?? false) { continue }
                     if alone, !hourOne, profile.ambiguous.contains(core) {
                         if let previous, profile.notACountBefore.contains(previous) { continue }
+                        if done.joined, done.last == position + 1, let unit = lowered[done.last],
+                           profile.storyOpeners.contains("\(core) \(unit)"), startsSentence(at: start),
+                           !(position + 2 < words.count ? lowered[position + 2].map(profile.storyKeeps.contains) ?? false : false) { continue }
                         if !done.joined {
                             guard profile.oneFollowsUnit, let previous, profile.units.contains(previous),
                                   !profile.onceWords.contains(previous), joinsNext(position - 1, wordEnd(position - 1)),

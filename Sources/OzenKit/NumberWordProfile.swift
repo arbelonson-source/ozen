@@ -23,6 +23,8 @@ struct NumberWordProfile: Decodable, Sendable {
     var repeatUnits: Set<String> = []
     var periods: Set<String> = []
     var idioms: Set<String> = []
+    var storyOpeners: Set<String> = []
+    var storyKeeps: Set<String> = []
     var units: Set<String> = []
     var adverbPeriods: Set<String> = []
     var clockNouns: Set<String> = []
@@ -64,6 +66,8 @@ struct NumberWordProfile: Decodable, Sendable {
         repeatUnits = try set(.repeatUnits)
         periods = try set(.periods)
         idioms = try set(.idioms)
+        storyOpeners = try set(.storyOpeners)
+        storyKeeps = try set(.storyKeeps)
         units = try set(.units)
         adverbPeriods = try set(.adverbPeriods)
         clockNouns = try set(.clockNouns)
@@ -96,7 +100,7 @@ struct NumberWordProfile: Decodable, Sendable {
 
     private enum Key: String, CodingKey {
         case numbers, scales, connectors, fractions, fractionLinks, clockLinks, numberClockLinks, numberClockArticles, clockUnits, clockHourOnes, clockMinuteOnes, clockOneCues, clockUnitLinks, ambiguous, notACountBefore, countsAfter, plainAlone
-        case onceWords, repeatLinks, repeatUnits, periods, idioms, units
+        case onceWords, repeatLinks, repeatUnits, periods, idioms, units, storyOpeners, storyKeeps
         case adverbPeriods, clockNouns, clockOrdinals, plainWords, oneFollowsUnit, clockStopsBeforeCapitalized, letterFolding, attachedPrefixes
     }
 
