@@ -55,6 +55,8 @@ struct QuietTickTests {
         #expect(await eventually { clock.sleeps.count >= 8 })
         pipeline.stop()
         #expect(clock.sleeps.allSatisfy { $0.seconds == 1 })
+        let times = clock.sleeps.map(\.at)
+        #expect(zip(times, times.dropFirst()).allSatisfy { abs($1 - $0 - 1) < 0.01 })
         #expect(clock.now >= 1_000 + 7)
     }
 

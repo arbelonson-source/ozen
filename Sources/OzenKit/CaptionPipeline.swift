@@ -867,6 +867,7 @@ public final class CaptionPipeline {
 
         let sleep = staleCommitSleep
         staleCommitTask = Task { [weak self] in
+            var carriedSeconds = 0.0
             while !Task.isCancelled {
                 guard let self, self.runID == run else { return }
                 let idle = !self.stabilizer.hasOpenLine
@@ -879,7 +880,10 @@ public final class CaptionPipeline {
                 guard !Task.isCancelled, self.runID == run else { return }
                 let elapsed = nap.isCancelled ? min(planned, self.now() - started) : planned
                 self.commitStaleSegments()
-                self.checkAudioIsArriving(elapsedSeconds: elapsed)
+                let total = carriedSeconds + elapsed
+                let ticks = self.audioWatchdog.ticks(forElapsed: total)
+                carriedSeconds = max(0, total - Double(ticks) * AudioStallWatchdog.tickSeconds)
+                self.checkAudioIsArriving(elapsedTicks: ticks)
             }
         }
     }
@@ -2489,9 +2493,8 @@ public final class CaptionPipeline {
     /// A tap that stopped delivering (see `AudioStallWatchdog`) becomes a
     /// visible failure, which automatic recovery answers with a fresh
     /// audio engine: the same thing a manual stop and start would do.
-    private func checkAudioIsArriving(elapsedSeconds: Double = AudioStallWatchdog.tickSeconds) {
+    private func checkAudioIsArriving(elapsedTicks ticks: Int = 1) {
         guard phase.isListening else { return }
-        let ticks = audioWatchdog.ticks(forElapsed: elapsedSeconds)
         guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted || audio.isRecoveringSession, elapsedTicks: ticks) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)

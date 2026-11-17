@@ -1079,6 +1079,7 @@ class CaptionPipeline(
         }
 
         staleCommitTask = scope.launch {
+            var carriedSeconds = 0.0
             while (isActive) {
                 if (runID != run) return@launch
                 val idle = !stabilizer.hasOpenLine
@@ -1097,7 +1098,10 @@ class CaptionPipeline(
                 if (runID != run) return@launch
                 val elapsed = if (woken) minOf(planned, now() - started) else planned
                 commitStaleSegments()
-                checkAudioIsArriving(elapsed)
+                val total = carriedSeconds + elapsed
+                val ticks = audioWatchdog.ticksForElapsed(total)
+                carriedSeconds = maxOf(0.0, total - ticks * AudioStallWatchdog.TICK_SECONDS)
+                checkAudioIsArriving(ticks)
             }
         }
     }
@@ -2728,12 +2732,12 @@ class CaptionPipeline(
      * visible failure, which automatic recovery answers with a fresh
      * audio engine: the same thing a manual stop and start would do.
      */
-    private fun checkAudioIsArriving(elapsedSeconds: Double = AudioStallWatchdog.TICK_SECONDS) {
+    private fun checkAudioIsArriving(elapsedTicks: Int = 1) {
         if (!phase.isListening) return
         val stalled = audioWatchdog.tick(
             statsData.audioChunksReceived,
             systemInterrupted,
-            audioWatchdog.ticksForElapsed(elapsedSeconds),
+            elapsedTicks,
         )
         // Chunks that are all exact zeros (a Bluetooth or USB microphone
         // that is not routed, a blocked microphone on older Android) count

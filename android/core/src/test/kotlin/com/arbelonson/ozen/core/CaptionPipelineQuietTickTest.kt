@@ -55,6 +55,8 @@ class CaptionPipelineQuietTickTest {
         runCurrent()
         assertTrue(checks.planned.size >= 9)
         assertTrue(checks.planned.all { it.first == 1.0 })
+        val gaps = checks.planned.zipWithNext { a, b -> b.second - a.second }
+        assertTrue(gaps.all { kotlin.math.abs(it - 1.0) < 0.01 }, "gaps: $gaps")
         made.pipeline.stop()
     }
 
