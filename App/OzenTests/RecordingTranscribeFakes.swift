@@ -26,6 +26,8 @@ final class RecordingHostFake: RecordingTranscribeHost {
     private(set) var toggles = 0
     private(set) var log: [String] = []
     var duringWaitOut: (@MainActor () -> Void)?
+    var duringStop: (@MainActor () async -> Void)?
+    var duringKeepSounds: (@MainActor () async -> Void)?
 
     var captionsMayLoadModels: Bool { captionsPhase.isListening || captionsPhase.isTransitioning || retryLinedUp }
 
@@ -39,20 +41,29 @@ final class RecordingHostFake: RecordingTranscribeHost {
             captionsPhase = .paused
         } else if captionsPhase == .paused {
             captionsPhase = .listening
+        } else if captionsPhase == .idle {
+            captionsPhase = .listening
+            starts += 1
         }
     }
 
-    private(set) var heldForRecording = false
+    private(set) var starts = 0
+    var heldForRecording = false
+
+    var captionsHeldForRecording: Bool { heldForRecording }
 
     func setCaptionsHeldForRecording(_ held: Bool) { heldForRecording = held }
 
     func keepSoundsListening() async {
         soundsKept += 1
+        await duringKeepSounds?()
         if soundsOnlyTakes, captionsPhase.isListening { captionsPhase = .paused }
     }
 
     func stopCaptions() async {
         log.append("stop")
+        await duringStop?()
+        heldForRecording = false
         captionsPhase = .idle
         retryLinedUp = false
     }

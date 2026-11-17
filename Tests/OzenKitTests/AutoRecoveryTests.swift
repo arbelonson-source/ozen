@@ -254,6 +254,29 @@ struct CaptionPipelineRecoveryTests {
         #expect(!pipeline.isRecoveringByItself)
     }
 
+    @Test("a failure waiting for a retry, handed over to a recording, does not fire meanwhile")
+    func handedOverRetryDoesNotFire() async {
+        let engine = FakeEngine()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.2], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        var handover = CaptionsHandover()
+        let step = handover.begin(phase: pipeline.phase, soundAlertsOn: false, waitingForRetry: pipeline.isRecoveringByItself)
+        #expect(step == .stop)
+        pipeline.stop()
+        pipeline.beginRecordingTranscription()
+        try? await Task.sleep(for: .milliseconds(500))
+        #expect(pipeline.scheduledRetry == nil)
+        #expect(pipeline.phase == .idle)
+        let back = handover.comeback(phase: pipeline.phase)
+        #expect(back == .start)
+        pipeline.endRecordingTranscription()
+        #expect(pipeline.phase == .idle)
+    }
+
     @Test("a step of getting ready is logged with how long the step before took, not a clock reading")
     func stepLinesSayHowLongTheStepBeforeTook() async {
         let engine = FakeEngine(progressUpdates: [

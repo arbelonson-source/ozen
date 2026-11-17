@@ -26,9 +26,17 @@ struct RecordingPausePresentationTests {
         #expect(status.title == "הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט")
     }
 
+    @Test("a start stopped for a recording says captions are paused and come back, not that they are off")
+    func stoppedForRecording() {
+        let status = shown(.idle)
+        #expect(status.title == "הכתוביות מושהות בזמן שהקלטה הופכת לטקסט")
+        #expect(status.action == .start)
+        #expect(shown(.idle, alertsPaused: true).title == "הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט")
+    }
+
     @Test("captions the person stopped, or a call, are not described as paused for a recording")
     func otherwiseUnchanged() {
-        #expect(shown(.idle).title == "הכתוביות כבויות")
+        #expect(shown(.idle, held: false).title == "הכתוביות כבויות")
         #expect(shown(.paused, call: true).title != shown(.paused).title)
         #expect(shown(.listening).title == "מאזינה")
         #expect(shown(.paused, held: false).title == "מושהה")

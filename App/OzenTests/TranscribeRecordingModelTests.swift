@@ -338,6 +338,181 @@ struct TranscribeRecordingModelTests {
         #expect(!host.heldForRecording)
     }
 
+    private let loadingPhase = PipelinePhase.preparingEngine(EnginePreparationProgress(stage: .loadingModel))
+    private let failedPhase = PipelinePhase.failed(PipelineFailure(kind: .transcriptionStopped, detail: ""))
+
+    @Test("a start still loading is stopped for the recording and started again after it")
+    func loadingStartComesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.soundsKept == 0)
+        #expect(host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("with sound alerts on, a failed start waiting for a retry keeps listening for sounds and starts again after")
+    func retryWaitingKeepsSounds() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = failedPhase
+        host.retryLinedUp = true
+        host.soundAlertsOn = true
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.soundsKept == 1)
+        #expect(!host.retryLinedUp)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+    }
+
+    @Test("a failure nothing retries is left alone")
+    func failureWithoutRetry() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = failedPhase
+        host.soundAlertsOn = true
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        #expect(host.log.isEmpty)
+        #expect(!host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 0)
+        #expect(host.captionsPhase == failedPhase)
+    }
+
+    @Test("a start stopped for the recording is not brought back when the person stopped captions meanwhile")
+    func stoppedMeanwhileStaysOff() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        host.heldForRecording = false
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 0)
+        #expect(host.captionsPhase == .idle)
+    }
+
+    @Test("a start stopped for the recording is not started twice when the person started captions meanwhile")
+    func startedMeanwhileNotTwice() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        screen.start()
+        host.heldForRecording = false
+        host.captionsPhase = .listening
+        await screen.runFinished()
+        await screen.close()
+        await screen.close()
+        #expect(host.starts == 0)
+        #expect(host.captionsPhase == .listening)
+    }
+
+    @Test("leaving while the captions stop is still running leaves no hold behind")
+    func closeDuringStopLeavesNoHold() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = { await screen.close() }
+        await screen.stopCaptions()
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("leaving while the captions stop is still running brings back captions that were only stopped for the recording")
+    func closeDuringStopStillComesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = { await screen.close() }
+        await screen.stopCaptions()
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("a second Stop captions tap during the first stop does not cancel the comeback when leaving")
+    func doubleStopThenCloseComesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = {
+            host.duringStop = nil
+            await screen.stopCaptions()
+            await screen.close()
+        }
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("a later Stop captions tap after the person started captions again leaves their captions running")
+    func laterStopLeavesPersonsCaptions() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        host.heldForRecording = false
+        host.captionsPhase = loadingPhase
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.captionsPhase == loadingPhase)
+    }
+
+    @Test("stopping captions from outside while sounds-only is being set up keeps them off")
+    func stoppedDuringSoundsWaitStaysOff() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        host.soundAlertsOn = true
+        let screen = model(host: host)
+        await screen.load()
+        host.duringKeepSounds = {
+            host.heldForRecording = false
+            host.captionsPhase = .idle
+        }
+        await screen.stopCaptions()
+        #expect(!host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 0)
+        #expect(host.captionsPhase == .idle)
+    }
+
     @Test("sounds-only that does not take falls back to the plain pause")
     func soundsOnlyFallsBack() async throws {
         let host = RecordingHostFake()
