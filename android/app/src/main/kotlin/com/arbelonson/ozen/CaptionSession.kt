@@ -698,8 +698,8 @@ class CaptionSession(
         }
         context.registerReceiver(batteryReadings, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         context.registerReceiver(batterySaving, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
-        screenOn = power.isInteractive
         context.registerReceiver(screenWatch, IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) })
+        screenOn = power.isInteractive
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) watchHeat()
         loadRecentConversation()
     }
