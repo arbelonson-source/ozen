@@ -2409,6 +2409,48 @@ class SessionAfterHello(unittest.TestCase):
         self.assertTrue(any("CUDA error" in line for line in logged.output), logged.output)
 
 
+class OddNamesFromThePhone(unittest.TestCase):
+    """A name cut mid-emoji or absurdly long must not end the session."""
+
+    class Strict(NamesGPU):
+        @staticmethod
+        def count_tokens(text):
+            return len(text.encode())
+
+    def run_session(self, hello_names, update=None):
+        hello = {"type": "hello", "token": "example-code-123", "vocabulary": hello_names}
+        messages = [json.dumps({"type": "vocabulary", "terms": update})] if update is not None else []
+        ws, gpu = PhoneSocket(hello, [*messages, *speech_frames(1.5), json.dumps({"type": "end"})]), self.Strict()
+        with self.assertLogs(S.log, "INFO") as logged:
+            asyncio.run(asyncio.wait_for(S.handle(ws, gpu, "example-code-123", 1.0), 5))
+        frames = [json.loads(text) for text in ws.sent]
+        self.assertEqual(frames[0]["type"], "ready")
+        self.assertFalse(any(f["type"] == "error" for f in frames), frames)
+        self.assertIsNone(ws.closed)
+        self.assertFalse(any("ended with" in line or "failed" in line for line in logged.output), logged.output)
+        self.assertEqual([f["text"] for f in frames if f["type"] == "text" and f["final"]], ["שלום"])
+        return gpu
+
+    def test_a_name_with_half_an_emoji_at_hello_does_not_end_the_session(self):
+        gpu = self.run_session(["a\ud83d", "Dana"])
+        self.assertEqual(gpu.hotwords[-1], "a, Dana")
+
+    def test_a_name_with_half_an_emoji_in_an_update_does_not_end_the_session(self):
+        gpu = self.run_session([], ["a\ud83d", "Dana"])
+        self.assertEqual(gpu.hotwords[-1], "a, Dana")
+
+    def test_a_huge_name_is_cut_at_hello_and_in_an_update(self):
+        for gpu in (self.run_session(["x" * 100000, "Dana"]), self.run_session([], ["x" * 100000, "Dana"])):
+            for hot in gpu.hotwords:
+                self.assertLessEqual(max(len(t) for t in (hot or "").split(", ")), 64)
+
+    def test_names_are_cleaned_once_where_they_arrive(self):
+        self.assertEqual(S.clean_vocabulary([" Dana ", "Dana", "", "  ", "Yo\x00ssi", "a\ud83d", 7, "😀 ok", "z" * 500]),
+                         ["Dana", "Yossi", "a", "7", "😀 ok", "z" * 64])
+        self.assertEqual(len(S.clean_vocabulary([f"n{i}" for i in range(300)])), 200)
+        self.assertEqual(S.clean_vocabulary("not a list"), [])
+
+
 class BadFramesFromPairedPhone(unittest.TestCase):
     def run_session(self, messages):
         hello = {"type": "hello", "token": "example-code-123"}
