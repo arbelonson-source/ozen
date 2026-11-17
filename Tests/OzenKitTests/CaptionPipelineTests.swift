@@ -3813,7 +3813,7 @@ struct CaptionPipelineAlertHookTests {
         pipeline.onSoundAlert = { raised.append($0.event.identifier) }
         await pipeline.start(settings: .default)
         detector.push(SoundObservation(identifier: "civil_defense_siren", confidence: 0.95, timestamp: 1_000))
-        detector.push(SoundObservation(identifier: "police_siren", confidence: 0.8, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "police_siren", confidence: 0.9, timestamp: 1_000))
         #expect(await eventually { pipeline.soundAlerts.count == 2 })
         #expect(raised == ["civil_defense_siren"])
     }

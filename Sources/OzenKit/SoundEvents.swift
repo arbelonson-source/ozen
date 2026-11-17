@@ -133,6 +133,18 @@ public enum SoundEventCatalog {
         return lookalikeGroups.contains { $0.contains(first) && $0.contains(second) }
     }
 
+    /// Labels one passing siren flips between. They share an alert cooldown
+    /// and a confirmation, but stay separate rows in Settings, so a saved
+    /// per-sound choice keeps its meaning. `civil_defense_siren` is not here:
+    /// an ambulance must never hold back a rocket alert.
+    static let sirenFamily: Set<String> = ["siren", "ambulance_siren", "police_siren", "fire_engine_siren"]
+
+    /// The key under which alerts of one sound share a cooldown and a
+    /// confirmation: the cooldown key, except the siren family shares one.
+    public static func alertKey(for event: SoundEvent) -> String {
+        sirenFamily.contains(event.identifier) ? "siren" : event.cooldownKey
+    }
+
     /// One entry per sound, for the Settings list: two labels for one
     /// sound are switched together, and in Hebrew they read the same, so
     /// they were two identical rows. The first label stands for both.
@@ -368,7 +380,8 @@ public struct SoundEventPolicy: Sendable, Equatable {
     /// other identifier, including `smoke_detector`, alerts on its first
     /// window as before.
     static let sustainedIdentifiers: Set<String> = [
-        "civil_defense_siren", "siren", "boiling", "whistling", "water_tap_faucet",
+        "civil_defense_siren", "siren", "ambulance_siren", "police_siren", "fire_engine_siren",
+        "boiling", "whistling", "water_tap_faucet",
     ]
 
     public init(
@@ -403,6 +416,7 @@ public struct SoundEventPolicy: Sendable, Equatable {
         guard let event = SoundEventCatalog.event(for: observation.identifier) else { return nil }
         guard event.importance >= preferences.minimumImportance else { return nil }
         guard !preferences.isMuted(event.identifier) else { return nil }
+        let key = SoundEventCatalog.alertKey(for: event)
         // A continuous sound needs a second confirming window within
         // `persistenceWindowSeconds`, unless it's already confident enough
         // to be sure on its own: a real siren or a kettle at a rolling boil
@@ -415,14 +429,14 @@ public struct SoundEventPolicy: Sendable, Equatable {
             // kettle confirming itself, not two sounds each starting over.
             // A later window only: both labels in one reading share its
             // timestamp, and one clatter scored as both is still one spike.
-            guard let pendingAt = pendingSince[event.cooldownKey],
+            guard let pendingAt = pendingSince[key],
                   observation.timestamp > pendingAt,
                   observation.timestamp - pendingAt <= persistenceWindowSeconds
             else {
-                pendingSince[event.cooldownKey] = observation.timestamp
+                pendingSince[key] = observation.timestamp
                 return nil
             }
-            pendingSince[event.cooldownKey] = nil
+            pendingSince[key] = nil
         }
         // Keyed by name, not identifier: two classifier labels the catalog
         // shows as the very same sound ("telephone_bell_ringing" and
@@ -433,10 +447,10 @@ public struct SoundEventPolicy: Sendable, Equatable {
         // Wall-clock time can go backward (daylight saving ending, an NTP
         // sync); `>= last` keeps a jump from holding back a new siren for
         // as long as the jump, as in `BackgroundAlertPolicy`.
-        if let last = lastAlertAt[event.cooldownKey], observation.timestamp >= last, observation.timestamp - last < cooldownSeconds {
+        if let last = lastAlertAt[key], observation.timestamp >= last, observation.timestamp - last < cooldownSeconds {
             return nil
         }
-        lastAlertAt[event.cooldownKey] = observation.timestamp
+        lastAlertAt[key] = observation.timestamp
         return SoundAlert(event: event, confidence: observation.confidence, timestamp: observation.timestamp)
     }
 
