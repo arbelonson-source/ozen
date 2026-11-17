@@ -118,6 +118,7 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
@@ -498,11 +499,9 @@ private fun OzenApp(
     }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
+    val clockLifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(state.phase.isListening) {
-        while (true) {
-            awakeClock = System.currentTimeMillis() / 1_000.0
-            delay(30_000)
-        }
+        if (state.phase.isListening) clockLifecycle.tickWhileStarted(30_000) { awakeClock = System.currentTimeMillis() / 1_000.0 }
     }
     // The walkthrough is long enough for the phone's own lock timeout to
     // end it partway, as the iPhone found. The home computer's backup
@@ -1133,11 +1132,9 @@ private fun CaptionScreen(
     var lastTouchAt by remember { mutableDoubleStateOf(secondsNow()) }
     var clock by remember { mutableDoubleStateOf(secondsNow()) }
     val listening = state.phase.isListening
+    val clockLifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(listening) {
-        while (listening) {
-            clock = secondsNow()
-            delay(1_000)
-        }
+        if (listening) clockLifecycle.tickWhileStarted(1_000) { clock = secondsNow() }
     }
     val hidden = state.hidesButtons(
         autoHide = display.autoHideControls,
