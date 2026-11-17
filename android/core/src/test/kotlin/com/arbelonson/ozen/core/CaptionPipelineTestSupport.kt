@@ -447,6 +447,10 @@ class FakeSoundDetector : SoundEventDetecting {
     fun finish() {
         channel?.close()
     }
+
+    fun fail(error: Throwable) {
+        channel?.close(error)
+    }
 }
 
 /** Every engine a factory built, held weakly, to see which are still alive. */

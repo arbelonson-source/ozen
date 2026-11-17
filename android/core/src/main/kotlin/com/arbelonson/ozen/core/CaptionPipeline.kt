@@ -1818,7 +1818,7 @@ class CaptionPipeline(
         logEvent(PipelineEvent.Kind.Note(text))
         val current = phase
         when {
-            current is PipelinePhase.Failed -> Unit
+            current is PipelinePhase.Failed -> restartMeanwhileSounds(current.reason)
             current == PipelinePhase.Idle || current == PipelinePhase.Paused -> if (soundsOnlyChosen) {
                 stopListeningForSounds()
                 retrySoundsOnly()
@@ -1826,6 +1826,49 @@ class CaptionPipeline(
             else -> fail(PipelineFailure.Kind.TranscriptionStopped, text)
         }
     }
+
+    private var meanwhileRestartTask: Job? = null
+    private var meanwhileRestartAttempts = 0
+    private var meanwhileRestartAt: Double? = null
+
+    /**
+     * An unexpected error while captions are already failed leaves the
+     * failure and its notice as they are. But the sounds kept for the wait
+     * (see [listenForSoundsMeanwhile]) may have died with it, and a failure
+     * that needs a person has no retry that would open them again: sound
+     * alerts stayed off all night. They are opened again after the sound
+     * retries' back-off ([SOUNDS_ONLY_RETRY_SECONDS]), and said to have
+     * stopped once those run out.
+     */
+    private fun restartMeanwhileSounds(failure: PipelineFailure) {
+        if (!meanwhileSoundsWanted(failure)) return
+        if (isListeningForSoundsOnly && soundTask?.isActive == true) return
+        if (meanwhileRestartTask?.isActive == true) return
+        val last = meanwhileRestartAt
+        if (last != null && now() - last >= SOUNDS_ONLY_HEALTHY_SECONDS) meanwhileRestartAttempts = 0
+        val wait = SOUNDS_ONLY_RETRY_SECONDS.getOrNull(meanwhileRestartAttempts)
+        stopListeningForSounds()
+        if (wait == null) {
+            logEvent(PipelineEvent.Kind.Note("sounds while captions wait: they did not come back, sound alerts stopped"))
+            onPhaseChange?.invoke(phase)
+            return
+        }
+        meanwhileRestartAttempts += 1
+        meanwhileRestartTask = scope.launch {
+            delay(wait.seconds)
+            meanwhileRestartTask = null
+            val current = phase as? PipelinePhase.Failed ?: return@launch
+            if (isListeningForSoundsOnly || !meanwhileSoundsWanted(current.reason)) return@launch
+            meanwhileRestartAt = now()
+            listenForSoundsMeanwhile(current.reason)
+            if (isListeningForSoundsOnly) onPhaseChange?.invoke(phase) else restartMeanwhileSounds(current.reason)
+        }
+    }
+
+    private fun meanwhileSoundsWanted(failure: PipelineFailure): Boolean =
+        failure.kind == PipelineFailure.Kind.EngineUnavailable && !systemInterrupted && !isRecordingVoice &&
+            soundDetector != null && soundPolicy.preferences.isEnabled && !soundsOnlyChosen &&
+            (retryToken != null || homeServerRecheck != null || cloudRecheck != null || comesBackWithoutTimer(failure))
 
     private fun logEvent(kind: PipelineEvent.Kind) {
         val count = eventLog.events.size
