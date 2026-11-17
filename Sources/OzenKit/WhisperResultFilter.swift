@@ -282,7 +282,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
     public func acceptedText(from segments: [WhisperSegmentSummary], echo: PromptEchoDetector? = nil) -> String {
         let joined = accepted(from: segments, echo: echo)
             .map { segment in
-                let text = Self.stripSpecialTokens(segment.text).trimmingCharacters(in: .whitespacesAndNewlines)
+                let text = withoutNotes(Self.stripSpecialTokens(segment.text).trimmingCharacters(in: .whitespacesAndNewlines))
                 guard segment.compressionRatio > compressionRatioThreshold else { return text }
                 return Self.repeatedSentence(text) ?? text
             }
@@ -478,7 +478,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
     }
 
     public func accepts(_ segment: WhisperSegmentSummary) -> Bool {
-        let text = Self.stripSpecialTokens(segment.text).trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = withoutNotes(Self.stripSpecialTokens(segment.text).trimmingCharacters(in: .whitespacesAndNewlines))
         if text.isEmpty { return false }
         // A lone "...", "-" or "♪" is a well-known Whisper hallucination on a
         // quiet or noisy window that doesn't trip the noSpeech/logprob
@@ -517,6 +517,29 @@ public struct WhisperResultFilter: Sendable, Equatable {
         return true
     }
 
+    private nonisolated(unsafe) static let squareNote = /\[[\p{L}\p{M} _-]*\]/
+    private nonisolated(unsafe) static let wholeRoundNote = /^[(\u{FF08}][^()\u{FF08}\u{FF09}]*[)\u{FF09}][.!\u{3002}\u{FF01}]*$/
+    private nonisolated(unsafe) static let roundNote = /[(\u{FF08}]([^()\u{FF08}\u{FF09}]*)[)\u{FF09}]/
+
+    /// "[Música]", "[音乐]", "(掌声)": Whisper writes a sound as a note in
+    /// brackets, in whatever language it hears. Real speech never comes in
+    /// square brackets, so any note there goes, alone or inside a line
+    /// ("[Music] Hello there" keeps "Hello there"); digits stay, so "[10:30]"
+    /// is kept. Round brackets also hold real words ("(I think)", "(HSBC)"),
+    /// so a part in them goes only when it is a known sound or outro, or when
+    /// the whole line is one bracketed part (a segment that is nothing but
+    /// "(...)" is a tag, as in `isBracketed`).
+    func withoutNotes(_ text: String) -> String {
+        guard text.contains(where: { $0 == "[" || $0 == "(" || $0 == "\u{FF08}" }) else { return text }
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).wholeMatch(of: Self.wholeRoundNote) != nil { return "" }
+        var cleaned = text.replacing(Self.squareNote, with: "")
+        cleaned = cleaned.replacing(Self.roundNote) { match in
+            let inner = Self.normalize(String(match.output.1))
+            return knownHallucinations.contains(inner) || ambiguousHallucinations.contains(inner) ? "" : String(match.output.0)
+        }
+        return cleaned.replacing(/\s{2,}/, with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// "[מוזיקה]", "(צחוק)": Whisper's way of labelling a sound. Nobody's
     /// speech comes out in brackets.
     static func isBracketed(_ text: String) -> Bool {
@@ -537,6 +560,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// separator (the normalizer already turned ":" into nothing) or a name.
     /// Whole words only, so "ktuviotayim" or "targumim" never match.
     func isCreditLine(raw: String, normalized: String) -> Bool {
+        if isUnspacedCreditLine(normalized) { return true }
         let words = normalized.split(separator: " ")
         guard !words.isEmpty, words.count <= maximumCreditLineWords else { return false }
         let byPhrase = hallucinatedCreditPrefixes.contains { prefix in
@@ -557,6 +581,25 @@ public struct WhisperResultFilter: Sendable, Equatable {
             if afterLabel.first == ":" { return true }
             guard let separator = afterLabel.first, Self.creditLabelDashes.contains(separator) else { return false }
             return words.count <= maximumDashCreditLineWords
+        }
+    }
+
+    /// Chinese and Japanese have no spaces, so a credit prefix there is
+    /// matched by characters, on a line short enough to be a credit.
+    static let maximumUnspacedCreditLineCharacters = 24
+
+    func isUnspacedCreditLine(_ normalized: String) -> Bool {
+        let compact = normalized.filter { !$0.isWhitespace }
+        guard !compact.isEmpty, compact.count <= Self.maximumUnspacedCreditLineCharacters else { return false }
+        return hallucinatedCreditPrefixes.contains { prefix in
+            !prefix.contains(" ") && prefix.unicodeScalars.contains(where: Self.isUnspacedScript) && compact.hasPrefix(prefix)
+        }
+    }
+
+    static func isUnspacedScript(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x3040...0x30FF, 0x3400...0x9FFF, 0xF900...0xFAFF, 0x0E00...0x0E7F: return true
+        default: return false
         }
     }
 

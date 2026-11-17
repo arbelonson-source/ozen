@@ -470,6 +470,12 @@ public final class LiveCaptionViewModel {
         journal?.append(text, at: Date().timeIntervalSince1970)
     }
 
+    /// A delete the phone refused: the person sees a plain line, and the
+    /// system's own wording goes to the journal for a sent report.
+    public func noteDeleteFailure(_ error: Error) {
+        note("delete failed: \(error.localizedDescription)")
+    }
+
     private static var deviceStateText: String {
         let process = ProcessInfo.processInfo
         let memory = DeviceMemory.footprintBytes().map { " memory \($0 / StorageSpaceGate.bytesPerMegabyte)MB" } ?? ""

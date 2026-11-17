@@ -555,6 +555,8 @@ class CaptionSession(
 
         // A conversation deleted is gone from the phone, so the copy last
         // shared as a file goes with it, whichever conversation that was.
+        override fun noteDeleteFailure(detail: String) = note("delete failed: $detail")
+
         override fun delete(id: UUID) {
             conversations.delete(id)
             forgetSharedCopy()

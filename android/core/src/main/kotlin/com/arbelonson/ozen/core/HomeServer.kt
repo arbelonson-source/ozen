@@ -213,6 +213,20 @@ object HomeServer {
         tr("המחשב בבית לא יכול לתמלל את השפה הזאת.", "The home computer can’t caption this language.") + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
 
     /**
+     * A connection that was reset, broken or closed while the secure handshake ran (Wi-Fi drop,
+     * computer asleep, server restarting) is not evidence of a mismatch. The type decides
+     * (SocketException, EOFException); the system's TLS library also reports such drops as a bare
+     * SSLException whose only clue is the text, so the text of those is checked too. A certificate
+     * problem anywhere in the chain keeps it a mismatch.
+     */
+    private fun droppedMidway(chain: List<Throwable>): Boolean {
+        if (chain.any { it is java.security.cert.CertificateException || it is javax.net.ssl.SSLPeerUnverifiedException }) return false
+        if (chain.any { it is java.net.SocketException || it is java.io.EOFException }) return true
+        val markers = listOf("connection reset", "broken pipe", "connection abort", "i/o error during system call", "shut down incorrectly")
+        return chain.any { error -> error.message?.lowercase()?.let { text -> markers.any { it in text } } == true }
+    }
+
+    /**
      * What the caption screen says while the phone carries on by itself because the computer cannot
      * caption the language; null for any other cause.
      */
@@ -246,7 +260,7 @@ object HomeServer {
         val chain = generateSequence(error) { it.cause }.toList()
         val timedOut = chain.any { it is java.net.SocketTimeoutException || it is java.net.ConnectException || it is java.net.UnknownHostException }
         val answered = chain.any { it is SocketRefused || it is NotAWebSocketAnswer } ||
-            (!timedOut && chain.any { it is javax.net.ssl.SSLException })
+            (!timedOut && !droppedMidway(chain) && chain.any { it is javax.net.ssl.SSLException })
         return EngineUnavailability.homeServerUnreachable(if (answered) "$SECURE_MISMATCH_PREFIX$error" else "$prefix$error")
     }
 

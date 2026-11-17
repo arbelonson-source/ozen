@@ -44,6 +44,68 @@ private func check(_ error: any Error, atOpen: Bool) async -> (HomeServerCheck, 
         }
     }
 
+    @Test("a connection that drops in the middle of the secure handshake stays unreachable")
+    func droppedHandshakeIsUnreachable() async {
+        let posix = { (code: Int32) in NSError(domain: NSPOSIXErrorDomain, code: Int(code)) }
+        let tls = { (status: Int) in NSError(domain: NSOSStatusErrorDomain, code: status) }
+        let drops: [any Error] = [
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(ECONNRESET)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(EPIPE)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(ECONNABORTED)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9805)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9806)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9816)]),
+        ]
+        for error in drops {
+            for atOpen in [true, false] {
+                let (result, why) = await check(error, atOpen: atOpen)
+                #expect(result == .unreachable, "\(error)")
+                #expect(!HomeServer.answeredWrongly(why))
+            }
+        }
+        let (result, _) = await check(URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9800)]), atOpen: true)
+        #expect(result == .secureMismatch)
+    }
+
+    @Test("a drop reported through the stream error keys of the URL error or of a CFNetwork error under it stays unreachable")
+    func droppedHandshakeThroughStreamKeysIsUnreachable() async {
+        func keys(_ domain: Int, _ code: Int) -> [String: Any] {
+            ["_kCFStreamErrorDomainKey": NSNumber(value: domain), "_kCFStreamErrorCodeKey": NSNumber(value: code)]
+        }
+        func nested(_ domain: Int, _ code: Int) -> URLError {
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: NSError(domain: "kCFErrorDomainCFNetwork", code: -1200, userInfo: keys(domain, code))])
+        }
+        let drops: [any Error] = [
+            URLError(.secureConnectionFailed, userInfo: keys(3, -9816)),
+            URLError(.secureConnectionFailed, userInfo: keys(3, -9805)),
+            URLError(.secureConnectionFailed, userInfo: keys(3, -9806)),
+            URLError(.secureConnectionFailed, userInfo: keys(1, Int(ECONNRESET))),
+            URLError(.secureConnectionFailed, userInfo: keys(1, Int(EPIPE))),
+            URLError(.secureConnectionFailed, userInfo: keys(1, Int(ECONNABORTED))),
+            URLError(.secureConnectionFailed, userInfo: keys(1, Int(ENOTCONN))),
+            nested(3, -9816),
+            nested(1, Int(ECONNRESET)),
+        ]
+        for error in drops {
+            for atOpen in [true, false] {
+                let (result, why) = await check(error, atOpen: atOpen)
+                #expect(result == .unreachable, "\(error)")
+                #expect(!HomeServer.answeredWrongly(why))
+            }
+        }
+        let mismatches: [any Error] = [
+            URLError(.secureConnectionFailed, userInfo: keys(3, -9800)),
+            URLError(.secureConnectionFailed, userInfo: keys(3, -9807)),
+            URLError(.serverCertificateUntrusted, userInfo: keys(3, -9807)),
+            nested(3, -9808),
+            nested(1, Int(ECONNREFUSED)),
+        ]
+        for error in mismatches {
+            let (result, _) = await check(error, atOpen: true)
+            #expect(result == .secureMismatch, "\(error)")
+        }
+    }
+
     @Test("something else answering the request to open the connection with an HTTP status is named the same way")
     func httpStatusIsNamed() async {
         for status in [200, 404, 502] {

@@ -92,10 +92,7 @@ class AlertNotifier(private val context: Context) {
         val channel = if (alarm) {
             alarmChannel()
         } else {
-            NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
-                enableVibration(true)
-                vibrationPattern = vibration.waveform().first
-            }
+            alertsChannel(vibration)
         }
         manager.createNotificationChannel(channel)
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
@@ -204,6 +201,12 @@ class AlertNotifier(private val context: Context) {
             }
             return AlertVibration(pulses)
         }
+
+        fun alertsChannel(vibration: AlertVibration = AlertVibration.pattern(SoundEvent.Importance.Medium)): NotificationChannel =
+            NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+                vibrationPattern = vibration.waveform().first
+            }
 
         fun alarmChannel(): NotificationChannel =
             NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
