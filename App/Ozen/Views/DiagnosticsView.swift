@@ -107,6 +107,7 @@ struct DiagnosticsView: View {
                         .foregroundStyle(.secondary)
                 }
                 DiagnosticsRow(tr("עוצמה עכשיו", "Level now"), String(format: "%.0f%%", viewModel.inputLevel * 100))
+                    .wantsLiveInputLevel()
                 DiagnosticsRow(tr("חבילות אודיו", "Audio chunks"), "\(viewModel.stats.audioChunksReceived)")
                 DiagnosticsRow(tr("שניות אודיו", "Audio seconds"), NumberText.decimal(viewModel.stats.audioSecondsReceived, places: 1))
                 DiagnosticsRow(tr("החלפות מיקרופון", "Microphone changes"), "\(viewModel.stats.inputChanges)")

@@ -196,7 +196,8 @@ private struct InputRow: View {
 }
 
 /// A plain horizontal level bar with a peak-hold tick, refreshed as fast
-/// as the audio layer publishes (about 20 Hz).
+/// as the audio layer publishes (about 20 Hz). It asks the audio layer for
+/// the level only while it is on screen.
 struct LevelMeter: View {
     let level: Float
     let isActive: Bool
@@ -220,6 +221,7 @@ struct LevelMeter: View {
             }
         }
         .frame(height: 14)
+        .wantsLiveInputLevel()
         .onChange(of: level) { _, newLevel in
             if newLevel >= peak {
                 peak = newLevel
