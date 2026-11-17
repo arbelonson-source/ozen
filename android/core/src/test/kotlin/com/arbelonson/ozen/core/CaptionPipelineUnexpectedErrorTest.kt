@@ -122,4 +122,17 @@ class CaptionPipelineUnexpectedErrorTest {
             uncaught.restore()
         }
     }
+
+    @Test
+    fun `a handler that throws an Error does not reach the uncaught handler either`() = runTest {
+        val uncaught = Uncaught()
+        try {
+            val guarded = errorGuardedScope(StandardTestDispatcher(testScheduler)) { throw AssertionError("in the handler") }
+            guarded.launch { throw Boom("first") }
+            advanceUntilIdle()
+            assertTrue(uncaught.seen.isEmpty())
+        } finally {
+            uncaught.restore()
+        }
+    }
 }

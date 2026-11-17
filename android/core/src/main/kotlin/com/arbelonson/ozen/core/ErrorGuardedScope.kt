@@ -15,7 +15,7 @@ fun errorGuardedScope(
         if (error !is CancellationException) {
             try {
                 onError(error)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
             }
         }
     },
