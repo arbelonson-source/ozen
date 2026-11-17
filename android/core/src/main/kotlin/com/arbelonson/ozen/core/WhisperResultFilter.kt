@@ -405,6 +405,16 @@ class WhisperResultFilter(
         // the model was also unsure of its tokens; a confident transcript in a
         // window the VAD thought was quiet is kept.
         if (segment.noSpeechProb > noSpeechThreshold && segment.avgLogprob < logprobThreshold) return false
+        // A sentence that merely opens like a credit ("Subtitles by default
+        // are off") is kept when the model was sure of it; an unsure one is
+        // the made-up credit it so often writes on quiet.
+        if ((segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold) &&
+            sequenceOf({ text }, { once }, { repeatedSentence(text) ?: text }).any {
+                it().let { line -> isCreditLine(line, normalize(line), anyRemainder = true) }
+            }
+        ) {
+            return false
+        }
         if (segment.compressionRatio > compressionRatioThreshold) {
             // Two or three copies of a sentence measured 2.5 to 3.6; the loops
             // Whisper wrote on household noise 11 to 25.
@@ -439,13 +449,15 @@ class WhisperResultFilter(
      * separator (the normalizer already turned ":" into nothing) or a name.
      * Whole words only, so "ktuviotayim" or "targumim" never match.
      */
-    internal fun isCreditLine(raw: String, normalized: String): Boolean {
+    internal fun isCreditLine(raw: String, normalized: String, anyRemainder: Boolean = false): Boolean {
         if (isUnspacedCreditLine(normalized)) return true
         val words = normalized.split(" ").filter { it.isNotEmpty() }
         if (words.isEmpty() || words.size > maximumCreditLineWords) return false
+        val rawWords = raw.split(whisperSpaces).filter { normalize(it).isNotEmpty() }
         val byPhrase = hallucinatedCreditPrefixes.any { prefix ->
             val prefixWords = prefix.split(" ").filter { it.isNotEmpty() }
-            words.size >= prefixWords.size && words.take(prefixWords.size) == prefixWords
+            words.size >= prefixWords.size && words.take(prefixWords.size) == prefixWords &&
+                (anyRemainder || looksLikeCredit(rawWords.drop(prefixWords.size)))
         }
         if (byPhrase) return true
 
@@ -453,18 +465,20 @@ class WhisperResultFilter(
         // other checks, but with the colon and dash this one needs.
         val unmarked = HebrewText.stripNiqqud(raw).codePoints().toArray()
             .filter { Character.getType(it) != Character.FORMAT.toInt() }
-        val opening = trimmingWhisperScalars(String(unmarked.toIntArray(), 0, unmarked.size)) {
+        val cased = trimmingWhisperScalars(String(unmarked.toIntArray(), 0, unmarked.size)) {
             isWhisperSpaceOrNewline(it) || (it <= 0xFFFF && it.toChar() in "[](){}<>\"'״-–—")
-        }.lowercase(Locale.ROOT)
-        val openingGraphemes = graphemesOfWhisper(opening)
+        }
+        val opening = cased.lowercase(Locale.ROOT)
+        val casedGraphemes = graphemesOfWhisper(cased)
         return hallucinatedCreditLabels.any { label ->
             if (!opening.startsWith(label)) return@any false
-            val afterLabel = openingGraphemes.drop(graphemesOfWhisper(label).size)
+            val afterLabel = casedGraphemes.drop(graphemesOfWhisper(label).size)
                 .dropWhile { it.codePointAt(0).let(::isWhisperWhitespace) }
-            if (afterLabel.firstOrNull() == ":") return@any true
             val separator = afterLabel.firstOrNull() ?: return@any false
+            val remainder = { afterLabel.drop(1).joinToString("").split(whisperSpaces).filter { normalize(it).isNotEmpty() } }
+            if (separator == ":") return@any anyRemainder || looksLikeCredit(remainder())
             if (separator !in creditLabelDashes) return@any false
-            words.size <= maximumDashCreditLineWords
+            words.size <= maximumDashCreditLineWords && (anyRemainder || looksLikeCredit(remainder()))
         }
     }
 
@@ -733,6 +747,67 @@ class WhisperResultFilter(
             val first = graphemes.firstOrNull() ?: return false
             val last = graphemes.last()
             return (first == "[" && last == "]") || (first == "(" && last == ")")
+        }
+
+        private val whisperSpaces = Regex("[\\p{Z}\\s\\u0085]+")
+
+        internal val nameConnectors: Set<String> = setOf(
+            "and", "&", "de", "del", "la", "van", "von", "der", "den", "di", "da", "el", "al", "bin", "y", "e", "du", "des", "le", "ten", "ter",
+        )
+
+        internal val leadingArticles: Set<String> = setOf("the", "la", "le", "les", "el", "los", "las", "die", "der", "das")
+
+        internal val communityWords: Set<String> = setOf(
+            "community", "comunidad", "comunidade", "communauté", "gemeinschaft", "сообщество", "спільнота",
+        )
+
+        private fun isPunctuationOrSymbol(codePoint: Int): Boolean = when (Character.getType(codePoint).toByte()) {
+            Character.CONNECTOR_PUNCTUATION, Character.DASH_PUNCTUATION, Character.START_PUNCTUATION, Character.END_PUNCTUATION,
+            Character.INITIAL_QUOTE_PUNCTUATION, Character.FINAL_QUOTE_PUNCTUATION, Character.OTHER_PUNCTUATION,
+            Character.MATH_SYMBOL, Character.CURRENCY_SYMBOL, Character.MODIFIER_SYMBOL, Character.OTHER_SYMBOL -> true
+            else -> false
+        }
+
+        private fun isAddress(word: String): Boolean {
+            val lower = word.lowercase(Locale.ROOT)
+            if ('@' in word || lower.startsWith("www.") || lower.startsWith("http")) return true
+            return word.indices.any {
+                word[it] == '.' && it > 0 && it < word.length - 1 &&
+                    Character.isLetter(word.codePointBefore(it)) && Character.isLetter(word.codePointAt(it + 1))
+            }
+        }
+
+        /**
+         * What follows a credit opening decides whether it is a credit or a
+         * person talking about captions ("Subtitles by default are off",
+         * "Subtitles: on or off?"). A credit names someone or something: a
+         * capitalised name, an address ("amara.org", "@name"), or "the
+         * community", with nothing but such words in the line. Words in a script without letter case (Hebrew, Arabic,
+         * Chinese, Hindi...) show no such difference, so they count as a name
+         * and a line there is dropped as before, as is a bare year. Nothing
+         * after the opening ("Subtitles by") is a credit too.
+         */
+        internal fun looksLikeCredit(remainder: List<String>): Boolean {
+            val words = remainder.map { raw ->
+                val word = run {
+                    val cps = raw.codePoints().toArray().toList()
+                    val start = cps.indexOfFirst { !isPunctuationOrSymbol(it) }
+                    val end = cps.indexOfLast { !isPunctuationOrSymbol(it) }
+                    if (start < 0) "" else String(cps.subList(start, end + 1).toIntArray(), 0, end - start + 1)
+                }
+                raw to word
+            }.filter { it.second.isNotEmpty() }
+            if (words.isEmpty()) return true
+            return words.withIndex().all { (index, pair) ->
+                val (raw, word) = pair
+                val plain = normalize(word)
+                if (isAddress(raw) || plain in communityWords) return@all true
+                if (index == 0 && plain in leadingArticles) return@all true
+                if (plain in nameConnectors) return@all true
+                val letter = word.codePoints().toArray().firstOrNull { Character.isLetter(it) }
+                    ?: return@all word.codePoints().toArray().any { Character.isDigit(it) }
+                !Character.isLowerCase(letter)
+            }
         }
 
         /**

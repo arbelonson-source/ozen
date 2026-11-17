@@ -500,6 +500,16 @@ public struct WhisperResultFilter: Sendable, Equatable {
         if segment.noSpeechProb > noSpeechThreshold && segment.avgLogprob < logprobThreshold {
             return false
         }
+        // A sentence that merely opens like a credit ("Subtitles by default
+        // are off") is kept when the model was sure of it; an unsure one is
+        // the made-up credit it so often writes on quiet.
+        if segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold,
+           [{ text }, { once }, { Self.repeatedSentence(text) ?? text }].contains(where: {
+               let line = $0()
+               return isCreditLine(raw: line, normalized: Self.normalize(line), anyRemainder: true)
+           }) {
+            return false
+        }
         if segment.compressionRatio > compressionRatioThreshold {
             // Two or three copies of a sentence measured 2.5 to 3.6; the
             // loops Whisper wrote on household noise 11 to 25.
@@ -559,30 +569,77 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// XYZ": a short segment that opens with a credit phrase, followed by a
     /// separator (the normalizer already turned ":" into nothing) or a name.
     /// Whole words only, so "ktuviotayim" or "targumim" never match.
-    func isCreditLine(raw: String, normalized: String) -> Bool {
+    func isCreditLine(raw: String, normalized: String, anyRemainder: Bool = false) -> Bool {
         if isUnspacedCreditLine(normalized) { return true }
         let words = normalized.split(separator: " ")
         guard !words.isEmpty, words.count <= maximumCreditLineWords else { return false }
+        let rawWords = raw.split(whereSeparator: \.isWhitespace).map(String.init).filter { !Self.normalize($0).isEmpty }
         let byPhrase = hallucinatedCreditPrefixes.contains { prefix in
             let prefixWords = prefix.split(separator: " ")
-            return words.count >= prefixWords.count && Array(words.prefix(prefixWords.count)) == prefixWords
+            guard words.count >= prefixWords.count, Array(words.prefix(prefixWords.count)) == prefixWords else { return false }
+            return anyRemainder || Self.looksLikeCredit(Array(rawWords.dropFirst(prefixWords.count)))
         }
         if byPhrase { return true }
 
         // Without the stray U+200F and vowel points `normalize` drops for
         // the other checks, but with the colon and dash this one needs.
         let unmarked = HebrewText.stripNiqqud(raw).unicodeScalars.filter { $0.properties.generalCategory != .format }
-        let opening = String(String.UnicodeScalarView(unmarked))
+        let cased = String(String.UnicodeScalarView(unmarked))
             .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "[](){}<>\"'״-–—")))
-            .lowercased()
+        let opening = cased.lowercased()
         return hallucinatedCreditLabels.contains { label in
             guard opening.hasPrefix(label) else { return false }
-            let afterLabel = opening.dropFirst(label.count).drop(while: \.isWhitespace)
-            if afterLabel.first == ":" { return true }
+            let afterLabel = cased.dropFirst(label.count).drop(while: \.isWhitespace)
+            if afterLabel.first == ":" {
+                return anyRemainder || Self.looksLikeCredit(Self.remainderWords(afterLabel))
+            }
             guard let separator = afterLabel.first, Self.creditLabelDashes.contains(separator) else { return false }
             return words.count <= maximumDashCreditLineWords
+                && (anyRemainder || Self.looksLikeCredit(Self.remainderWords(afterLabel)))
         }
     }
+
+    private static func remainderWords(_ afterLabel: Substring) -> [String] {
+        afterLabel.dropFirst().split(whereSeparator: \.isWhitespace).map(String.init).filter { !normalize($0).isEmpty }
+    }
+
+    /// What follows a credit opening decides whether it is a credit or a
+    /// person talking about captions ("Subtitles by default are off",
+    /// "Subtitles: on or off?"). A credit names someone or something: a
+    /// capitalised name, an address ("amara.org", "@name") or "the
+    /// community", with nothing but such words in the line. Words in a script without letter case (Hebrew, Arabic,
+    /// Chinese, Hindi...) show no such difference, so they count as a name
+    /// and a line there is dropped as before, as is a bare year. Nothing after the opening
+    /// ("Subtitles by") is a credit too.
+    static func looksLikeCredit(_ remainder: [String]) -> Bool {
+        let words = remainder.filter { !$0.trimmingCharacters(in: .punctuationCharacters.union(.symbols)).isEmpty }
+        if words.isEmpty { return true }
+        return words.enumerated().allSatisfy { index, raw in
+            let word = raw.trimmingCharacters(in: .punctuationCharacters.union(.symbols))
+            let plain = normalize(word)
+            if isAddress(raw) || communityWords.contains(plain) { return true }
+            if index == 0, leadingArticles.contains(plain) { return true }
+            if nameConnectors.contains(plain) { return true }
+            guard let letter = word.first(where: \.isLetter) else { return word.contains(where: \.isNumber) }
+            return !letter.isLowercase
+        }
+    }
+
+    private static func isAddress(_ word: String) -> Bool {
+        if word.contains("@") || word.lowercased().hasPrefix("www.") || word.lowercased().hasPrefix("http") { return true }
+        let chars = Array(word)
+        return chars.indices.dropFirst().dropLast().contains { chars[$0] == "." && chars[$0 - 1].isLetter && chars[$0 + 1].isLetter }
+    }
+
+    static let nameConnectors: Set<String> = [
+        "and", "&", "de", "del", "la", "van", "von", "der", "den", "di", "da", "el", "al", "bin", "y", "e", "du", "des", "le", "ten", "ter",
+    ]
+
+    static let leadingArticles: Set<String> = ["the", "la", "le", "les", "el", "los", "las", "die", "der", "das"]
+
+    static let communityWords: Set<String> = [
+        "community", "comunidad", "comunidade", "communauté", "gemeinschaft", "сообщество", "спільнота",
+    ]
 
     /// Chinese and Japanese have no spaces, so a credit prefix there is
     /// matched by characters, on a line short enough to be a credit.
