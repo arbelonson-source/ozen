@@ -337,8 +337,9 @@ private fun JsonObject.lenientStrings(key: String): Set<String>? {
 
 /**
  * Decides which classifier readings become alerts. The classifier fires
- * on every ~0.75 s window, so without a per-sound cooldown a ringing
- * phone would produce a new banner every window for as long as it rings;
+ * on every window (here 0.975 s windows starting 0.4875 s apart), so
+ * without a per-sound cooldown a ringing phone would produce a new banner
+ * every window for as long as it rings;
  * and a reading below the confidence floor, an unlisted label, a muted
  * sound, or one below the importance the user asked for is dropped.
  */
@@ -356,13 +357,14 @@ class SoundEventPolicy(
      * Above this confidence, a continuous sound ([sustainedIdentifiers])
      * alerts on the very first window, the same as any other sound: an
      * unmistakable siren or smoke alarm should never wait through a second
-     * ~0.75 s window to be confirmed.
+     * window, 0.4875 s later, to be confirmed.
      */
     var emergencyConfidence: Double = 0.85,
     /**
      * How long a first, unconfirmed window of a continuous sound is
      * remembered while waiting for a second one to confirm it wasn't a
-     * spike from the TV or kitchen clatter.
+     * spike from the TV or kitchen clatter. At 2 s that is about four
+     * hops on Android (0.4875 s apart).
      */
     var persistenceWindowSeconds: Double = 2.0,
 ) {
