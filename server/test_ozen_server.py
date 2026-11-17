@@ -409,7 +409,9 @@ class StuckPass(unittest.TestCase):
         t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
         t.pass_floor_seconds, t.pass_audio_factor = floor, factor
         t.warmed = frozenset({True, False})
-        t.hang_marker = os.path.join(tempfile.mkdtemp(), "last-hang-restart")
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder, True)
+        t.hang_marker = os.path.join(folder, "last-hang-restart")
         t.exits = []
         t.restart_process = lambda: t.exits.append(3)
         t._run = run
@@ -497,6 +499,27 @@ class StuckPass(unittest.TestCase):
         self.ask(t, np.zeros(1600, dtype=np.float32))
         self.assertEqual(t.warmed, frozenset({True}))
         self.assertEqual(t.pass_allowance(1, False), 600.0)
+
+    def test_a_phone_hanging_up_during_a_second_hang_still_ends_cancelled(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 120))
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            task = asyncio.ensure_future(t.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True))
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                with self.assertRaises(asyncio.CancelledError):
+                    await asyncio.wait_for(task, 3)
+            finally:
+                release.set()
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            asyncio.run(scenario())
+        self.assertEqual(t.exits, [])
 
     def test_a_hang_writes_the_time_so_the_next_hang_can_tell(self):
         release = threading.Event()

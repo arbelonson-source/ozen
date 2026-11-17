@@ -347,7 +347,7 @@ class Transcriber:
                 # released at once, the next pass shared the card with it.
                 with contextlib.suppress(PassTooSlow):
                     await self._wait_or_restart(work, deadline - time.monotonic())
-                if not work.cancelled():
+                if work.done() and not work.cancelled():
                     work.exception()
                 raise
             except PassTooSlow:
