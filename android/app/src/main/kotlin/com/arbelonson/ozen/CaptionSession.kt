@@ -658,6 +658,7 @@ class CaptionSession(
             say = ::announceStopOrReturn,
         )
         voice.onReconnect = ::backgroundStateChanged
+        pipeline.onWaitingModelLoading = ::backgroundStateChanged
         pipeline.onPhaseChange = {
             phaseChanges.phaseChanged(it)
             backgroundStateChanged()

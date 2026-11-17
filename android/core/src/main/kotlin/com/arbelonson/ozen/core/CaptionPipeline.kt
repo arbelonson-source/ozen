@@ -442,6 +442,9 @@ class CaptionPipeline(
      */
     var onPhaseChange: ((PipelinePhase) -> Unit)? = null
 
+    /** The model behind the built-in recognition began to load, which no change of step announces. */
+    var onWaitingModelLoading: (() -> Unit)? = null
+
     /**
      * Each later step or percent while the engine gets ready, which
      * [onPhaseChange] leaves out. The screen has to hear them: without
@@ -3229,6 +3232,7 @@ class CaptionPipeline(
         preparing = Preparing(chosen.whisperModelVariant, engine)
         waitingModelGettingReady = true
         logEvent(PipelineEvent.Kind.Note("the waiting model gets ready behind the built-in recognition"))
+        onWaitingModelLoading?.invoke()
         waitingModelJob = scope.launch {
             var availability: EngineAvailability? = null
             try {

@@ -312,8 +312,11 @@ class BuiltInWhileWaitingPipelineTest {
         model.prepareGate = gate
         val pipeline = pipeline(network, model, builtInEngine())
         onBuiltIn(pipeline)
+        var told = 0
+        pipeline.onWaitingModelLoading = { told += 1 }
         network.change(NetworkConditions.wifi)
         assertTrue(eventually { model.heldPrepares == 1 })
+        assertEquals(1, told, "the clean-up was not told a model began to load")
         assertEquals(1, pipeline.loadingModelCount)
         gate.open()
         assertTrue(eventually { pipeline.loadedModelCount == 1 })
