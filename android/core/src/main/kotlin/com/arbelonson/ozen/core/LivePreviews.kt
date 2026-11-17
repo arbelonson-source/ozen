@@ -4,12 +4,13 @@ data class PreviewDemand(
     val appInFront: Boolean = true,
     val lockScreenCaptions: Boolean = false,
     val alertWordsSet: Boolean = false,
+    val screenOn: Boolean = true,
 )
 
 object LivePreviews {
     fun wanted(engine: TranscriptionEngineKind, demand: PreviewDemand): Boolean =
         engine != TranscriptionEngineKind.WhisperKit ||
             demand.appInFront ||
-            demand.lockScreenCaptions ||
+            (demand.lockScreenCaptions && demand.screenOn) ||
             demand.alertWordsSet
 }

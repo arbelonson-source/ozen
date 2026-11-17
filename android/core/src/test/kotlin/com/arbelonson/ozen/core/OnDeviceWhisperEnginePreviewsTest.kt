@@ -185,6 +185,28 @@ class OnDeviceWhisperEnginePreviewsTest {
     }
 
     @Test
+    fun previews_resume_at_once_when_the_screen_turns_on() = runTest {
+        var screenOn = false
+        val rig = pvRigOf(demand = { PV_NOBODY.copy(lockScreenCaptions = true, screenOn = screenOn) })
+        launch {
+            delay(3_000)
+            screenOn = true
+        }
+        rig.pvStream(pvSpeech(6.0), pvSilence(1.0)).toList()
+        val live = rig.passes.live()
+        assertTrue(live.isNotEmpty(), "no preview after the screen turned on")
+        assertTrue(live.first().startedAtMs in 3_000..3_200, "first preview at ${live.first().startedAtMs} ms")
+    }
+
+    @Test
+    fun with_the_screen_off_lock_screen_captions_get_only_finished_passes() = runTest {
+        val rig = pvRigOf(demand = { PV_NOBODY.copy(lockScreenCaptions = true, screenOn = false) })
+        rig.pvStream(pvSpeech(4.0), pvSilence(1.0)).toList()
+        assertEquals(0, rig.passes.live().size)
+        assertEquals(1, rig.passes.finals().size)
+    }
+
+    @Test
     fun a_line_finished_without_previews_is_stamped_near_when_it_began() = runTest {
         val rig = pvRigOf(demand = { PV_NOBODY })
         val tokens = rig.pvStream(pvSpeech(8.0), pvSilence(1.0)).toList()

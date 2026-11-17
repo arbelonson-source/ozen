@@ -232,6 +232,16 @@ class CaptionSession(
     // Heat and battery saver both slow the captions with nothing on screen
     // saying so: the journal notes each change, as on the iPhone.
     private val power = context.getSystemService(PowerManager::class.java)
+    @Volatile private var screenOn = power.isInteractive
+
+    // The lock-screen line cannot be read with the screen dark, so the phone
+    // model skips its live previews then (see `LivePreviews`); alert words
+    // still keep them.
+    private val screenWatch = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            screenOn = intent.action != Intent.ACTION_SCREEN_OFF
+        }
+    }
     private val batterySaving = object : BroadcastReceiver() {
         // Only a change is noted, as the iPhone's notice: a session just
         // started on the emulator heard "battery saver off" while it was
@@ -688,6 +698,8 @@ class CaptionSession(
         }
         context.registerReceiver(batteryReadings, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         context.registerReceiver(batterySaving, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
+        screenOn = power.isInteractive
+        context.registerReceiver(screenWatch, IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) })
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) watchHeat()
         loadRecentConversation()
     }
@@ -914,6 +926,7 @@ class CaptionSession(
     fun close() {
         runCatching { context.unregisterReceiver(batteryReadings) }
         runCatching { context.unregisterReceiver(batterySaving) }
+        runCatching { context.unregisterReceiver(screenWatch) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             (heat as? HeatListener)?.let {
                 it.changed = null
@@ -1879,6 +1892,7 @@ class CaptionSession(
             appInFront = appIsActive,
             lockScreenCaptions = current.display.lockScreenCaptions,
             alertWordsSet = current.keywordAlerts.any { it.isEnabled },
+            screenOn = screenOn,
         )
     }
 
