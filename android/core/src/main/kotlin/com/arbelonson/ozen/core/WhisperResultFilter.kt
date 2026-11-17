@@ -409,7 +409,9 @@ class WhisperResultFilter(
         // are off") is kept when the model was sure of it; an unsure one is
         // the made-up credit it so often writes on quiet.
         if ((segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold) &&
-            listOf(text, once, repeatedSentence(text) ?: text).any { isCreditLine(it, normalize(it), anyRemainder = true) }
+            sequenceOf({ text }, { once }, { repeatedSentence(text) ?: text }).any {
+                it().let { line -> isCreditLine(line, normalize(line), anyRemainder = true) }
+            }
         ) {
             return false
         }
@@ -769,7 +771,10 @@ class WhisperResultFilter(
         private fun isAddress(word: String): Boolean {
             val lower = word.lowercase(Locale.ROOT)
             if ('@' in word || lower.startsWith("www.") || lower.startsWith("http")) return true
-            return (1 until word.length - 1).any { word[it] == '.' && word[it - 1].isLetter() && word[it + 1].isLetter() }
+            return word.indices.any {
+                word[it] == '.' && it > 0 && it < word.length - 1 &&
+                    Character.isLetter(word.codePointBefore(it)) && Character.isLetter(word.codePointAt(it + 1))
+            }
         }
 
         /**

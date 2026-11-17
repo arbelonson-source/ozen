@@ -504,8 +504,9 @@ public struct WhisperResultFilter: Sendable, Equatable {
         // are off") is kept when the model was sure of it; an unsure one is
         // the made-up credit it so often writes on quiet.
         if segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold,
-           [text, once, Self.repeatedSentence(text) ?? text].contains(where: {
-               isCreditLine(raw: $0, normalized: Self.normalize($0), anyRemainder: true)
+           [{ text }, { once }, { Self.repeatedSentence(text) ?? text }].contains(where: {
+               let line = $0()
+               return isCreditLine(raw: line, normalized: Self.normalize(line), anyRemainder: true)
            }) {
             return false
         }
