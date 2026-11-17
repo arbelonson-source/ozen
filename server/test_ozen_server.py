@@ -432,6 +432,25 @@ class StuckPass(unittest.TestCase):
             self.ask(t, np.zeros(1600, dtype=np.float32), release)
         self.assertEqual(t.exits, [3])
 
+    def test_a_phone_hanging_up_during_a_stuck_pass_still_restarts_the_server(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            task = asyncio.ensure_future(t.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True))
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                with self.assertRaises(asyncio.CancelledError):
+                    await asyncio.wait_for(task, 3)
+            finally:
+                release.set()
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            asyncio.run(scenario())
+        self.assertEqual(t.exits, [3])
+
     def test_a_normal_pass_under_the_limit_does_not_restart_the_server(self):
         t = self.machine(lambda *a: ("hello", None, []))
         self.assertEqual(self.ask(t, np.zeros(1600, dtype=np.float32))[0], "hello")

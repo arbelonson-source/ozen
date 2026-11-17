@@ -322,21 +322,16 @@ class Transcriber:
     async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
         async with self.lock:
             work = asyncio.ensure_future(asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam))
+            limit = max(self.pass_floor_seconds, self.pass_audio_factor * len(audio) / RATE)
+            deadline = time.monotonic() + limit
             try:
-                limit = max(self.pass_floor_seconds, self.pass_audio_factor * len(audio) / RATE)
-                done, _ = await asyncio.wait({work}, timeout=limit)
-                if not done:
-                    # A stuck CUDA thread can't be stopped and keeps the
-                    # card and this lock for good, while pings still look
-                    # healthy: restart the whole process instead.
-                    log.critical("a pass has run for over %.0f s; exiting to restart", limit)
-                    self.restart_process()
+                await self._wait_or_restart(work, limit)
                 result = await asyncio.shield(work)
             except asyncio.CancelledError:
                 # A thread can't be stopped. When the phone that asked hangs
                 # up mid-pass, the lock is held until the pass ends anyway:
                 # released at once, the next pass shared the card with it.
-                await asyncio.wait({work})
+                await self._wait_or_restart(work, deadline - time.monotonic())
                 if not work.cancelled():
                     work.exception()
                 raise
@@ -356,6 +351,16 @@ class Transcriber:
             if self.model_ran:
                 self.failures = 0
             return result
+
+    async def _wait_or_restart(self, work, seconds):
+        done, _ = await asyncio.wait({work}, timeout=max(seconds, 0))
+        if not done:
+            # A stuck CUDA thread can't be stopped and keeps the card and
+            # this lock for good, while pings still look healthy: restart
+            # the whole process instead.
+            log.critical("a pass has run for over its allowance; exiting to restart")
+            self.restart_process()
+            await asyncio.wait({work})
 
     def restart_process(self):
         logging.shutdown()
