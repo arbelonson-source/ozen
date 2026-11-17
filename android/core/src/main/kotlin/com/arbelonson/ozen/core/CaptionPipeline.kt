@@ -2897,9 +2897,13 @@ class CaptionPipeline(
             logEvent(PipelineEvent.Kind.Note("cloud unavailable, the phone's own model took over"))
             prepareReplay()
             nextStartCoversCloud = true
-            coverReason = failure.engineUnavailability?.kind
-            coverDetail = failure.engineUnavailability?.detail
-            coveredSettings = settingsInUse?.copy()
+            val homeCoversCloud = isCoveringForCloud && coveredSettings?.engine == TranscriptionEngineKind.Cloud &&
+                settingsInUse?.engine == TranscriptionEngineKind.HomeServer
+            if (!homeCoversCloud) {
+                coverReason = failure.engineUnavailability?.kind
+                coverDetail = failure.engineUnavailability?.detail
+                coveredSettings = settingsInUse?.copy()
+            }
             start(onPhone)
             homeComputerAfterPhoneModelFailed(failure)
             if (coverReason == EngineUnavailability.Kind.HomeServerUnreachable &&
@@ -2958,10 +2962,10 @@ class CaptionPipeline(
         if (loadFailure.engineUnavailability?.kind != EngineUnavailability.Kind.ModelLoadFailed) return
         val onPhone = settingsInUse ?: return
         if (onPhone.engine != TranscriptionEngineKind.WhisperKit) return
-        homeComputerTriedAfterPhoneModel = true
         val home = homeComputerCover(onPhone, failure, coveredSettings) ?: return
         val still = phase
         if (still !is PipelinePhase.Failed || still.reason != loadFailure || isRecordingVoice) return
+        homeComputerTriedAfterPhoneModel = true
         cancelScheduledRetry()
         logEvent(PipelineEvent.Kind.Note("the phone's model didn't load, the home computer took over"))
         prepareReplay()

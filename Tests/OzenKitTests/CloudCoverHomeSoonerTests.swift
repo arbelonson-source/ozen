@@ -175,4 +175,22 @@ struct CloudCoverHomeSoonerTests {
         cloud.availability = .available
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
     }
+
+    @Test("the home computer failing after covering for a phone model that would not load leaves the cloud as the one to go back to")
+    func cloudStaysTheTargetAfterBothCoversFail() async {
+        let cloud = FakeEngine(kind: .cloud)
+        let phone = FakeEngine(kind: .whisperKit, availability: loadFailure())
+        let home = homeAnswering()
+        let (captions, _) = pipeline(cloud: cloud, phone: phone, home: home)
+        await captions.start(settings: settings())
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        cloud.availability = .unavailable(.noInternet, "still down")
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
+        home.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "connection lost"))
+        #expect(await eventually { captions.phase.failure?.engineUnavailability?.kind == .modelLoadFailed && phone.prepareCount >= 2 })
+        cloud.availability = .available
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        #expect(!captions.isCoveringForCloud)
+    }
 }

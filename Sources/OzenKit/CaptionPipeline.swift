@@ -2602,9 +2602,12 @@ public final class CaptionPipeline {
         logEvent(.note("cloud unavailable, the phone's own model took over"))
         prepareReplay()
         nextStartCoversCloud = true
-        coverReason = failure.engineUnavailability?.kind
-        coverDetail = failure.engineUnavailability?.detail
-        coveredSettings = activeSettings
+        let homeCoversCloud = isCoveringForCloud && coveredSettings?.engine == .cloud && activeSettings?.engine == .homeServer
+        if !homeCoversCloud {
+            coverReason = failure.engineUnavailability?.kind
+            coverDetail = failure.engineUnavailability?.detail
+            coveredSettings = activeSettings
+        }
         await start(settings: onPhone)
         await homeComputerAfterPhoneModelFailed(after: failure)
         if coverReason == .homeServerUnreachable, coveredSettings?.engine == .homeServer {
@@ -2650,10 +2653,10 @@ public final class CaptionPipeline {
               case .failed(let loadFailure) = phase, loadFailure.engineUnavailability?.kind == .modelLoadFailed,
               let onPhone = activeSettings, onPhone.engine == .whisperKit
         else { return }
-        homeComputerTriedAfterPhoneModel = true
         guard let home = await homeComputerCover(replacing: onPhone, after: failure, chosen: coveredSettings),
               case .failed(let still) = phase, still == loadFailure, !isRecordingVoice
         else { return }
+        homeComputerTriedAfterPhoneModel = true
         cancelScheduledRetry()
         logEvent(.note("the phone's model didn't load, the home computer took over"))
         prepareReplay()

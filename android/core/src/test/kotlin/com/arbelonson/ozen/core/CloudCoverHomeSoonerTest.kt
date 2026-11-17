@@ -191,4 +191,22 @@ class CloudCoverHomeSoonerTest {
         cloud.availability = EngineAvailability.Available
         assertTrue(eventually { on(captions, TranscriptionEngineKind.Cloud) })
     }
+
+    @Test
+    fun `the home computer failing after covering for a phone model that would not load leaves the cloud as the one to go back to`() = runTest {
+        val cloud = FakeEngine(kind = TranscriptionEngineKind.Cloud)
+        val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit, availability = loadFailure())
+        val home = homeAnswering()
+        val captions = pipelineOf(cloud, phone, home)
+        captions.start(settings())
+        assertTrue(eventually { on(captions, TranscriptionEngineKind.Cloud) })
+        cloud.availability = EngineAvailability.unavailable(EngineUnavailability.Kind.NoInternet, "still down")
+        cloud.endStream(throwing = lost())
+        assertTrue(eventually { on(captions, homeKind) })
+        home.endStream(throwing = lost(EngineUnavailability.Kind.HomeServerUnreachable))
+        assertTrue(eventually { failedWith(captions) == EngineUnavailability.Kind.ModelLoadFailed && phone.prepareCount >= 2 })
+        cloud.availability = EngineAvailability.Available
+        assertTrue(eventually { on(captions, TranscriptionEngineKind.Cloud) })
+        assertFalse(captions.isCoveringForCloud)
+    }
 }
