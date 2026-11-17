@@ -38,10 +38,13 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
     public struct FailureContext: Sendable, Equatable {
         public var engine: TranscriptionEngineKind?
         public var spokenLanguage: UILanguage
+        /// The address the person typed for the home computer, carried only for a computer that did not answer.
+        public var homeServerAddress: String?
 
-        public init(engine: TranscriptionEngineKind? = nil, spokenLanguage: UILanguage = .hebrew) {
+        public init(engine: TranscriptionEngineKind? = nil, spokenLanguage: UILanguage = .hebrew, homeServerAddress: String? = nil) {
             self.engine = engine
             self.spokenLanguage = spokenLanguage
+            self.homeServerAddress = homeServerAddress
         }
     }
 
@@ -137,7 +140,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         soundAlertsNotWorking: Bool = false,
         soundsOnlyStopped: Bool = false,
         engine: TranscriptionEngineKind? = nil,
-        spokenLanguage: UILanguage = .hebrew
+        spokenLanguage: UILanguage = .hebrew,
+        homeServerAddress: String? = nil
     ) -> Cause? {
         if systemInterrupted {
             // A failure during the call is retried once the call gives the
@@ -150,7 +154,8 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         guard let failure = phase.failure, !retryScheduled else { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
         // Starts by itself as soon as the phone is on Wi-Fi.
         if failure.engineUnavailability?.kind == .waitingForWiFi { return soundAlertsNotWorking ? .soundAlertsNotWorking : nil }
-        return .failed(failure, FailureContext(engine: engine, spokenLanguage: spokenLanguage))
+        let address = failure.engineUnavailability?.kind == .homeServerUnreachable ? homeServerAddress : nil
+        return .failed(failure, FailureContext(engine: engine, spokenLanguage: spokenLanguage, homeServerAddress: address))
     }
 
     /// What to do with the phone's notifications given the current `cause`.
@@ -383,10 +388,7 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             case (_, .homeServerUnreachable?) where HomeServer.answeredWrongly(failure.engineUnavailability):
                 return HomeServer.answeredWronglyText(detail: failure.engineUnavailability?.detail) + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             case (_, .homeServerUnreachable?):
-                return tr(
-                    "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
-                    "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet."
-                )
+                return HomeServer.unreachableText(address: context.homeServerAddress ?? "")
             case (_, .homeServerRejected?) where failure.engineUnavailability?.detail == HomeServer.pairingChanged:
                 return tr(
                     "הצימוד עם המחשב השתנה. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
