@@ -31,7 +31,7 @@ struct HistoryDetailView: View {
     /// The share text, built once per loaded record and export setting.
     @State private var exportedText: String?
     @State private var confirmingDelete = false
-    @State private var deleteError: String?
+    @State private var deleteFailed = false
     @State private var starRefused = false
     @State private var nameRefused = false
     @State private var renaming = false
@@ -327,10 +327,10 @@ struct HistoryDetailView: View {
         }
         .starNotChangedAlert(isPresented: $starRefused)
         .nameNotSavedAlert(isPresented: $nameRefused)
-        .alert(tr("המחיקה נכשלה", "Deletion failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        .alert(tr("המחיקה נכשלה", "Deletion failed"), isPresented: $deleteFailed) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {
-            Text(tr("מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1", "What wasn’t deleted is still saved on the phone. You can try again.\n%1", args: ["\(deleteError ?? "")"]))
+            Text(tr("מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.", "What wasn’t deleted is still saved on the phone. You can try again."))
         }
         .confirmationDialog(tr("למחוק את השיחה הזו?", "Delete this conversation?"), isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button(tr("מחיקה", "Delete"), role: .destructive) {
@@ -339,7 +339,8 @@ struct HistoryDetailView: View {
                     onHistoryChanged()
                     dismiss()
                 } catch {
-                    deleteError = error.localizedDescription
+                    viewModel.noteDeleteFailure(error)
+                    deleteFailed = true
                 }
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}

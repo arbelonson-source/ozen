@@ -17,7 +17,7 @@ struct HistoryView: View {
     /// A shorter keep-for choice that would delete conversations already
     /// saved, waiting for a yes.
     @State private var pendingRetention: HistoryRetention?
-    @State private var deleteError: String?
+    @State private var deleteFailed = false
     /// A conversation swiped away, waiting for a yes: a slip while
     /// scrolling shouldn't delete a named or starred one for good.
     @State private var pendingDeletion: TranscriptSessionSummary?
@@ -289,7 +289,8 @@ struct HistoryView: View {
         do {
             try viewModel.deleteConversation(id: session.id)
         } catch {
-            deleteError = error.localizedDescription
+            viewModel.noteDeleteFailure(error)
+            deleteFailed = true
         }
         reload()
     }
@@ -374,10 +375,10 @@ struct HistoryView: View {
         } message: {
             Text(tr("שיחות עם שורה מסומנת או עם שם לא יימחקו.", "Conversations with a starred line or a name won’t be deleted."))
         }
-        .alert(tr("המחיקה נכשלה", "Deletion failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        .alert(tr("המחיקה נכשלה", "Deletion failed"), isPresented: $deleteFailed) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {
-            Text(tr("מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1", "What wasn’t deleted is still saved on the phone. You can try again.\n%1", args: ["\(deleteError ?? "")"]))
+            Text(tr("מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.", "What wasn’t deleted is still saved on the phone. You can try again."))
         }
         .confirmationDialog(
             tr("למחוק את השיחה הזו?", "Delete this conversation?"),
@@ -397,7 +398,8 @@ struct HistoryView: View {
                 do {
                     try viewModel.deleteAllConversations()
                 } catch {
-                    deleteError = error.localizedDescription
+                    viewModel.noteDeleteFailure(error)
+                    deleteFailed = true
                 }
                 reload()
             }

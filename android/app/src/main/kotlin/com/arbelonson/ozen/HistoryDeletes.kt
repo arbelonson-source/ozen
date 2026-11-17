@@ -7,11 +7,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class HistoryDeletes(private val io: CoroutineDispatcher = Dispatchers.IO) {
+internal class HistoryDeletes(
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val log: (String) -> Unit = {},
+) {
     sealed interface Outcome {
         data object Done : Outcome
         data object Ignored : Outcome
-        data class Failed(val message: String) : Outcome
+        data object Failed : Outcome
     }
 
     var busy by mutableStateOf(false)
@@ -26,7 +29,8 @@ internal class HistoryDeletes(private val io: CoroutineDispatcher = Dispatchers.
                     delete()
                     Outcome.Done
                 } catch (failure: Exception) {
-                    Outcome.Failed(failure.message ?: failure.toString())
+                    log(failure.message ?: failure.toString())
+                    Outcome.Failed
                 }
             }
         } finally {

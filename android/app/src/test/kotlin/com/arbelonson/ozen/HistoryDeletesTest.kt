@@ -74,12 +74,15 @@ class HistoryDeletesTest {
     }
 
     @Test
-    fun aFailureComesBackAsTextAndFreesTheNextDelete() {
-        val deletes = HistoryDeletes()
+    fun aFailureCarriesNoTechnicalTextToTheScreenAndFreesTheNextDelete() {
+        val logged = mutableListOf<String>()
+        val deletes = HistoryDeletes(log = { logged += it })
         runBlocking {
-            val failed = deletes.run { error("disk refused") }
-            assertEquals(HistoryDeletes.Outcome.Failed("disk refused"), failed)
+            val failed = deletes.run { error("open failed: EACCES") }
+            assertEquals(HistoryDeletes.Outcome.Failed, failed)
+            assertEquals(listOf("open failed: EACCES"), logged)
             assertEquals(HistoryDeletes.Outcome.Done, deletes.run { })
+            assertEquals(1, logged.size)
         }
     }
 }

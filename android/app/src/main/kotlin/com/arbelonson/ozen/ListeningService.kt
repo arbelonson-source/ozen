@@ -214,12 +214,12 @@ class ListeningService : Service() {
             manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
         }
 
+        internal fun listeningChannel() = NotificationChannel(CHANNEL_ID, tr("מאזינה", "Listening"), NotificationManager.IMPORTANCE_LOW)
+
         /** The listening notification showing [content], its lines only when [public] (captions on the lock screen). */
         internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
             val manager = context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, tr("מאזינה", "Listening"), NotificationManager.IMPORTANCE_LOW),
-            )
+            manager.createNotificationChannel(listeningChannel())
             val open = PendingIntent.getActivity(
                 context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
             )
