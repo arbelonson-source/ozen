@@ -584,6 +584,7 @@ public final class CaptionPipeline {
         pendingReplay = []
         pendingReplayDedupe = []
         pendingReplayedLines = []
+        homeSilentUntil = [:]
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -2473,8 +2474,18 @@ public final class CaptionPipeline {
         guard !settings.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         var home = settings
         home.engine = .homeServer
-        return await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available
+        let key = engineCacheKey(home)
+        if let until = homeSilentUntil[key], now() < until { return false }
+        let answers = await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available
+        homeSilentUntil[key] = answers ? nil : now() + Self.homeSilentSeconds
+        return answers
     }
+
+    /// A home computer that did not answer the hand-over check is not asked
+    /// again on every cloud timeout for this long: away from home each
+    /// check can wait for its own timeout, on top of the request's.
+    static let homeSilentSeconds: TimeInterval = 60
+    private var homeSilentUntil: [String: TimeInterval] = [:]
 
     private func engineCacheKey(_ settings: AppSettings) -> String {
         "\(settings.engine.rawValue)|\(settings.whisperModelVariant)|\(settings.allowServerFallbackForAppleSpeech)|\(settings.cloudProvider.rawValue)|\(settings.chosenCloudModel)|\(settings.homeServerAddress)|\(settings.homeServerCertificatePin ?? "")|\(settings.homeServerBeam)"
@@ -3677,6 +3688,7 @@ public final class CaptionPipeline {
     }
 
     private func tearDownSession() {
+        homeSilentUntil = [:]
         runID = UUID()
         stats.soundDetectionRunning = false
         currentEngine = nil

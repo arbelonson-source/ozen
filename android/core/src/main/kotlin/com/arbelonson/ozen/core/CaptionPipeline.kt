@@ -776,6 +776,7 @@ class CaptionPipeline(
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
         pendingReplayedLines = emptySet()
+        homeSilentUntil.clear()
         settingsInUse = settings.copy()
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -2711,8 +2712,18 @@ class CaptionPipeline(
         if (settings.homeServerAddress.isBlank()) return false
         val home = settings.copy()
         home.engine = TranscriptionEngineKind.HomeServer
-        return probeEngine(home).checkAvailability(home.languageCode) == EngineAvailability.Available
+        val key = engineCacheKey(home)
+        val until = homeSilentUntil[key]
+        if (until != null && now() < until) return false
+        val answers = probeEngine(home).checkAvailability(home.languageCode) == EngineAvailability.Available
+        if (answers) homeSilentUntil.remove(key) else homeSilentUntil[key] = now() + HOME_SILENT_SECONDS
+        return answers
     }
+
+    // A home computer that did not answer the hand-over check is not asked
+    // again on every cloud timeout for this long: away from home each check
+    // can wait for its own timeout, on top of the request's.
+    private val homeSilentUntil = HashMap<String, Double>()
 
     /**
      * For asking the home computer or the cloud whether it answers again
@@ -4010,6 +4021,7 @@ class CaptionPipeline(
     }
 
     private fun tearDownSession() {
+        homeSilentUntil.clear()
         runID = UUID.randomUUID()
         statsData.soundDetectionRunning = false
         currentEngine = null
@@ -4194,6 +4206,7 @@ class CaptionPipeline(
 
     companion object {
         private const val UNEXPECTED_MESSAGE_LIMIT = 200
+        private const val HOME_SILENT_SECONDS = 60.0
 
         /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
         const val FALLBACK_AFTER_FAILURES = 2

@@ -35,6 +35,7 @@ class CloudCoverHomeSoonerTest {
         home: FakeEngine,
         audio: FakeAudioCapturer = FakeAudioCapturer(),
         recovery: AutoRecoveryPolicy = AutoRecoveryPolicy.disabled(),
+        now: () -> Double = { virtualNow() },
     ): CaptionPipeline {
         val captions = captionPipeline(
             audio = audio,
@@ -47,6 +48,7 @@ class CloudCoverHomeSoonerTest {
             },
             embedder = FakeEmbedder(),
             recovery = recovery,
+            now = now,
         )
         captions.cloudRecheckSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 0.0
@@ -135,13 +137,13 @@ class CloudCoverHomeSoonerTest {
 
     private class Rig(val captions: CaptionPipeline, val audio: FakeAudioCapturer, val http: FakeCloudHTTP, val home: FakeEngine)
 
-    private fun TestScope.hangingRig(homeAnswers: Boolean = true): Rig {
+    private fun TestScope.hangingRig(homeAnswers: Boolean = true, now: () -> Double = { virtualNow() }): Rig {
         val http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("hello")))
         val cloud = CloudSpeechEngine(http = http, failedSegmentPauseSeconds = 0.001, approvalSeconds = 0.01, timeSource = testScheduler.timeSource, apiKey = { "sk-test" })
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 400 }
         val home = homeAnswering(homeAnswers)
         val audio = FakeAudioCapturer()
-        return Rig(pipelineOf(cloud, phone, home, audio), audio, http, home)
+        return Rig(pipelineOf(cloud, phone, home, audio, now = now), audio, http, home)
     }
 
     private suspend fun Rig.talk(steps: Int, until: () -> Boolean) {
@@ -220,5 +222,42 @@ class CloudCoverHomeSoonerTest {
         assertFalse(rig.captions.isCoveringForCloud)
         assertEquals(PipelinePhase.Listening, rig.captions.phase)
         assertEquals(TranscriptionEngineKind.Cloud, rig.captions.activeEngineKind)
+    }
+
+    @Test
+    fun `an unreachable home computer is asked once for a minute, however often the cloud times out`() = runTest {
+        val rig = hangingRig(homeAnswers = false, now = { 1_000.0 })
+        rig.captions.start(settings())
+        rig.http.blackHole = true
+        rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
+        assertTrue(rig.http.transcriptionRequests.size >= 3)
+        assertEquals(1, rig.home.prepareCount)
+    }
+
+    @Test
+    fun `after a minute the unreachable home computer is asked again`() = runTest {
+        var clock = 1_000.0
+        val rig = hangingRig(homeAnswers = false, now = { clock })
+        rig.captions.start(settings())
+        rig.http.blackHole = true
+        rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
+        assertEquals(1, rig.home.prepareCount)
+        clock += 61.0
+        rig.talk(15) { rig.home.prepareCount >= 2 }
+        assertTrue(rig.home.prepareCount >= 2)
+    }
+
+    @Test
+    fun `a changed home address is asked at once`() = runTest {
+        val rig = hangingRig(homeAnswers = false, now = { 1_000.0 })
+        rig.captions.start(settings())
+        rig.http.blackHole = true
+        rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
+        assertEquals(1, rig.home.prepareCount)
+        val other = settings()
+        other.homeServerAddress = "wss://192.168.1.30:8765"
+        rig.captions.start(other)
+        rig.talk(15) { rig.home.prepareCount >= 2 }
+        assertTrue(rig.home.prepareCount >= 2)
     }
 }

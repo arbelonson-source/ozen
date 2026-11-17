@@ -16,7 +16,7 @@ struct CloudCoverHomeSoonerTests {
         .unavailable(.modelLoadFailed, "the model would not load")
     }
 
-    private func pipeline(cloud: any TranscriptionEngine, phone: FakeEngine, home: FakeEngine, recovery: AutoRecoveryPolicy = .disabled) -> (CaptionPipeline, FakeAudioCapturer) {
+    private func pipeline(cloud: any TranscriptionEngine, phone: FakeEngine, home: FakeEngine, recovery: AutoRecoveryPolicy = .disabled, clock: TestClock = TestClock()) -> (CaptionPipeline, FakeAudioCapturer) {
         let audio = FakeAudioCapturer()
         let captions = CaptionPipeline(
             audio: audio,
@@ -28,7 +28,8 @@ struct CloudCoverHomeSoonerTests {
                 }
             },
             embedder: FakeEmbedder(),
-            recovery: recovery
+            recovery: recovery,
+            now: { clock.now }
         )
         captions.cloudRecheckSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 0
@@ -81,13 +82,13 @@ struct CloudCoverHomeSoonerTests {
         #expect(home.prepareCount == 0)
     }
 
-    private func hangingRig(homeAnswers: Bool = true) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
+    private func hangingRig(homeAnswers: Bool = true, clock: TestClock = TestClock()) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
         let http = FakeCloudHTTP(answers: [.text("hello")])
         let cloud = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, approvalSeconds: 0.01, apiKey: { "sk-test" })
         let phone = FakeEngine(kind: .whisperKit)
         phone.pendingDownload = 400
         let home = homeAnswering(homeAnswers)
-        let (captions, audio) = pipeline(cloud: cloud, phone: phone, home: home)
+        let (captions, audio) = pipeline(cloud: cloud, phone: phone, home: home, clock: clock)
         return (captions, audio, http, home)
     }
 
@@ -204,5 +205,42 @@ struct CloudCoverHomeSoonerTests {
         #expect(!captions.isCoveringForCloud)
         #expect(captions.phase == .listening)
         #expect(captions.activeEngineKind == .cloud)
+    }
+
+    @Test("an unreachable home computer is asked once for a minute, however often the cloud times out")
+    func silentHomeIsAskedOnce() async {
+        let (captions, audio, http, home) = hangingRig(homeAnswers: false)
+        await captions.start(settings: settings())
+        http.blackHole = true
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
+        #expect(http.transcriptionRequests.count >= 3)
+        #expect(home.prepareCount == 1)
+    }
+
+    @Test("after a minute the unreachable home computer is asked again")
+    func silentHomeIsAskedAgainAfterAMinute() async {
+        let clock = TestClock()
+        let (captions, audio, http, home) = hangingRig(homeAnswers: false, clock: clock)
+        await captions.start(settings: settings())
+        http.blackHole = true
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
+        #expect(home.prepareCount == 1)
+        clock.advance(61)
+        await talk(audio, steps: 15) { home.prepareCount >= 2 }
+        #expect(home.prepareCount >= 2)
+    }
+
+    @Test("a changed home address is asked at once")
+    func changedAddressIsAskedAtOnce() async {
+        let (captions, audio, http, home) = hangingRig(homeAnswers: false)
+        await captions.start(settings: settings())
+        http.blackHole = true
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
+        #expect(home.prepareCount == 1)
+        var other = settings()
+        other.homeServerAddress = "wss://192.168.1.30:8765"
+        await captions.start(settings: other)
+        await talk(audio, steps: 15) { home.prepareCount >= 2 }
+        #expect(home.prepareCount >= 2)
     }
 }
