@@ -48,6 +48,7 @@ import math
 import os
 import re
 import time
+import unicodedata
 
 try:
     import resource
@@ -256,6 +257,28 @@ def front_terms(terms, count_tokens, budget):
             break
         kept.append(term)
     return kept
+
+
+MAX_TERMS = 200
+MAX_TERM_LENGTH = 64  # the phones keep a name to 40 characters
+
+
+def clean_vocabulary(terms):
+    """The names a phone sent, made safe to tokenize: no lone surrogates or
+    control characters, trimmed, no blanks or repeats, each cut to
+    MAX_TERM_LENGTH, at most MAX_TERMS of them."""
+    if not isinstance(terms, list):
+        return []
+    cleaned = []
+    for term in terms:
+        text = "".join(" " if ch.isspace() else ch for ch in str(term)
+                       if ch.isspace() or unicodedata.category(ch) not in ("Cc", "Cs"))
+        text = text.strip()[:MAX_TERM_LENGTH].strip()
+        if text and text not in cleaned:
+            cleaned.append(text)
+        if len(cleaned) >= MAX_TERMS:
+            break
+    return cleaned
 
 
 class Transcriber:
@@ -938,7 +961,7 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
             transcriber.prepare()
         vocabulary = hello.get("vocabulary")
         session = Session(ws, transcriber, language,
-                          [str(v) for v in vocabulary][:200] if isinstance(vocabulary, list) else [],
+                          clean_vocabulary(vocabulary),
                           live_interval, make_enhancer() if make_enhancer else None, beam)
         await ws.send(json.dumps({"type": "ready", "model": transcriber.name, "version": PROTOCOL_VERSION}))
         purpose = str(hello.get("purpose", "captions"))[:20]
@@ -967,7 +990,7 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
                 continue
             if msg.get("type") == "vocabulary":
                 terms = msg.get("terms")
-                session.vocabulary = [str(v) for v in terms][:200] if isinstance(terms, list) else []
+                session.vocabulary = clean_vocabulary(terms)
             elif msg.get("type") == "report":
                 name = save_report(str(msg.get("text", "")), client)
                 log.info("report from %s saved as %s", peer, name)
