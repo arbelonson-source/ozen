@@ -501,7 +501,7 @@ private fun OzenApp(
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     val clockLifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(state.phase.isListening) {
-        clockLifecycle.tickWhileStarted(30_000) { awakeClock = System.currentTimeMillis() / 1_000.0 }
+        if (state.phase.isListening) clockLifecycle.tickWhileStarted(30_000) { awakeClock = System.currentTimeMillis() / 1_000.0 }
     }
     // The walkthrough is long enough for the phone's own lock timeout to
     // end it partway, as the iPhone found. The home computer's backup
