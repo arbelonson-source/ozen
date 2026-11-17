@@ -251,6 +251,16 @@ one, and it can't be undone. Conversations stay on the phone, and in its own
 backup when the backup is on (the iPhone's iCloud or computer backup; Android's
 cloud backup is switched off for Ozen).
 
+Each conversation keeps the time zone it happened in, so after travelling,
+its times and its day in the list, and in anything shared or exported from
+it, stay as they were when it was spoken. Conversations saved before this
+use the phone's current time zone. Recordings turned into text show
+positions in the file, not clock times. When a recording turned into text stops
+before its end (the end could not be read, or on iPhone it stopped on a
+problem), History says "This transcript
+stops before the end of the recording, so some text is missing." and shared
+text starts with the same sentence.
+
 Near the bottom of Settings, **Show the initial walkthrough again**
 (lehatzig shuv et ha-hesber ha-rishoni) brings back the pages from the
 first launch.
