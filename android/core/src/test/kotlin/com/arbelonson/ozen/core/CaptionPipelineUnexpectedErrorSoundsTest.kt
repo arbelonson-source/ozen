@@ -37,6 +37,14 @@ private fun TestScope.waitingForRoom(): WaitingForRoom {
     return WaitingForRoom(made, detector, audio, guarded)
 }
 
+private fun CaptionPipeline.stoppedCause() = StoppedCaptionsNotice.cause(
+    phase = phase,
+    retryScheduled = isRecoveringByItself,
+    systemInterrupted = false,
+    callEndedDuringInterruption = false,
+    soundsOnlyStopped = soundsOnlyStoppedByItself,
+)
+
 private fun CaptionPipeline.notes(): List<String> =
     eventLog.events.map { it.kind }.filterIsInstance<PipelineEvent.Kind.Note>().map { it.text }
 
@@ -77,6 +85,7 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             testScheduler.runCurrent()
 
             assertEquals(before, audio.calls.toList())
+            assertFalse(pipeline.soundsOnlyStoppedByItself)
             assertTrue(pipeline.isListeningForSoundsOnly)
             assertEquals(reason, pipeline.phase.failure)
             assertEquals(1, pipeline.notes().count { it.contains("unexpected error") })
@@ -108,6 +117,8 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             testScheduler.advanceTimeBy(1_000_000)
             testScheduler.runCurrent()
             assertTrue(pipeline.notes().any { it.contains("sound alerts stopped") })
+            assertTrue(pipeline.soundsOnlyStoppedByItself)
+            assertEquals(StoppedCaptionsNotice.Cause.SoundAlertsStopped, pipeline.stoppedCause())
             assertFalse(pipeline.isListeningForSoundsOnly)
             assertTrue(pipeline.phase is PipelinePhase.Failed)
         } finally {
@@ -126,6 +137,7 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             testScheduler.advanceTimeBy(2_000_000)
             testScheduler.runCurrent()
             assertTrue(pipeline.notes().any { it.contains("sound alerts stopped") })
+            assertTrue(pipeline.soundsOnlyStoppedByItself)
             assertEquals(CaptionPipeline.SOUNDS_ONLY_RETRY_SECONDS.size, audio.calls.count { it == "startCapture" } - 1)
         } finally {
             scope.cancel()

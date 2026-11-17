@@ -1837,8 +1837,10 @@ class CaptionPipeline(
      * (see [listenForSoundsMeanwhile]) may have died with it, and a failure
      * that needs a person has no retry that would open them again: sound
      * alerts stayed off all night. They are opened again after the sound
-     * retries' back-off ([SOUNDS_ONLY_RETRY_SECONDS]), and said to have
-     * stopped once those run out.
+     * retries' back-off ([SOUNDS_ONLY_RETRY_SECONDS]). Once those run out
+     * [soundsOnlyStoppedByItself] is set, which is what the "sound alerts
+     * stopped" notice and banner are shown for; a new failure's fallback,
+     * a start, a stop or a choice of sounds alone clears it.
      */
     private fun restartMeanwhileSounds(failure: PipelineFailure) {
         if (!meanwhileSoundsWanted(failure)) return
@@ -1851,6 +1853,7 @@ class CaptionPipeline(
         stopListeningForSounds()
         if (wait == null) {
             logEvent(PipelineEvent.Kind.Note("sounds while captions wait: they did not come back, sound alerts stopped"))
+            soundsOnlyStoppedByItself = true
             onPhaseChange?.invoke(phase)
             return
         }
@@ -3577,6 +3580,7 @@ class CaptionPipeline(
      */
     private fun listenForSoundsMeanwhile(failure: PipelineFailure) {
         stopListeningForSounds()
+        soundsOnlyStoppedByItself = false
         if (failure.kind != PipelineFailure.Kind.EngineUnavailable || systemInterrupted || isRecordingVoice) return
         if (soundDetector == null || !soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
