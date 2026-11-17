@@ -76,6 +76,50 @@ class HomeServerSecureMismatchTest {
     }
 
     @Test
+    fun `a connection that drops in the middle of the secure handshake stays unreachable`() {
+        val failures = listOf(
+            SSLException("Connection reset", java.net.SocketException("Connection reset")),
+            SSLException("Write error", java.net.SocketException("Broken pipe")),
+            SSLHandshakeException("Software caused connection abort").also { it.initCause(java.net.SocketException("Software caused connection abort")) },
+            SSLException("connection closed", java.io.EOFException("SSL peer shut down incorrectly")),
+            IOException("wrapped", SSLException("Read error", java.net.SocketException("Connection reset"))),
+            SSLException("Read error: ssl=0x7f1: I/O error during system call, Connection reset by peer"),
+            SSLException("Write error: ssl=0x7f1: I/O error during system call, Broken pipe"),
+            SSLHandshakeException("Handshake failed").also { it.initCause(java.io.EOFException("SSL peer shut down incorrectly")) },
+        )
+        for (failure in failures) for (atOpen in listOf(true, false)) {
+            val (result, why) = check(failure, atOpen)
+            assertEquals(HomeServerCheck.Unreachable, result, "$failure $atOpen")
+            assertFalse(HomeServer.answeredWrongly(why))
+        }
+    }
+
+    @Test
+    fun `a real server that resets the connection during the handshake is unreachable, one that answers in plain text is a mismatch`() {
+        fun outcome(serve: (java.net.Socket) -> Unit): HomeServerCheck {
+            ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1")).use { server ->
+                val thread = Thread { server.accept().use(serve) }.also { it.start() }
+                val engine = HomeServerEngine(address = "wss://127.0.0.1:${server.localPort}", token = { "1234" }, connector = WebSocketConnector(), handshakeSeconds = 5.0)
+                val availability = runBlocking { engine.checkAvailability("he") }
+                thread.join()
+                return HomeServerCheck.of(availability, 0.0)
+            }
+        }
+        val reset = outcome { client ->
+            client.getInputStream().read(ByteArray(512))
+            client.setSoLinger(true, 0)
+        }
+        assertEquals(HomeServerCheck.Unreachable, reset)
+        val plain = outcome { client ->
+            client.getInputStream().read(ByteArray(512))
+            client.getOutputStream().write("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n".toByteArray())
+            client.getOutputStream().flush()
+            Thread.sleep(300)
+        }
+        assertEquals(HomeServerCheck.SecureMismatch, plain)
+    }
+
+    @Test
     fun `the words say the computer answered and point at the port and the QR code`() {
         val why = EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.SECURE_MISMATCH_PREFIX + "x")
         Localization.withLanguage(UILanguage.English) {
