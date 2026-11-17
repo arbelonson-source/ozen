@@ -275,6 +275,7 @@ final class TranscribeRecordingModel {
         letCaptionsGo()
         await comeBack()
         host.setCaptionsHeldForRecording(false)
+        if case .ready = state { state = .ready(makeReady()) }
         running = nil
     }
 
