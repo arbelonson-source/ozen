@@ -9,8 +9,9 @@ public struct ProblemAnnouncement: Sendable, Equatable {
         if !present { announced = false }
     }
 
-    public mutating func claim() -> Bool {
-        guard !announced else { return false }
+    public mutating func claim(present: Bool) -> Bool {
+        observe(present: present)
+        guard present, !announced else { return false }
         announced = true
         return true
     }

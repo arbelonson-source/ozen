@@ -134,13 +134,11 @@ public final class LiveCaptionViewModel {
     /// True once per problem: a banner shown again for the same ongoing
     /// problem is not read out again, one that clears and returns is.
     public func claimSoundAlertsWarningAnnouncement() -> Bool {
-        soundAlertsWarning.observe(present: pipeline.soundAlertsNotWorking)
-        return soundAlertsWarning.claim()
+        soundAlertsWarning.claim(present: pipeline.soundAlertsNotWorking)
     }
 
     public func claimAwayAlertsWarningAnnouncement() -> Bool {
-        awayAlertsWarning.observe(present: awayAlertsBlocked)
-        return awayAlertsWarning.claim()
+        awayAlertsWarning.claim(present: awayAlertsBlocked)
     }
 
     private func observeWarnings() {
