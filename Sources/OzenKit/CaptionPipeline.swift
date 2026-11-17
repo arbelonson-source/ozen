@@ -441,6 +441,7 @@ public final class CaptionPipeline {
     /// A phone call (or another app) holds the audio session. Retrying
     /// then would only use up attempts; recovery waits for it to end.
     private var systemInterrupted = false
+    private var soundsOnlyAskedDuringCall = false
     /// A retry that came due while a voice sample was recording, with the
     /// settings it was asked with; it runs when the recording ends.
     private struct HeldRetry { let settings: AppSettings? }
@@ -519,6 +520,7 @@ public final class CaptionPipeline {
 
     public func start(settings: AppSettings) async {
         guard !phase.isListening, !phase.isTransitioning, !isRecordingVoice else { return }
+        soundsOnlyAskedDuringCall = false
         // Only a second model loading on the phone is worth waiting for: the
         // home computer, the cloud and Apple's recognizer load nothing here,
         // and waiting kept captions on "loading model" after the home
@@ -933,6 +935,7 @@ public final class CaptionPipeline {
     /// whatever was in effect before the pause.
     public func resume(settings: AppSettings? = nil) async {
         guard phase == .paused, !isRecordingVoice, var effective = settings ?? activeSettings else { return }
+        soundsOnlyAskedDuringCall = false
         // A pause is not a new start: the phone's model that was covering
         // for the cloud or the home computer (the caller's settings still
         // say so) carries on, rather than trying it again with nothing
@@ -3134,8 +3137,12 @@ public final class CaptionPipeline {
         if active {
             cancelScheduledRetry()
             stopListeningForSounds()
-        } else if soundsOnlyChosen, !isListeningForSoundsOnly {
-            Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
+        } else if (soundsOnlyChosen || soundsOnlyAskedDuringCall), !isListeningForSoundsOnly {
+            Task { [weak self] in
+                guard let self, soundsOnlyChosen || soundsOnlyAskedDuringCall else { return }
+                soundsOnlyAskedDuringCall = false
+                await listenForSoundsOnly(retrying: true)
+            }
         } else if let failure = phase.failure {
             recovery.reset()
             scheduleAutoRecovery(for: failure)
@@ -3285,9 +3292,11 @@ public final class CaptionPipeline {
         case .listening, .paused, .idle: break
         default: return
         }
-        guard !systemInterrupted, !isRecordingVoice,
-              soundDetector != nil, soundPolicy.preferences.isEnabled
-        else { return }
+        guard !isRecordingVoice, soundDetector != nil, soundPolicy.preferences.isEnabled else { return }
+        guard !systemInterrupted else {
+            if !retrying { soundsOnlyAskedDuringCall = true }
+            return
+        }
         let wasListening = phase.isListening
         stopListeningForSounds()
         cancelScheduledRetry()
@@ -3583,6 +3592,7 @@ public final class CaptionPipeline {
         soundClassifierUnavailable = false
         isListeningForSoundsOnly = false
         soundsOnlyChosen = false
+        soundsOnlyAskedDuringCall = false
         soundsOnlyStoppedByItself = false
         soundsOnlyRetryTask?.cancel()
         soundsOnlyRetryTask = nil

@@ -669,6 +669,7 @@ class CaptionPipeline(
      * then would only use up attempts; recovery waits for it to end.
      */
     private var systemInterrupted = false
+    private var soundsOnlyAskedDuringCall = false
 
     /**
      * A retry that came due while a voice sample was recording, with the
@@ -721,6 +722,7 @@ class CaptionPipeline(
 
     suspend fun start(settings: AppSettings) {
         if (phase.isListening || phase.isTransitioning || isRecordingVoice) return
+        soundsOnlyAskedDuringCall = false
         // Only a second model loading on the phone is worth waiting for: the
         // home computer, the cloud and Apple's recognizer load nothing here,
         // and waiting kept captions on "loading model" after the home
@@ -1083,6 +1085,7 @@ class CaptionPipeline(
 
     fun stop() {
         stopCount += 1
+        soundsOnlyAskedDuringCall = false
         endWaitingModel()
         recentAudio.clear()
         pendingReplay = FloatArray(0)
@@ -1230,6 +1233,7 @@ class CaptionPipeline(
      */
     suspend fun resume(settings: AppSettings? = null) {
         if (phase != PipelinePhase.Paused || isRecordingVoice) return
+        soundsOnlyAskedDuringCall = false
         // A pause is not a new start: the phone's model that was covering
         // for the cloud or the home computer (the caller's settings still
         // say so) carries on, rather than trying it again with nothing
@@ -3353,6 +3357,14 @@ class CaptionPipeline(
             cancelSoundsOnlyRetry()
             stopListeningForSounds()
         } else {
+            if (soundsOnlyAskedDuringCall && !soundsOnlyChosen) {
+                scope.launch {
+                    if (!soundsOnlyAskedDuringCall) return@launch
+                    soundsOnlyAskedDuringCall = false
+                    listenForSoundsOnly()
+                }
+                return
+            }
             if (soundsOnlyChosen) {
                 soundsOnlyAttempts = 0
                 scope.launch { resumeSoundsOnly() }
@@ -3482,7 +3494,11 @@ class CaptionPipeline(
             settingsInUse = settings.copy()
             soundPolicy.preferences = settings.soundAlerts
         }
-        if (systemInterrupted || isRecordingVoice || soundDetector == null || !soundPolicy.preferences.isEnabled) return
+        if (isRecordingVoice || soundDetector == null || !soundPolicy.preferences.isEnabled) return
+        if (systemInterrupted) {
+            soundsOnlyAskedDuringCall = true
+            return
+        }
         val loading = phase.isTransitioning
         if (loading || phase is PipelinePhase.Failed) stop()
         val wasListening = phase.isListening
