@@ -1004,6 +1004,7 @@ class CaptionSession(
                 soundAlertsMicrophoneSilent = pipeline.soundAlertsMicrophoneSilent,
                 engine = pipeline.activeEngineKind,
                 spokenLanguage = (pipeline.activeSettings ?: chosenSettings()).spokenLanguage,
+                homeServerAddress = (pipeline.activeSettings ?: chosenSettings()).homeServerAddress,
             )
         }
 

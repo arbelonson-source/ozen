@@ -30,6 +30,8 @@ class StoppedCaptionsNotice {
             /** What the caption screen names the failure by: the engine in use and the language she speaks. */
             val engine: TranscriptionEngineKind? = null,
             val spokenLanguage: UILanguage = UILanguage.Hebrew,
+            /** The address she typed for the home computer, carried only for a computer that did not answer. */
+            val homeServerAddress: String? = null,
         ) : Cause()
 
         /** The call is over, but the microphone didn't come back. */
@@ -327,8 +329,9 @@ class StoppedCaptionsNotice {
             soundAlertsMicrophoneSilent: Boolean = false,
             engine: TranscriptionEngineKind? = null,
             spokenLanguage: UILanguage = UILanguage.Hebrew,
+            homeServerAddress: String? = null,
         ): Cause? {
-            val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen, engine, spokenLanguage)
+            val stop = stopCause(phase, retryScheduled, systemInterrupted, callEndedDuringInterruption, soundsOnlyStopped, interruptedByCall, soundsOnlyChosen, engine, spokenLanguage, homeServerAddress)
             if (stop == null && soundAlertsNotWorking && !systemInterrupted) {
                 return if (soundAlertsMicrophoneSilent) Cause.SoundAlertsMicrophoneSilent else Cause.SoundAlertsNotWorking
             }
@@ -345,6 +348,7 @@ class StoppedCaptionsNotice {
             soundsOnlyChosen: Boolean,
             engine: TranscriptionEngineKind?,
             spokenLanguage: UILanguage,
+            homeServerAddress: String?,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
@@ -358,7 +362,8 @@ class StoppedCaptionsNotice {
             if (failure == null || retryScheduled) return null
             // Starts by itself as soon as the phone is on Wi-Fi.
             if (failure.engineUnavailability?.kind == EngineUnavailability.Kind.WaitingForWiFi) return null
-            return Cause.Failed(failure, engine, spokenLanguage)
+            val address = homeServerAddress.takeIf { failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable }
+            return Cause.Failed(failure, engine, spokenLanguage, address)
         }
 
         internal fun content(cause: Cause): AlertNotificationContent = AlertNotificationContent(
@@ -470,10 +475,7 @@ class StoppedCaptionsNotice {
                     HomeServer.languageNotCovered(failure.engineUnavailability) -> HomeServer.languageNotCoveredNoticeText()
                     HomeServer.answeredWrongly(failure.engineUnavailability) ->
                         HomeServer.answeredWronglyText(failure.engineUnavailability?.detail) + " " + tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
-                    why == EngineUnavailability.Kind.HomeServerUnreachable -> tr(
-                        "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
-                        "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.",
-                    )
+                    why == EngineUnavailability.Kind.HomeServerUnreachable -> HomeServer.unreachableText(cause.homeServerAddress.orEmpty())
                     why == EngineUnavailability.Kind.HomeServerRejected && failure.engineUnavailability?.detail == HomeServer.PAIRING_CHANGED -> tr(
                         "הצימוד עם המחשב השתנה. פתחו את אוזן וסרקו שוב את קוד ה־QR שלו.",
                         "The computer’s pairing changed. Open Ozen and scan its QR code again.",
