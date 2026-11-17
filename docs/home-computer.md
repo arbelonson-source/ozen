@@ -168,6 +168,7 @@ if you have not saved it yet.
 | "The computer answered but didn’t accept the code." | The computer is on, but the code on the phone is not the one it expects. | Scan the QR code again, or type the code again. |
 | "No answer from the computer." | The phone cannot reach it. | Check that it is on and awake, and on the same Wi-Fi as the phone (or online, for a `wss://` address). If it moved to a new network, scan its QR code again. On an iPhone, the message also says to check that Ozen is allowed under Settings › Privacy & Security › Local Network. |
 | "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is on, but it answered with an error or with something the phone does not understand. It used to be reported as "No answer", which sent people to check a computer that was fine. | Restart Ozen on the computer, or scan the QR code again. |
+| "The computer answered, but the secure connection didn’t match, or something else is answering on that port. Check the port number in the home computer settings, or scan its QR code again." | The computer, or something else on that port, answered, but not in the secure way the phone expects: a wrong port number, a plain address where a secure one is needed (or the other way round), or a certificate the phone does not trust. It used to be reported as "No answer", which sent people to check a computer that was fine. | Check the port number in the home computer settings, or scan the QR code again. |
 | "The computer’s pairing changed. Scan its QR code again." | The computer has a new certificate (for example its certificate file was deleted), so the saved code no longer fits. | Scan the QR code again. |
 | "The home computer can’t caption …" (with the language's name) | The speech model on the computer does not know the language the phone is set to. | See [When the computer cannot caption the language](#when-the-computer-cannot-caption-the-language). |
 | "The address or code is missing" | One of the two is empty. | Fill in both. |
@@ -224,6 +225,13 @@ Some answers are not "off or asleep", and the screen says so:
   with an error or something the phone does not understand. The phone still
   tries again by itself, and carries on with its own model if it has the
   backup.
+- **"The computer answered, but the secure connection didn’t match, or
+  something else is answering on that port. Check the port number in the home
+  computer settings, or scan its QR code again."** Something answered, but
+  not in the secure way the phone expects: the port number is wrong, a plain
+  address is used where a secure one is needed, or the certificate is one
+  the phone does not trust. The computer may well be on. The phone still tries
+  again by itself, and carries on with its own model if it has the backup.
 - **"The address or code is missing".** Nothing is saved to ask. Tap the
   line to open Settings and scan the QR code. Nothing is retried on a timer;
   captions start as soon as an address is saved. If sound alerts are on,

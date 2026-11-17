@@ -76,6 +76,8 @@ status button gives in the table below, so look it up there.
 | "The phone is talking" (ha-telefon medaber) | The phone is saying a typed reply aloud; captions pause so they don't caption it. | Nothing. They continue by themselves when it finishes. Tapping it stops the phone talking. |
 | "Captions are off" (ha-ktuviyot kvuyot) | Stopped (for example by Siri). | Tap it to start. |
 | "Captions paused for a call or another app" (ha-ktuviyot mushhot biglal sicha o aplikatzia acheret) | A phone call or another app has the microphone (an app recording a voice message, for example). | Usually nothing: they come back once the call ends or the other app lets go of the microphone, and tapping it tries right away. If they stay paused after another app is done, tap it or open Ozen. If the other app (not a phone call) keeps the microphone for a minute while the phone is away from Ozen, a notification "Captions paused" (ha-ktuviyot mushhot) says that captions and sound alerts are paused; Ozen does not take the microphone back by itself, so open Ozen. If they don't come back after a call, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
+| "Captions are paused while a recording is turned into text" | A recording or file is being turned into text, and the phone's speech model is busy with it. If sound alerts are on, they keep listening meanwhile (doorbell, alarm, baby crying). Under it: "They come back when it’s done". | Nothing. Captions come back by themselves when the text is ready, unless you stopped, started or paused them meanwhile. |
+| "Captions and sound alerts are paused while a recording is turned into text" | The same, but sound alerts are on and the phone could not keep listening for sounds during it. | Nothing, but do not count on sound alerts until it ends: a doorbell or a smoke alarm may not be announced. Both come back when the text is ready. |
 | "Downloading the language model · N%" (moridim et model ha-dibur · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
 | "Waiting for Wi-Fi to download the language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular data. On Android the button adds “Downloads on its own on Wi-Fi without a data limit” (a phone hotspot does not count) and the tap offers the download over mobile data. Where the phone's built-in recognition works on the phone for your language, the tap also offers captions with it until the model is ready (see the "built-in recognition" lines above). |
 | "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (iPhone: Settings → General → iPhone Storage; on an iPad it is iPad Storage; Android: the phone's Settings → Storage, or Delete a model you don't use in Settings → Speech model on the phone), then open Ozen again and it starts by itself. Or tap to pick a smaller model. On an iPhone you can also switch to Apple's engine, which needs no download. |
@@ -97,6 +99,7 @@ status button gives in the table below, so look it up there.
 | "Trying again on its own · Tap to try now" (menasim shuv otomatit · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
 | "The address or code is missing" | The home computer is chosen, but the phone has no address or no pairing code for it. The computer was never asked, so it may be fine. With a Whisper model on the phone the button says "Listening" with these words and the phone carries on by itself. | Tap it: Settings opens. Scan the QR code from "Ozen - pair a phone" in the computer's Start menu, or type the address and the code. Captions start once they are saved. Nothing is retried on a timer meanwhile; if sound alerts are on, they keep listening. |
 | "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is on and awake, but it answered with an error or with something the phone does not understand. It is not off, so there is nothing to wake. | Restart Ozen on the computer, or scan the QR code again. The phone keeps trying by itself, and its own model carries on if the backup is downloaded; otherwise the status line says "Tap to add a backup on the phone". |
+| "The computer answered, but the secure connection didn’t match, or something else is answering on that port. Check the port number in the home computer settings, or scan its QR code again." | The computer or something else answered, but not in the secure way the phone expects: the port number is wrong (another program answers on it), a plain address where a secure one is needed (or the other way round), or a certificate the phone does not trust. The computer may well be on, so there is nothing to wake. | Check the port number in Settings → Home computer, or scan the QR code again from "Ozen - pair a phone". The phone keeps trying by itself, and its own model carries on if the backup is downloaded. |
 | "The home computer can't caption …" (the language's name is shown) | The model on the home computer does not know the language the phone is set to. Asking again would get the same answer, so the phone does not. With a Whisper model on the phone it carries on by itself, and the button says so. Without one, captions wait, and sound alerts, if on, keep listening. | Tap it: Settings opens. Pick another engine, or another language. [The home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language) says more. |
 | "The computer's pairing changed. Scan its QR code again." | The computer made a new certificate (for example its certificate file was deleted), so the saved code no longer matches. | Scan the QR code again from "Ozen - pair a phone" in the computer's Start menu. |
 | "The home computer didn't accept the pairing code" | The code on the phone is not the one on the computer. | Scan the QR code again. |
@@ -132,6 +135,7 @@ described in the status button table above.
 | "The computer answered but didn't accept the code" | The code on the phone isn't the one in `C:\ozen\pairing-code` (setup was run on a new computer, or the code was typed wrong). | Scan the QR code again from "Ozen - pair a phone" in the computer's Start menu. |
 | "The computer's pairing changed. Scan its QR code again." | The computer's certificate is no longer the one the phone saved. | Scan the QR code again. |
 | "The computer answered, but not as Ozen expected. Restart Ozen on the computer, or scan its QR code again." | The computer is there, but replied with an error or with something the phone does not understand. Before, the test said "No answer" here, which sent people to check a computer that was on. | Restart Ozen on the computer, or scan the QR code again. |
+| "The computer answered, but the secure connection didn’t match, or something else is answering on that port. Check the port number in the home computer settings, or scan its QR code again." | The computer, or something else on that port, answered, but not in the secure way the phone expects (a wrong port number, a plain address where a secure one is needed, or a certificate the phone does not trust). Before, the test said "No answer" here. | Check the port number, or scan the QR code again. |
 | "The home computer can't caption …" (the language's name is shown) | The computer's model does not know the language the phone is set to. | Pick another language or another engine, or see [the home computer guide](home-computer.md#when-the-computer-cannot-caption-the-language). |
 | "The address or code is missing" | One of the two is empty. | Fill in both. |
 
@@ -167,6 +171,22 @@ urgent enough to break through (that needs an Apple permission a free
 account doesn't get). Add Ozen to each Focus's allowed apps: iPhone Settings
 → Focus → (Sleep, Do Not Disturb, …) → Apps → Allow Notifications From →
 Add → Ozen. The Sounds at home screen says the same.
+
+On Android, a phone that starts listening for sounds only shows a card on
+the caption screen, titled Before you sleep, if
+something that could stop alerts through the night is wrong: battery saving,
+Do Not Disturb, Ozen's notifications turned off, or Emergency alerts turned
+off, silent or without vibration. Each problem is named in the same words as
+the checklist, with a button to the right page of the phone's settings
+(the battery list, the phone's settings, or the Emergency settings) and **OK**.
+Listening starts anyway. After **OK** the same problem is not shown again on
+later starts; a new one brings the card back. The caption screen and the
+checklist also say "Emergency alerts are muted" when the Emergency alerts
+are off or silent, and "Emergency alerts won’t buzz" when their sound is on
+but vibration is off in the phone's settings: "vibration is off for them in
+the phone's settings. Tap to fix." For someone asleep the buzz is the alarm,
+so turn vibration back on for Ozen's Emergency alerts. Sound off with
+vibration on is fine on purpose.
 
 On Android, two things stop alerts at night. Battery saving can stop Ozen
 while the phone sleeps: the checklist's battery step opens the list where
@@ -408,6 +428,12 @@ says where to look on the common ones.
   aren't being kept, though captions still work. Free some space (iPhone: Settings →
   General → iPhone Storage; on an iPad it is iPad Storage; Android: the phone's Settings → Storage) and saving resumes by itself; the banner comes
   back only if it fails again.
+- **A saved recording says "This transcript stops before the end of the
+  recording, so some text is missing."** The end of the recording could not
+  be read (the file was damaged, or ended before its header said), or on
+  iPhone the work stopped on a problem, so the text stops early. It shows on the conversation in History, and shared or exported
+  text from History starts with the same sentence, so whoever gets it knows.
+  Try the recording again, or get a complete copy of it.
 - **A model in the model list is grayed out and can't be picked.** It says
   "Not enough room on the phone" (ein maspik makom ba-telefon): its
   download wouldn't fit, and picking it would only stop the captions that
