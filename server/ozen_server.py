@@ -286,6 +286,10 @@ def clean_vocabulary(terms):
     return cleaned
 
 
+class PassTooSlow(Exception):
+    pass
+
+
 class Transcriber:
     """The models on the GPU, shared by every connection, one pass at a time.
 
@@ -296,15 +300,25 @@ class Transcriber:
     the same in a quiet one, at four times the cost: worth it once per
     line, not three times a second."""
 
-    # A pass that takes longer than max(floor, factor x its audio length) is
-    # stuck, not slow: a CPU fallback on a weak machine runs large-v3 at
-    # about 1-3x real time, and up to three temperature retries multiply
-    # that, so 10x leaves room for the slowest legitimate case.
+    # A pass that outlasts its allowance is stuck, not slow. The allowance is
+    # per attempt, max(floor, factor x the audio length), times the attempts
+    # the pass may make (a finished line retries up to three temperatures).
+    # A graphics card runs a pass in well under real time, so 4x is generous;
+    # a processor can run large-v3 at several times real time, so it gets 30x.
+    # The first pass of each kind loads the card's kernels: a large floor.
     pass_floor_seconds = 60.0
-    pass_audio_factor = 10.0
+    first_pass_floor_seconds = 600.0
+    pass_audio_factor = 4.0
+    cpu_pass_audio_factor = 30.0
+    final_attempts = 3
+    restart_pause_seconds = 600.0
+    device = "cuda"
+    warmed = frozenset()
+    hang_marker = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last-hang-restart")
 
     def __init__(self, model, device, compute_type, beam, context, final_model=None, speech_gate=0.0):
         self.speech_gate = speech_gate
+        self.device = device
         self.compute_type = compute_type
         self.name = model if not final_model else f"{model} + {final_model}"
         self.model = WhisperModel(model_path(model), device=device, compute_type=compute_type)
@@ -322,7 +336,7 @@ class Transcriber:
     async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
         async with self.lock:
             work = asyncio.ensure_future(asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam))
-            limit = max(self.pass_floor_seconds, self.pass_audio_factor * len(audio) / RATE)
+            limit = self.pass_allowance(len(audio) / RATE, final)
             deadline = time.monotonic() + limit
             try:
                 await self._wait_or_restart(work, limit)
@@ -331,9 +345,12 @@ class Transcriber:
                 # A thread can't be stopped. When the phone that asked hangs
                 # up mid-pass, the lock is held until the pass ends anyway:
                 # released at once, the next pass shared the card with it.
-                await self._wait_or_restart(work, deadline - time.monotonic())
+                with contextlib.suppress(PassTooSlow):
+                    await self._wait_or_restart(work, deadline - time.monotonic())
                 if not work.cancelled():
                     work.exception()
+                raise
+            except PassTooSlow:
                 raise
             except Exception:
                 self.failures += 1
@@ -350,15 +367,44 @@ class Transcriber:
             # kept a broken card below the limit in a noisy room for good.
             if self.model_ran:
                 self.failures = 0
+            self.warmed = self.warmed | {final}
             return result
+
+    def pass_allowance(self, seconds, final):
+        factor = self.cpu_pass_audio_factor if self.device == "cpu" else self.pass_audio_factor
+        floor = self.pass_floor_seconds if final in self.warmed else self.first_pass_floor_seconds
+        return (self.final_attempts if final else 1) * max(floor, factor * seconds)
+
+    def restarted_for_a_hang_lately(self):
+        try:
+            with open(self.hang_marker) as marker:
+                ago = time.time() - float(marker.read())
+        except (OSError, ValueError):
+            return False
+        return 0 <= ago < self.restart_pause_seconds
+
+    def note_hang_restart(self):
+        try:
+            with open(self.hang_marker, "w") as marker:
+                marker.write(str(time.time()))
+        except OSError as error:
+            log.warning("could not note the restart (%s)", error)
 
     async def _wait_or_restart(self, work, seconds):
         done, _ = await asyncio.wait({work}, timeout=max(seconds, 0))
         if not done:
+            if self.restarted_for_a_hang_lately():
+                # Restarting again would loop: the phone sends the same
+                # speech and it hangs the same way. Fail this pass instead.
+                log.critical("a pass has run for over its allowance, but the server restarted for a hang less than "
+                             "%d minutes ago; NOT restarting again, failing this pass", self.restart_pause_seconds // 60)
+                work.add_done_callback(lambda finished: finished.cancelled() or finished.exception())
+                raise PassTooSlow("the pass ran over its allowance")
             # A stuck CUDA thread can't be stopped and keeps the card and
             # this lock for good, while pings still look healthy: restart
             # the whole process instead.
             log.critical("a pass has run for over its allowance; exiting to restart")
+            self.note_hang_restart()
             self.restart_process()
             await asyncio.wait({work})
 

@@ -403,11 +403,13 @@ class HungUpMidPass(unittest.TestCase):
 
 
 class StuckPass(unittest.TestCase):
-    def machine(self, run, floor=0.2, factor=10.0):
+    def machine(self, run, floor=0.2, factor=1.0):
         t = S.Transcriber.__new__(S.Transcriber)
         t.speech_gate, t.beam, t.context = 0.0, 5, False
         t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
         t.pass_floor_seconds, t.pass_audio_factor = floor, factor
+        t.warmed = frozenset({True, False})
+        t.hang_marker = os.path.join(tempfile.mkdtemp(), "last-hang-restart")
         t.exits = []
         t.restart_process = lambda: t.exits.append(3)
         t._run = run
@@ -463,6 +465,74 @@ class StuckPass(unittest.TestCase):
         t = self.machine(slow, floor=0.1, factor=0.5)
         self.assertEqual(self.ask(t, np.zeros(S.RATE * 4, dtype=np.float32))[0], "long")
         self.assertEqual(t.exits, [])
+
+    def test_a_finished_line_with_three_slow_attempts_is_not_restarted(self):
+        def three_attempts(*a):
+            time.sleep(0.5)
+            return "slow but working", None, []
+        t = self.machine(three_attempts, floor=0.2, factor=0.0)
+        self.assertEqual(self.ask(t, np.zeros(1600, dtype=np.float32))[0], "slow but working")
+        self.assertEqual(t.exits, [])
+
+    def test_a_live_pass_gets_one_attempt_of_allowance_not_three(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        self.assertEqual(t.pass_allowance(1, True), 180.0)
+        self.assertEqual(t.pass_allowance(1, False), 60.0)
+        self.assertEqual(t.pass_allowance(30, True), 360.0)
+
+    def test_a_processor_gets_thirty_times_the_audio_per_attempt(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        t.device = "cpu"
+        t.cpu_pass_audio_factor = 30.0
+        self.assertEqual(t.pass_allowance(30, True), 3 * 900.0)
+        self.assertEqual(t.pass_allowance(30, False), 900.0)
+        t.device = "cuda"
+        self.assertEqual(t.pass_allowance(30, True), 360.0)
+
+    def test_the_first_pass_of_each_kind_is_not_cut_by_the_short_floor(self):
+        t = self.machine(lambda *a: ("", None, []))
+        t.warmed = frozenset()
+        self.assertEqual(t.pass_allowance(1, False), 600.0)
+        self.assertEqual(t.pass_allowance(1, True), 1800.0)
+        self.ask(t, np.zeros(1600, dtype=np.float32))
+        self.assertEqual(t.warmed, frozenset({True}))
+        self.assertEqual(t.pass_allowance(1, False), 600.0)
+
+    def test_a_hang_writes_the_time_so_the_next_hang_can_tell(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertLess(abs(time.time() - float(open(t.hang_marker).read())), 5)
+
+    def test_a_second_hang_within_ten_minutes_fails_the_pass_instead_of_restarting(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 120))
+        with self.assertLogs(S.log, "CRITICAL") as logged, self.assertRaises(S.PassTooSlow):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [])
+        self.assertEqual(t.failures, 0)
+        self.assertIn("NOT restarting", logged.output[0])
+
+    def test_a_hang_over_ten_minutes_after_the_last_restart_restarts_again(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 700))
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [3])
+
+    def test_an_unreadable_marker_does_not_stop_a_restart(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write("not a time")
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [3])
 
     def test_the_real_restart_exits_with_code_3(self):
         t = S.Transcriber.__new__(S.Transcriber)
