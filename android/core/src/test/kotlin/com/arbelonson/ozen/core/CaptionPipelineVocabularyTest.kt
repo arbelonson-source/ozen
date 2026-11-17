@@ -230,7 +230,7 @@ class CaptionPipelineAlertHookTest {
         pipeline.onSoundAlert = { raised.add(it.event.identifier) }
         pipeline.start(AppSettings.default)
         detector.push(SoundObservation("civil_defense_siren", 0.95, 1_000.0))
-        detector.push(SoundObservation("police_siren", 0.8, 1_000.0))
+        detector.push(SoundObservation("police_siren", 0.9, 1_000.0))
         assertTrue(eventually { pipeline.soundAlerts.size == 2 })
         assertEquals(listOf("civil_defense_siren"), raised)
     }

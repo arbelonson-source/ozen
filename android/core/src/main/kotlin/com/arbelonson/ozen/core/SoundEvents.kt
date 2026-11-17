@@ -152,6 +152,17 @@ object SoundEventCatalog {
         return lookalikeGroups.any { first in it && second in it }
     }
 
+    private val sirenFamily: Set<String> = setOf("siren", "ambulance_siren", "police_siren", "fire_engine_siren")
+
+    /**
+     * The key under which alerts of one sound share a cooldown and a
+     * confirmation: the cooldown key, except that the siren family (one
+     * passing siren flipping between labels) shares one. Settings rows and
+     * saved per-sound choices are untouched, and `civil_defense_siren`
+     * stays apart so an ambulance never holds back a rocket alert.
+     */
+    fun alertKey(event: SoundEvent): String = if (event.identifier in sirenFamily) "siren" else event.cooldownKey
+
     /**
      * One entry per sound, for the Settings list: two labels for one
      * sound are switched together, and in Hebrew they read the same, so
@@ -373,6 +384,7 @@ class SoundEventPolicy(
         val event = SoundEventCatalog.event(observation.identifier) ?: return null
         if (event.importance < preferences.minimumImportance) return null
         if (preferences.isMuted(event.identifier)) return null
+        val key = SoundEventCatalog.alertKey(event)
         // A continuous sound needs a second confirming window within
         // `persistenceWindowSeconds`, unless it's already confident enough
         // to be sure on its own: a real siren or a kettle at a rolling boil
@@ -385,15 +397,15 @@ class SoundEventPolicy(
             // kettle confirming itself, not two sounds each starting over.
             // A later window only: both labels in one reading share its
             // timestamp, and one clatter scored as both is still one spike.
-            val pendingAt = pendingSince[event.cooldownKey]
+            val pendingAt = pendingSince[key]
             if (pendingAt == null ||
                 observation.timestamp <= pendingAt ||
                 observation.timestamp - pendingAt > persistenceWindowSeconds
             ) {
-                pendingSince[event.cooldownKey] = observation.timestamp
+                pendingSince[key] = observation.timestamp
                 return null
             }
-            pendingSince.remove(event.cooldownKey)
+            pendingSince.remove(key)
         }
         // Keyed by the sound, not the identifier: two classifier labels the
         // catalog shows as the very same sound ("telephone_bell_ringing" and
@@ -403,9 +415,9 @@ class SoundEventPolicy(
         // heard as one ring. Wall-clock time can go backward (daylight
         // saving ending, an NTP sync); `>= last` keeps a jump from holding
         // back a new siren for as long as the jump.
-        val last = lastAlertAt[event.cooldownKey]
+        val last = lastAlertAt[key]
         if (last != null && observation.timestamp >= last && observation.timestamp - last < cooldownSeconds) return null
-        lastAlertAt[event.cooldownKey] = observation.timestamp
+        lastAlertAt[key] = observation.timestamp
         return SoundAlert(event = event, confidence = observation.confidence, timestamp = observation.timestamp)
     }
 
@@ -429,7 +441,8 @@ class SoundEventPolicy(
          * rather than just filter a TV spike.
          */
         internal val sustainedIdentifiers: Set<String> = setOf(
-            "civil_defense_siren", "siren", "boiling", "whistling", "water_tap_faucet",
+            "civil_defense_siren", "siren", "ambulance_siren", "police_siren", "fire_engine_siren",
+            "boiling", "whistling", "water_tap_faucet",
         )
     }
 }
