@@ -4218,6 +4218,25 @@ struct CaptionPipelineAudioStallTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("a resume held during one voice recording does not resume captions paused before a later recording", .timeLimit(.minutes(1)))
+    func heldResumeIsNotLeftBehind() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        let first = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        await pipeline.resume()
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await first.value
+        #expect(await eventually { pipeline.phase.isListening })
+        pipeline.pause()
+        let second = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await second.value
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(pipeline.phase == .paused)
+    }
+
     @Test("a stop during a voice recording cancels the held resume", .timeLimit(.minutes(1)))
     func stopCancelsHeldResume() async {
         let (pipeline, audio, _) = makePipeline()

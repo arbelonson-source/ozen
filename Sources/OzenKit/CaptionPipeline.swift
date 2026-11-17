@@ -540,7 +540,9 @@ public final class CaptionPipeline {
     public func start(settings: AppSettings) async {
         guard !phase.isListening, !phase.isTransitioning else { return }
         guard !isRecordingVoice else {
-            if phase == .idle { retryAfterRecording = HeldRetry(settings: settings, kind: .start) }
+            if phase == .idle || phase.failure != nil, retryAfterRecording == nil {
+                retryAfterRecording = HeldRetry(settings: settings, kind: .start)
+            }
             return
         }
         soundsOnlyAskedDuringCall = false
@@ -984,7 +986,11 @@ public final class CaptionPipeline {
         // buffered and then reloading the model. The recheck brings it
         // back once it answers.
         let instead = await insteadOfARefusingBuiltIn()
-        guard phase == .paused, !isRecordingVoice else { return }
+        guard phase == .paused else { return }
+        guard !isRecordingVoice else {
+            retryAfterRecording = HeldRetry(settings: settings, kind: .resume)
+            return
+        }
         if let instead {
             effective = instead
         } else {
@@ -1790,6 +1796,7 @@ public final class CaptionPipeline {
             retryAfterRecording = nil
             await restart(settings: settings)
         } else if wasRunning {
+            retryAfterRecording = nil
             await resume()
         } else if let held = retryAfterRecording {
             retryAfterRecording = nil
@@ -1797,7 +1804,11 @@ public final class CaptionPipeline {
             case .retry: await retry(settings: held.settings)
             case .resume: await resume(settings: held.settings)
             case .start:
-                if let settings = held.settings ?? activeSettings, phase == .idle { await start(settings: settings) }
+                if phase.failure != nil {
+                    await retry(settings: held.settings)
+                } else if let settings = held.settings ?? activeSettings, phase == .idle {
+                    await start(settings: settings)
+                }
             }
         } else if soundsOnlyChosen {
             await listenForSoundsOnly()
