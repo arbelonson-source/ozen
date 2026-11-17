@@ -2532,10 +2532,18 @@ public final class CaptionPipeline {
         let engine = cachedEngine(for: settings)
         var needsDownload = await engine.pendingDownloadMegabytes() != nil
         guard case .failed(let current) = phase, current == failure else { return }
-        if needsDownload, let home = await homeComputerCover(replacing: settings, after: failure) {
+        if needsDownload {
+            let home = await homeComputerCover(replacing: settings, after: failure)
             guard case .failed(let still) = phase, still == failure else { return }
-            settings = home
-            needsDownload = false
+            // The phone's model may have finished downloading during the
+            // check: it keeps its place first.
+            if let home, await engine.pendingDownloadMegabytes() != nil {
+                guard case .failed(let last) = phase, last == failure else { return }
+                settings = home
+                needsDownload = false
+            } else if home != nil {
+                needsDownload = false
+            }
         }
         // Read again after the check: a name added or a microphone picked
         // during it reached `activeSettings`, not the copy made before it.

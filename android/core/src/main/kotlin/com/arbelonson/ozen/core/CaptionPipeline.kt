@@ -2831,9 +2831,15 @@ class CaptionPipeline(
             if (needsDownload) {
                 val home = homeComputerCover(settings, failure)
                 val still = phase
+                if (still !is PipelinePhase.Failed || still.reason != failure) return
+                // The phone's model may have finished downloading during the
+                // check: it keeps its place first.
                 if (home != null) {
-                    if (still !is PipelinePhase.Failed || still.reason != failure) return
-                    settings = home
+                    if (!engine.hasModelOnPhone()) {
+                        val last = phase
+                        if (last !is PipelinePhase.Failed || last.reason != failure) return
+                        settings = home
+                    }
                     needsDownload = false
                 }
             }
