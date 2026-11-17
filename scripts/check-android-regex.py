@@ -5,7 +5,7 @@ import sys
 
 FLAG_NAME = "UNICODE_CHARACTER_CLASS"
 NAMED = re.compile(r"\b" + FLAG_NAME + r"\b")
-EMBEDDED = re.compile(r"\(\?[a-zA-Z]*U[a-zA-Z]*[:)]")
+EMBEDDED = re.compile(r"\(\?[a-zA-Z]*U[a-zA-Z]*(?:-[a-zA-Z]*)?[:)]")
 FLAG_CALL = re.compile(r"\b(compile|toPattern)\s*\(")
 NUMBER = re.compile(r"\b(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|[0-9][0-9_]*)[uUlL]*\b")
 FLAG_BIT = 0x100

@@ -48,6 +48,9 @@ class Caught(unittest.TestCase):
     def test_the_inline_flag_among_other_flags(self):
         self.assertEqual(lines('val p = Pattern.compile("(?iU:abc)")'), [1])
 
+    def test_the_inline_flag_turned_on_while_another_is_turned_off(self):
+        self.assertEqual(lines('Regex("(?U-i)a")\nRegex("(?iU-s:a)")'), [1, 2])
+
     def test_the_inline_flag_in_a_raw_string(self):
         self.assertEqual(lines('val p = """\n(?U)\\w+\n"""'), [2])
 
