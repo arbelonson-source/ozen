@@ -75,3 +75,42 @@ struct AudioStallWatchdogTests {
         #expect(fired == false)
     }
 }
+
+@Suite("Audio stall watchdog with a longer tick")
+struct AudioStallWatchdogLongTickTests {
+    @Test("four ticks of elapsed time count as four, and the stall is reported once, on the call that crosses the limit")
+    func countsElapsedTicks() {
+        var watchdog = AudioStallWatchdog(stallSeconds: 6)
+        var fired: [Bool] = []
+        for _ in 0..<9 {
+            fired.append(watchdog.tick(chunksReceived: 3, systemInterrupted: false, elapsedTicks: 4))
+        }
+        #expect(fired == [false, false, false, false, false, false, true, false, false])
+    }
+
+    @Test("switching between one-tick and four-tick calls mid-stall neither reports early nor misses the stall")
+    func mixedRhythm() {
+        var watchdog = AudioStallWatchdog(stallSeconds: 6)
+        _ = watchdog.tick(chunksReceived: 1, systemInterrupted: false, elapsedTicks: 4)
+        var quarterTicks = 0
+        var firedAt: Int?
+        let rhythm = [4, 4, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4]
+        for step in rhythm where firedAt == nil {
+            quarterTicks += step
+            if watchdog.tick(chunksReceived: 1, systemInterrupted: false, elapsedTicks: step) { firedAt = quarterTicks }
+        }
+        #expect(firedAt != nil)
+        #expect(firedAt! >= 24)
+        #expect(firedAt! < 24 + 4)
+    }
+
+    @Test("a call that covers no time never completes a stall, and elapsed time converts to whole ticks")
+    func zeroAndConversion() {
+        var watchdog = AudioStallWatchdog(stallSeconds: 0.5)
+        _ = watchdog.tick(chunksReceived: 1, systemInterrupted: false, elapsedTicks: 0)
+        #expect(watchdog.tick(chunksReceived: 1, systemInterrupted: false, elapsedTicks: 0) == false)
+        #expect(watchdog.ticks(forElapsed: 1.0) == 4)
+        #expect(watchdog.ticks(forElapsed: 0.49) == 1)
+        #expect(watchdog.ticks(forElapsed: -1) == 0)
+    }
+}

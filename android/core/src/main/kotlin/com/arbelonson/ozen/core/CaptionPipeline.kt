@@ -27,7 +27,9 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The live pipeline: microphone permission, audio session and input list,
@@ -581,6 +583,9 @@ class CaptionPipeline(
     private var soundsOnlySilence = AudioStallWatchdog(silenceSeconds = SOUNDS_ONLY_SILENCE_SECONDS)
 
     private var staleCommitTask: Job? = null
+    private val staleWake = Channel<Unit>(Channel.CONFLATED)
+    private var staleLoopIdle = false
+    internal var staleCheckObserver: ((Double) -> Unit)? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
     private var correctedUtterances = HashSet<UUID>()
 
@@ -1075,10 +1080,24 @@ class CaptionPipeline(
 
         staleCommitTask = scope.launch {
             while (isActive) {
-                delay((AudioStallWatchdog.TICK_SECONDS).seconds)
                 if (runID != run) return@launch
+                val idle = !stabilizer.hasOpenLine
+                val planned = if (idle) IDLE_CHECK_SECONDS else AudioStallWatchdog.TICK_SECONDS
+                staleCheckObserver?.invoke(planned)
+                val started = now()
+                staleWake.tryReceive()
+                staleLoopIdle = idle
+                val woken = if (idle) {
+                    withTimeoutOrNull(planned.seconds) { staleWake.receive() } != null
+                } else {
+                    delay(planned.seconds)
+                    false
+                }
+                staleLoopIdle = false
+                if (runID != run) return@launch
+                val elapsed = if (woken) minOf(planned, now() - started) else planned
                 commitStaleSegments()
-                checkAudioIsArriving()
+                checkAudioIsArriving(elapsed)
             }
         }
     }
@@ -2364,6 +2383,7 @@ class CaptionPipeline(
         noteFinished(segment, previously)
         upsert(segment)
         statsData.hasOpenLine = stabilizer.hasOpenLine
+        if (statsData.hasOpenLine && staleLoopIdle) staleWake.trySend(Unit)
         scanForKeywords(withHandFixes(segment))
     }
 
@@ -2708,9 +2728,13 @@ class CaptionPipeline(
      * visible failure, which automatic recovery answers with a fresh
      * audio engine: the same thing a manual stop and start would do.
      */
-    private fun checkAudioIsArriving() {
+    private fun checkAudioIsArriving(elapsedSeconds: Double = AudioStallWatchdog.TICK_SECONDS) {
         if (!phase.isListening) return
-        val stalled = audioWatchdog.tick(statsData.audioChunksReceived, systemInterrupted)
+        val stalled = audioWatchdog.tick(
+            statsData.audioChunksReceived,
+            systemInterrupted,
+            audioWatchdog.ticksForElapsed(elapsedSeconds),
+        )
         // Chunks that are all exact zeros (a Bluetooth or USB microphone
         // that is not routed, a blocked microphone on older Android) count
         // as arriving above, yet carry nothing; the recovery limits stop a
@@ -4128,6 +4152,7 @@ class CaptionPipeline(
     }
 
     companion object {
+        const val IDLE_CHECK_SECONDS = 1.0
         /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
         const val FALLBACK_AFTER_FAILURES = 2
         private const val EMBEDDING_WINDOW_SECONDS = 1.5

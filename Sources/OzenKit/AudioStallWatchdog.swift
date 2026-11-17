@@ -56,15 +56,21 @@ public struct AudioStallWatchdog: Sendable, Equatable {
     /// Returns `true` exactly once per stall, on the tick that completes it.
     /// While the system holds the audio session (a phone call) nothing is
     /// expected to arrive, so the count starts over.
-    public mutating func tick(chunksReceived: Int, systemInterrupted: Bool) -> Bool {
+    public mutating func tick(chunksReceived: Int, systemInterrupted: Bool, elapsedTicks: Int = 1) -> Bool {
         guard isEnabled else { return false }
         if systemInterrupted || chunksReceived != lastChunkCount {
             lastChunkCount = chunksReceived
             quietTicks = 0
             return false
         }
-        quietTicks += 1
-        return quietTicks == stallTicks
+        let before = quietTicks
+        quietTicks += max(0, elapsedTicks)
+        return before < stallTicks && quietTicks >= stallTicks
+    }
+
+    public func ticks(forElapsed seconds: Double) -> Int {
+        guard seconds > 0 else { return 0 }
+        return Int((seconds / tickSeconds + 1e-9).rounded(.down))
     }
 
     /// A new capture begins; nothing that happened before counts.

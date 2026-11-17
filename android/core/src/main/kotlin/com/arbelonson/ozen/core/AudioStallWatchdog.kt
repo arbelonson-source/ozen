@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
 
 class AudioStallWatchdog private constructor(
@@ -38,7 +39,10 @@ class AudioStallWatchdog private constructor(
 
     val stallSeconds: Double get() = stallTicks.toDouble() * TICK_SECONDS
 
-    fun tick(chunksReceived: Int, systemInterrupted: Boolean): Boolean {
+    fun ticksForElapsed(seconds: Double): Int =
+        if (seconds <= 0.0) 0 else floor(seconds / TICK_SECONDS + 1e-9).toInt()
+
+    fun tick(chunksReceived: Int, systemInterrupted: Boolean, elapsedTicks: Int = 1): Boolean {
         if (!isEnabled) return false
         if (systemInterrupted) silentSamples = 0
         if (systemInterrupted || chunksReceived != lastChunkCount) {
@@ -46,8 +50,9 @@ class AudioStallWatchdog private constructor(
             quietTicks = 0
             return false
         }
-        quietTicks += 1
-        return quietTicks == stallTicks
+        val before = quietTicks
+        quietTicks += max(0, elapsedTicks)
+        return before < stallTicks && quietTicks >= stallTicks
     }
 
     fun reset() {
