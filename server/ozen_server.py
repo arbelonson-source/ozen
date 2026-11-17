@@ -784,7 +784,7 @@ class Session:
         drop = len(self.buf) - int(self.backlog_target * RATE)
         if len(self.buf) <= int(self.max_backlog * RATE) or drop <= 0:
             return 0
-        self.buf = self.buf[drop:]
+        self.buf = self.buf[drop:].copy()
         self.offset += drop
         if self.last_speech_end is not None:
             self.last_speech_end = self.last_speech_end - drop if self.last_speech_end > drop else None

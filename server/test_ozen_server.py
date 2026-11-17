@@ -3037,6 +3037,7 @@ class Backlog(unittest.TestCase):
         self.assertEqual(skipped, self.seconds(100))
         self.assertEqual(len(session.buf), self.seconds(30))
         self.assertEqual(session.buf[0], self.seconds(100))
+        self.assertIsNone(session.buf.base)
         self.assertEqual(session.offset, self.seconds(100))
         self.assertEqual(session.last_speech_end, self.seconds(25))
         self.assertEqual(session.pauses, [self.seconds(10), self.seconds(20)])
