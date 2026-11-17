@@ -319,4 +319,19 @@ class ListeningCutTest {
         recorder.phaseChanged(PipelinePhase.Paused, recovering = false)
         assertNull(store.value)
     }
+
+    @Test
+    fun aRecordWithATimeBeyondTheCalendarIsTreatedAsMissing() {
+        for (alive in listOf("1e17", "1.0E17", "3.3e16", "9.9e307")) {
+            val raw = "listening 1700000000.0 $alive $VERSION"
+            val record = ListeningCut.parse(raw)
+            assertNull(record, raw)
+            assertNull(ListeningCut.notice(record, now = 1_700_000_100.0), raw)
+        }
+        val started = ListeningCut.parse("listening 1e17 1e17 $VERSION")
+        assertNull(started)
+        val fine = ListeningCut.parse("listening 1700000000.0 1700000500.0 $VERSION")
+        assertNotNull(fine)
+        java.time.Instant.ofEpochSecond(fine.aliveAt.toLong())
+    }
 }

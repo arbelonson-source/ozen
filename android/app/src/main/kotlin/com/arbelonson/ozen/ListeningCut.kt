@@ -8,6 +8,7 @@ import java.time.ZoneId
 object ListeningCut {
     const val LEAST_GAP_SECONDS = 120.0
     private const val TAG = "listening"
+    private const val LATEST_SECONDS = 32_503_680_000.0
 
     data class Record(val startedAt: Double, val aliveAt: Double, val version: Long)
 
@@ -35,6 +36,7 @@ object ListeningCut {
         val version = parts[3].toLongOrNull()
         if (started == null || alive == null || version == null) return null
         if (!started.isFinite() || !alive.isFinite() || started < 0 || alive < started) return null
+        if (alive > LATEST_SECONDS) return null
         return Record(started, alive, version)
     }
 

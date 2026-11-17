@@ -184,7 +184,7 @@ public struct ConversationStats: Sendable, Equatable {
         case .hebrew: break
         default: return genericMinutesText(seconds, in: Localization.language)
         }
-        let minutes = Int((seconds / 60).rounded())
+        let minutes = SafeWhole.int((seconds / 60).rounded())
         switch minutes {
         case ..<1: return "פחות מדקה"
         case 1: return "דקה אחת"
@@ -211,7 +211,7 @@ public struct ConversationStats: Sendable, Equatable {
     }
 
     private static func englishMinutesText(_ seconds: Double) -> String {
-        let minutes = Int((seconds / 60).rounded())
+        let minutes = SafeWhole.int((seconds / 60).rounded())
         if minutes < 1 { return "less than a minute" }
         if minutes < 60 { return "\(minutes) minute\(minutes == 1 ? "" : "s")" }
         let hours = minutes / 60
@@ -365,7 +365,7 @@ public struct ConversationStats: Sendable, Equatable {
     }
 
     public static func paceText(_ wordsPerMinute: Double) -> String {
-        tr("%1 לדקה", "%1 per minute", args: ["\(wordsText(Int(wordsPerMinute.rounded())))"])
+        tr("%1 לדקה", "%1 per minute", args: ["\(wordsText(SafeWhole.int(wordsPerMinute.rounded())))"])
     }
 
     private static func englishWordsText(_ count: Int) -> String {
@@ -381,7 +381,7 @@ public struct ConversationStats: Sendable, Equatable {
     private enum TimeUnit { case minute, hour }
 
     private static func genericMinutesText(_ seconds: Double, in language: UILanguage) -> String {
-        let minutes = Int((seconds / 60).rounded())
+        let minutes = SafeWhole.int((seconds / 60).rounded())
         if minutes < 1 { return TimeUnitWord.lessThanAMinute(in: language) }
         if minutes < 60 { return countedTime(minutes, unit: .minute, in: language) }
         let hours = minutes / 60
