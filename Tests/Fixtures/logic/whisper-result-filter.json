@@ -340,7 +340,7 @@
   {"expected": "Thanks for watching!", "input": "Thanks for watching!", "kind": "collapsingRepeats", "maxRepeats": 1},
   {"expected": "You.", "input": "You.", "kind": "collapsingRepeats", "maxRepeats": 3},
   {"expected": "You.", "input": "You.", "kind": "collapsingRepeats", "maxRepeats": 1},
-  {"expected": "five five five", "input": "five five five five five five five five five five five five", "kind": "collapsingRepeats", "maxRepeats": 3},
+  {"expected": "five five five five five five five five five five", "input": "five five five five five five five five five five five five", "kind": "collapsingRepeats", "maxRepeats": 3},
   {"expected": "five", "input": "five five five five five five five five five five five five", "kind": "collapsingRepeats", "maxRepeats": 1},
   {"expected": "no no no.", "input": "no no no no.", "kind": "collapsingRepeats", "maxRepeats": 3},
   {"expected": "no.", "input": "no no no no.", "kind": "collapsingRepeats", "maxRepeats": 1},
@@ -639,6 +639,15 @@
   {"kind": "acceptedText", "language": "he", "text": "תבואי תבואי תבואי תבואי תבואי מחר", "noSpeechProb": 0.3, "avgLogprob": -0.95, "compressionRatio": 1.5, "expected": "תבואי תבואי תבואי מחר"},
   {"kind": "acceptedText", "language": "en", "text": "תבואי תבואי תבואי תבואי תבואי מחר", "noSpeechProb": 0.3, "avgLogprob": -0.95, "compressionRatio": 1.5, "expected": "תבואי תבואי תבואי מחר"},
   {"kind": "acceptedText", "language": "he", "text": "תבואי תבואי תבואי תבואי תבואי מחר", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 2.6, "expected": "תבואי תבואי תבואי מחר"},
-  {"kind": "acceptedText", "language": "en", "text": "תבואי תבואי תבואי תבואי תבואי מחר", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 2.6, "expected": "תבואי תבואי תבואי מחר"}
+  {"kind": "acceptedText", "language": "en", "text": "תבואי תבואי תבואי תבואי תבואי מחר", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 2.6, "expected": "תבואי תבואי תבואי מחר"},
+  {"kind": "collapsingRepeats", "input": "zero five zero five five five five five", "maxRepeats": 3, "expected": "zero five zero five five five five five"},
+  {"kind": "collapsingRepeats", "input": "Call zero five zero, five five five five five five.", "maxRepeats": 3, "expected": "Call zero five zero, five five five five five five."},
+  {"kind": "collapsingRepeats", "input": "cero cinco cero cinco cinco cinco cinco cinco", "maxRepeats": 3, "expected": "cero cinco cero cinco cinco cinco cinco cinco"},
+  {"kind": "collapsingRepeats", "input": "zéro cinq zéro cinq cinq cinq cinq cinq", "maxRepeats": 3, "expected": "zéro cinq zéro cinq cinq cinq cinq cinq"},
+  {"kind": "collapsingRepeats", "input": "ноль пять ноль пять пять пять пять пять", "maxRepeats": 3, "expected": "ноль пять ноль пять пять пять пять пять"},
+  {"kind": "collapsingRepeats", "input": "zero five five five five five five five five five five five five", "maxRepeats": 3, "expected": "zero five five five five five five five five five five"},
+  {"kind": "collapsingRepeats", "input": "thank you thank you thank you thank you thank you", "maxRepeats": 3, "expected": "thank you thank you thank you"},
+  {"kind": "collapsingRepeats", "input": "um um um um um", "maxRepeats": 3, "expected": "um um um"},
+  {"kind": "collapsingRepeats", "input": "no no no no no no", "maxRepeats": 3, "expected": "no no no"}
  ]
 }

@@ -395,13 +395,15 @@ public struct WhisperResultFilter: Sendable, Equatable {
 
     /// Whether a word, already through `normalize`, is a number: written in
     /// digits (in any script; `normalize` turns the hyphen in "5-5" into a
-    /// space, so spaces are allowed) or a Hebrew counting word, with or without prefixes attached.
+    /// space, so spaces are allowed) or a counting word: Hebrew, with or without prefixes attached, or one
+    /// from any language with a word list (this has no language to go by).
     /// "hasheni" ("the second", "the other one") reads as "sheni" with a
     /// prefix, but it is an ordinal: repeated, it is a loop, not a count.
     private static func isSpokenNumber(_ key: String) -> Bool {
         guard !key.isEmpty else { return false }
         if key.allSatisfy({ $0.isNumber || $0 == " " }) { return true }
-        return NumberEmphasis.numberReading(of: key) != nil && !NumberEmphasis.otherOneWords.contains(key)
+        if NumberEmphasis.numberReading(of: key) != nil && !NumberEmphasis.otherOneWords.contains(key) { return true }
+        return key.split(separator: " ").allSatisfy { NumberWordProfile.isCountingWordInAnyLanguage(String($0)) }
     }
 
     /// Someone saying a sentence again with no pause, as people do for a

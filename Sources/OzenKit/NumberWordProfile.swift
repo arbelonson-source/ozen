@@ -109,6 +109,18 @@ struct NumberWordProfile: Decodable, Sendable {
 
     private static let byLanguage: [String: NumberWordProfile] = load()
 
+    /// Whether a word is a counting word in any language with a list. The
+    /// articles that are also the word for one ("un", "um", "ein") don't count:
+    /// said over and over they are a stutter, not a digit.
+    static func isCountingWordInAnyLanguage(_ word: String) -> Bool {
+        byLanguage.values.contains { profile in
+            let form = profile.normalize(word)
+            return profile.numbers.contains(form) && !articlesSaidAsOne.contains(form)
+        }
+    }
+
+    private static let articlesSaidAsOne: Set<String> = ["um", "uma", "un", "una", "une", "ein", "eine", "einen", "einem", "einer", "eines"]
+
     private static func load() -> [String: NumberWordProfile] {
         guard let url = Bundle.module.url(forResource: "NumberWords", withExtension: "json"),
               let data = try? Data(contentsOf: url),
