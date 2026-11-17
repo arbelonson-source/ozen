@@ -52,6 +52,7 @@ import logging
 import math
 import os
 import re
+import signal
 import time
 import unicodedata
 
@@ -703,6 +704,13 @@ class Session:
     max_utterance = 28.0
     cut_look_back = 2.0
     cut_frame = 0.05
+    # About four of the longest lines. A computer that keeps up has a second
+    # or two waiting; two minutes means it transcribes slower than real time
+    # and every caption is later than the last. Past the limit the oldest
+    # audio is dropped down to the target, a little over one longest line,
+    # so the next pass still gets a whole window of the newest speech.
+    max_backlog = 120.0
+    backlog_target = 30.0
 
     def __init__(self, ws, transcriber, language, vocabulary, live_interval, enhancer=None, beam=None):
         self.ws = ws
@@ -736,14 +744,22 @@ class Session:
         # How long after the pause ended each finished pass could start:
         # the audio that piled up past the pause while the GPU was busy.
         self.final_lag_seconds = []
+        self.skipped_samples = 0
 
-    def add_audio(self, pcm16: bytes):
+    def decode(self, pcm16: bytes):
         # A frame cut mid-sample (the phone always sends whole ones) loses
         # its odd byte, not the whole session.
         pcm16 = pcm16[:len(pcm16) - len(pcm16) % 2]
-        chunk = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
-        if self.enhancer is not None:
-            chunk = self.enhancer.process(chunk)
+        return np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
+
+    def clean(self, pcm16: bytes):
+        chunk = self.decode(pcm16)
+        return chunk if self.enhancer is None else self.enhancer.process(chunk)
+
+    def add_audio(self, pcm16: bytes):
+        self.add_chunk(self.clean(pcm16))
+
+    def add_chunk(self, chunk):
         # The phone sends whatever it has (Android 100 ms frames); the
         # detector reads DETECTOR_BLOCK samples at a time, carrying what
         # is left of a frame over to the next one. An odd-sized reading
@@ -759,6 +775,26 @@ class Session:
                 self.last_speech_end = start + i + DETECTOR_BLOCK
         self.unread = self.unread[whole:].copy()
         self.changed.set()
+
+    def skip_backlog(self):
+        """Drops the oldest unprocessed audio when more than max_backlog
+        seconds wait, keeping the newest backlog_target seconds. Only
+        between passes: a pass in progress holds indices into buf. Returns
+        the samples dropped."""
+        drop = len(self.buf) - int(self.backlog_target * RATE)
+        if len(self.buf) <= int(self.max_backlog * RATE) or drop <= 0:
+            return 0
+        self.buf = self.buf[drop:]
+        self.offset += drop
+        if self.last_speech_end is not None:
+            self.last_speech_end = self.last_speech_end - drop if self.last_speech_end > drop else None
+        self.pauses = [at - drop for at in self.pauses if at > drop]
+        self.samples_at_last_pass = 0
+        self.speech_end_at_last_pass = None
+        self.skipped_samples += drop
+        log.warning("the computer is slower than real time: skipped %.0f s of the oldest audio to catch up with the "
+                    "present (%.0f s skipped in this session so far)", drop / RATE, self.skipped_samples / RATE)
+        return drop
 
     def names(self):
         return front_terms(self.vocabulary, self.t.count_tokens, NAMES_TOKENS) if self.vocabulary else []
@@ -782,6 +818,7 @@ class Session:
             # Cleared before looking, so audio that lands between the look
             # and the wait still wakes it.
             self.changed.clear()
+            self.skip_backlog()
             total = len(self.buf)
             end_speech = self.last_speech_end
             if end_speech is None:
@@ -872,6 +909,8 @@ class Session:
         empty = f"{self.empty_finals} finished empty"
         if self.left_to_phone:
             empty += f", {self.left_to_phone} left to the phone's filter"
+        if self.skipped_samples:
+            empty += f", {self.skipped_samples / RATE:.0f} s skipped to catch up"
         if not self.final_seconds:
             return f"{minutes:.1f} min of audio, no lines, {empty}"
         median = sorted(self.final_seconds)[len(self.final_seconds) // 2]
@@ -1095,7 +1134,10 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
         worker.add_done_callback(worker_done)
         async for message in ws:
             if isinstance(message, bytes):
-                session.add_audio(message)
+                if session.enhancer is None:
+                    session.add_audio(message)
+                else:
+                    session.add_chunk(await asyncio.to_thread(session.clean, message))
                 continue
             try:
                 msg = json.loads(message)
@@ -1217,9 +1259,40 @@ def tls_context(folder):
     return lan_tls.server_context(folder)
 
 
+GOODBYE_SECONDS = 3.0
+
+
+async def track(ws, connections, handling):
+    connections.add(ws)
+    try:
+        await handling
+    finally:
+        connections.discard(ws)
+
+
+def stop_signals(loop, stop):
+    for name in ("SIGTERM", "SIGINT"):
+        try:
+            loop.add_signal_handler(getattr(signal, name), stop.set)
+        except (NotImplementedError, RuntimeError, AttributeError, ValueError):
+            pass
+
+
+async def say_goodbye(connections, listeners):
+    log.info("stopping: no new connections, closing %d open ones", len(connections))
+    closing = [asyncio.ensure_future(ws.close(code=1001, reason="going away")) for ws in list(connections)]
+    closing.append(asyncio.ensure_future(listeners.aclose()))
+    if closing:
+        await asyncio.wait(closing, timeout=GOODBYE_SECONDS)
+
+
 async def serve(args, transcriber, token, make_enhancer, general=None):
+    connections = set()
+    stop = asyncio.Event()
+    stop_signals(asyncio.get_running_loop(), stop)
+
     def connection(ws):
-        return handle(ws, transcriber, token, args.live_interval, make_enhancer, general)
+        return track(ws, connections, handle(ws, transcriber, token, args.live_interval, make_enhancer, general))
 
     async with contextlib.AsyncExitStack() as servers:
         await servers.enter_async_context(
@@ -1234,7 +1307,20 @@ async def serve(args, transcriber, token, make_enhancer, general=None):
             log.info("other languages than Hebrew use %s, loaded when such a phone connects and freed after %.0f idle "
                      "minutes", general.name, general.unload_after / 60)
         idle = [models for models in (transcriber, general) if isinstance(models, OnDemandTranscriber)]
-        await asyncio.gather(*(unload_when_idle(models) for models in idle)) if idle else await asyncio.Future()
+        work = asyncio.ensure_future(asyncio.gather(*(unload_when_idle(models) for models in idle)) if idle
+                                     else asyncio.Future())
+        stopper = asyncio.ensure_future(stop.wait())
+        try:
+            await asyncio.wait({work, stopper}, return_when=asyncio.FIRST_COMPLETED)
+            if not stopper.done():
+                work.result()
+                return
+            await say_goodbye(connections, servers.pop_all())
+        finally:
+            work.cancel()
+            stopper.cancel()
+        logging.shutdown()
+        os._exit(0)
 
 
 async def listen_encrypted(args, connection, servers):
