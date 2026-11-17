@@ -42,7 +42,7 @@ internal class OtherAppWait(
     }
 
     companion object {
-        val RETRY_SECONDS = listOf(0.0, 3.0, 10.0, 30.0)
+        val RETRY_SECONDS = listOf(0.0, 3.0, 10.0)
         const val HOLD_SECONDS = 5.0
     }
 }

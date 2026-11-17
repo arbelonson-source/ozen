@@ -49,7 +49,7 @@ class CaptionPipelineOtherAppRecordingTest {
 
         keepSilencingFor(pipeline, audio, 120)
 
-        assertTrue(audio.openings() <= 10, "opened ${audio.openings()} times in two minutes")
+        assertTrue(audio.openings() <= 16, "opened ${audio.openings()} times in two minutes")
     }
 
     @Test

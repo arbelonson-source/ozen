@@ -27,7 +27,7 @@ class OtherAppWaitTest {
             delays.add(wait.nextDelaySeconds())
             now += delays.last()
         }
-        assertEquals(listOf(3.0, 10.0, 30.0, 30.0, 30.0, 30.0), delays)
+        assertEquals(listOf(3.0, 10.0, 10.0, 10.0, 10.0, 10.0), delays)
     }
 
     @Test
