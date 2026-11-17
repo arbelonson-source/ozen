@@ -619,7 +619,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
             let plain = normalize(word)
             if isAddress(raw) || communityWords.contains(plain) { return true }
             if index == 0, leadingArticles.contains(plain) { return true }
-            if index > 0, nameConnectors.contains(plain) { return true }
+            if nameConnectors.contains(plain) { return true }
             guard let letter = word.first(where: \.isLetter) else { return word.contains(where: \.isNumber) }
             return !letter.isLowercase
         }

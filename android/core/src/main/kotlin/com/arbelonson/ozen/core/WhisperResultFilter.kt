@@ -803,7 +803,7 @@ class WhisperResultFilter(
                 val plain = normalize(word)
                 if (isAddress(raw) || plain in communityWords) return@all true
                 if (index == 0 && plain in leadingArticles) return@all true
-                if (index > 0 && plain in nameConnectors) return@all true
+                if (plain in nameConnectors) return@all true
                 val letter = word.codePoints().toArray().firstOrNull { Character.isLetter(it) }
                     ?: return@all word.codePoints().toArray().any { Character.isDigit(it) }
                 !Character.isLowerCase(letter)
