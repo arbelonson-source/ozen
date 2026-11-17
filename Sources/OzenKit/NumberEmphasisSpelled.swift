@@ -9,7 +9,7 @@ extension NumberEmphasis {
         }
         func startsSentence(at start: String.Index) -> Bool {
             guard let last = text[..<start].last(where: { !$0.isWhitespace || $0.isNewline }) else { return true }
-            return ".!?।…\n“‘«(\"".contains(last)
+            return ".!?।…\n“‘«\"".contains(last)
         }
         func wordEnd(_ index: Int) -> String.Index { words[index].coreRange?.upperBound ?? words[index].text.endIndex }
         func isNumber(_ index: Int) -> Bool { lowered[index].map(profile.numbers.contains) ?? false }

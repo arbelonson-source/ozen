@@ -1261,6 +1261,7 @@
   {"kind": "emphasized", "input": "एक दिन बाद लौटें", "language": "hi", "expected": ["एक दिन"]},
   {"kind": "emphasized", "input": "उसने कहा “एक दिन मैं आऊँगा”", "language": "hi", "expected": []},
   {"kind": "emphasized", "input": "एक दिन तक रुकिए", "language": "hi", "expected": ["एक दिन"]},
+  {"kind": "emphasized", "input": "दवा (एक दिन की खुराक) लीजिए", "language": "hi", "expected": ["एक दिन"]},
   {"kind": "listable", "input": "तीन गोलियाँ", "language": "hi", "expected": true},
    {"kind": "listable", "input": "एक आदमी", "language": "hi", "expected": false},
    {"kind": "emphasized", "input": "吃三片药", "language": "zh", "expected": ["三片"]},
