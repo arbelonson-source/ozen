@@ -492,7 +492,10 @@ class StuckPass(unittest.TestCase):
         self.assertEqual(t.pass_allowance(30, True), 360.0)
 
     def test_the_first_pass_of_each_kind_is_not_cut_by_the_short_floor(self):
-        t = self.machine(lambda *a: ("", None, []))
+        def ran(*a):
+            t.model_ran = True
+            return "", None, []
+        t = self.machine(ran)
         t.warmed = frozenset()
         self.assertEqual(t.pass_allowance(1, False), 600.0)
         self.assertEqual(t.pass_allowance(1, True), 1800.0)
@@ -520,6 +523,13 @@ class StuckPass(unittest.TestCase):
         with self.assertLogs(S.log, "CRITICAL"):
             asyncio.run(scenario())
         self.assertEqual(t.exits, [])
+
+    def test_a_pass_the_voice_gate_dropped_does_not_count_as_the_first_pass(self):
+        t = self.machine(lambda *a: ("", None, []))
+        t.warmed = frozenset()
+        self.ask(t, np.zeros(1600, dtype=np.float32))
+        self.assertEqual(t.warmed, frozenset())
+        self.assertEqual(t.pass_allowance(1, True), 1800.0)
 
     def test_a_hang_writes_the_time_so_the_next_hang_can_tell(self):
         release = threading.Event()

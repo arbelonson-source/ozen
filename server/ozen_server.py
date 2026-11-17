@@ -367,7 +367,7 @@ class Transcriber:
             # kept a broken card below the limit in a noisy room for good.
             if self.model_ran:
                 self.failures = 0
-            self.warmed = self.warmed | {final}
+                self.warmed = self.warmed | {final}
             return result
 
     def pass_allowance(self, seconds, final):
