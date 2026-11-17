@@ -113,6 +113,9 @@ final class TranscribeRecordingModel {
 
     func stopCaptions() async {
         guard case .ready = state, !stopInFlight else { return }
+        // The person took captions back (the hold is cleared): this tap
+        // hands them over afresh, like the first one.
+        if handover.pausedHere, !host.captionsHeldForRecording { handover.cancel() }
         let step = handover.begin(
             phase: host.captionsPhase,
             soundAlertsOn: host.soundAlertsOn,
