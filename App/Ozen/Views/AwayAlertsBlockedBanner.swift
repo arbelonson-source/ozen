@@ -43,6 +43,7 @@ struct AwayAlertsBlockedBanner: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
         .accessibilityAddTraits(.isButton)
+        .accessibilityHint(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings"))
         .onAppear { Announcement.post(spoken) }
         .accessibilityIdentifier("awayAlertsBlockedBanner")
     }

@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -213,7 +214,7 @@ internal fun SayScreen(
                             ) {
                                 Icon(Icons.Rounded.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text(phrase, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(phrase, maxLines = PhraseLines.limit(LocalDensity.current.fontScale), overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                             }
                             if (phrase !in phrases) {
                                 IconButton(onClick = { addNew(phrase) }, modifier = Modifier.semantics { contentDescription = tr("הוספה למשפטים המוכנים", "Add to quick phrases") }) {
