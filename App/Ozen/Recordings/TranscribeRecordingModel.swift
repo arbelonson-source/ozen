@@ -254,7 +254,6 @@ final class TranscribeRecordingModel {
                 Task { @MainActor in self?.apply(progress, run: runID) }
             }
         }
-        running = nil
         awake.release()
         switch result {
         case .finished(let lines, let endMissing):
@@ -270,10 +269,13 @@ final class TranscribeRecordingModel {
         }
         // Captions come back when the text is done, fails or is stopped, not
         // only when the screen closes. The speech model of the run is let go
-        // first, so captions never load theirs beside it.
+        // first, so captions never load theirs beside it. The run stays
+        // counted until captions are back, so Start cannot begin another
+        // one while they are still resuming.
         letCaptionsGo()
         await comeBack()
         host.setCaptionsHeldForRecording(false)
+        running = nil
     }
 
     private func apply(_ progress: FileTranscriptionDriver.Progress, run runID: UUID) {

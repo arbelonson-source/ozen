@@ -820,4 +820,24 @@ struct TranscribeRecordingModelTests {
         await screen.close()
         #expect(host.toggles == 2)
     }
+
+    @Test("Start cannot begin another run while captions are still resuming")
+    func noSecondRunWhileResuming() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = .listening
+        let transcriber = RecordingTranscriberFake { _, _ in .cancelled }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        await screen.stopCaptions()
+        host.duringToggle = {
+            host.duringToggle = nil
+            screen.start()
+        }
+        screen.start()
+        await screen.runFinished()
+        #expect(transcriber.requests.count == 1)
+        #expect(host.log.filter { $0 == "hold" }.count == 1)
+        await screen.close()
+    }
 }
