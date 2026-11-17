@@ -158,6 +158,9 @@ interface SavedConversations {
 
     fun delete(id: UUID)
 
+    /** The phone's own wording for a delete it refused, kept for a sent report and never shown on the screen. */
+    fun noteDeleteFailure(detail: String) {}
+
     /** Deletes every saved conversation, the one still being captioned too. */
     fun deleteAll()
 
@@ -241,14 +244,14 @@ fun HistoryScreen(
     var pendingRetentionValue by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingDeletionID by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmingDeleteAll by rememberSaveable { mutableStateOf(false) }
-    var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
+    var deleteFailed by rememberSaveable { mutableStateOf(false) }
     val pendingRetention = pendingRetentionValue?.let(HistoryRetention::fromRawValue)
     val pendingDeletion = pendingDeletionID?.let { id -> loaded?.summaries?.firstOrNull { it.id.toString() == id } }
-    val deletes = remember { HistoryDeletes() }
+    val deletes = remember { HistoryDeletes(log = conversations::noteDeleteFailure) }
     val deleting = { delete: () -> Unit ->
         scope.launch {
             val outcome = deletes.run(delete)
-            if (outcome is HistoryDeletes.Outcome.Failed) deleteError = outcome.message
+            if (outcome is HistoryDeletes.Outcome.Failed) deleteFailed = true
             if (outcome !is HistoryDeletes.Outcome.Ignored) reloads += 1
         }
         Unit
@@ -411,7 +414,7 @@ fun HistoryScreen(
             dismissButton = { TextButton(onClick = { confirmingDeleteAll = false }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
-    deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
+    if (deleteFailed) DeletionFailed(onClose = { deleteFailed = false })
 }
 
 private class HistoryList(
@@ -734,8 +737,8 @@ internal fun ConversationScreen(
         }
     }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
-    val deletes = remember { HistoryDeletes() }
-    var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
+    val deletes = remember { HistoryDeletes(log = conversations::noteDeleteFailure) }
+    var deleteFailed by rememberSaveable { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
     var fixingID by rememberSaveable { mutableStateOf<String?>(null) }
@@ -915,7 +918,7 @@ internal fun ConversationScreen(
                         scope.launch {
                             when (val outcome = deletes.run { conversations.delete(id) }) {
                                 HistoryDeletes.Outcome.Done -> onClose()
-                                is HistoryDeletes.Outcome.Failed -> deleteError = outcome.message
+                                HistoryDeletes.Outcome.Failed -> deleteFailed = true
                                 HistoryDeletes.Outcome.Ignored -> Unit
                             }
                         }
@@ -925,7 +928,7 @@ internal fun ConversationScreen(
             dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
-    deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
+    if (deleteFailed) DeletionFailed(onClose = { deleteFailed = false })
     if (starRefused) StarNotChanged(onClose = { starRefused = false })
     if (nameRefused) NotSavedToHistory(tr("השם לא נשמר", "The name wasn’t saved"), onClose = { nameRefused = false })
 }
@@ -946,16 +949,15 @@ internal fun NotSavedToHistory(title: String, onClose: () -> Unit) {
 }
 
 @Composable
-private fun DeletionFailed(error: String, onClose: () -> Unit) {
+private fun DeletionFailed(onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(tr("המחיקה נכשלה", "Deletion failed")) },
         text = {
             DialogText(
                 tr(
-                    "מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1",
-                    "What wasn’t deleted is still saved on the phone. You can try again.\n%1",
-                    listOf(error),
+                    "מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.",
+                    "What wasn’t deleted is still saved on the phone. You can try again.",
                 ),
             )
         },

@@ -137,10 +137,10 @@ class ModelDownloadService : Service() {
         }
 
         private fun channel(context: Context) {
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, tr("הורדת מודל", "Model download"), NotificationManager.IMPORTANCE_LOW),
-            )
+            context.getSystemService(NotificationManager::class.java).createNotificationChannel(downloadChannel())
         }
+
+        internal fun downloadChannel() = NotificationChannel(CHANNEL_ID, tr("הורדת מודל", "Model download"), NotificationManager.IMPORTANCE_LOW)
 
         private fun open(context: Context): PendingIntent =
             PendingIntent.getActivity(context, 2, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)

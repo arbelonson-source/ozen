@@ -340,7 +340,10 @@ class MainActivity : ComponentActivity() {
 
     /** Rebuilt so every screen is drawn again in it; Settings stays open through it (see onSaveInstanceState). */
     private fun chooseAppLanguage(language: AppLanguage) {
-        (application as OzenApplication).settings.change { it.appLanguage = language }
+        val app = application as OzenApplication
+        app.settings.change { it.appLanguage = language }
+        StartCaptionsRequest.applyAppLanguage(app.settings)
+        NotificationChannelNames.refresh(this)
         recreate()
     }
 

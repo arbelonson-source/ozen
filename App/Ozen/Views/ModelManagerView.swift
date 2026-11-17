@@ -20,7 +20,7 @@ struct ModelManagerView: View {
     /// A model still to download, picked while captions run: they stop
     /// until it has arrived, which can be minutes, so that is asked first.
     @State private var pendingSwitch: WhisperModelOption?
-    @State private var deleteError: String?
+    @State private var deleteFailed = false
     /// Downloads going on with no captions running, by variant.
     @State private var backgroundProgress: [String: Double] = [:]
     @State private var backgroundChecking: Set<String> = []
@@ -68,10 +68,10 @@ struct ModelManagerView: View {
             }
         }
         .asksBeforeSwitchingModel($pendingSwitch, viewModel: viewModel)
-        .alert(tr("המחיקה נכשלה", "Delete failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        .alert(tr("המחיקה נכשלה", "Delete failed"), isPresented: $deleteFailed) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {
-            Text(deleteError ?? "")
+            Text(tr("מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.", "What wasn’t deleted is still saved on the phone. You can try again."))
         }
     }
 
@@ -326,7 +326,8 @@ struct ModelManagerView: View {
             do {
                 try await store.delete(variant: option.variant)
             } catch {
-                deleteError = error.localizedDescription
+                viewModel.noteDeleteFailure(error)
+                deleteFailed = true
             }
             refresh()
         }
