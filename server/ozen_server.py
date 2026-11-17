@@ -314,6 +314,8 @@ class Transcriber:
     restart_pause_seconds = 600.0
     device = "cuda"
     warmed = frozenset()
+    stuck = None
+    stuck_watch = None
     hang_marker = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last-hang-restart")
 
     def __init__(self, model, device, compute_type, beam, context, final_model=None, speech_gate=0.0):
@@ -333,8 +335,16 @@ class Transcriber:
         self.failures_before_exit = 3
         self.model_ran = False
 
+    def refuse_while_stuck(self):
+        if self.stuck is not None and self.stuck.done():
+            self.stuck = None
+        if self.stuck is not None:
+            raise PassTooSlow("an earlier pass is still stuck on the model")
+
     async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        self.refuse_while_stuck()
         async with self.lock:
+            self.refuse_while_stuck()
             work = asyncio.ensure_future(asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam))
             limit = self.pass_allowance(len(audio) / RATE, final)
             deadline = time.monotonic() + limit
@@ -381,7 +391,24 @@ class Transcriber:
                 ago = time.time() - float(marker.read())
         except (OSError, ValueError):
             return False
-        return 0 <= ago < self.restart_pause_seconds
+        return -self.restart_pause_seconds < ago < self.restart_pause_seconds
+
+    def pause_left(self):
+        try:
+            with open(self.hang_marker) as marker:
+                ago = time.time() - float(marker.read())
+        except (OSError, ValueError):
+            return 0.0
+        if ago < 0:
+            return self.restart_pause_seconds
+        return min(max(self.restart_pause_seconds - ago, 0.0), self.restart_pause_seconds)
+
+    async def restart_if_still_stuck(self, work):
+        await asyncio.sleep(self.pause_left())
+        if not work.done():
+            log.critical("a pass is still stuck after the pause; exiting to restart")
+            self.note_hang_restart()
+            self.restart_process()
 
     def note_hang_restart(self):
         try:
@@ -399,6 +426,8 @@ class Transcriber:
                 log.critical("a pass has run for over its allowance, but the server restarted for a hang less than "
                              "%d minutes ago; NOT restarting again, failing this pass", self.restart_pause_seconds // 60)
                 work.add_done_callback(lambda finished: finished.cancelled() or finished.exception())
+                self.stuck = work
+                self.stuck_watch = asyncio.ensure_future(self.restart_if_still_stuck(work))
                 raise PassTooSlow("the pass ran over its allowance")
             # A stuck CUDA thread can't be stopped and keeps the card and
             # this lock for good, while pings still look healthy: restart

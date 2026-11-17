@@ -574,6 +574,114 @@ class StuckPass(unittest.TestCase):
             self.ask(t, np.zeros(1600, dtype=np.float32), release)
         self.assertEqual(t.exits, [3])
 
+    def stuck_machine(self, release, entered):
+        guard = threading.Lock()
+        def run(*a):
+            with guard:
+                entered["now"] += 1
+                entered["peak"] = max(entered["peak"], entered["now"])
+            try:
+                if entered["calls"] == 0:
+                    entered["calls"] = 1
+                    release.wait(2)
+                return "ok", None, []
+            finally:
+                with guard:
+                    entered["now"] -= 1
+        t = self.machine(run, floor=0.1, factor=0.0)
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time()))
+        return t
+
+    def test_while_a_pass_is_stuck_later_passes_fail_fast_and_never_enter_the_model(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            for _ in range(3):
+                with self.assertRaises(S.PassTooSlow):
+                    await asyncio.wait_for(t.transcribe(audio, "he", None, False), 0.2)
+            release.set()
+            await asyncio.sleep(0.2)
+            return await t.transcribe(audio, "he", None, True)
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.assertEqual(asyncio.run(scenario())[0], "ok")
+        self.assertEqual(entered["peak"], 1)
+        self.assertEqual(entered["calls"], 1)
+        self.assertEqual(t.exits, [])
+
+    def test_a_pass_waiting_for_the_lock_when_another_gets_stuck_fails_instead_of_running(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            first = asyncio.ensure_future(t.transcribe(audio, "he", None, True))
+            await asyncio.sleep(0.05)
+            second = asyncio.ensure_future(t.transcribe(audio, "he", None, True))
+            results = await asyncio.gather(first, second, return_exceptions=True)
+            release.set()
+            return results
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            results = asyncio.run(scenario())
+        self.assertTrue(all(isinstance(r, S.PassTooSlow) for r in results))
+        self.assertEqual(entered["peak"], 1)
+
+    def test_a_pass_still_stuck_after_the_pause_restarts_the_server(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        t.restart_pause_seconds = 0.6
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            before = list(t.exits)
+            await asyncio.sleep(0.6)
+            release.set()
+            return before
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            before = asyncio.run(scenario())
+        self.assertEqual(before, [])
+        self.assertEqual(t.exits, [3])
+
+    def test_a_pass_that_finishes_before_the_pause_ends_does_not_restart_the_server(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        t.restart_pause_seconds = 0.6
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            release.set()
+            await asyncio.sleep(0.8)
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            asyncio.run(scenario())
+        self.assertEqual(t.exits, [])
+
+    def test_a_marker_from_the_future_counts_as_recent_only_within_one_pause(self):
+        t = self.machine(lambda *a: ("", None, []))
+        for ahead, expected in ((100, True), (-100, True), (700, False), (-700, False)):
+            with open(t.hang_marker, "w") as marker:
+                marker.write(str(time.time() + ahead))
+            self.assertEqual(t.restarted_for_a_hang_lately(), expected, ahead)
+
     def test_the_real_restart_exits_with_code_3(self):
         t = S.Transcriber.__new__(S.Transcriber)
         exits = []
