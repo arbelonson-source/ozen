@@ -1137,6 +1137,9 @@ class CaptionPipeline(
      */
     val loadedModelCount: Int get() = engineCache.values.count { it.holdsModel }
 
+    /** How many kept engines are loading an on-phone model right now; one stopped meanwhile still holds it when done. */
+    val loadingModelCount: Int get() = engineCache.values.count { it.isLoadingModel }
+
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {
         if (!phase.isListening && !phase.isTransitioning) dropEngines()

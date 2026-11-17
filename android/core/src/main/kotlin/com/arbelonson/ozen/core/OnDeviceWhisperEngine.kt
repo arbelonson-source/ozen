@@ -72,6 +72,7 @@ class OnDeviceWhisperEngine(
     // finished into an engine nothing held any more, and its model stayed
     // in memory for good.
     private var lettings = 0
+    private var preparing = 0
     private var vocabulary: List<String> = emptyList()
     private var decodeProgress: ((position: Int, tokens: Int) -> Unit)? = null
     private var cellularDownloadAllowed = true
@@ -204,6 +205,15 @@ class OnDeviceWhisperEngine(
     override suspend fun diagnosticsSummary(): String? = synchronized(lock) { "$modelName: ${tally.summary}" }
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
+        synchronized(lock) { preparing += 1 }
+        try {
+            return prepareModel(languageCode, progress)
+        } finally {
+            synchronized(lock) { preparing -= 1 }
+        }
+    }
+
+    private suspend fun prepareModel(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
         val generation = synchronized(lock) {
             if (passes != null) return EngineAvailability.Available
             lettings
@@ -284,6 +294,8 @@ class OnDeviceWhisperEngine(
     }
 
     override val holdsModel: Boolean get() = synchronized(lock) { model != null }
+
+    override val isLoadingModel: Boolean get() = synchronized(lock) { preparing > 0 }
 
     override fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken> =
         tokenFlow { tokens -> streamLock.withLock { runStreaming(languageCode, audio, tokens) } }
