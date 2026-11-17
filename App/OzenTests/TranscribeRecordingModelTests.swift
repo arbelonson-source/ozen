@@ -458,6 +458,40 @@ struct TranscribeRecordingModelTests {
         #expect(!host.heldForRecording)
     }
 
+    @Test("a second Stop captions tap during the first stop does not cancel the comeback when leaving")
+    func doubleStopThenCloseComesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = {
+            host.duringStop = nil
+            await screen.stopCaptions()
+            await screen.close()
+        }
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("a later Stop captions tap after the person started captions again leaves their captions running")
+    func laterStopLeavesPersonsCaptions() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        await screen.stopCaptions()
+        host.heldForRecording = false
+        host.captionsPhase = loadingPhase
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.captionsPhase == loadingPhase)
+    }
+
     @Test("stopping captions from outside while sounds-only is being set up keeps them off")
     func stoppedDuringSoundsWaitStaysOff() async throws {
         let host = RecordingHostFake()

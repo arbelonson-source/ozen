@@ -112,7 +112,7 @@ final class TranscribeRecordingModel {
     }
 
     func stopCaptions() async {
-        guard case .ready = state else { return }
+        guard case .ready = state, !stopInFlight else { return }
         let step = handover.begin(
             phase: host.captionsPhase,
             soundAlertsOn: host.soundAlertsOn,
@@ -141,8 +141,6 @@ final class TranscribeRecordingModel {
             await host.stopCaptions()
             hold()
             if step == .stopKeepSounds { await host.keepSoundsListening() }
-        } else if host.captionsMayLoadModels {
-            await host.stopCaptions()
         }
         stopInFlight = false
         // The screen may have closed while the above was running: close()
