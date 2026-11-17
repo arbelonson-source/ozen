@@ -128,6 +128,26 @@ public final class LiveCaptionViewModel {
         AwayAlertsNotice.blocked(awayAlertsOn: notifyWhenInBackground, notificationsAllowed: !notificationsBlocked)
     }
 
+    @ObservationIgnored private var soundAlertsWarning = ProblemAnnouncement()
+    @ObservationIgnored private var awayAlertsWarning = ProblemAnnouncement()
+
+    /// True once per problem: a banner shown again for the same ongoing
+    /// problem is not read out again, one that clears and returns is.
+    public func claimSoundAlertsWarningAnnouncement() -> Bool {
+        soundAlertsWarning.observe(present: pipeline.soundAlertsNotWorking)
+        return soundAlertsWarning.claim()
+    }
+
+    public func claimAwayAlertsWarningAnnouncement() -> Bool {
+        awayAlertsWarning.observe(present: awayAlertsBlocked)
+        return awayAlertsWarning.claim()
+    }
+
+    private func observeWarnings() {
+        soundAlertsWarning.observe(present: pipeline.soundAlertsNotWorking)
+        awayAlertsWarning.observe(present: awayAlertsBlocked)
+    }
+
     /// Looks again at whether iOS shows Ozen's notifications.
     public func refreshNotificationsAllowed() {
         guard let notificationsAllowed else { return }
@@ -137,6 +157,7 @@ public final class LiveCaptionViewModel {
             let blocked = await notificationsAllowed() != true
             guard generation == notificationsRefreshGeneration else { return }
             notificationsBlocked = blocked
+            observeWarnings()
         }
     }
     /// Tells her when captions stop while the phone is put away.
@@ -722,6 +743,7 @@ public final class LiveCaptionViewModel {
     /// Posts or withdraws the "captions stopped" notification to match what
     /// the pipeline is doing now (see `StoppedCaptionsNotice`).
     private func checkCaptionsStillRunning() {
+        observeWarnings()
         if !BatteryAdvisor.watches(pipeline.phase, soundsOnly: pipeline.soundsOnlyShown) { batteryCleared() }
         let cause = StoppedCaptionsNotice.cause(
             phase: pipeline.phase,
@@ -844,6 +866,7 @@ public final class LiveCaptionViewModel {
         set {
             settings.notifyWhenInBackground = newValue
             backgroundAlerts.isEnabled = newValue
+            observeWarnings()
             persist()
         }
     }

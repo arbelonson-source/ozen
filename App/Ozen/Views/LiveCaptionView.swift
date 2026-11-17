@@ -343,11 +343,11 @@ struct LiveCaptionView: View {
             // the sounds heard just now (which last seconds), so at large
             // text it is never pushed below the visible part.
             if viewModel.pipeline.soundAlertsNotWorking {
-                SoundAlertsNotWorkingBanner()
+                SoundAlertsNotWorkingBanner(claim: viewModel.claimSoundAlertsWarningAnnouncement)
                     .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if viewModel.awayAlertsBlocked {
-                AwayAlertsBlockedBanner()
+                AwayAlertsBlockedBanner(claim: viewModel.claimAwayAlertsWarningAnnouncement)
                     .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let hit = visibleKeywordHit {

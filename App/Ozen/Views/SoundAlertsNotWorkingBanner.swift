@@ -2,6 +2,7 @@ import SwiftUI
 import OzenKit
 
 struct SoundAlertsNotWorkingBanner: View {
+    let claim: () -> Bool
     @ScaledMetric(relativeTo: .headline) private var iconSize: CGFloat = 26
 
     private var spoken: String {
@@ -30,7 +31,7 @@ struct SoundAlertsNotWorkingBanner: View {
         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
-        .onAppear { Announcement.post(spoken) }
+        .onAppear { if claim() { Announcement.post(spoken) } }
         .accessibilityIdentifier("soundAlertsNotWorkingBanner")
     }
 }
