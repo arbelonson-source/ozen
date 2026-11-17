@@ -1105,6 +1105,8 @@ class CaptionPipeline(
         recovery.reset()
         listeningSince = null
         soundsOnlyStoppedByItself = false
+        meanwhileRestartAttempts = 0
+        meanwhileRunningSince = null
         endFallback()
         dismissMicrophoneDrop()
         saveFitMeasurements()
@@ -1858,11 +1860,12 @@ class CaptionPipeline(
             return
         }
         meanwhileRestartAttempts += 1
+        val run = runID
         meanwhileRestartTask = scope.launch {
             delay(wait.seconds)
             meanwhileRestartTask = null
             val current = phase as? PipelinePhase.Failed ?: return@launch
-            if (isListeningForSoundsOnly || !meanwhileSoundsWanted(current.reason)) return@launch
+            if (runID != run || current.reason != failure || isListeningForSoundsOnly || !meanwhileSoundsWanted(current.reason)) return@launch
             listenForSoundsMeanwhile(current.reason)
             if (isListeningForSoundsOnly) {
                 meanwhileRunningSince = now()
@@ -4021,6 +4024,8 @@ class CaptionPipeline(
 
     private fun tearDownSession() {
         runID = UUID.randomUUID()
+        meanwhileRestartTask?.cancel()
+        meanwhileRestartTask = null
         statsData.soundDetectionRunning = false
         currentEngine = null
         recentSpeechCluster = null

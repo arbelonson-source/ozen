@@ -143,4 +143,30 @@ class CaptionPipelineUnexpectedErrorSoundsTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun `a new session starts with its own wait after the old one used some`() = runTest {
+        val (pipeline, detector, audio, scope) = waitingForRoom()
+        try {
+            pipeline.start(AppSettings.default)
+            assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+            for (millis in listOf(1_100L, 3_100L)) {
+                detector.fail(Crash("old session"))
+                testScheduler.runCurrent()
+                testScheduler.advanceTimeBy(millis)
+                testScheduler.runCurrent()
+            }
+            pipeline.stop()
+            pipeline.start(AppSettings.default)
+            assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+            val opened = audio.calls.count { it == "startCapture" }
+            detector.fail(Crash("new session"))
+            testScheduler.runCurrent()
+            testScheduler.advanceTimeBy(1_100)
+            testScheduler.runCurrent()
+            assertEquals(opened + 1, audio.calls.count { it == "startCapture" })
+        } finally {
+            scope.cancel()
+        }
+    }
 }
