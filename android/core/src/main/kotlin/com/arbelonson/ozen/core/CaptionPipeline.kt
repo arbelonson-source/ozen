@@ -1131,6 +1131,8 @@ class CaptionPipeline(
         recovery.reset()
         listeningSince = null
         soundsOnlyStoppedByItself = false
+        meanwhileRestartAttempts = 0
+        meanwhileRunningSince = null
         endFallback()
         dismissMicrophoneDrop()
         saveFitMeasurements()
@@ -1857,7 +1859,7 @@ class CaptionPipeline(
         logEvent(PipelineEvent.Kind.Note(text))
         val current = phase
         when {
-            current is PipelinePhase.Failed -> Unit
+            current is PipelinePhase.Failed -> restartMeanwhileSounds(current.reason)
             current == PipelinePhase.Idle || current == PipelinePhase.Paused -> if (soundsOnlyChosen) {
                 stopListeningForSounds()
                 retrySoundsOnly()
@@ -1875,6 +1877,59 @@ class CaptionPipeline(
         if (error is CancellationException) return
         logEvent(PipelineEvent.Kind.Note("unrelated error: ${error.javaClass.name}: ${error.message.orEmpty().take(UNEXPECTED_MESSAGE_LIMIT)}"))
     }
+
+
+    private var meanwhileRestartTask: Job? = null
+    private var meanwhileRestartAttempts = 0
+    private var meanwhileRunningSince: Double? = null
+
+    /**
+     * An unexpected error while captions are already failed leaves the
+     * failure and its notice as they are. But the sounds kept for the wait
+     * (see [listenForSoundsMeanwhile]) may have died with it, and a failure
+     * that needs a person has no retry that would open them again: sound
+     * alerts stayed off all night. They are opened again after the sound
+     * retries' back-off ([SOUNDS_ONLY_RETRY_SECONDS]). Once those run out
+     * [soundsOnlyStoppedByItself] is set, which is what the "sound alerts
+     * stopped" notice and banner are shown for; a new failure's fallback,
+     * a start, a stop or a choice of sounds alone clears it.
+     */
+    private fun restartMeanwhileSounds(failure: PipelineFailure) {
+        if (!meanwhileSoundsWanted(failure)) return
+        if (isListeningForSoundsOnly && soundTask?.isActive == true) return
+        if (meanwhileRestartTask?.isActive == true) return
+        val began = meanwhileRunningSince
+        meanwhileRunningSince = null
+        if (began != null && now() - began >= SOUNDS_ONLY_HEALTHY_SECONDS) meanwhileRestartAttempts = 0
+        val wait = SOUNDS_ONLY_RETRY_SECONDS.getOrNull(meanwhileRestartAttempts)
+        stopListeningForSounds()
+        if (wait == null) {
+            logEvent(PipelineEvent.Kind.Note("sounds while captions wait: they did not come back, sound alerts stopped"))
+            soundsOnlyStoppedByItself = true
+            onPhaseChange?.invoke(phase)
+            return
+        }
+        meanwhileRestartAttempts += 1
+        val run = runID
+        meanwhileRestartTask = scope.launch {
+            delay(wait.seconds)
+            meanwhileRestartTask = null
+            val current = phase as? PipelinePhase.Failed ?: return@launch
+            if (runID != run || current.reason != failure || isListeningForSoundsOnly || !meanwhileSoundsWanted(current.reason)) return@launch
+            listenForSoundsMeanwhile(current.reason)
+            if (isListeningForSoundsOnly) {
+                meanwhileRunningSince = now()
+                onPhaseChange?.invoke(phase)
+            } else {
+                restartMeanwhileSounds(current.reason)
+            }
+        }
+    }
+
+    private fun meanwhileSoundsWanted(failure: PipelineFailure): Boolean =
+        failure.kind == PipelineFailure.Kind.EngineUnavailable && !systemInterrupted && !isRecordingVoice &&
+            soundDetector != null && soundPolicy.preferences.isEnabled && !soundsOnlyChosen &&
+            (retryToken != null || homeServerRecheck != null || cloudRecheck != null || comesBackWithoutTimer(failure))
 
     private fun logEvent(kind: PipelineEvent.Kind) {
         val count = eventLog.events.size
@@ -3587,6 +3642,7 @@ class CaptionPipeline(
         if (failure.kind != PipelineFailure.Kind.EngineUnavailable || systemInterrupted || isRecordingVoice) return
         if (soundDetector == null || !soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
+        soundsOnlyStoppedByItself = false
         beginSoundsOnly(source)
     }
 
@@ -4024,6 +4080,8 @@ class CaptionPipeline(
 
     private fun tearDownSession() {
         runID = UUID.randomUUID()
+        meanwhileRestartTask?.cancel()
+        meanwhileRestartTask = null
         statsData.soundDetectionRunning = false
         currentEngine = null
         recentSpeechCluster = null

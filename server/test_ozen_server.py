@@ -403,11 +403,15 @@ class HungUpMidPass(unittest.TestCase):
 
 
 class StuckPass(unittest.TestCase):
-    def machine(self, run, floor=0.2, factor=10.0):
+    def machine(self, run, floor=0.2, factor=1.0):
         t = S.Transcriber.__new__(S.Transcriber)
         t.speech_gate, t.beam, t.context = 0.0, 5, False
         t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
         t.pass_floor_seconds, t.pass_audio_factor = floor, factor
+        t.warmed = frozenset({True, False})
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder, True)
+        t.hang_marker = os.path.join(folder, "last-hang-restart")
         t.exits = []
         t.restart_process = lambda: t.exits.append(3)
         t._run = run
@@ -463,6 +467,220 @@ class StuckPass(unittest.TestCase):
         t = self.machine(slow, floor=0.1, factor=0.5)
         self.assertEqual(self.ask(t, np.zeros(S.RATE * 4, dtype=np.float32))[0], "long")
         self.assertEqual(t.exits, [])
+
+    def test_a_finished_line_with_three_slow_attempts_is_not_restarted(self):
+        def three_attempts(*a):
+            time.sleep(0.5)
+            return "slow but working", None, []
+        t = self.machine(three_attempts, floor=0.2, factor=0.0)
+        self.assertEqual(self.ask(t, np.zeros(1600, dtype=np.float32))[0], "slow but working")
+        self.assertEqual(t.exits, [])
+
+    def test_a_live_pass_gets_one_attempt_of_allowance_not_three(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        self.assertEqual(t.pass_allowance(1, True), 180.0)
+        self.assertEqual(t.pass_allowance(1, False), 60.0)
+        self.assertEqual(t.pass_allowance(30, True), 360.0)
+
+    def test_a_processor_gets_thirty_times_the_audio_per_attempt(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        t.device = "cpu"
+        t.cpu_pass_audio_factor = 30.0
+        self.assertEqual(t.pass_allowance(30, True), 3 * 900.0)
+        self.assertEqual(t.pass_allowance(30, False), 900.0)
+        t.device = "cuda"
+        self.assertEqual(t.pass_allowance(30, True), 360.0)
+
+    def test_an_automatic_or_numbered_device_is_judged_by_whether_it_is_a_graphics_card(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        t.cpu_pass_audio_factor = 30.0
+        for device, expected in (("auto", 900.0), ("cpu", 900.0), ("cuda", 120.0), ("cuda:1", 120.0)):
+            t.device = device
+            self.assertEqual(t.pass_allowance(30, False), expected, device)
+
+    def test_the_first_pass_of_each_kind_is_not_cut_by_the_short_floor(self):
+        def ran(*a):
+            t.model_ran = True
+            return "", None, []
+        t = self.machine(ran)
+        t.warmed = frozenset()
+        self.assertEqual(t.pass_allowance(1, False), 600.0)
+        self.assertEqual(t.pass_allowance(1, True), 1800.0)
+        self.ask(t, np.zeros(1600, dtype=np.float32))
+        self.assertEqual(t.warmed, frozenset({True}))
+        self.assertEqual(t.pass_allowance(1, False), 600.0)
+
+    def test_a_phone_hanging_up_during_a_second_hang_still_ends_cancelled(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 120))
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            task = asyncio.ensure_future(t.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True))
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                with self.assertRaises(asyncio.CancelledError):
+                    await asyncio.wait_for(task, 3)
+            finally:
+                release.set()
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            asyncio.run(scenario())
+        self.assertEqual(t.exits, [])
+
+    def test_a_pass_the_voice_gate_dropped_does_not_count_as_the_first_pass(self):
+        t = self.machine(lambda *a: ("", None, []))
+        t.warmed = frozenset()
+        self.ask(t, np.zeros(1600, dtype=np.float32))
+        self.assertEqual(t.warmed, frozenset())
+        self.assertEqual(t.pass_allowance(1, True), 1800.0)
+
+    def test_a_hang_writes_the_time_so_the_next_hang_can_tell(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertLess(abs(time.time() - float(open(t.hang_marker).read())), 5)
+
+    def test_a_second_hang_within_ten_minutes_fails_the_pass_instead_of_restarting(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 120))
+        with self.assertLogs(S.log, "CRITICAL") as logged, self.assertRaises(S.PassTooSlow):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [])
+        self.assertEqual(t.failures, 0)
+        self.assertIn("NOT restarting", logged.output[0])
+
+    def test_a_hang_over_ten_minutes_after_the_last_restart_restarts_again(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time() - 700))
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [3])
+
+    def test_an_unreadable_marker_does_not_stop_a_restart(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with open(t.hang_marker, "w") as marker:
+            marker.write("not a time")
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [3])
+
+    def stuck_machine(self, release, entered):
+        guard = threading.Lock()
+        def run(*a):
+            with guard:
+                entered["now"] += 1
+                entered["peak"] = max(entered["peak"], entered["now"])
+            try:
+                if entered["calls"] == 0:
+                    entered["calls"] = 1
+                    release.wait(2)
+                return "ok", None, []
+            finally:
+                with guard:
+                    entered["now"] -= 1
+        t = self.machine(run, floor=0.1, factor=0.0)
+        with open(t.hang_marker, "w") as marker:
+            marker.write(str(time.time()))
+        return t
+
+    def test_while_a_pass_is_stuck_later_passes_fail_fast_and_never_enter_the_model(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            for _ in range(3):
+                with self.assertRaises(S.PassTooSlow):
+                    await asyncio.wait_for(t.transcribe(audio, "he", None, False), 0.2)
+            release.set()
+            await asyncio.sleep(0.2)
+            return await t.transcribe(audio, "he", None, True)
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.assertEqual(asyncio.run(scenario())[0], "ok")
+        self.assertEqual(entered["peak"], 1)
+        self.assertEqual(entered["calls"], 1)
+        self.assertEqual(t.exits, [])
+
+    def test_a_pass_waiting_for_the_lock_when_another_gets_stuck_fails_instead_of_running(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            first = asyncio.ensure_future(t.transcribe(audio, "he", None, True))
+            await asyncio.sleep(0.05)
+            second = asyncio.ensure_future(t.transcribe(audio, "he", None, True))
+            results = await asyncio.gather(first, second, return_exceptions=True)
+            release.set()
+            return results
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            results = asyncio.run(scenario())
+        self.assertTrue(all(isinstance(r, S.PassTooSlow) for r in results))
+        self.assertEqual(entered["peak"], 1)
+
+    def test_a_pass_still_stuck_after_the_pause_restarts_the_server(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        t.restart_pause_seconds = 0.6
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            before = list(t.exits)
+            await asyncio.sleep(0.6)
+            release.set()
+            return before
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            before = asyncio.run(scenario())
+        self.assertEqual(before, [])
+        self.assertEqual(t.exits, [3])
+
+    def test_a_pass_that_finishes_before_the_pause_ends_does_not_restart_the_server(self):
+        release = threading.Event()
+        entered = {"now": 0, "peak": 0, "calls": 0}
+        t = self.stuck_machine(release, entered)
+        t.restart_pause_seconds = 0.6
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            with self.assertRaises(S.PassTooSlow):
+                await t.transcribe(audio, "he", None, True)
+            release.set()
+            await asyncio.sleep(0.8)
+
+        with self.assertLogs(S.log, "CRITICAL"):
+            asyncio.run(scenario())
+        self.assertEqual(t.exits, [])
+
+    def test_a_marker_from_the_future_counts_as_recent_only_within_one_pause(self):
+        t = self.machine(lambda *a: ("", None, []))
+        for ahead, expected in ((100, True), (-100, True), (700, False), (-700, False)):
+            with open(t.hang_marker, "w") as marker:
+                marker.write(str(time.time() + ahead))
+            self.assertEqual(t.restarted_for_a_hang_lately(), expected, ahead)
 
     def test_the_real_restart_exits_with_code_3(self):
         t = S.Transcriber.__new__(S.Transcriber)
