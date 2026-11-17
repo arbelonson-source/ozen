@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -22,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AwayAlertsNotice
 import com.arbelonson.ozen.core.DisplayPreferences.Theme
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.TranscriptSessionSummary
@@ -188,5 +190,24 @@ class ScreenReaderCardsDeviceTest {
         } finally {
             app.settings.change { it.languageCode = before.languageCode; it.phoneModelFile = before.phoneModelFile }
         }
+    }
+
+    private fun tapLabelOf(banner: String): String? {
+        compose.waitForIdle()
+        val node = compose.onNode(androidx.compose.ui.test.hasText(banner, substring = true)).fetchSemanticsNode()
+        return node.config.getOrNull(SemanticsActions.OnClick)?.label
+    }
+
+    @Test
+    fun theEmergencyAlertsBannerTellsATalkBackUserWhereATapGoes() {
+        val warning = EmergencyChannelNotice.Warning.Off
+        show { EmergencyChannelBanner(warning, onOpenSettings = {}) }
+        assertEquals("Open the Emergency settings", tapLabelOf(EmergencyChannelNotice.title(warning)))
+    }
+
+    @Test
+    fun theAwayAlertsBannerTellsATalkBackUserWhereATapGoes() {
+        show { AwayAlertsBlockedBanner(onOpenSettings = {}) }
+        assertEquals("Open the phone’s settings", tapLabelOf(AwayAlertsNotice.title()))
     }
 }

@@ -193,7 +193,7 @@ internal fun EmergencyChannelBanner(warning: EmergencyChannelNotice.Warning, onO
         EmergencyChannelNotice.title(warning),
         EmergencyChannelNotice.detail(warning),
         Modifier
-            .clickable(role = Role.Button, onClick = onOpenSettings)
+            .clickable(onClickLabel = tr("פתחו את הגדרות החירום", "Open the Emergency settings"), role = Role.Button, onClick = onOpenSettings)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
@@ -207,7 +207,7 @@ internal fun AwayAlertsBlockedBanner(onOpenSettings: () -> Unit) {
         AwayAlertsNotice.title(),
         AwayAlertsNotice.detail(),
         Modifier
-            .clickable(role = Role.Button, onClick = onOpenSettings)
+            .clickable(onClickLabel = tr("פתיחת הגדרות הטלפון", "Open the phone’s settings"), role = Role.Button, onClick = onOpenSettings)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     )
 }
