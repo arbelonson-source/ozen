@@ -179,7 +179,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     @SuppressLint("MissingPermission")
     override fun startCapture(): Flow<FloatArray> = callbackFlow {
         stopCapture()
-        var seen = sourceVersion
+        val seen = sourceVersion
         val first = openSource()
         if (first == null) {
             close(IllegalStateException("the microphone could not be opened"))
@@ -190,33 +190,29 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         main.post { routingChanged() }
         running = true
         worker = thread(name = "ozen-microphone") {
-            val buffer = ShortArray(CHUNK)
-            var lost = false
-            var current = made
-            try {
-                while (running) {
-                    if (seen != sourceVersion) {
-                        seen = sourceVersion
-                        val next = openSource()
-                        if (next != null) {
-                            retire(current)
-                            current = next
-                            record = next
-                            main.post { routingChanged() }
-                        }
-                    }
-                    val read = readChunk(current, buffer)
-                    if (read < 0) {
-                        lost = true
-                        break
-                    }
-                    if (read == 0) continue
+            val loop = CaptureLoop(
+                first = made,
+                seen = seen,
+                version = { sourceVersion },
+                open = { openSource() },
+                read = { record, buffer -> readChunk(record, buffer) },
+                retire = { retire(it) },
+                adopted = {
+                    record = it
+                    main.post { routingChanged() }
+                },
+                heard = { buffer, read ->
                     val chunk = FloatArray(read) { buffer[it] / 32768f }
                     inputLevel = EnergyVoiceDetector.meterLevel(EnergyVoiceDetector.rms(chunk))
                     trySend(chunk)
-                }
+                },
+                running = { running },
+            )
+            var lost = false
+            try {
+                lost = loop.run()
             } finally {
-                retire(current)
+                retire(loop.current)
                 inputLevel = 0f
                 if (lost && running) main.post { onCaptureLost?.invoke() }
                 channel.close()
@@ -326,16 +322,27 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
             null
         } catch (error: UnsupportedOperationException) {
             null
+        } catch (error: IllegalStateException) {
+            null
         }
         if (made == null || made.state != AudioRecord.STATE_INITIALIZED) {
             made?.release()
-            if (phoneSound.active) main.post { projectionEnded() }
-            return null
+            return openFailed()
         }
-        if (!phoneSound.active) selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
-        made.startRecording()
-        made.addOnRoutingChangedListener(routingListener, main)
+        try {
+            if (!phoneSound.active) selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
+            made.startRecording()
+            made.addOnRoutingChangedListener(routingListener, main)
+        } catch (error: RuntimeException) {
+            retire(made)
+            return openFailed()
+        }
         return made
+    }
+
+    private fun openFailed(): AudioRecord? {
+        if (phoneSound.active) main.post { projectionEnded() }
+        return null
     }
 
     @SuppressLint("MissingPermission")
@@ -389,5 +396,72 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
             AudioDeviceInfo.TYPE_HEARING_AID -> AudioPortType.HearingAid
             else -> null
         }
+    }
+}
+
+/**
+ * The recording thread's loop, apart from the Android classes so it can be
+ * tested: reads chunks, swaps the recording when the source changes, and
+ * reports whether the capture was lost. A swap that fails (null or any
+ * exception) keeps the old recording, is not counted as done, and is tried
+ * again after a growing pause; after [MAX_SWAP_ATTEMPTS] failures the capture
+ * counts as lost, so the existing restart path opens everything afresh.
+ */
+internal class CaptureLoop<R : Any>(
+    first: R,
+    private var seen: Int,
+    private val version: () -> Int,
+    private val open: () -> R?,
+    private val read: (R, ShortArray) -> Int,
+    private val retire: (R) -> Unit,
+    private val adopted: (R) -> Unit,
+    private val heard: (ShortArray, Int) -> Unit,
+    private val running: () -> Boolean,
+    private val now: () -> Long = { System.nanoTime() / 1_000_000 },
+    private val pause: (Long) -> Unit = { Thread.sleep(it) },
+) {
+    var current: R = first
+        private set
+
+    /** Runs until stopped or lost; true when the capture was lost. */
+    fun run(): Boolean {
+        val buffer = ShortArray(AndroidAudioCapture.CHUNK)
+        var failures = 0
+        var retryAt = 0L
+        while (running()) {
+            val wanted = version()
+            if (wanted != seen && now() >= retryAt) {
+                val next = try {
+                    open()
+                } catch (error: Exception) {
+                    null
+                }
+                if (next != null) {
+                    seen = wanted
+                    failures = 0
+                    retire(current)
+                    current = next
+                    adopted(next)
+                } else if (++failures >= MAX_SWAP_ATTEMPTS) {
+                    return true
+                } else {
+                    retryAt = now() + SWAP_RETRY_MS * failures
+                }
+            }
+            val count = read(current, buffer)
+            if (count < 0) return true
+            if (count == 0) {
+                pause(EMPTY_READ_PAUSE_MS)
+                continue
+            }
+            heard(buffer, count)
+        }
+        return false
+    }
+
+    companion object {
+        const val MAX_SWAP_ATTEMPTS = 4
+        const val SWAP_RETRY_MS = 250L
+        const val EMPTY_READ_PAUSE_MS = 10L
     }
 }
