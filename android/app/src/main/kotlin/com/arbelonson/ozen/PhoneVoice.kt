@@ -164,9 +164,12 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         return made
     }
 
+    @Volatile internal var onReconnect: (() -> Unit)? = null
+
     private fun reconnect() {
         if (!resting) engine.shutdown()
         resting = false
+        onReconnect?.invoke()
         ready = false
         answered = false
         engine = connect()
