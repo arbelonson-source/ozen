@@ -2466,8 +2466,10 @@ class SettingsScreenDeviceTest {
     fun theNightPageNamesEmergencyAlertsTurnedOffAndPutsNotificationsTurnedOffAboveTheSteps() {
         val allowedBefore = AlertNotifier.allowed
         val alarmsBefore = AlertNotifier.alarmsAllowed
+        val postableBefore = AlertNotifier.alarmsPostable
         AlertNotifier.allowed = { false }
         AlertNotifier.alarmsAllowed = { false }
+        AlertNotifier.alarmsPostable = { false }
         AlertNotifier.alarmsOverrideDoNotDisturb = { false }
         app.settings.change {
             it.notifyWhenInBackground = true
@@ -2489,6 +2491,7 @@ class SettingsScreenDeviceTest {
         } finally {
             AlertNotifier.allowed = allowedBefore
             AlertNotifier.alarmsAllowed = alarmsBefore
+            AlertNotifier.alarmsPostable = postableBefore
         }
     }
 
