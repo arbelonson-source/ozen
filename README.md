@@ -410,6 +410,9 @@ Open a section for the details.
   a date, an hour or a digit said next to it is never dialed with it.
   Holding a line copies just that line, to paste a phone number or
   an address somewhere else.
+  Each conversation keeps the time zone it happened in, so times and days
+  stay right in History and in shared text after travelling. (Recordings
+  turned into text show positions in the file instead.)
   The list is grouped under "Today" (hayom), "Yesterday" (etmol), the
   weekday for the past week, and the date before that.
   The list reads a small summary per conversation, so it opens quickly
@@ -429,9 +432,16 @@ Open a section for the details.
   got, and it can be stopped. The text comes out as timed lines, saved to
   History under the file's name, and can be shared as text or as
   subtitles (.srt). Live captions and a recording can't use the model at
-  the same time: Ozen asks to stop the captions first, and they don't
-  start again by themselves until the recording is done. The recording
-  never leaves the phone.
+  the same time: Ozen asks to stop the captions first, and they come back
+  by themselves when the recording is done, unless you stopped, started or
+  paused them meanwhile. With sound alerts on, the phone
+  keeps listening for sounds meanwhile (the screen says "Captions are paused
+  while a recording is turned into text", and "Captions and sound alerts are
+  paused while a recording is turned into text" when it cannot listen). If
+  the end of a recording could not be read (or, on iPhone, the text stopped
+  on a problem), History and text shared from it say
+  "This transcript stops before the end of the recording, so some text is
+  missing." The recording never leaves the phone.
 - **Star what matters.** Hold a caption line to mark it as important
   (what the doctor said about the pills), copy it, or say who is talking.
   Stars are saved with the conversation, counted in the history list,

@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.util.TimeZone
 import java.util.UUID
 
 object FileTranscriptRecord {
@@ -28,6 +29,7 @@ object FileTranscriptRecord {
             languageCode = languageCode,
             fromRecording = true,
             cutShort = cutShort,
+            utcOffsetSeconds = TimeZone.getDefault().getOffset((startedAt * 1_000).toLong()) / 1_000,
         )
     }
 

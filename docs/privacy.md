@@ -55,8 +55,8 @@ on, and when it is on the sound goes to Apple.
 ### Saved conversations
 
 Each conversation is a small file with the words, who said each line (the
-name shown on screen), the times, which model or service wrote it, which
-microphone was used, any stars and the title you gave it. The files are
+name shown on screen), the times and the time zone they happened in, which model or service
+wrote it, which microphone was used, any stars and the title you gave it. The files are
 locked by the phone after a restart until the first unlock.
 
 **Save conversations** (shmirat shichot) in **History** (historia) turns saving
