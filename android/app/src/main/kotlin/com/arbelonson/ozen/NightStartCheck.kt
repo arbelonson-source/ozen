@@ -35,6 +35,12 @@ import com.arbelonson.ozen.ui.OzenSpacing
  * Emergency channel being off or silent. Listening starts whatever it finds.
  */
 object NightStartCheck {
+    /** Sounds only the person chose; the same listening held for a recording being turned into text is not a night start. */
+    fun isNightStart(soundsOnly: Boolean, pausedForRecording: Boolean): Boolean = soundsOnly && !pausedForRecording
+
+    /** Kept for the whole app: whether this night's check has run, whichever screen was open when sounds only began. */
+    internal val latch = NightCheckLatch()
+
     enum class Problem { Battery, NotificationsOff, EmergencyOff, EmergencySilent, EmergencyNoBuzz, DoNotDisturb }
 
     fun problems(batteryExempt: Boolean, dndThrough: Boolean, alarmsAllowed: Boolean, alarmsPostable: Boolean, notificationsAllowed: Boolean = true, alarmsBuzz: Boolean = true): List<Problem> = buildList {
@@ -97,17 +103,15 @@ object NightStartCheck {
 @Composable
 internal fun NightStartCard(soundsOnly: Boolean) {
     val context = LocalContext.current
-    var wasOn by rememberSaveable { mutableStateOf(soundsOnly) }
     var shownText by rememberSaveable { mutableStateOf("") }
     var dismissedText by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(soundsOnly) {
-        if (soundsOnly && !wasOn) {
+        if (soundsOnly && NightStartCheck.latch.claim()) {
             val found = NightStartCheck.check(context)
             if (found.isEmpty()) dismissedText = ""
             shownText = NightStartCheck.encode(NightStartCheck.toShow(found, NightStartCheck.decode(dismissedText).toSet()))
         }
         if (!soundsOnly) shownText = ""
-        wasOn = soundsOnly
     }
     LifecycleResumeEffect(Unit) {
         val found = NightStartCheck.check(context)
