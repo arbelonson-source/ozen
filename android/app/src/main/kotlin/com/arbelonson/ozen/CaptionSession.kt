@@ -995,7 +995,7 @@ class CaptionSession(
             StoppedCaptionsNotice.cause(
                 pipeline.phase,
                 pipeline.isRecoveringByItself,
-                interruptedBySystem,
+                interruptedBySystem || pipeline.isWaitingOnOtherApp,
                 callEndedDuringInterruption = false,
                 soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself,
                 interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,

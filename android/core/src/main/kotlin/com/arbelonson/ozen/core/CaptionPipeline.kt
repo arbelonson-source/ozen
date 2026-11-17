@@ -576,6 +576,11 @@ class CaptionPipeline(
         private set
 
     private var soundsOnlyAttempts = 0
+    private val otherAppWait = OtherAppWait()
+    private var otherAppHoldTask: Job? = null
+
+    /** Another app has held the microphone since sound alerts last heard it; the notice's minute runs through the retries. */
+    val isWaitingOnOtherApp: Boolean get() = soundsOnlyChosen && otherAppWait.waiting
     private var soundsOnlySince: Double? = null
     private var soundsOnlyRetryTask: Job? = null
     private var soundsOnlyWatch: Job? = null
@@ -3514,11 +3519,18 @@ class CaptionPipeline(
      * released a failed pipeline gets a fresh set of attempts.
      */
     fun systemInterruptionChanged(active: Boolean) {
+        val quiet = soundsOnlyChosen
         if (active != systemInterrupted) {
-            logEvent(PipelineEvent.Kind.PhoneCall(active))
+            if (active) {
+                if (!quiet || otherAppWait.interrupted(now())) logEvent(PipelineEvent.Kind.PhoneCall(true))
+            } else if (!quiet) {
+                otherAppWait.reset()
+                logEvent(PipelineEvent.Kind.PhoneCall(false))
+            }
         }
         systemInterrupted = active
         if (active) {
+            otherAppHoldTask?.cancel()
             cancelScheduledRetry()
             cancelSoundsOnlyRetry()
             stopListeningForSounds()
@@ -3532,8 +3544,16 @@ class CaptionPipeline(
                 return
             }
             if (soundsOnlyChosen) {
-                soundsOnlyAttempts = 0
-                scope.launch { resumeSoundsOnly() }
+                if (otherAppWait.attempts == 0) soundsOnlyAttempts = 0
+                val delaySeconds = otherAppWait.nextDelaySeconds()
+                cancelSoundsOnlyRetry()
+                soundsOnlyRetryTask = scope.launch {
+                    if (delaySeconds > 0) delay(delaySeconds.seconds)
+                    soundsOnlyRetryTask = null
+                    otherAppWait.resumed(now())
+                    resumeSoundsOnly()
+                    watchOtherAppHold()
+                }
                 return
             }
             val failure = phase.failure ?: return
@@ -3677,6 +3697,7 @@ class CaptionPipeline(
         soundsOnlyChosen = true
         soundsOnlyStoppedByItself = false
         soundsOnlyAttempts = 0
+        otherAppWait.reset()
         if (wasListening) {
             listeningSince = null
             phase = PipelinePhase.Paused
@@ -3866,6 +3887,17 @@ class CaptionPipeline(
             delay(wait.seconds)
             soundsOnlyRetryTask = null
             resumeSoundsOnly()
+        }
+    }
+
+    private fun watchOtherAppHold() {
+        otherAppHoldTask?.cancel()
+        otherAppHoldTask = scope.launch {
+            delay((OtherAppWait.HOLD_SECONDS + 0.5).seconds)
+            if (systemInterrupted || !isListeningForSoundsOnly || !otherAppWait.held(now())) return@launch
+            soundsOnlyAttempts = 0
+            logEvent(PipelineEvent.Kind.PhoneCall(false))
+            onPhaseChange?.invoke(phase)
         }
     }
 
