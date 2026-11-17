@@ -627,7 +627,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     utteranceID: utteranceID,
                     text: shown,
                     isFinal: isFinal,
-                    timestamp: isFinal && previewsSkipped && lastShownText.isEmpty ? decidedAt - max(0, Double(total - (status.firstSpeechStart ?? total)) / sampleRate - InferenceCadence.firstPassSpeechSeconds) : Date().timeIntervalSince1970,
+                    timestamp: isFinal && (previewsSkipped || !previewsWanted) && lastShownText.isEmpty ? decidedAt - max(0, Double(total - (status.firstSpeechStart ?? total)) / sampleRate - InferenceCadence.firstPassSpeechSeconds) : Date().timeIntervalSince1970,
                     confidence: shownConfidence,
                     uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
                     voicedChunks: text.isEmpty ? nil : voicedChunks,

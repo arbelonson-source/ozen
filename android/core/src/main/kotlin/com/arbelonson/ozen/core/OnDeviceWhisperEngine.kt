@@ -462,11 +462,12 @@ class OnDeviceWhisperEngine(
             val speechSoFar = speechEnd - (status.firstSpeechStart ?: speechEnd)
             val enoughSpeech = speechSoFar >= firstPassSpeechSamples
             val previewDue = enoughNewAudio && enoughSpeech
+            val previewsWanted = LivePreviews.wanted(kind, previewDemand())
             // Nobody can see or hear the live line (app away, no lock screen
             // captions, no alert words): only the finished line is worth a
             // model run. Asked again every turn, so the first preview is due
             // at once when that changes (see `LivePreviews`).
-            if (!isFinal && !(previewDue && LivePreviews.wanted(kind, previewDemand()))) {
+            if (!isFinal && !(previewDue && previewsWanted)) {
                 if (previewDue) previewsSkipped = true
                 delay(50)
                 continue
@@ -640,7 +641,7 @@ class OnDeviceWhisperEngine(
                         utteranceID = utteranceID,
                         text = shown,
                         isFinal = isFinal,
-                        timestamp = if (isFinal && previewsSkipped && lastShownText.isEmpty()) decidedAt - maxOf(0.0, (total - (status.firstSpeechStart ?: total)).toDouble() / sampleRate - firstPassSpeechSeconds) else wallClockSeconds(),
+                        timestamp = if (isFinal && (previewsSkipped || !previewsWanted) && lastShownText.isEmpty()) decidedAt - maxOf(0.0, (total - (status.firstSpeechStart ?: total)).toDouble() / sampleRate - firstPassSpeechSeconds) else wallClockSeconds(),
                         confidence = shownConfidence,
                         uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
                         voicedChunks = if (text.isEmpty()) null else voicedChunks,
