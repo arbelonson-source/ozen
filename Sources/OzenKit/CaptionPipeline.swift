@@ -377,6 +377,9 @@ public final class CaptionPipeline {
     public private(set) var soundsOnlyStoppedByItself = false
     /// How long each wait for a stopped microphone is; a test makes it instant.
     public var soundsOnlyRetryWait: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }
+    /// How the stall watch in sounds-only waits between checks; a test records
+    /// the steps and makes them instant.
+    public var soundsOnlyWatchSleep: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }
     private var staleCommitTask: Task<Void, Never>?
     private var soundsOnlyWatchTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
@@ -3250,7 +3253,9 @@ public final class CaptionPipeline {
         }
     }
 
-    /// The same stall watch captions have. Nothing else listens in
+    /// The same stall watch captions have, checking every two seconds instead
+    /// of four times a second (the phone is awake all night for it; the time
+    /// to notice a dead microphone stays the same). Nothing else listens in
     /// sounds-only, and the microphone can die without a word (the audio
     /// system starting over, a headset gone): a night of sound alerts then
     /// went on "listening" to nothing. A stall takes the path of a lost
@@ -3260,11 +3265,13 @@ public final class CaptionPipeline {
     /// not the microphone, so it is not the one to use here.
     private func watchForSilentMicrophone(counting arrivals: ArrivalCounter, run: UUID) {
         soundsOnlyWatchTask?.cancel()
-        var watchdog = audioWatchdog
+        var watchdog = audioWatchdog.checking(everySeconds: AudioStallWatchdog.soundsOnlyTickSeconds)
         watchdog.reset()
+        let tick = watchdog.tickSeconds
+        let sleep = soundsOnlyWatchSleep
         soundsOnlyWatchTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(AudioStallWatchdog.tickSeconds))
+                await sleep(tick)
                 guard let self, !Task.isCancelled, self.runID == run, self.isListeningForSoundsOnly else { return }
                 if watchdog.tick(chunksReceived: arrivals.value, systemInterrupted: self.systemInterrupted || self.audio.isRecoveringSession) {
                     self.soundsOnlyCaptureLost(run: run)

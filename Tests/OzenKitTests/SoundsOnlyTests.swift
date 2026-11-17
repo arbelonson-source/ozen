@@ -27,6 +27,13 @@ private func makeSoundsPipeline(
     )
 }
 
+private final class WatchSteps: @unchecked Sendable {
+    private let lock = NSLock()
+    private var list: [(seconds: TimeInterval, stallsSoFar: Int)] = []
+    var values: [(seconds: TimeInterval, stallsSoFar: Int)] { lock.withLock { list } }
+    func add(_ seconds: TimeInterval, _ stalls: Int) { lock.withLock { list.append((seconds, stalls)) } }
+}
+
 private final class WaitLog: @unchecked Sendable {
     private let lock = NSLock()
     private var list: [TimeInterval] = []
@@ -279,6 +286,27 @@ struct SoundsOnlyTests {
         #expect(await eventually { pipeline.stats.audioStalls == 1 })
         #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == before + 1 })
         #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("sounds-only checks the microphone every 2 seconds, and a dead one is still noticed at the same 6 second limit", .timeLimit(.minutes(1)))
+    func watchChecksSlowlyButNoticesInTime() async {
+        let audio = FakeAudioCapturer()
+        let pipeline = makeSoundsPipeline(audio: audio, audioWatchdog: AudioStallWatchdog(stallSeconds: 6), now: { 1_000 })
+        let steps = WatchSteps()
+        pipeline.soundsOnlyWatchSleep = { [weak pipeline] seconds in
+            let stalls = await MainActor.run { pipeline?.stats.audioStalls ?? 0 }
+            steps.add(seconds, stalls)
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+
+        #expect(await eventually { pipeline.stats.audioStalls == 1 })
+        let beforeStall = steps.values.filter { $0.stallsSoFar == 0 }
+        #expect(beforeStall.allSatisfy { $0.seconds == 2 })
+        let noticedAfter = beforeStall.reduce(0) { $0 + $1.seconds }
+        #expect(noticedAfter >= 6)
+        #expect(noticedAfter <= 6 + 2)
     }
 
     @Test("silences that keep coming end sounds-only after the backed-off retries, so the screen stops saying it is on", .timeLimit(.minutes(1)))

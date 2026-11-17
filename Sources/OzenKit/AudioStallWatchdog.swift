@@ -14,26 +14,43 @@
 public struct AudioStallWatchdog: Sendable, Equatable {
     /// How often the pipeline calls `tick`.
     public static let tickSeconds = 0.25
+    /// The slower check sounds-only uses all night.
+    public static let soundsOnlyTickSeconds = 2.0
 
     public let isEnabled: Bool
+    /// Seconds between the calls to `tick` this watchdog counts in.
+    public let tickSeconds: Double
     /// Consecutive ticks without a new chunk that count as a stall.
     public let stallTicks: Int
     private var lastChunkCount: Int?
     private var quietTicks = 0
 
     public init(stallSeconds: Double = 6) {
+        self.init(stallSeconds: stallSeconds, tickSeconds: Self.tickSeconds)
+    }
+
+    private init(stallSeconds: Double, tickSeconds: Double) {
         isEnabled = true
-        stallTicks = max(1, Int((stallSeconds / Self.tickSeconds).rounded(.up)))
+        self.tickSeconds = tickSeconds
+        stallTicks = max(1, Int((stallSeconds / tickSeconds).rounded(.up)))
     }
 
     private init(disabled: Void) {
         isEnabled = false
+        tickSeconds = Self.tickSeconds
         stallTicks = .max
     }
 
     public static let disabled = AudioStallWatchdog(disabled: ())
 
-    public var stallSeconds: Double { Double(stallTicks) * Self.tickSeconds }
+    public var stallSeconds: Double { Double(stallTicks) * tickSeconds }
+
+    /// The same stall limit in seconds, counted in ticks of another length.
+    /// The limit never shrinks, and grows by less than one tick.
+    public func checking(everySeconds seconds: Double) -> AudioStallWatchdog {
+        guard isEnabled else { return self }
+        return AudioStallWatchdog(stallSeconds: stallSeconds, tickSeconds: seconds)
+    }
 
     /// Call once per timer tick with the running count of chunks received.
     /// Returns `true` exactly once per stall, on the tick that completes it.
