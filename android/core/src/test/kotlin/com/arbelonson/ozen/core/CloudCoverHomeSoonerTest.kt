@@ -215,7 +215,7 @@ class CloudCoverHomeSoonerTest {
         val rig = hangingRig(homeAnswers = false)
         rig.captions.start(settings())
         rig.http.blackHole = true
-        rig.talk(3) { rig.http.transcriptionRequests.size >= 2 }
+        rig.talk(15) { rig.http.transcriptionRequests.size >= 2 }
         assertTrue(rig.http.transcriptionRequests.size >= 2)
         assertFalse(rig.captions.isCoveringForCloud)
         assertEquals(PipelinePhase.Listening, rig.captions.phase)

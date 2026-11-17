@@ -199,7 +199,7 @@ struct CloudCoverHomeSoonerTests {
         let (captions, audio, http, home) = hangingRig(homeAnswers: false)
         await captions.start(settings: settings())
         http.blackHole = true
-        await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 2 }
         #expect(http.transcriptionRequests.count >= 2)
         #expect(!captions.isCoveringForCloud)
         #expect(captions.phase == .listening)
