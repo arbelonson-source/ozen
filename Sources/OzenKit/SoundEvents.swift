@@ -116,6 +116,23 @@ public enum SoundEventCatalog {
         "beep", "knock", "microwave_oven", "vacuum_cleaner",
     ]
 
+    /// Labels one physical sound is often scored under at once, beyond the
+    /// ones that already share a cooldown: a smoke alarm also reads as an
+    /// alarm clock or a beep, one siren as another kind of siren.
+    static let lookalikeGroups: [Set<String>] = [
+        ["smoke_detector", "alarm_clock", "beep"],
+        ["civil_defense_siren", "siren", "ambulance_siren", "police_siren", "fire_engine_siren"],
+        ["telephone_bell_ringing", "ringtone", "telephone"],
+    ]
+
+    /// Whether two labels may be one physical sound: the same sound, or a
+    /// known lookalike pair. Anything else heard together is two sounds.
+    public static func mayBeSameSound(_ first: String, _ second: String) -> Bool {
+        if first == second { return true }
+        if let key = event(for: first)?.cooldownKey, key == event(for: second)?.cooldownKey { return true }
+        return lookalikeGroups.contains { $0.contains(first) && $0.contains(second) }
+    }
+
     /// One entry per sound, for the Settings list: two labels for one
     /// sound are switched together, and in Hebrew they read the same, so
     /// they were two identical rows. The first label stands for both.

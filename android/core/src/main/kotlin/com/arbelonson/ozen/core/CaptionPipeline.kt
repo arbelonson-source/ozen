@@ -1529,10 +1529,12 @@ class CaptionPipeline(
         val alert = soundPolicy.evaluate(observation) ?: return
         soundAlerts = soundAlerts + alert
         // A reading comes most important first, then surest: a later label
-        // of it as urgent as the first is still the less likely one.
+        // of it as urgent as the first is still the less likely one, but
+        // only when it can be the same sound; another sound is its own alert.
         val shownNow = screenSoundAlert
         val weakerInSameReading = shownNow != null &&
-            shownNow.timestamp == alert.timestamp && shownNow.event.importance >= alert.event.importance
+            shownNow.timestamp == alert.timestamp && shownNow.event.importance >= alert.event.importance &&
+            SoundEventCatalog.mayBeSameSound(shownNow.event.identifier, alert.event.identifier)
         if (!weakerInSameReading) {
             if (alert.takesBanner(currentBannerSoundAlert)) {
                 bannerSoundAlert = alert

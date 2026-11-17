@@ -1211,8 +1211,12 @@ public final class CaptionPipeline {
         guard let alert = soundPolicy.evaluate(observation) else { return }
         soundAlerts.append(alert)
         // A reading comes most important first, then surest: a later label
-        // of it as urgent as the first is still the less likely one.
-        let weakerInSameReading = screenSoundAlert.map { $0.timestamp == alert.timestamp && $0.event.importance >= alert.event.importance } ?? false
+        // of it as urgent as the first is still the less likely one, but
+        // only when it can be the same sound; another sound is its own alert.
+        let weakerInSameReading = screenSoundAlert.map {
+            $0.timestamp == alert.timestamp && $0.event.importance >= alert.event.importance
+                && SoundEventCatalog.mayBeSameSound($0.event.identifier, alert.event.identifier)
+        } ?? false
         if !weakerInSameReading {
             if alert.takesBanner(from: currentBannerSoundAlert) {
                 bannerSoundAlert = alert
