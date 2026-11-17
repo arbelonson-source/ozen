@@ -1285,6 +1285,8 @@
    {"kind": "emphasized", "input": "第一", "language": "zh", "expected": []},
    {"kind": "listable", "input": "吃三片药", "language": "zh", "expected": true},
    {"kind": "listable", "input": "我们一起", "language": "zh", "expected": false},
-   {"kind": "listable", "input": "一次", "language": "zh", "expected": false}
+   {"kind": "listable", "input": "一次", "language": "zh", "expected": false},
+   {"kind": "listable", "input": "两片药", "language": "zh", "expected": true},
+   {"kind": "listable", "input": "半小时", "language": "zh", "expected": true}
  ]
 }

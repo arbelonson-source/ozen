@@ -46,7 +46,7 @@ internal object ChineseNumberEmphasis {
     }
 
     fun hasListableNumber(text: String): Boolean = ranges(text).any { range ->
-        text.substring(range.start, range.endExclusive).any { it.isDigit() || it in "零〇二三四五六七八九十百千万亿" }
+        text.substring(range.start, range.endExclusive).any { it.isDigit() || it in "零〇二三四五六七八九十百千万亿两半" }
     }
 }
 

@@ -38,7 +38,7 @@ enum ChineseNumberEmphasis {
 
     static func hasListableNumber(_ text: String) -> Bool {
         ranges(in: text).contains { range in
-            text[range].unicodeScalars.contains { $0.properties.numericType == .decimal || "零〇二三四五六七八九十百千万亿".unicodeScalars.contains($0) }
+            text[range].unicodeScalars.contains { $0.properties.numericType == .decimal || "零〇二三四五六七八九十百千万亿两半".unicodeScalars.contains($0) }
         }
     }
 }
