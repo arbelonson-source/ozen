@@ -135,7 +135,9 @@ final class TranscribeRecordingModel {
         } else if host.captionsMayLoadModels {
             await host.stopCaptions()
         }
-        if step != .leaveAlone { host.setCaptionsHeldForRecording(true) }
+        // The screen may have closed while the stop above was running; close()
+        // already cleared the hold, so setting it now would leave it behind.
+        if step != .leaveAlone, !closed { host.setCaptionsHeldForRecording(true) }
         state = .ready(makeReady())
     }
 

@@ -432,6 +432,18 @@ struct TranscribeRecordingModelTests {
         #expect(host.captionsPhase == .listening)
     }
 
+    @Test("leaving while the captions stop is still running leaves no hold behind")
+    func closeDuringStopLeavesNoHold() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = { await screen.close() }
+        await screen.stopCaptions()
+        #expect(!host.heldForRecording)
+    }
+
     @Test("sounds-only that does not take falls back to the plain pause")
     func soundsOnlyFallsBack() async throws {
         let host = RecordingHostFake()
