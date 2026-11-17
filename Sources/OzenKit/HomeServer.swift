@@ -222,7 +222,7 @@ public enum HomeServer {
         return .homeServerUnreachable("\(prefix)\(error)")
     }
 
-    /// A connection that was reset, broken or closed while the secure handshake ran (Wi-Fi drop, computer asleep) is not evidence of a mismatch; the underlying POSIX or TLS-closed code tells them apart.
+    /// A connection that was reset, broken or closed while the secure handshake ran (Wi-Fi drop, computer asleep) is not evidence of a mismatch; the underlying POSIX or TLS-closed code tells them apart, whether it is a child error or the stream error keys (domain 1 POSIX, 3 SSL) that URLSession puts on the error itself or on a CFNetwork error under it.
     private static func droppedMidway(_ error: any Error) -> Bool {
         let posix: Set<Int> = [Int(ECONNRESET), Int(EPIPE), Int(ECONNABORTED), Int(ENOTCONN)]
         let closed: Set<Int> = [-9805, -9806, -9816]
@@ -230,6 +230,11 @@ public enum HomeServer {
         while let ns = current {
             if ns.domain == NSPOSIXErrorDomain, posix.contains(ns.code) { return true }
             if ns.domain == NSOSStatusErrorDomain, closed.contains(ns.code) { return true }
+            let streamDomain = (ns.userInfo["_kCFStreamErrorDomainKey"] as? NSNumber)?.intValue
+            if let streamCode = (ns.userInfo["_kCFStreamErrorCodeKey"] as? NSNumber)?.intValue {
+                if streamDomain == 1, posix.contains(streamCode) { return true }
+                if streamDomain == 3, closed.contains(streamCode) { return true }
+            }
             current = ns.userInfo[NSUnderlyingErrorKey] as? NSError
         }
         return false
