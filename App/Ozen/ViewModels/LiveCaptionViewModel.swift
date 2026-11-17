@@ -102,6 +102,10 @@ public final class LiveCaptionViewModel {
     /// Whether the app is on screen; alerts become notifications when not.
     public private(set) var isAppActive = true
     private var backgroundAlerts = BackgroundAlertPolicy()
+    /// What the phone's speech model reads before each live preview: the
+    /// engine runs off the main thread, so the answer is kept here (see
+    /// `LivePreviews`).
+    @ObservationIgnored private let previewDemand: PreviewDemandBox
     private let postNotification: ((AlertNotificationContent) -> Void)?
     /// Removes a delivered notification by its identifier.
     private let withdrawNotification: ((String) -> Void)?
@@ -249,6 +253,7 @@ public final class LiveCaptionViewModel {
     /// Apple's sound classifier, history under Application Support.
     public convenience init(settingsStore: SettingsStore) {
         let audio = AVAudioInputManager()
+        let previewDemand = PreviewDemandBox()
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let journal = SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log"))
         let pipeline = CaptionPipeline(
@@ -256,7 +261,7 @@ public final class LiveCaptionViewModel {
             engineFactory: { settings in
                 switch settings.engine {
                 case .whisperKit:
-                    return WhisperKitEngine(modelVariant: settings.whisperModelVariant)
+                    return WhisperKitEngine(modelVariant: settings.whisperModelVariant, previewDemand: previewDemand)
                 case .appleSpeech:
                     return AppleSpeechEngine(allowServerFallback: settings.allowServerFallbackForAppleSpeech)
                 case .cloud:
@@ -308,7 +313,8 @@ public final class LiveCaptionViewModel {
             journal: journal,
             problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true)),
             listeningRecorder: ListeningRecords.makeRecorder(),
-            awaySoundStore: UserDefaultsAwaySoundStore()
+            awaySoundStore: UserDefaultsAwaySoundStore(),
+            previewDemand: previewDemand
         )
         builtInWorksOnDevice = { AppleSpeechEngine.worksOnDevice(languageCode: $0) }
     }
@@ -334,8 +340,10 @@ public final class LiveCaptionViewModel {
         journal: SessionJournal? = nil,
         problemAudio: ProblemAudioStore? = nil,
         listeningRecorder: ListeningRecorder? = nil,
-        awaySoundStore: (any AwaySoundRecordStore)? = nil
+        awaySoundStore: (any AwaySoundRecordStore)? = nil,
+        previewDemand: PreviewDemandBox = PreviewDemandBox()
     ) {
+        self.previewDemand = previewDemand
         self.settingsStore = settingsStore
         self.listeningRecorder = listeningRecorder
         self.awaySoundStore = awaySoundStore
@@ -364,6 +372,7 @@ public final class LiveCaptionViewModel {
             self.reclaimAudioSession = nil
         }
         self.settings = settingsStore.load()
+        refreshPreviewDemand()
         backgroundAlerts.isEnabled = settings.notifyWhenInBackground
         backgroundAlerts.quietHours = settings.quietHours
         for profile in settings.speakerProfiles {
@@ -576,6 +585,7 @@ public final class LiveCaptionViewModel {
             if !isActive { journal?.flush() }
         }
         isAppActive = isActive
+        refreshPreviewDemand()
         let now = Date().timeIntervalSince1970
         if isActive {
             keywordsNotifiedWhileAway.removeAll()
@@ -1730,6 +1740,7 @@ public final class LiveCaptionViewModel {
         get { settings.display }
         set {
             settings.display = newValue
+            refreshPreviewDemand()
             schedulePersist()
             refreshLockScreen()
         }
@@ -2069,7 +2080,16 @@ public final class LiveCaptionViewModel {
 
     private func keywordAlertsChanged() {
         pipeline.setKeywordAlerts(settings.keywordAlerts)
+        refreshPreviewDemand()
         persist()
+    }
+
+    private func refreshPreviewDemand() {
+        previewDemand.current = PreviewDemand(
+            appInFront: isAppActive,
+            lockScreenCaptions: settings.display.lockScreenCaptions,
+            alertWordsSet: settings.keywordAlerts.contains { $0.isEnabled }
+        )
     }
 
     // MARK: - Sound alerts
@@ -2864,6 +2884,7 @@ public final class LiveCaptionViewModel {
     private func persist() -> Bool {
         pendingPersistTask?.cancel()
         pendingPersistTask = nil
+        refreshPreviewDemand()
         var written = true
         do {
             try settingsStore.save(settings)

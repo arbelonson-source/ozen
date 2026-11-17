@@ -1505,6 +1505,34 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(withdrawn == ["battery"])
     }
 
+    @Test("the phone model's live previews are wanted only while the app is in front, lock screen captions are on, or an alert word is set")
+    func previewDemandFollowsWhoCanSeeTheLiveLine() {
+        let box = PreviewDemandBox()
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-pv-\(UUID()).json"))
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, postNotification: { _ in }, withdrawNotification: { _ in }, previewDemand: box)
+        var display = viewModel.display
+        display.lockScreenCaptions = false
+        viewModel.display = display
+        #expect(LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        viewModel.sceneActivityChanged(isActive: false)
+        #expect(!LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        viewModel.sceneActivityChanged(isActive: false)
+        display.lockScreenCaptions = true
+        viewModel.display = display
+        #expect(LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        display.lockScreenCaptions = false
+        viewModel.display = display
+        #expect(!LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        viewModel.addKeywordAlert(phrase: "Dana")
+        #expect(LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+        let id = viewModel.keywordAlerts[0].id
+        viewModel.setKeywordAlert(id: id, enabled: false)
+        #expect(!LivePreviews.wanted(engine: .whisperKit, demand: box.current))
+    }
+
     @Test("a battery warning is also taken down when she returns to the app, and when captions stop")
     func batteryWithdrawnOnReturnAndStop() async {
         var withdrawn: [String] = []
