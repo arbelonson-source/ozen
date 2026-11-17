@@ -296,6 +296,13 @@ class Transcriber:
     the same in a quiet one, at four times the cost: worth it once per
     line, not three times a second."""
 
+    # A pass that takes longer than max(floor, factor x its audio length) is
+    # stuck, not slow: a CPU fallback on a weak machine runs large-v3 at
+    # about 1-3x real time, and up to three temperature retries multiply
+    # that, so 10x leaves room for the slowest legitimate case.
+    pass_floor_seconds = 60.0
+    pass_audio_factor = 10.0
+
     def __init__(self, model, device, compute_type, beam, context, final_model=None, speech_gate=0.0):
         self.speech_gate = speech_gate
         self.compute_type = compute_type
@@ -316,6 +323,14 @@ class Transcriber:
         async with self.lock:
             work = asyncio.ensure_future(asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam))
             try:
+                limit = max(self.pass_floor_seconds, self.pass_audio_factor * len(audio) / RATE)
+                done, _ = await asyncio.wait({work}, timeout=limit)
+                if not done:
+                    # A stuck CUDA thread can't be stopped and keeps the
+                    # card and this lock for good, while pings still look
+                    # healthy: restart the whole process instead.
+                    log.critical("a pass has run for over %.0f s; exiting to restart", limit)
+                    self.restart_process()
                 result = await asyncio.shield(work)
             except asyncio.CancelledError:
                 # A thread can't be stopped. When the phone that asked hangs
@@ -341,6 +356,10 @@ class Transcriber:
             if self.model_ran:
                 self.failures = 0
             return result
+
+    def restart_process(self):
+        logging.shutdown()
+        os._exit(3)
 
     def _run(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
         self.model_ran = False

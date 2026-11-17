@@ -402,6 +402,57 @@ class HungUpMidPass(unittest.TestCase):
         self.assertEqual(state["peak"], 1, "two passes were on the card at once")
 
 
+class StuckPass(unittest.TestCase):
+    def machine(self, run, floor=0.2, factor=10.0):
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.speech_gate, t.beam, t.context = 0.0, 5, False
+        t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
+        t.pass_floor_seconds, t.pass_audio_factor = floor, factor
+        t.exits = []
+        t.restart_process = lambda: t.exits.append(3)
+        t._run = run
+        return t
+
+    def ask(self, t, audio, release=None):
+        async def scenario():
+            t.lock = asyncio.Lock()
+            task = asyncio.ensure_future(t.transcribe(audio, "he", None, True))
+            try:
+                return await asyncio.wait_for(asyncio.shield(task), 3)
+            finally:
+                if release:
+                    release.set()
+                await asyncio.wait({task})
+        return asyncio.run(scenario())
+
+    def test_a_pass_that_hangs_past_the_limit_restarts_the_server_once(self):
+        release = threading.Event()
+        t = self.machine(lambda *a: (release.wait(1.5), ("", None, []))[1])
+        with self.assertLogs(S.log, "CRITICAL"):
+            self.ask(t, np.zeros(1600, dtype=np.float32), release)
+        self.assertEqual(t.exits, [3])
+
+    def test_a_normal_pass_under_the_limit_does_not_restart_the_server(self):
+        t = self.machine(lambda *a: ("hello", None, []))
+        self.assertEqual(self.ask(t, np.zeros(1600, dtype=np.float32))[0], "hello")
+        self.assertEqual(t.exits, [])
+
+    def test_a_slow_pass_on_long_audio_within_its_allowance_does_not_restart_the_server(self):
+        def slow(*a):
+            time.sleep(0.5)
+            return "long", None, []
+        t = self.machine(slow, floor=0.1, factor=0.5)
+        self.assertEqual(self.ask(t, np.zeros(S.RATE * 4, dtype=np.float32))[0], "long")
+        self.assertEqual(t.exits, [])
+
+    def test_the_real_restart_exits_with_code_3(self):
+        t = S.Transcriber.__new__(S.Transcriber)
+        exits = []
+        with mock.patch.object(S.os, "_exit", exits.append), mock.patch.object(S.logging, "shutdown", lambda: None):
+            t.restart_process()
+        self.assertEqual(exits, [3])
+
+
 class PassResult(unittest.TestCase):
     def test_the_words_the_model_wrote_come_back_from_a_pass(self):
         class OneLine:
