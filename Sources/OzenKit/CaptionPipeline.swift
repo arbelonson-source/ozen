@@ -520,6 +520,7 @@ public final class CaptionPipeline {
 
     public func start(settings: AppSettings) async {
         guard !phase.isListening, !phase.isTransitioning, !isRecordingVoice else { return }
+        soundsOnlyAskedDuringCall = false
         // Only a second model loading on the phone is worth waiting for: the
         // home computer, the cloud and Apple's recognizer load nothing here,
         // and waiting kept captions on "loading model" after the home
@@ -554,7 +555,6 @@ public final class CaptionPipeline {
         cancelScheduledRetry()
         stopListeningForSounds()
         soundsOnlyChosen = false
-        soundsOnlyAskedDuringCall = false
         soundsOnlyStoppedByItself = false
         soundsOnlyRetryTask?.cancel()
         soundsOnlyRetryTask = nil
@@ -3125,8 +3125,11 @@ public final class CaptionPipeline {
             cancelScheduledRetry()
             stopListeningForSounds()
         } else if (soundsOnlyChosen || soundsOnlyAskedDuringCall), !isListeningForSoundsOnly {
-            soundsOnlyAskedDuringCall = false
-            Task { [weak self] in await self?.listenForSoundsOnly(retrying: true) }
+            Task { [weak self] in
+                guard let self, soundsOnlyChosen || soundsOnlyAskedDuringCall else { return }
+                soundsOnlyAskedDuringCall = false
+                await listenForSoundsOnly(retrying: true)
+            }
         } else if let failure = phase.failure {
             recovery.reset()
             scheduleAutoRecovery(for: failure)

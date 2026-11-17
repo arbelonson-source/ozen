@@ -722,6 +722,7 @@ class CaptionPipeline(
 
     suspend fun start(settings: AppSettings) {
         if (phase.isListening || phase.isTransitioning || isRecordingVoice) return
+        soundsOnlyAskedDuringCall = false
         // Only a second model loading on the phone is worth waiting for: the
         // home computer, the cloud and Apple's recognizer load nothing here,
         // and waiting kept captions on "loading model" after the home
@@ -759,7 +760,6 @@ class CaptionPipeline(
         cancelScheduledRetry()
         stopListeningForSounds()
         soundsOnlyChosen = false
-        soundsOnlyAskedDuringCall = false
         soundsOnlyStoppedByItself = false
         cancelSoundsOnlyRetry()
         val run = UUID.randomUUID()
@@ -3347,8 +3347,11 @@ class CaptionPipeline(
             stopListeningForSounds()
         } else {
             if (soundsOnlyAskedDuringCall && !soundsOnlyChosen) {
-                soundsOnlyAskedDuringCall = false
-                scope.launch { listenForSoundsOnly() }
+                scope.launch {
+                    if (!soundsOnlyAskedDuringCall) return@launch
+                    soundsOnlyAskedDuringCall = false
+                    listenForSoundsOnly()
+                }
                 return
             }
             if (soundsOnlyChosen) {

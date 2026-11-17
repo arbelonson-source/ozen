@@ -129,6 +129,28 @@ struct SoundsOnlyTests {
         #expect(!(await eventually(within: .milliseconds(500)) { pipeline.isListeningForSoundsOnly }))
     }
 
+    @Test("a Stop pressed just as the call ends keeps sound alerts off, when they were asked for during the call")
+    func stopAsTheCallEndsAfterAsking() async {
+        let pipeline = makeSoundsPipeline()
+        await pipeline.start(settings: .default)
+        pipeline.systemInterruptionChanged(active: true)
+        await pipeline.listenForSoundsOnly()
+        pipeline.systemInterruptionChanged(active: false)
+        pipeline.stop()
+        #expect(!(await eventually(within: .milliseconds(500)) { pipeline.isListeningForSoundsOnly }))
+    }
+
+    @Test("a Stop pressed just as the call ends keeps sound alerts off, when the call had paused them")
+    func stopAsTheCallEndsAfterPause() async {
+        let pipeline = makeSoundsPipeline()
+        await pipeline.start(settings: .default)
+        await pipeline.listenForSoundsOnly()
+        pipeline.systemInterruptionChanged(active: true)
+        pipeline.systemInterruptionChanged(active: false)
+        pipeline.stop()
+        #expect(!(await eventually(within: .milliseconds(500)) { pipeline.isListeningForSoundsOnly }))
+    }
+
     @Test("starting or resuming afterwards brings captions back with the sounds stopped first")
     func captionsComeBack() async {
         let built = BuiltEngines()

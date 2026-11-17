@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 
 private fun chunk() = FloatArray(1_024) { 0.1f }
 
@@ -168,6 +169,58 @@ class CaptionPipelineSoundsOnlyTest {
         pipeline.systemInterruptionChanged(false)
 
         assertFalse(eventually(500.milliseconds) { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
+    fun `a Stop pressed just as the call ends keeps sound alerts off, when they were asked for during the call`() = runTest {
+        val (pipeline, _, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.systemInterruptionChanged(true)
+        pipeline.listenForSoundsOnly()
+        pipeline.systemInterruptionChanged(false)
+        pipeline.stop()
+
+        assertFalse(eventually(500.milliseconds) { pipeline.isListeningForSoundsOnly })
+        assertFalse(pipeline.soundsOnlyChosen)
+    }
+
+    @Test
+    fun `a Stop pressed just as the call ends keeps sound alerts off, when the call had paused them`() = runTest {
+        val (pipeline, _, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.listenForSoundsOnly()
+        pipeline.systemInterruptionChanged(true)
+        pipeline.systemInterruptionChanged(false)
+        pipeline.stop()
+
+        assertFalse(eventually(500.milliseconds) { pipeline.isListeningForSoundsOnly })
+        assertFalse(pipeline.soundsOnlyChosen)
+    }
+
+    @Test
+    fun `a call that ends while captions wait for a model to load does not stop those captions`() = runTest {
+        val slow = FakeEngine()
+        val gate = PrepareGate()
+        slow.prepareGate = gate
+        val (pipeline, _, _) = makePipeline(
+            engines = mapOf(TranscriptionEngineKind.WhisperKit to slow),
+            soundDetector = FakeSoundDetector(),
+        )
+        val first = launch { pipeline.start(AppSettings.default) }
+        while (slow.prepareCount == 0) yield()
+        pipeline.stop()
+        pipeline.systemInterruptionChanged(true)
+        pipeline.listenForSoundsOnly()
+        val second = launch { pipeline.start(AppSettings.default) }
+        repeat(50) { yield() }
+        pipeline.systemInterruptionChanged(false)
+        repeat(50) { yield() }
+
+        gate.open()
+        first.join()
+        second.join()
+        assertEquals(PipelinePhase.Listening, pipeline.phase)
+        assertFalse(pipeline.isListeningForSoundsOnly)
     }
 
     @Test
