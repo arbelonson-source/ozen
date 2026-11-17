@@ -6,6 +6,11 @@ private final class VirtualClock: @unchecked Sendable {
     private let lock = NSLock()
     private var time: TimeInterval = 1_000
     private var slept: [(seconds: TimeInterval, at: TimeInterval)] = []
+    private var holding = false
+    var holdsIdleSleeps: Bool {
+        get { lock.withLock { holding } }
+        set { lock.withLock { holding = newValue } }
+    }
     var now: TimeInterval { lock.withLock { time } }
     var sleeps: [(seconds: TimeInterval, at: TimeInterval)] { lock.withLock { slept } }
     func begin(_ seconds: TimeInterval) { lock.withLock { slept.append((seconds, time)) } }
@@ -28,7 +33,7 @@ private func makeQuietPipeline(
     )
     pipeline.staleCommitSleep = { seconds in
         clock.begin(seconds)
-        let realSeconds = seconds * 0.1
+        let realSeconds = clock.holdsIdleSleeps && seconds == 1 ? 20 : seconds * 0.1
         let started = ContinuousClock.now
         let deadline = started + .seconds(realSeconds)
         while ContinuousClock.now < deadline, !Task.isCancelled {
@@ -86,9 +91,10 @@ struct QuietTickTests {
     func lineOpeningWakesTheLoop() async {
         let clock = VirtualClock()
         let engine = FakeEngine()
+        clock.holdsIdleSleeps = true
         let pipeline = makeQuietPipeline(clock: clock, engine: engine, watchdog: .disabled)
         await pipeline.start(settings: .default)
-        #expect(await eventually { clock.sleeps.count >= 2 })
+        #expect(await eventually { clock.sleeps.count >= 1 })
         let count = clock.sleeps.count
         engine.emit(TranscriptToken(utteranceID: UUID(), text: "hello", isFinal: false, timestamp: clock.now))
         #expect(await eventually { clock.sleeps.count >= count + 3 })
