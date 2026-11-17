@@ -1173,7 +1173,7 @@ class CaptionPipeline(
      */
     val loadingModelCount: Int get() {
         val waiting = waitingModelEngine?.takeIf { engine -> engineCache.values.none { it === engine } }
-        return engineCache.values.count { it.isLoadingModel } + (if (waiting?.isLoadingModel == true) 1 else 0)
+        return engineCache.values.count { it.isLoadingModel } + (if (waiting != null && (waitingModelGettingReady || waiting.isLoadingModel)) 1 else 0)
     }
 
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
