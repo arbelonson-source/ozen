@@ -513,6 +513,10 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
     fun coreEnd(index: Int): Int = if (words[index].hasCore) words[index].coreEnd else words[index].end
     fun joinsNext(index: Int, end: Int): Boolean =
         index + 1 < words.size && end == words[index].end && !emphasisFollowedByComma(line, end, decimalComma)
+    fun startsSentence(start: Int): Boolean {
+        val last = (start - 1 downTo 0).firstOrNull { !isEmphasisWhitespace(line.graphemes[it]) || line.graphemes[it] == "\n" } ?: return true
+        return line.graphemes[last] in listOf(".", "!", "?", "।", "…", "\n")
+    }
     fun isNumber(index: Int): Boolean = lowered[index]?.let { it in profile.numbers } ?: false
     fun hasDigit(index: Int): Boolean = (words[index].start until words[index].end).any { isEmphasisNumber(line.graphemes[it]) }
     fun digitEnd(index: Int): Int = (words[index].start until words[index].end).last { isEmphasisNumber(line.graphemes[it]) } + 1
@@ -717,6 +721,11 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
                 }
                 if (position == runLast && !hourOne && core in profile.ambiguous) {
                     if (previous != null && previous in profile.notACountBefore) continue
+                    if (done.joined && done.last == position + 1 && "$core ${lowered[done.last]}" in profile.storyOpeners &&
+                        startsSentence(word.coreStart) && !(position + 2 < words.size && lowered[position + 2] in profile.storyKeeps)
+                    ) {
+                        continue
+                    }
                     if (!done.joined) {
                         val unitBefore = profile.oneFollowsUnit && previous != null && previous in profile.units &&
                             previous !in profile.onceWords && joinsNext(position - 1, coreEnd(position - 1))

@@ -38,7 +38,7 @@ enum ChineseNumberEmphasis {
 
     static func hasListableNumber(_ text: String) -> Bool {
         ranges(in: text).contains { range in
-            text[range].unicodeScalars.contains { $0.properties.numericType == .decimal || "零〇二三四五六七八九十百千万亿两半".unicodeScalars.contains($0) }
+            text[range].unicodeScalars.contains { $0.properties.numericType == .decimal || "零〇二三四五六七八九十百千万亿两半兩萬億".unicodeScalars.contains($0) }
         }
     }
 }
@@ -58,7 +58,7 @@ private struct Line {
     var count: Int { scalars.count }
 
     init(_ text: String) {
-        scalars = Array(text.unicodeScalars)
+        scalars = text.unicodeScalars.map { Line.simplified[$0] ?? $0 }
         indices = Array(text.unicodeScalars.indices)
         endIndex = text.endIndex
     }
@@ -67,10 +67,18 @@ private struct Line {
         indices[start]..<(end < indices.count ? indices[end] : endIndex)
     }
 
+    private static let simplified: [Unicode.Scalar: Unicode.Scalar] = Dictionary(
+        uniqueKeysWithValues: zip("兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變".unicodeScalars, "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变".unicodeScalars)
+    )
+
     func starts(_ i: Int, _ word: String) -> Bool {
-        let letters = Array(word.unicodeScalars)
-        guard i >= 0, i + letters.count <= count else { return false }
-        return (0..<letters.count).allSatisfy { scalars[i + $0] == letters[$0] }
+        guard i >= 0 else { return false }
+        var j = i
+        for letter in word.unicodeScalars {
+            guard j < count, scalars[j] == letter else { return false }
+            j += 1
+        }
+        return true
     }
 
     func isDigit(_ i: Int) -> Bool { i >= 0 && i < count && scalars[i].properties.numericType == .decimal }
@@ -174,6 +182,10 @@ private struct Line {
     private static let unitsAfterOne = [
         "毫克", "毫升", "公斤", "公里", "厘米", "千克", "千米", "小时", "钟头", "分钟", "粒", "颗", "滴", "勺", "针", "次", "秒", "米", "克", "斤", "升",
     ]
+    private static let pointNouns = [
+        "意见", "不同", "建议", "内容", "原因", "要求", "看法", "想法", "区别", "差别", "问题", "理由", "好处", "优点", "缺点",
+        "特点", "相同", "变化", "说明", "结论", "经验", "体会", "规定", "补充", "注意",
+    ]
     private static let doseUnits: Set<String> = ["次", "遍", "片", "粒", "颗", "滴", "勺", "针", "毫克", "毫升"]
     private static let latinUnits = ["mcg", "mg", "ml", "kg", "cm", "cc", "g"]
     private static let monthLikeAfterGe = ["月", "星期", "礼拜", "小时", "钟头"]
@@ -242,8 +254,8 @@ private struct Line {
         guard let word = firstMatch(e, number.isOne ? Line.unitsAfterOne : Line.units) else { return nil }
         let length = word.unicodeScalars.count
         if word == "次" {
-            if starts(e + 1, "性") { return nil }
-            if number.isOne, let before = start > 0 ? scalars[start - 1] : nil, "上下这那前后每".unicodeScalars.contains(before) { return nil }
+            if starts(e + 1, "性") || starts(e + 1, "元") { return nil }
+            if number.isOne, let before = start > 0 ? scalars[start - 1] : nil, "上下这那前后每有再".unicodeScalars.contains(before) { return nil }
         }
         if word == "年", starts(e + 1, "级") { return nil }
         var end = e + length
@@ -257,6 +269,7 @@ private struct Line {
     private func clock(_ number: Number, from start: Int) -> (Int, Int)? {
         let p = number.end + 1
         if !number.digits, start > 0, "这那".unicodeScalars.contains(scalars[start - 1]) { return nil }
+        if firstMatch(p, Line.pointNouns) != nil { return nil }
         if let tenth = readNumber(p), tenth.count == 1, !tenth.isOne || tenth.digits, let word = firstMatch(tenth.end, Line.decimalUnits) {
             return (start, tenth.end + word.unicodeScalars.count)
         }

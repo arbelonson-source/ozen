@@ -32,6 +32,8 @@ internal class NumberWordProfile(entry: JsonObject) {
     val repeatUnits = strings(entry, "repeatUnits", foldsArabic)
     val periods = strings(entry, "periods", foldsArabic)
     val idioms = strings(entry, "idioms", foldsArabic)
+    val storyOpeners = strings(entry, "storyOpeners", foldsArabic)
+    val storyKeeps = strings(entry, "storyKeeps", foldsArabic)
     val units = strings(entry, "units", foldsArabic)
     val adverbPeriods = strings(entry, "adverbPeriods", foldsArabic)
     val clockNouns = strings(entry, "clockNouns", foldsArabic)
