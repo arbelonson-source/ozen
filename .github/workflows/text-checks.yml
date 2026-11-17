@@ -30,3 +30,5 @@ jobs:
         run: python3 scripts/check-no-real-values.py
       - name: Check that Android code never sets the Unicode regex flag itself
         run: python3 scripts/check-android-regex.py
+      - name: Test the Android regex check
+        run: python3 scripts/test_check_android_regex.py
