@@ -3805,6 +3805,23 @@ struct CaptionPipelineAlertHookTests {
         #expect(raised == ["smoke_detector", "door_bell"])
     }
 
+    @Test("a sound heard with a more important one gets its own cue; the one on screen does not")
+    func secondSoundOfAReadingHasOwnCue() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.95, timestamp: 1_000))
+        #expect(await eventually { pipeline.soundAlerts.count == 1 })
+        #expect(pipeline.takeOwnCueSoundAlerts().isEmpty)
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_000))
+        #expect(await eventually { pipeline.soundAlerts.count == 2 })
+        #expect(pipeline.screenSoundAlert?.event.identifier == "smoke_detector")
+        #expect(pipeline.takeOwnCueSoundAlerts().map(\.event.identifier) == ["door_bell"])
+        #expect(pipeline.takeOwnCueSoundAlerts().isEmpty)
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_001))
+        #expect(pipeline.takeOwnCueSoundAlerts().isEmpty)
+    }
+
     @Test("an air raid siren also scored as a police siren is one notification")
     func sirenLabelsOfOneReadingOneNotification() async {
         let detector = FakeSoundDetector()

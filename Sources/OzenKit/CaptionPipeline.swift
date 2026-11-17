@@ -97,6 +97,12 @@ public final class CaptionPipeline {
     /// alert before it isn't replayed as if it had just been heard.
     public private(set) var screenSoundAlert: SoundAlert?
     private var screenSoundAlertRaisedAt: TimeInterval?
+    /// Alerts delivered to `onSoundAlert` that did not become
+    /// `screenSoundAlert` (a doorbell heard with a smoke alarm): each still
+    /// needs its own buzz and announcement. `ownCueSerial` changes when one
+    /// is added; the screen takes them with `takeOwnCueSoundAlerts()`.
+    public private(set) var ownCueSoundAlerts: [SoundAlert] = []
+    public private(set) var ownCueSerial = 0
     /// The alert whose banner the screen shows. A lesser sound heard while
     /// it lasts is `screenSoundAlert` (it buzzes and is read out) but
     /// doesn't take the banner (`SoundAlert.takesBanner(from:)`): closing a
@@ -1235,12 +1241,20 @@ public final class CaptionPipeline {
                 }
                 screenSoundAlert = alert
                 screenSoundAlertRaisedAt = now()
+            } else {
+                ownCueSoundAlerts.append(alert)
+                ownCueSerial += 1
             }
             onSoundAlert?(alert)
         }
         if soundAlerts.count > Self.maxSoundAlerts {
             soundAlerts.removeFirst(soundAlerts.count - Self.maxSoundAlerts)
         }
+    }
+
+    public func takeOwnCueSoundAlerts() -> [SoundAlert] {
+        defer { ownCueSoundAlerts = [] }
+        return ownCueSoundAlerts
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {
