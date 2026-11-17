@@ -78,12 +78,21 @@ struct ListeningCutTests {
         #expect(text.hasSuffix("No alerts could come through during that time."))
     }
 
-    @Test("a gap of two minutes or less is a quick restart and says nothing")
+    @Test("a gap of five minutes or less is a quick restart and says nothing")
     func shortGap() {
         let alive = record(at(1, 10))
         #expect(ListeningCut.notice(alive, now: at(1, 10) + 119, version: version) == nil)
-        #expect(ListeningCut.notice(alive, now: at(1, 10) + 120, version: version) == nil)
-        #expect(ListeningCut.notice(alive, now: at(1, 10) + 121, version: version) != nil)
+        #expect(ListeningCut.notice(alive, now: at(1, 10) + 121, version: version) == nil)
+        #expect(ListeningCut.notice(alive, now: at(1, 10) + 299, version: version) == nil)
+        #expect(ListeningCut.notice(alive, now: at(1, 10) + 300, version: version) == nil)
+        #expect(ListeningCut.notice(alive, now: at(1, 10) + 301, version: version) != nil)
+    }
+
+    @Test("the record is written every two minutes and a cut needs a gap of two and a half times that")
+    func writeIntervalAndThreshold() {
+        #expect(ListeningRecorder.keepAliveInterval == .seconds(120))
+        #expect(ListeningCut.leastGapSeconds == 300)
+        #expect(ListeningCut.leastGapSeconds == 2.5 * 120)
     }
 
     @Test("a record from another app version, or none, says nothing")

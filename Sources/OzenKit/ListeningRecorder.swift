@@ -25,6 +25,7 @@ public final class SerialListeningExecutor: ListeningExecutor {
     }
 }
 
+/// Written every two minutes; ListeningCut treats a gap of over two and a half times that as a cut.
 /// Keeps a small record on disk while captions listen, so the next launch can
 /// tell whether iOS ended the app while it was listening. A record a quick
 /// restart left in place stays until this run listens again, or until
@@ -33,7 +34,7 @@ public final class SerialListeningExecutor: ListeningExecutor {
 /// longer news. Call it from one thread (the main actor); the store is
 /// touched on the executor.
 public final class ListeningRecorder {
-    public static let keepAliveInterval: Duration = .seconds(30)
+    public static let keepAliveInterval: Duration = .seconds(120)
 
     private let store: any ListeningRecordStore
     private let version: Int
