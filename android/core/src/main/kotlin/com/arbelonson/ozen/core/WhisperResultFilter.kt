@@ -419,6 +419,9 @@ class WhisperResultFilter(
             // Two or three copies of a sentence measured 2.5 to 3.6; the loops
             // Whisper wrote on household noise 11 to 25.
             if (segment.compressionRatio > 2 * compressionRatioThreshold) return false
+            // "Come on, come on, come on, come on, let's go!" (a phrase said
+            // over for emphasis, with at least two real words outside it, from
+            // a model that was sure) is kept below, cut to three.
             // "di di di di!" (enough!) and nothing else: the phone's engine
             // scores repetition over its token numbers, where a word said four
             // or five times on its own already measures 2.5 to 3.3 (the
@@ -427,6 +430,14 @@ class WhisperResultFilter(
             // over again, or "toda toda toda...", is still a loop.
             val word = normalize(once)
             if (once != text && word.split(" ").count { it.isNotEmpty() } <= 2 && word !in ambiguousHallucinations) return true
+            val beside = wordsBesideEmphasis(text)
+            if (beside != null && beside >= 2 &&
+                segment.noSpeechProb <= ambiguousNoSpeechThreshold &&
+                segment.avgLogprob >= ambiguousLogprobThreshold &&
+                !isKnownHallucination(collapsingRepeats(text))
+            ) {
+                return true
+            }
             val sentence = repeatedSentence(text)
             if (sentence == null || isKnownHallucination(sentence)) return false
         }
@@ -592,19 +603,38 @@ class WhisperResultFilter(
          *
          * Text with nothing to collapse comes back exactly as it was.
          */
-        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4, maxNumberRepeats: Int = 10): String {
+        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4, maxNumberRepeats: Int = 10): String =
+            collapse(text, maxRepeats, maxPhraseWords, maxNumberRepeats, Int.MAX_VALUE).text
+
+        /**
+         * The words of [text] outside every phrase said three or more times
+         * back to back, once each phrase is cut to one copy: "Come on, come
+         * on, come on, come on, let's go!" leaves 2 ("let's go"); null when
+         * no phrase is said that often.
+         */
+        internal fun wordsBesideEmphasis(text: String): Int? {
+            val result = collapse(text, 1, 4, 10, 3)
+            return if (result.emphasized > 0) result.words - result.emphasized else null
+        }
+
+        private class Collapsed(val text: String, val words: Int, val emphasized: Int)
+
+        private fun collapse(text: String, maxRepeats: Int, maxPhraseWords: Int, maxNumberRepeats: Int, emphasisFrom: Int): Collapsed {
             var words = splitOnWhisperWhitespace(text)
-            if (maxRepeats < 1 || words.size <= maxRepeats) return text
+            var emphasis = List(words.size) { false }
+            if (maxRepeats < 1 || words.size <= maxRepeats) return Collapsed(text, words.count { normalize(it).isNotEmpty() }, 0)
             val numberLimit = if (maxRepeats > 1) maxOf(maxRepeats, maxNumberRepeats) else maxRepeats
             var changed = false
             for (phraseLength in 1..maxPhraseWords) {
                 val keys = words.map { normalize(it) }
                 val result = mutableListOf<String>()
+                val resultEmphasis = mutableListOf<Boolean>()
                 var index = 0
                 while (index < words.size) {
                     val phraseEnd = index + phraseLength
                     if (phraseEnd > words.size || keys.subList(index, phraseEnd).all { it.isEmpty() }) {
                         result.add(words[index])
+                        resultEmphasis.add(emphasis[index])
                         index += 1
                         continue
                     }
@@ -620,16 +650,20 @@ class WhisperResultFilter(
                         result.addAll(words.subList(index, index + (limit - 1) * phraseLength))
                         val lastStart = index + (repeats - 1) * phraseLength
                         result.addAll(words.subList(lastStart, lastStart + phraseLength))
+                        repeat(limit * phraseLength) { resultEmphasis.add(repeats >= emphasisFrom) }
                         index += repeats * phraseLength
                         changed = true
                     } else {
                         result.add(words[index])
+                        resultEmphasis.add(emphasis[index])
                         index += 1
                     }
                 }
                 words = result
+                emphasis = resultEmphasis
             }
-            return if (changed) words.joinToString(" ") else text
+            val spoken = words.indices.filter { normalize(words[it]).isNotEmpty() }
+            return Collapsed(if (changed) words.joinToString(" ") else text, spoken.size, spoken.count { emphasis[it] })
         }
 
         /**

@@ -355,18 +355,40 @@ public struct WhisperResultFilter: Sendable, Equatable {
         maxPhraseWords: Int = 4,
         maxNumberRepeats: Int = 10
     ) -> String {
+        collapse(text, maxRepeats: maxRepeats, maxPhraseWords: maxPhraseWords, maxNumberRepeats: maxNumberRepeats).text
+    }
+
+    /// The words of `text` outside every phrase said three or more times
+    /// back to back, once each phrase is cut to one copy: "Come on, come on,
+    /// come on, come on, let's go!" leaves 2 ("let's go"); nil when no phrase
+    /// is said that often.
+    static func wordsBesideEmphasis(_ text: String) -> Int? {
+        let result = collapse(text, maxRepeats: 1, maxPhraseWords: 4, maxNumberRepeats: 10, emphasisFrom: 3)
+        return result.emphasized > 0 ? result.words - result.emphasized : nil
+    }
+
+    private static func collapse(
+        _ text: String,
+        maxRepeats: Int,
+        maxPhraseWords: Int,
+        maxNumberRepeats: Int,
+        emphasisFrom: Int = Int.max
+    ) -> (text: String, words: Int, emphasized: Int) {
         var words = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        guard maxRepeats >= 1, words.count > maxRepeats else { return text }
+        var emphasis = [Bool](repeating: false, count: words.count)
+        guard maxRepeats >= 1, words.count > maxRepeats else { return (text, words.filter { !normalize($0).isEmpty }.count, 0) }
         let numberLimit = maxRepeats > 1 ? max(maxRepeats, maxNumberRepeats) : maxRepeats
         var changed = false
         for phraseLength in 1...maxPhraseWords {
             let keys = words.map(normalize)
             var result: [String] = []
+            var resultEmphasis: [Bool] = []
             var index = 0
             while index < words.count {
                 let phraseEnd = index + phraseLength
                 guard phraseEnd <= words.count, !keys[index..<phraseEnd].allSatisfy(\.isEmpty) else {
                     result.append(words[index])
+                    resultEmphasis.append(emphasis[index])
                     index += 1
                     continue
                 }
@@ -381,16 +403,20 @@ public struct WhisperResultFilter: Sendable, Equatable {
                     result.append(contentsOf: words[index..<(index + (limit - 1) * phraseLength)])
                     let lastStart = index + (repeats - 1) * phraseLength
                     result.append(contentsOf: words[lastStart..<(lastStart + phraseLength)])
+                    resultEmphasis.append(contentsOf: Array(repeating: repeats >= emphasisFrom, count: limit * phraseLength))
                     index += repeats * phraseLength
                     changed = true
                 } else {
                     result.append(words[index])
+                    resultEmphasis.append(emphasis[index])
                     index += 1
                 }
             }
             words = result
+            emphasis = resultEmphasis
         }
-        return changed ? words.joined(separator: " ") : text
+        let spoken = words.indices.filter { !normalize(words[$0]).isEmpty }
+        return (changed ? words.joined(separator: " ") : text, spoken.count, spoken.filter { emphasis[$0] }.count)
     }
 
     /// Whether a word, already through `normalize`, is a number: written in
@@ -522,6 +548,14 @@ public struct WhisperResultFilter: Sendable, Equatable {
             // phrase over again, or "toda toda toda...", is still a loop.
             let word = Self.normalize(once)
             if once != text, word.split(separator: " ").count <= 2, !ambiguousHallucinations.contains(word) { return true }
+            // "Come on, come on, come on, come on, let's go!": a phrase said
+            // over for emphasis with real words around it, from a model that
+            // was sure of it, is shown cut to three. At least two words
+            // outside the phrase, or it is a loop.
+            if let beside = Self.wordsBesideEmphasis(text), beside >= 2,
+               segment.noSpeechProb <= ambiguousNoSpeechThreshold,
+               segment.avgLogprob >= ambiguousLogprobThreshold,
+               !isKnownHallucination(Self.collapsingRepeats(text)) { return true }
             guard let sentence = Self.repeatedSentence(text), !isKnownHallucination(sentence) else { return false }
         }
         return true
