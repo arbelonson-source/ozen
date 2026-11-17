@@ -651,12 +651,14 @@ private final class TapState: @unchecked Sendable {
     let onLevel: @Sendable (Float) -> Void
     private let converter: AVAudioConverter
     private let targetFormat: AVAudioFormat
-    private var lastLevelPost: CFAbsoluteTime = 0
+    private var levelGate = LevelPostGate()
+    private let meterDemand: LevelMeterDemand
 
     init(
         inputFormat: AVAudioFormat,
         continuation: AsyncStream<[Float]>.Continuation,
-        onLevel: @escaping @Sendable (Float) -> Void
+        onLevel: @escaping @Sendable (Float) -> Void,
+        meterDemand: LevelMeterDemand = .shared
     ) throws {
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             throw AVAudioInputManager.CaptureError.invalidInputFormat
@@ -681,6 +683,7 @@ private final class TapState: @unchecked Sendable {
         self.inputFormat = inputFormat
         self.continuation = continuation
         self.onLevel = onLevel
+        self.meterDemand = meterDemand
         self.converter = converter
         self.targetFormat = target
     }
@@ -710,9 +713,9 @@ private final class TapState: @unchecked Sendable {
         let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(output.frameLength)))
         continuation.yield(samples)
 
-        let now = CFAbsoluteTimeGetCurrent()
-        if now - lastLevelPost >= 0.05 {
-            lastLevelPost = now
+        // Only the on-screen meters read the level. With none showing (the
+        // screen is off all night) skip the RMS and the main-actor hop.
+        if levelGate.shouldPost(now: CFAbsoluteTimeGetCurrent(), meterWanted: meterDemand.isWanted) {
             onLevel(EnergyVoiceDetector.meterLevel(forRMS: EnergyVoiceDetector.rms(samples)))
         }
     }
