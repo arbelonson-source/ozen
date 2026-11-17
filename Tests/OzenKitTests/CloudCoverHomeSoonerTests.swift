@@ -243,4 +243,19 @@ struct CloudCoverHomeSoonerTests {
         await talk(audio, steps: 15) { home.prepareCount >= 2 }
         #expect(home.prepareCount >= 2)
     }
+
+    @Test("a phone model that finishes downloading during a home computer check that fails still covers")
+    func modelReadyDuringFailingHomeCheck() async {
+        let cloud = FakeEngine(kind: .cloud)
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 800
+        let home = homeAnswering(false)
+        home.duringPrepare = { phone.pendingDownload = nil }
+        let (captions, _) = pipeline(cloud: cloud, phone: phone, home: home)
+        await captions.start(settings: settings())
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+        #expect(captions.isCoveringForCloud)
+    }
 }

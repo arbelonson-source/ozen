@@ -260,4 +260,18 @@ class CloudCoverHomeSoonerTest {
         rig.talk(15) { rig.home.prepareCount >= 2 }
         assertTrue(rig.home.prepareCount >= 2)
     }
+
+    @Test
+    fun `a phone model that finishes downloading during a home computer check that fails still covers`() = runTest {
+        val cloud = FakeEngine(kind = TranscriptionEngineKind.Cloud)
+        val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 800 }
+        val home = homeAnswering(false)
+        home.duringPrepare = { phone.pendingDownload = null }
+        val captions = pipelineOf(cloud, phone, home)
+        captions.start(settings())
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == TranscriptionEngineKind.Cloud })
+        cloud.endStream(throwing = EngineUnavailability(EngineUnavailability.Kind.NoInternet, "connection lost"))
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == TranscriptionEngineKind.WhisperKit })
+        assertTrue(captions.isCoveringForCloud)
+    }
 }

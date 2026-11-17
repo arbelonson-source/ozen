@@ -2584,12 +2584,13 @@ public final class CaptionPipeline {
             let home = await homeComputerCover(replacing: settings, after: failure, chosen: activeSettings)
             guard case .failed(let still) = phase, still == failure else { return }
             // The phone's model may have finished downloading during the
-            // check: it keeps its place first.
-            if let home, await engine.pendingDownloadMegabytes() != nil {
-                guard case .failed(let last) = phase, last == failure else { return }
-                settings = home
+            // check, whatever it answered: it keeps its place first.
+            let phoneReady = await engine.pendingDownloadMegabytes() == nil
+            guard case .failed(let last) = phase, last == failure else { return }
+            if phoneReady {
                 needsDownload = false
-            } else if home != nil {
+            } else if let home {
+                settings = home
                 needsDownload = false
             }
         }

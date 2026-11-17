@@ -2878,13 +2878,14 @@ class CaptionPipeline(
                 val still = phase
                 if (still !is PipelinePhase.Failed || still.reason != failure) return
                 // The phone's model may have finished downloading during the
-                // check: it keeps its place first.
-                if (home != null) {
-                    if (!engine.hasModelOnPhone()) {
-                        val last = phase
-                        if (last !is PipelinePhase.Failed || last.reason != failure) return
-                        settings = home
-                    }
+                // check, whatever it answered: it keeps its place first.
+                val phoneReady = engine.hasModelOnPhone()
+                val last = phase
+                if (last !is PipelinePhase.Failed || last.reason != failure) return
+                if (phoneReady) {
+                    needsDownload = false
+                } else if (home != null) {
+                    settings = home
                     needsDownload = false
                 }
             }
