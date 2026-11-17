@@ -66,6 +66,18 @@ internal class NumberWordProfile(entry: JsonObject) {
     companion object {
         private val byLanguage: Map<String, NumberWordProfile> by lazy { load() }
 
+        /**
+         * Whether a word is a counting word in any language with a list. The articles that are
+         * also the word for one ("un", "um", "ein") don't count: said over and over they are a
+         * stutter, not a digit.
+         */
+        fun isCountingWordInAnyLanguage(word: String): Boolean = byLanguage.values.any { profile ->
+            val form = profile.normalize(word)
+            form in profile.numbers && form !in articlesSaidAsOne
+        }
+
+        private val articlesSaidAsOne = setOf("um", "uma", "un", "una", "une", "ein", "eine", "einen", "einem", "einer", "eines")
+
         fun profile(languageCode: String): NumberWordProfile? {
             val language = UILanguage.match(languageCode) ?: return null
             return byLanguage[language.rawValue]?.takeIf { it.numbers.isNotEmpty() }

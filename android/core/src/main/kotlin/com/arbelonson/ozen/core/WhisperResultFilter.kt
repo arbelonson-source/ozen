@@ -621,12 +621,14 @@ class WhisperResultFilter(
         /**
          * Whether a word, already through [normalize], is a number: written in
          * digits (in any script; [normalize] turns the hyphen in "5-5" into a
-         * space, so spaces are allowed) or a Hebrew counting word, with or
-         * without prefixes attached.
+         * space, so spaces are allowed) or a counting word: Hebrew, with or
+         * without prefixes attached, or one from any language with a word list (there is no
+         * language to go by here).
          */
         private fun isSpokenNumber(key: String): Boolean {
             if (key.isEmpty()) return false
-            return key.codePoints().allMatch { it == ' '.code || isNumberCodePoint(it) } || NumberEmphasis.isNumberWord(key)
+            return key.codePoints().allMatch { it == ' '.code || isNumberCodePoint(it) } || NumberEmphasis.isNumberWord(key) ||
+                key.split(' ').all { NumberWordProfile.isCountingWordInAnyLanguage(it) }
         }
 
         private fun isNumberCodePoint(codePoint: Int): Boolean = when (Character.getType(codePoint).toByte()) {
