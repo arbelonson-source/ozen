@@ -310,8 +310,9 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     }
 
     private fun openSource(): AudioRecord? {
+        val generation = sourceVersion
         val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minimum <= 0) return null
+        if (minimum <= 0) return openFailed(generation)
         val size = maxOf(minimum, CHUNK * 2 * 4)
         val shared = projection
         val made = try {
@@ -327,7 +328,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         }
         if (made == null || made.state != AudioRecord.STATE_INITIALIZED) {
             made?.release()
-            return openFailed()
+            return openFailed(generation)
         }
         try {
             if (!phoneSound.active) selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
@@ -335,13 +336,18 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
             made.addOnRoutingChangedListener(routingListener, main)
         } catch (error: RuntimeException) {
             retire(made)
-            return openFailed()
+            return openFailed(generation)
         }
         return made
     }
 
-    private fun openFailed(): AudioRecord? {
-        if (phoneSound.active) main.post { projectionEnded() }
+    /**
+     * A failed phone-sound open hands back to the microphone right away, with the usual
+     * "back to the microphone" notice, so captions keep running: a projection that fails to
+     * open is rarely transient. Only the session that failed ([generation]) is ended.
+     */
+    private fun openFailed(generation: Int): AudioRecord? {
+        if (phoneSound.active) main.post { if (generation == sourceVersion) projectionEnded() }
         return null
     }
 
