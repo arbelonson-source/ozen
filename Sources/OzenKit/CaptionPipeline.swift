@@ -101,7 +101,8 @@ public final class CaptionPipeline {
     /// `screenSoundAlert` (a doorbell heard with a smoke alarm): each still
     /// needs its own buzz and announcement. `ownCueSerial` changes when one
     /// is added; the screen takes them with `takeOwnCueSoundAlerts()`.
-    public private(set) var ownCueSoundAlerts: [SoundAlert] = []
+    private var ownCueSoundAlerts: [(alert: SoundAlert, queuedAt: TimeInterval)] = []
+    public static let ownCueMaxAge: TimeInterval = 5
     public private(set) var ownCueSerial = 0
     /// The alert whose banner the screen shows. A lesser sound heard while
     /// it lasts is `screenSoundAlert` (it buzzes and is read out) but
@@ -1242,7 +1243,7 @@ public final class CaptionPipeline {
                 screenSoundAlert = alert
                 screenSoundAlertRaisedAt = now()
             } else {
-                ownCueSoundAlerts.append(alert)
+                ownCueSoundAlerts.append((alert, now()))
                 ownCueSerial += 1
             }
             onSoundAlert?(alert)
@@ -1252,9 +1253,12 @@ public final class CaptionPipeline {
         }
     }
 
-    public func takeOwnCueSoundAlerts() -> [SoundAlert] {
+    /// The queued alerts still fresh enough to cue; older ones (heard while
+    /// the app was away, already a notification) are dropped.
+    public func takeOwnCueSoundAlerts(at time: TimeInterval? = nil) -> [SoundAlert] {
+        let current = time ?? now()
         defer { ownCueSoundAlerts = [] }
-        return ownCueSoundAlerts
+        return ownCueSoundAlerts.filter { current - $0.queuedAt <= Self.ownCueMaxAge }.map(\.alert)
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {

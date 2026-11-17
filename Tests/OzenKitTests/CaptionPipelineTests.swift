@@ -3822,6 +3822,22 @@ struct CaptionPipelineAlertHookTests {
         #expect(pipeline.takeOwnCueSoundAlerts().isEmpty)
     }
 
+    @Test("a queued own cue older than a few seconds is dropped, a fresh one is cued once")
+    func staleOwnCueDropped() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.95, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_000))
+        #expect(await eventually { pipeline.soundAlerts.count == 2 })
+        #expect(pipeline.takeOwnCueSoundAlerts(at: 1_060).isEmpty)
+        detector.push(SoundObservation(identifier: "baby_crying", confidence: 0.9, timestamp: 1_040))
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_040))
+        #expect(await eventually { pipeline.soundAlerts.count == 4 })
+        #expect(pipeline.takeOwnCueSoundAlerts(at: 1_002).map(\.event.identifier) == ["door_bell"])
+        #expect(pipeline.takeOwnCueSoundAlerts(at: 1_002).isEmpty)
+    }
+
     @Test("an air raid siren also scored as a police siren is one notification")
     func sirenLabelsOfOneReadingOneNotification() async {
         let detector = FakeSoundDetector()
