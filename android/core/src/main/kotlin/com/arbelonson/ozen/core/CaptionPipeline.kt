@@ -3522,6 +3522,7 @@ class CaptionPipeline(
         val quiet = soundsOnlyChosen
         if (active != systemInterrupted) {
             if (active) {
+                if (quiet) endOtherAppWaitIfHeld()
                 if (!quiet || otherAppWait.interrupted(now())) logEvent(PipelineEvent.Kind.PhoneCall(true))
             } else if (!quiet) {
                 otherAppWait.reset()
@@ -3550,9 +3551,7 @@ class CaptionPipeline(
                 soundsOnlyRetryTask = scope.launch {
                     if (delaySeconds > 0) delay(delaySeconds.seconds)
                     soundsOnlyRetryTask = null
-                    otherAppWait.resumed(now())
                     resumeSoundsOnly()
-                    watchOtherAppHold()
                 }
                 return
             }
@@ -3773,6 +3772,10 @@ class CaptionPipeline(
         val detector = soundDetector ?: return
         val run = runID
         val chosen = soundsOnlyChosen
+        if (chosen && otherAppWait.waiting) {
+            otherAppWait.resumed(now())
+            watchOtherAppHold()
+        }
         lateinit var fan: FlowAudioFanOut
         // Counted as the microphone hands chunks over, not as the classifier
         // takes them: a classifier slow for a few seconds is not a
@@ -3894,11 +3897,16 @@ class CaptionPipeline(
         otherAppHoldTask?.cancel()
         otherAppHoldTask = scope.launch {
             delay((OtherAppWait.HOLD_SECONDS + 0.5).seconds)
-            if (systemInterrupted || !isListeningForSoundsOnly || !otherAppWait.held(now())) return@launch
-            soundsOnlyAttempts = 0
-            logEvent(PipelineEvent.Kind.PhoneCall(false))
-            onPhaseChange?.invoke(phase)
+            if (systemInterrupted || !isListeningForSoundsOnly) return@launch
+            if (endOtherAppWaitIfHeld()) onPhaseChange?.invoke(phase)
         }
+    }
+
+    private fun endOtherAppWaitIfHeld(): Boolean {
+        if (!otherAppWait.held(now())) return false
+        soundsOnlyAttempts = 0
+        logEvent(PipelineEvent.Kind.PhoneCall(false))
+        return true
     }
 
     private fun cancelSoundsOnlyRetry() {

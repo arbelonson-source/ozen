@@ -105,4 +105,18 @@ class CaptionPipelineOtherAppRecordingTest {
         assertEquals(1, pipeline.calls(began = true))
         assertEquals(1, pipeline.calls(began = false))
     }
+
+    @Test
+    fun `another app that records again just after the hold is a new wait with its own start line`() = runTest {
+        val (pipeline, audio) = listeningForSounds()
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        pipeline.otherAppSilencesAndLifts()
+        assertTrue(eventually { audio.openings() == 2 })
+
+        delay(5_200.milliseconds)
+        pipeline.systemInterruptionChanged(true)
+
+        assertEquals(2, pipeline.calls(began = true))
+        assertEquals(1, pipeline.calls(began = false))
+    }
 }
