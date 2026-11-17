@@ -467,7 +467,7 @@ class CaptionPipelineAlertTest {
         val vibration = AlertVibration.pattern(SoundEvent.Importance.Critical)
         pipeline.ignoreSounds(vibration)
         detector.push(SoundObservation("telephone_bell_ringing", 0.9, clock.now))
-        clock.advance(vibration.totalSeconds + 1)
+        clock.advance(vibration.totalSeconds + 0.2)
         detector.push(SoundObservation("alarm_clock", 0.9, clock.now))
         // A real smoke alarm in the same moment is never taken for the buzz.
         detector.push(SoundObservation("smoke_detector", 0.9, clock.now))
@@ -478,6 +478,27 @@ class CaptionPipelineAlertTest {
         clock.advance(1.0)
         detector.push(SoundObservation("telephone_bell_ringing", 0.9, clock.now))
         assertTrue(eventually { pipeline.soundAlerts.size == 2 })
+    }
+
+    @Test
+    fun `a knock one second after a critical buzz ends is heard, one during it is not, a smoke alarm always is`() = runTest {
+        val clock = TestClock()
+        val detector = FakeSoundDetector()
+        val (pipeline, audio, _) = makePipeline(soundDetector = detector, now = { clock.now })
+        pipeline.start(AppSettings.default)
+        audio.push(chunk())
+        assertTrue(eventually { detector.chunksSeen == 1 })
+
+        val vibration = AlertVibration.pattern(SoundEvent.Importance.Critical)
+        pipeline.ignoreSounds(vibration)
+        detector.push(SoundObservation("knock", 0.9, clock.now + 0.3))
+        detector.push(SoundObservation("smoke_detector", 0.9, clock.now + 0.3))
+        assertTrue(eventually { pipeline.soundAlerts.isNotEmpty() })
+        assertEquals(listOf("smoke_detector"), pipeline.soundAlerts.map { it.event.identifier })
+
+        clock.advance(vibration.totalSeconds + 1.0)
+        detector.push(SoundObservation("knock", 0.9, clock.now))
+        assertTrue(eventually { pipeline.soundAlerts.map { it.event.identifier } == listOf("smoke_detector", "knock") })
     }
 
     @Test
@@ -513,7 +534,7 @@ class CaptionPipelineAlertTest {
         // arrives after the second began, and one of the second after the
         // first one's own window would have closed.
         detector.push(SoundObservation("telephone_bell_ringing", 0.9, firstBuzz + 0.1))
-        clock.advance(vibration.totalSeconds + 1)
+        clock.advance(vibration.totalSeconds + 0.2)
         detector.push(SoundObservation("knock", 0.9, clock.now))
         detector.push(SoundObservation("smoke_detector", 0.9, clock.now))
         assertTrue(eventually { pipeline.soundAlerts.isNotEmpty() })

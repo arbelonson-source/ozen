@@ -113,8 +113,7 @@ public final class CaptionPipeline {
 
     /// Tunable from Settings without a restart.
     public var soundPolicy: SoundEventPolicy
-    private var soundsIgnoredFrom: TimeInterval = 0
-    private var soundsIgnoredUntil: TimeInterval = 0
+    private var ownBuzzes: [(start: TimeInterval, pattern: AlertVibration)] = []
     private var buzzingFrom: TimeInterval = 0
     private var buzzingUntil: TimeInterval = 0
 
@@ -1209,13 +1208,16 @@ public final class CaptionPipeline {
     /// the classifier may still report it for).
     public var isBuzzing: Bool { (buzzingFrom..<buzzingUntil).contains(now()) }
 
-    /// Stops taking a buzz for a sound while the phone vibrates for an
-    /// alert, and for a moment after, since the classifier reports what it
-    /// heard a little late. A phone buzzing on a table is, to the
+    /// Stops taking a buzz for a sound while the phone's motor runs for an
+    /// alert, and for a short tail after each pulse (`BuzzEcho`), since the
+    /// classifier reports what it heard a little late. A phone buzzing on a table is, to the
     /// classifier, a phone ringing or an alarm clock: without this the
     /// vibration raises an alert of its own, which vibrates again. Only
     /// `SoundEventCatalog.vibrationLookalikes` are ignored; a siren, a smoke
-    /// alarm or the doorbell in the same moment still comes through.
+    /// alarm or the doorbell in the same moment still comes through, and so
+    /// does a knock in a pause or after the pattern ends. Each pattern is
+    /// kept by its start: a clock set back an hour after a buzz otherwise
+    /// left phones ringing and knocks ignored until it caught up.
     public func ignoreSounds(whileVibrating vibration: AlertVibration) {
         let start = now()
         if (buzzingFrom..<buzzingUntil).contains(start) {
@@ -1224,21 +1226,10 @@ public final class CaptionPipeline {
             buzzingFrom = start
             buzzingUntil = start + vibration.totalSeconds
         }
-        let end = start + vibration.totalSeconds + Self.soundReportDelaySeconds
-        // A buzz still going on carries on; otherwise the window starts now.
-        // Kept as a range: a clock set back an hour after a buzz otherwise
-        // left phones ringing and knocks ignored until it caught up.
-        if (soundsIgnoredFrom..<soundsIgnoredUntil).contains(start) {
-            soundsIgnoredUntil = max(soundsIgnoredUntil, end)
-        } else {
-            soundsIgnoredFrom = start
-            soundsIgnoredUntil = end
-        }
+        ownBuzzes = Array((ownBuzzes + [(start, vibration)]).suffix(Self.maxRememberedBuzzes))
     }
 
-    /// How long after a sound the classifier may still be reporting it: its
-    /// window is about a second long.
-    static let soundReportDelaySeconds: TimeInterval = 1.5
+    private static let maxRememberedBuzzes = 16
 
     private var readingSoundAlerts: [SoundAlert] = []
 
@@ -1246,8 +1237,8 @@ public final class CaptionPipeline {
         // Judged by when the classifier produced the reading, not when it
         // got here, and dropped before the policy, so the phone's own buzz
         // doesn't start a cooldown that would hide a real ring right after.
-        if (soundsIgnoredFrom..<soundsIgnoredUntil).contains(observation.timestamp),
-           SoundEventCatalog.vibrationLookalikes.contains(observation.identifier) {
+        if SoundEventCatalog.vibrationLookalikes.contains(observation.identifier),
+           ownBuzzes.contains(where: { BuzzEcho.ignores($0.pattern, startedAt: $0.start, at: observation.timestamp) }) {
             return
         }
         soundNearMisses.record(observation, alertConfidence: soundPolicy.requiredConfidence(for: observation.identifier))

@@ -3278,7 +3278,7 @@ struct CaptionPipelineAlertTests {
         let vibration = AlertVibration.pattern(for: .critical)
         pipeline.ignoreSounds(whileVibrating: vibration)
         detector.push(SoundObservation(identifier: "telephone_bell_ringing", confidence: 0.9, timestamp: clock.now))
-        clock.advance(vibration.totalSeconds + 1)
+        clock.advance(vibration.totalSeconds + 0.2)
         detector.push(SoundObservation(identifier: "alarm_clock", confidence: 0.9, timestamp: clock.now))
         // A real smoke alarm in the same moment is never taken for the buzz.
         detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: clock.now))
@@ -3289,6 +3289,27 @@ struct CaptionPipelineAlertTests {
         clock.advance(1)
         detector.push(SoundObservation(identifier: "telephone_bell_ringing", confidence: 0.9, timestamp: clock.now))
         #expect(await eventually { pipeline.soundAlerts.count == 2 })
+    }
+
+    @Test("a knock one second after a critical buzz ends is heard, one during it is not, a smoke alarm always is")
+    func knockAfterTheBuzzIsHeard() async {
+        let clock = TestClock()
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector, now: { clock.now })
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        let vibration = AlertVibration.pattern(for: .critical)
+        pipeline.ignoreSounds(whileVibrating: vibration)
+        detector.push(SoundObservation(identifier: "knock", confidence: 0.9, timestamp: clock.now + 0.3))
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: clock.now + 0.3))
+        #expect(await eventually { !pipeline.soundAlerts.isEmpty })
+        #expect(pipeline.soundAlerts.map(\.event.identifier) == ["smoke_detector"])
+
+        clock.advance(vibration.totalSeconds + 1)
+        detector.push(SoundObservation(identifier: "knock", confidence: 0.9, timestamp: clock.now))
+        #expect(await eventually { pipeline.soundAlerts.map(\.event.identifier) == ["smoke_detector", "knock"] })
     }
 
     @Test("a clock set back right after the phone vibrated doesn't keep ringing phones and knocks ignored until it catches up")
@@ -3324,7 +3345,7 @@ struct CaptionPipelineAlertTests {
         // arrives after the second began, and one of the second after the
         // first one's own window would have closed.
         detector.push(SoundObservation(identifier: "telephone_bell_ringing", confidence: 0.9, timestamp: firstBuzz + 0.1))
-        clock.advance(vibration.totalSeconds + 1)
+        clock.advance(vibration.totalSeconds + 0.2)
         detector.push(SoundObservation(identifier: "knock", confidence: 0.9, timestamp: clock.now))
         detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: clock.now))
         #expect(await eventually { !pipeline.soundAlerts.isEmpty })
