@@ -529,8 +529,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// "(...)" is a tag, as in `isBracketed`).
     func withoutNotes(_ text: String) -> String {
         guard text.contains(where: { $0 == "[" || $0 == "(" || $0 == "\u{FF08}" }) else { return text }
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).wholeMatch(of: Self.wholeRoundNote) != nil { return "" }
         var cleaned = text.replacing(Self.squareNote, with: "")
-        if cleaned.trimmingCharacters(in: .whitespacesAndNewlines).wholeMatch(of: Self.wholeRoundNote) != nil { return "" }
         cleaned = cleaned.replacing(Self.roundNote) { match in
             let inner = Self.normalize(String(match.output.1))
             return knownHallucinations.contains(inner) || ambiguousHallucinations.contains(inner) ? "" : String(match.output.0)

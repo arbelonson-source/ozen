@@ -374,8 +374,8 @@ class WhisperResultFilter(
      */
     internal fun withoutNotes(text: String): String {
         if (text.none { it == '[' || it == '(' || it == '\uFF08' }) return text
+        if (wholeRoundNote.matches(text.trim())) return ""
         var cleaned = squareNote.replace(text, "")
-        if (wholeRoundNote.matches(cleaned.trim())) return ""
         cleaned = roundNote.replace(cleaned) { match ->
             val inner = normalize(match.groupValues[1])
             if (inner in knownHallucinations || inner in ambiguousHallucinations) "" else match.value

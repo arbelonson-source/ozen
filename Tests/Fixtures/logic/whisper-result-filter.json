@@ -779,6 +779,12 @@
   {"kind": "knownHallucination", "input": "Спасибо", "hallucinationIn": ""},
   {"kind": "knownHallucination", "input": "شكرا", "hallucinationIn": ""},
   {"kind": "knownHallucination", "input": "谢谢你的帮助", "hallucinationIn": ""},
-  {"kind": "knownHallucination", "input": "感谢观看了这部很长的纪录片之后我们决定一起去旅行吧大家说好不好呢", "hallucinationIn": ""}
+  {"kind": "knownHallucination", "input": "感谢观看了这部很长的纪录片之后我们决定一起去旅行吧大家说好不好呢", "hallucinationIn": ""},
+  {"kind": "acceptedText", "language": "en", "text": "[Music] (HSBC)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "(HSBC)"},
+  {"kind": "acceptedText", "language": "es", "text": "[Música] (HSBC)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "(HSBC)"},
+  {"kind": "acceptedText", "language": "en", "text": "(Music)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "[Music] (laughter)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "(HSBC)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "[Music] (I think) so", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "(I think) so"}
  ]
 }
