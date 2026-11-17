@@ -819,6 +819,9 @@
   {"kind": "knownHallucination", "input": "Captions by the community are useful", "hallucinationIn": ""},
   {"kind": "knownHallucination", "input": "Subtitles by the Amara.org community", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
   {"kind": "acceptedText", "language": "en", "text": "Captions by the community are useful", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "Captions by the community are useful"},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles by default are off. Subtitles by default are off.", "noSpeechProb": 0.1, "avgLogprob": -1.2, "compressionRatio": 2.8, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles by default are off. Subtitles by default are off.", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 2.8, "expected": "Subtitles by default are off."},
+  {"kind": "acceptedText", "language": "en", "text": "Captions: TV\u0085lag", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "Captions: TV\u0085lag"},
   {"kind": "knownHallucination", "input": "Captions by amara.org are useful", "hallucinationIn": ""},
   {"kind": "knownHallucination", "input": "Captions by amara.org", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"}
  ]

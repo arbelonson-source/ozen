@@ -409,7 +409,7 @@ class WhisperResultFilter(
         // are off") is kept when the model was sure of it; an unsure one is
         // the made-up credit it so often writes on quiet.
         if ((segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold) &&
-            isCreditLine(text, normalize(text), anyRemainder = true)
+            listOf(text, once, repeatedSentence(text) ?: text).any { isCreditLine(it, normalize(it), anyRemainder = true) }
         ) {
             return false
         }
@@ -747,7 +747,7 @@ class WhisperResultFilter(
             return (first == "[" && last == "]") || (first == "(" && last == ")")
         }
 
-        private val whisperSpaces = Regex("[\\p{Z}\\s]+")
+        private val whisperSpaces = Regex("[\\p{Z}\\s\\u0085]+")
 
         internal val nameConnectors: Set<String> = setOf(
             "and", "&", "de", "del", "la", "van", "von", "der", "den", "di", "da", "el", "al", "bin", "y", "e", "du", "des", "le", "ten", "ter",
