@@ -3346,6 +3346,25 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.soundAlerts.map(\.event.identifier) == ["knock"] })
     }
 
+    @Test("a clock set back with no later buzz still forgets the old one before it catches up")
+    func staleBuzzIsForgottenWithoutALaterBuzz() async {
+        let clock = TestClock()
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector, now: { clock.now })
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        pipeline.ignoreSounds(whileVibrating: AlertVibration.pattern(for: .critical))
+        let first = clock.now
+        clock.advance(-3_600)
+        detector.push(SoundObservation(identifier: "alarm_clock", confidence: 0.9, timestamp: clock.now))
+        #expect(await eventually { pipeline.soundAlerts.count == 1 })
+        clock.advance(3_600.5)
+        detector.push(SoundObservation(identifier: "knock", confidence: 0.9, timestamp: first + 0.1))
+        #expect(await eventually { pipeline.soundAlerts.map(\.event.identifier) == ["alarm_clock", "knock"] })
+    }
+
     @Test("a second buzz while the first is still going ignores the late reports of both, not only the second")
     func overlappingVibrationsExtendTheWindow() async {
         let clock = TestClock()

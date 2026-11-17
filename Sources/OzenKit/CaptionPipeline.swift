@@ -1226,11 +1226,14 @@ public final class CaptionPipeline {
             buzzingFrom = start
             buzzingUntil = start + vibration.totalSeconds
         }
-        let current = ownBuzzes.filter { $0.start <= start && start < $0.start + $0.pattern.totalSeconds + 10 }
-        ownBuzzes = Array((current + [(start, vibration)]).suffix(Self.maxRememberedBuzzes))
+        ownBuzzes = Array((liveBuzzes(at: start) + [(start, vibration)]).suffix(Self.maxRememberedBuzzes))
     }
 
     private static let maxRememberedBuzzes = 16
+
+    private func liveBuzzes(at time: TimeInterval) -> [(start: TimeInterval, pattern: AlertVibration)] {
+        ownBuzzes.filter { $0.start <= time && time < $0.start + $0.pattern.totalSeconds + 10 }
+    }
 
     private var readingSoundAlerts: [SoundAlert] = []
 
@@ -1238,6 +1241,7 @@ public final class CaptionPipeline {
         // Judged by when the classifier produced the reading, not when it
         // got here, and dropped before the policy, so the phone's own buzz
         // doesn't start a cooldown that would hide a real ring right after.
+        ownBuzzes = liveBuzzes(at: now())
         if SoundEventCatalog.vibrationLookalikes.contains(observation.identifier),
            ownBuzzes.contains(where: { BuzzEcho.ignores($0.pattern, startedAt: $0.start, at: observation.timestamp) }) {
             return

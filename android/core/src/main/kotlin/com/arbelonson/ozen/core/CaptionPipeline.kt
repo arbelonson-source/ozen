@@ -1551,9 +1551,11 @@ class CaptionPipeline(
      */
     fun ignoreSounds(whileVibrating: AlertVibration) {
         val start = now()
-        ownBuzzes = (ownBuzzes.filter { (from, pattern) -> from <= start && start < from + pattern.totalSeconds + 10.0 } +
-            (start to whileVibrating)).takeLast(MAX_REMEMBERED_BUZZES)
+        ownBuzzes = (liveBuzzes(start) + (start to whileVibrating)).takeLast(MAX_REMEMBERED_BUZZES)
     }
+
+    private fun liveBuzzes(at: Double): List<Pair<Double, AlertVibration>> =
+        ownBuzzes.filter { (from, pattern) -> from <= at && at < from + pattern.totalSeconds + 10.0 }
 
     private var readingSoundAlerts: List<SoundAlert> = emptyList()
 
@@ -1561,6 +1563,7 @@ class CaptionPipeline(
         // Judged by when the classifier produced the reading, not when it
         // got here, and dropped before the policy, so the phone's own buzz
         // doesn't start a cooldown that would hide a real ring right after.
+        ownBuzzes = liveBuzzes(now())
         if (SoundEventCatalog.vibrationLookalikes.contains(observation.identifier) &&
             ownBuzzes.any { (start, pattern) -> BuzzEcho.ignores(pattern, start, observation.timestamp) }
         ) {
