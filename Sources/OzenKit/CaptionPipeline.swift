@@ -1226,7 +1226,8 @@ public final class CaptionPipeline {
             buzzingFrom = start
             buzzingUntil = start + vibration.totalSeconds
         }
-        ownBuzzes = Array((ownBuzzes + [(start, vibration)]).suffix(Self.maxRememberedBuzzes))
+        let current = ownBuzzes.filter { $0.start <= start && start < $0.start + $0.pattern.totalSeconds + 10 }
+        ownBuzzes = Array((current + [(start, vibration)]).suffix(Self.maxRememberedBuzzes))
     }
 
     private static let maxRememberedBuzzes = 16

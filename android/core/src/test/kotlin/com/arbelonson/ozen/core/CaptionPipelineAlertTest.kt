@@ -517,6 +517,25 @@ class CaptionPipelineAlertTest {
     }
 
     @Test
+    fun `a buzz from before a clock set back is forgotten, so catching up never ignores a real knock`() = runTest {
+        val clock = TestClock()
+        val detector = FakeSoundDetector()
+        val (pipeline, audio, _) = makePipeline(soundDetector = detector, now = { clock.now })
+        pipeline.start(AppSettings.default)
+        audio.push(chunk())
+        assertTrue(eventually { detector.chunksSeen == 1 })
+
+        val vibration = AlertVibration.pattern(SoundEvent.Importance.Critical)
+        pipeline.ignoreSounds(vibration)
+        val first = clock.now
+        clock.advance(-3_600.0)
+        pipeline.ignoreSounds(vibration)
+        clock.advance(vibration.totalSeconds + 5.0)
+        detector.push(SoundObservation("knock", 0.9, first + 0.1))
+        assertTrue(eventually { pipeline.soundAlerts.map { it.event.identifier } == listOf("knock") })
+    }
+
+    @Test
     fun `a second buzz while the first is still going ignores the late reports of both, not only the second`() = runTest {
         val clock = TestClock()
         val detector = FakeSoundDetector()

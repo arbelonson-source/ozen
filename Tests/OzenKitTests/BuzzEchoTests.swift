@@ -25,6 +25,16 @@ struct BuzzEchoTests {
         #expect(BuzzEcho.ignores(pattern, startedAt: 100, at: 100 + pattern.totalSeconds + 0.3))
     }
 
+    @Test("a knock within the tail after an early pulse is ignored but one past it is heard")
+    func earlyPulseTail() {
+        let spaced = AlertVibration(pulses: [
+            .init(start: 0, duration: 0.2, intensity: 1, sharpness: 1),
+            .init(start: 2, duration: 0.2, intensity: 1, sharpness: 1),
+        ])
+        #expect(BuzzEcho.ignores(spaced, startedAt: 100, at: 100.5))
+        #expect(!BuzzEcho.ignores(spaced, startedAt: 100, at: 101))
+    }
+
     @Test("a reading from before the buzz began is not ignored")
     func before() {
         #expect(!BuzzEcho.ignores(pattern, startedAt: 100, at: 99))

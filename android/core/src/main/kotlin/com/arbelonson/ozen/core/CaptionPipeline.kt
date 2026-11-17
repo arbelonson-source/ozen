@@ -1551,7 +1551,8 @@ class CaptionPipeline(
      */
     fun ignoreSounds(whileVibrating: AlertVibration) {
         val start = now()
-        ownBuzzes = (ownBuzzes + (start to whileVibrating)).takeLast(MAX_REMEMBERED_BUZZES)
+        ownBuzzes = (ownBuzzes.filter { (from, pattern) -> from <= start && start < from + pattern.totalSeconds + 10.0 } +
+            (start to whileVibrating)).takeLast(MAX_REMEMBERED_BUZZES)
     }
 
     private var readingSoundAlerts: List<SoundAlert> = emptyList()

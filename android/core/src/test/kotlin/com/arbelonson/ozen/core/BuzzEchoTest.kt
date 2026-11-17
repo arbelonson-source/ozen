@@ -28,8 +28,10 @@ class BuzzEchoTest {
     }
 
     @Test
-    fun `a knock within the tail after an early pulse is ignored`() {
-        assertTrue(BuzzEcho.ignores(pattern, 100.0, 100.0 + 0.16 + 0.3))
+    fun `a knock within the tail after an early pulse is ignored but one past it is heard`() {
+        val spaced = AlertVibration(listOf(AlertVibration.Pulse(0.0, 0.2, 1f, 1f), AlertVibration.Pulse(2.0, 0.2, 1f, 1f)))
+        assertTrue(BuzzEcho.ignores(spaced, 100.0, 100.5))
+        assertFalse(BuzzEcho.ignores(spaced, 100.0, 101.0))
     }
 
     @Test
