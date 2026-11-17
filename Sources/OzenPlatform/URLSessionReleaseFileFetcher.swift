@@ -47,12 +47,18 @@ public struct URLSessionReleaseFileFetcher: ReleaseFileFetching {
     }
 
     public func sha256(of file: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: file)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while let chunk = try handle.read(upToCount: Self.writeBatch), !chunk.isEmpty {
-            hasher.update(data: chunk)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        try ChunkedDigest.hex(of: file, chunkSize: Self.writeBatch, makeHasher: { SHA256Hasher() })
+    }
+}
+
+struct SHA256Hasher: StreamingHasher {
+    private var hasher = SHA256()
+
+    mutating func update(_ data: Data) {
+        hasher.update(data: data)
+    }
+
+    func finalize() -> String {
+        hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }

@@ -145,7 +145,9 @@ public struct WhisperModelStore: Sendable {
         switch WhisperModelCatalog.option(for: variant)?.source ?? .whisperKitHub {
         case .ozenRelease:
             let data = try? Data(contentsOf: folder.appendingPathComponent(ReleaseModelManifest.assetName))
-            return data.flatMap { try? ReleaseModelManifest.parse($0) }.map(DamagedModelCheck.expected(from:))
+            let listed = data.flatMap { try? ReleaseModelManifest.parse($0) }.map(DamagedModelCheck.expected(from:)) ?? []
+            let all = CompiledModelSums.merged(listed, in: folder)
+            return all.isEmpty ? nil : all
         case .whisperKitHub:
             let name = WhisperModelCatalog.folderName(for: variant)
             guard let url = URL(string: "https://huggingface.co/api/models/\(Self.repository)/tree/main/\(name)?recursive=true") else { return nil }
@@ -299,6 +301,10 @@ public struct WhisperModelStore: Sendable {
     /// from WhisperKit's hub arrive compiled already; a release built on a
     /// machine without Apple's compiler can't.
     ///
+    /// Once the packages are gone, a checksum list of the compiled bundles
+    /// is saved beside them (see `CompiledModelSums`), so damaged weights
+    /// can be told from other load failures later.
+    ///
     /// The packages are removed only once every one has compiled: removed
     /// one by one, a compile failing on the second (low memory on an older
     /// phone) left the first missing, and the next try downloaded it again.
@@ -317,6 +323,9 @@ public struct WhisperModelStore: Sendable {
         }
         for name in packages {
             try fileManager.removeItem(at: folder.appendingPathComponent(name, isDirectory: true))
+        }
+        if !packages.isEmpty {
+            try? CompiledModelSums.record(in: folder, sha256: URLSessionReleaseFileFetcher().sha256(of:))
         }
     }
 
