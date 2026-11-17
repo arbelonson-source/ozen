@@ -509,7 +509,6 @@ class OnDemandTranscriber:
         self._clock = clock
         self._loaded = None
         self._loading = None
-        self.load_error = None
         self.connections = 0
         self.last_used = clock()
 
@@ -558,7 +557,7 @@ class OnDemandTranscriber:
         except Exception as error:
             if self._loading is loading:
                 self._loading = None
-            self.load_error = error
+            error.models_unavailable = True
             log.error("could not load the speech models (%s); the phone uses its own model until they can", error)
             raise
         if self._loading is loading:
@@ -990,7 +989,7 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
         def worker_done(task):
             if not task.cancelled() and worker_failed(task.exception()):
                 log.error("session from %s failed: %r", peer, task.exception())
-                loading = on_demand and task.exception() is transcriber.load_error
+                loading = getattr(task.exception(), "models_unavailable", False)
                 code = "models_unavailable" if loading else "transcription_failed"
                 asyncio.ensure_future(close_failed(ws, code))
 
