@@ -132,7 +132,8 @@ struct PhasePresentation {
         if pausedForRecording, !interruptedBySystem, !pausedForSpeech, phase == .paused || phase == .idle {
             // Said as on Android: captions stopped because a recording is
             // being turned into text, and come back by themselves. A tap
-            // still does what it did.
+            // does nothing: resuming would load the live speech model beside
+            // the transcription's, which can run the phone out of memory.
             self.init(
                 title: soundAlertsPaused
                     ? tr("הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט", "Captions and sound alerts are paused while a recording is turned into text")
@@ -140,7 +141,7 @@ struct PhasePresentation {
                 detail: tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
                 systemImage: "pause.circle.fill",
                 tint: .orange,
-                action: phase == .idle ? .start : .resume
+                action: .none
             )
             return
         }

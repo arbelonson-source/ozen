@@ -212,6 +212,16 @@ struct LiveCaptionViewModelTests {
         #expect(!viewModel.captionsHeldForRecording)
     }
 
+    @Test("opening the first-run guide again during a recording hand-over lets go of the hold")
+    func onboardingAgainClearsRecordingHold() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-hold-\(UUID()).json")
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: file), pipeline: fakePipeline())
+        await viewModel.start()
+        viewModel.captionsHeldForRecording = true
+        viewModel.showOnboardingAgain()
+        #expect(!viewModel.captionsHeldForRecording)
+    }
+
     @Test("a reply typed but not yet said outlives the speaking sheet, captions stopping and starting, and is never saved to disk")
     func typedReplyIsKept() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-draft-\(UUID()).json")

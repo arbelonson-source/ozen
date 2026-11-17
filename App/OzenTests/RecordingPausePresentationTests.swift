@@ -15,8 +15,8 @@ struct RecordingPausePresentationTests {
         let status = shown(.paused, soundsOnly: true)
         #expect(status.title == "הכתוביות מושהות בזמן שהקלטה הופכת לטקסט")
         #expect(status.detail == "הן יחזרו לבד כשהיא תסתיים")
-        #expect(status.action == .resume)
-        #expect(shown(.idle, soundsOnly: true).action == .start)
+        #expect(status.action == .none)
+        #expect(shown(.idle, soundsOnly: true).action == .none)
         #expect(status.detailFitsInStatus)
     }
 
@@ -30,8 +30,16 @@ struct RecordingPausePresentationTests {
     func stoppedForRecording() {
         let status = shown(.idle)
         #expect(status.title == "הכתוביות מושהות בזמן שהקלטה הופכת לטקסט")
-        #expect(status.action == .start)
+        #expect(status.action == .none)
         #expect(shown(.idle, alertsPaused: true).title == "הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט")
+    }
+
+    @Test("while captions are held for a recording the tile offers no tap, and the usual one is back once the hold ends")
+    func noTapWhileHeld() {
+        #expect(shown(.paused).action == .none)
+        #expect(shown(.idle).action == .none)
+        #expect(shown(.paused, held: false).action == .resume)
+        #expect(shown(.idle, held: false).action == .start)
     }
 
     @Test("captions the person stopped, or a call, are not described as paused for a recording")
