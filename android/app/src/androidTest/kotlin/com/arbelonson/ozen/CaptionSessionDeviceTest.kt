@@ -1641,4 +1641,38 @@ class CaptionSessionDeviceTest {
 
         override fun refreshInputs() {}
     }
+
+    @Test
+    fun soundAlertsOnlyChosenDuringARecordingHandOverTakesTheHandOverAway(): Unit = runBlocking {
+        val work = File(context.cacheDir, "handover-sounds-only-test").apply { deleteRecursively(); mkdirs() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val handedOver = withTimeoutOrNull(10_000) {
+                while (!withContext(Dispatchers.Main) { session.pipeline.phase.isTransitioning.also { if (it) session.stopCaptionsForRecording() } }) delay(2)
+                true
+            }
+            assumeTrue("the start never showed a loading phase", handedOver == true)
+            val shown = withTimeoutOrNull(5_000) {
+                while (!CaptionState.screen.value.pausedForRecording) delay(10)
+                true
+            }
+            assertTrue("handed over: ${CaptionState.screen.value.phase}", shown == true)
+            withContext(Dispatchers.Main) { session.listenForSoundsOnly() }
+            val dropped = withTimeoutOrNull(5_000) {
+                while (CaptionState.screen.value.pausedForRecording) delay(10)
+                true
+            }
+            assertTrue("the person's own choice ends the hand-over", dropped == true)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+        }
+    }
 }

@@ -763,6 +763,7 @@ class CaptionSession(
         refusalCard.captionsStarted()
         CaptionState.startRefused(false)
         replies.userTookControl()
+        dropRecordingHandover()
         scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
     }
 
@@ -1064,6 +1065,7 @@ class CaptionSession(
         // Wi-Fi), ended by what the stopped-captions notice reports.
         listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause(), soundsOnly = pipeline.soundsOnlyShown)
         checkCaptionsStillRunning()
+        NightStartCheck.latch.nightStart(NightStartCheck.isNightStart(pipeline.soundsOnlyShown, recordingHandover.pausedHere))
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: chosenSettings()
         askBuiltInLanguagesWhenWaiting()
         val handOvers = pipeline.builtInHandOvers
