@@ -405,10 +405,23 @@ class WhisperResultFilter(
         // the model was also unsure of its tokens; a confident transcript in a
         // window the VAD thought was quiet is kept.
         if (segment.noSpeechProb > noSpeechThreshold && segment.avgLogprob < logprobThreshold) return false
+        // A sentence that merely opens like a credit ("Subtitles by default
+        // are off") is kept when the model was sure of it; an unsure one is
+        // the made-up credit it so often writes on quiet.
+        if ((segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold) &&
+            sequenceOf({ text }, { once }, { repeatedSentence(text) ?: text }).any {
+                it().let { line -> isCreditLine(line, normalize(line), anyRemainder = true) }
+            }
+        ) {
+            return false
+        }
         if (segment.compressionRatio > compressionRatioThreshold) {
             // Two or three copies of a sentence measured 2.5 to 3.6; the loops
             // Whisper wrote on household noise 11 to 25.
             if (segment.compressionRatio > 2 * compressionRatioThreshold) return false
+            // "Come on, come on, come on, come on, let's go!" (a phrase said
+            // over for emphasis, with at least two real words outside it, from
+            // a model that was sure) is kept below, cut to three.
             // "di di di di!" (enough!) and nothing else: the phone's engine
             // scores repetition over its token numbers, where a word said four
             // or five times on its own already measures 2.5 to 3.3 (the
@@ -417,6 +430,14 @@ class WhisperResultFilter(
             // over again, or "toda toda toda...", is still a loop.
             val word = normalize(once)
             if (once != text && word.split(" ").count { it.isNotEmpty() } <= 2 && word !in ambiguousHallucinations) return true
+            val beside = wordsBesideEmphasis(text)
+            if (beside != null && beside >= 2 &&
+                segment.noSpeechProb <= ambiguousNoSpeechThreshold &&
+                segment.avgLogprob >= ambiguousLogprobThreshold &&
+                !isKnownHallucination(collapsingRepeats(text))
+            ) {
+                return true
+            }
             val sentence = repeatedSentence(text)
             if (sentence == null || isKnownHallucination(sentence)) return false
         }
@@ -439,13 +460,15 @@ class WhisperResultFilter(
      * separator (the normalizer already turned ":" into nothing) or a name.
      * Whole words only, so "ktuviotayim" or "targumim" never match.
      */
-    internal fun isCreditLine(raw: String, normalized: String): Boolean {
+    internal fun isCreditLine(raw: String, normalized: String, anyRemainder: Boolean = false): Boolean {
         if (isUnspacedCreditLine(normalized)) return true
         val words = normalized.split(" ").filter { it.isNotEmpty() }
         if (words.isEmpty() || words.size > maximumCreditLineWords) return false
+        val rawWords = raw.split(whisperSpaces).filter { normalize(it).isNotEmpty() }
         val byPhrase = hallucinatedCreditPrefixes.any { prefix ->
             val prefixWords = prefix.split(" ").filter { it.isNotEmpty() }
-            words.size >= prefixWords.size && words.take(prefixWords.size) == prefixWords
+            words.size >= prefixWords.size && words.take(prefixWords.size) == prefixWords &&
+                (anyRemainder || looksLikeCredit(rawWords.drop(prefixWords.size)))
         }
         if (byPhrase) return true
 
@@ -453,18 +476,20 @@ class WhisperResultFilter(
         // other checks, but with the colon and dash this one needs.
         val unmarked = HebrewText.stripNiqqud(raw).codePoints().toArray()
             .filter { Character.getType(it) != Character.FORMAT.toInt() }
-        val opening = trimmingWhisperScalars(String(unmarked.toIntArray(), 0, unmarked.size)) {
+        val cased = trimmingWhisperScalars(String(unmarked.toIntArray(), 0, unmarked.size)) {
             isWhisperSpaceOrNewline(it) || (it <= 0xFFFF && it.toChar() in "[](){}<>\"'״-–—")
-        }.lowercase(Locale.ROOT)
-        val openingGraphemes = graphemesOfWhisper(opening)
+        }
+        val opening = cased.lowercase(Locale.ROOT)
+        val casedGraphemes = graphemesOfWhisper(cased)
         return hallucinatedCreditLabels.any { label ->
             if (!opening.startsWith(label)) return@any false
-            val afterLabel = openingGraphemes.drop(graphemesOfWhisper(label).size)
+            val afterLabel = casedGraphemes.drop(graphemesOfWhisper(label).size)
                 .dropWhile { it.codePointAt(0).let(::isWhisperWhitespace) }
-            if (afterLabel.firstOrNull() == ":") return@any true
             val separator = afterLabel.firstOrNull() ?: return@any false
+            val remainder = { afterLabel.drop(1).joinToString("").split(whisperSpaces).filter { normalize(it).isNotEmpty() } }
+            if (separator == ":") return@any anyRemainder || looksLikeCredit(remainder())
             if (separator !in creditLabelDashes) return@any false
-            words.size <= maximumDashCreditLineWords
+            words.size <= maximumDashCreditLineWords && (anyRemainder || looksLikeCredit(remainder()))
         }
     }
 
@@ -578,19 +603,38 @@ class WhisperResultFilter(
          *
          * Text with nothing to collapse comes back exactly as it was.
          */
-        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4, maxNumberRepeats: Int = 10): String {
+        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4, maxNumberRepeats: Int = 10): String =
+            collapse(text, maxRepeats, maxPhraseWords, maxNumberRepeats, Int.MAX_VALUE).text
+
+        /**
+         * The words of [text] outside every phrase said three or more times
+         * back to back, once each phrase is cut to one copy: "Come on, come
+         * on, come on, come on, let's go!" leaves 2 ("let's go"); null when
+         * no phrase is said that often.
+         */
+        internal fun wordsBesideEmphasis(text: String): Int? {
+            val result = collapse(text, 1, 4, 10, 3)
+            return if (result.emphasized > 0) result.words - result.emphasized else null
+        }
+
+        private class Collapsed(val text: String, val words: Int, val emphasized: Int)
+
+        private fun collapse(text: String, maxRepeats: Int, maxPhraseWords: Int, maxNumberRepeats: Int, emphasisFrom: Int): Collapsed {
             var words = splitOnWhisperWhitespace(text)
-            if (maxRepeats < 1 || words.size <= maxRepeats) return text
+            var emphasis = List(words.size) { false }
+            if (maxRepeats < 1 || words.size <= maxRepeats) return Collapsed(text, words.count { normalize(it).isNotEmpty() }, 0)
             val numberLimit = if (maxRepeats > 1) maxOf(maxRepeats, maxNumberRepeats) else maxRepeats
             var changed = false
             for (phraseLength in 1..maxPhraseWords) {
                 val keys = words.map { normalize(it) }
                 val result = mutableListOf<String>()
+                val resultEmphasis = mutableListOf<Boolean>()
                 var index = 0
                 while (index < words.size) {
                     val phraseEnd = index + phraseLength
                     if (phraseEnd > words.size || keys.subList(index, phraseEnd).all { it.isEmpty() }) {
                         result.add(words[index])
+                        resultEmphasis.add(emphasis[index])
                         index += 1
                         continue
                     }
@@ -606,16 +650,20 @@ class WhisperResultFilter(
                         result.addAll(words.subList(index, index + (limit - 1) * phraseLength))
                         val lastStart = index + (repeats - 1) * phraseLength
                         result.addAll(words.subList(lastStart, lastStart + phraseLength))
+                        repeat(limit * phraseLength) { resultEmphasis.add(repeats >= emphasisFrom) }
                         index += repeats * phraseLength
                         changed = true
                     } else {
                         result.add(words[index])
+                        resultEmphasis.add(emphasis[index])
                         index += 1
                     }
                 }
                 words = result
+                emphasis = resultEmphasis
             }
-            return if (changed) words.joinToString(" ") else text
+            val spoken = words.indices.filter { normalize(words[it]).isNotEmpty() }
+            return Collapsed(if (changed) words.joinToString(" ") else text, spoken.size, spoken.count { emphasis[it] })
         }
 
         /**
@@ -733,6 +781,67 @@ class WhisperResultFilter(
             val first = graphemes.firstOrNull() ?: return false
             val last = graphemes.last()
             return (first == "[" && last == "]") || (first == "(" && last == ")")
+        }
+
+        private val whisperSpaces = Regex("[\\p{Z}\\s\\u0085]+")
+
+        internal val nameConnectors: Set<String> = setOf(
+            "and", "&", "de", "del", "la", "van", "von", "der", "den", "di", "da", "el", "al", "bin", "y", "e", "du", "des", "le", "ten", "ter",
+        )
+
+        internal val leadingArticles: Set<String> = setOf("the", "la", "le", "les", "el", "los", "las", "die", "der", "das")
+
+        internal val communityWords: Set<String> = setOf(
+            "community", "comunidad", "comunidade", "communauté", "gemeinschaft", "сообщество", "спільнота",
+        )
+
+        private fun isPunctuationOrSymbol(codePoint: Int): Boolean = when (Character.getType(codePoint).toByte()) {
+            Character.CONNECTOR_PUNCTUATION, Character.DASH_PUNCTUATION, Character.START_PUNCTUATION, Character.END_PUNCTUATION,
+            Character.INITIAL_QUOTE_PUNCTUATION, Character.FINAL_QUOTE_PUNCTUATION, Character.OTHER_PUNCTUATION,
+            Character.MATH_SYMBOL, Character.CURRENCY_SYMBOL, Character.MODIFIER_SYMBOL, Character.OTHER_SYMBOL -> true
+            else -> false
+        }
+
+        private fun isAddress(word: String): Boolean {
+            val lower = word.lowercase(Locale.ROOT)
+            if ('@' in word || lower.startsWith("www.") || lower.startsWith("http")) return true
+            return word.indices.any {
+                word[it] == '.' && it > 0 && it < word.length - 1 &&
+                    Character.isLetter(word.codePointBefore(it)) && Character.isLetter(word.codePointAt(it + 1))
+            }
+        }
+
+        /**
+         * What follows a credit opening decides whether it is a credit or a
+         * person talking about captions ("Subtitles by default are off",
+         * "Subtitles: on or off?"). A credit names someone or something: a
+         * capitalised name, an address ("amara.org", "@name"), or "the
+         * community", with nothing but such words in the line. Words in a script without letter case (Hebrew, Arabic,
+         * Chinese, Hindi...) show no such difference, so they count as a name
+         * and a line there is dropped as before, as is a bare year. Nothing
+         * after the opening ("Subtitles by") is a credit too.
+         */
+        internal fun looksLikeCredit(remainder: List<String>): Boolean {
+            val words = remainder.map { raw ->
+                val word = run {
+                    val cps = raw.codePoints().toArray().toList()
+                    val start = cps.indexOfFirst { !isPunctuationOrSymbol(it) }
+                    val end = cps.indexOfLast { !isPunctuationOrSymbol(it) }
+                    if (start < 0) "" else String(cps.subList(start, end + 1).toIntArray(), 0, end - start + 1)
+                }
+                raw to word
+            }.filter { it.second.isNotEmpty() }
+            if (words.isEmpty()) return true
+            return words.withIndex().all { (index, pair) ->
+                val (raw, word) = pair
+                val plain = normalize(word)
+                if (isAddress(raw) || plain in communityWords) return@all true
+                if (index == 0 && plain in leadingArticles) return@all true
+                if (plain in nameConnectors) return@all true
+                val letter = word.codePoints().toArray().firstOrNull { Character.isLetter(it) }
+                    ?: return@all word.codePoints().toArray().any { Character.isDigit(it) }
+                !Character.isLowerCase(letter)
+            }
         }
 
         /**

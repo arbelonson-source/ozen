@@ -277,6 +277,8 @@ class FakeEngine(
     override var holdsModel = false
         private set
 
+    override val isLoadingModel: Boolean get() = held > 0
+
     var downloadCancels = 0
         private set
     private var cancelPending = false

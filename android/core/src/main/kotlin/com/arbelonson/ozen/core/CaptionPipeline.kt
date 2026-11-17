@@ -1160,6 +1160,9 @@ class CaptionPipeline(
      */
     val loadedModelCount: Int get() = engineCache.values.count { it.holdsModel }
 
+    /** How many kept engines are loading an on-phone model right now; one stopped meanwhile still holds it when done. */
+    val loadingModelCount: Int get() = engineCache.values.count { it.isLoadingModel }
+
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {
         if (!phase.isListening && !phase.isTransitioning) dropEngines()
@@ -1826,6 +1829,29 @@ class CaptionPipeline(
      * `TranscriptionEngine.diagnosticsSummary`.
      */
     suspend fun engineDiagnostics(): String? = currentEngine?.diagnosticsSummary()
+
+    /**
+     * An error nothing caught, from any coroutine on the session's scope.
+     * It is written to the event log (the class and a short message, never
+     * what was said or heard) and listening goes the way of any other
+     * failure: captions stop with the notice and come back by the retry
+     * back-off, sound alerts by their own retries. Closing the app would
+     * end the overnight sound alerts silently.
+     */
+    fun unexpectedError(error: Throwable) {
+        if (error is CancellationException) return
+        val text = "unexpected error: ${error.javaClass.name}: ${error.message.orEmpty().take(UNEXPECTED_MESSAGE_LIMIT)}"
+        logEvent(PipelineEvent.Kind.Note(text))
+        val current = phase
+        when {
+            current is PipelinePhase.Failed -> Unit
+            current == PipelinePhase.Idle || current == PipelinePhase.Paused -> if (soundsOnlyChosen) {
+                stopListeningForSounds()
+                retrySoundsOnly()
+            }
+            else -> fail(PipelineFailure.Kind.TranscriptionStopped, text)
+        }
+    }
 
     private fun logEvent(kind: PipelineEvent.Kind) {
         val count = eventLog.events.size
@@ -4157,6 +4183,8 @@ class CaptionPipeline(
 
     companion object {
         const val IDLE_CHECK_SECONDS = 1.0
+        private const val UNEXPECTED_MESSAGE_LIMIT = 200
+
         /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
         const val FALLBACK_AFTER_FAILURES = 2
         private const val EMBEDDING_WINDOW_SECONDS = 1.5

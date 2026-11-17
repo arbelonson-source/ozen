@@ -6,8 +6,8 @@ import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.PhoneModelPartialCleanup
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.UrlConnectionCloudHTTP
+import com.arbelonson.ozen.core.errorGuardedScope
 import java.io.File
-import kotlinx.coroutines.MainScope
 
 class OzenApplication : Application() {
     val settings by lazy { SettingsHolder(SettingsStore(File(filesDir, "ozen-settings.json"))) }
@@ -17,7 +17,7 @@ class OzenApplication : Application() {
     @Volatile
     var cloudKeyCheckHTTP: CloudHTTP = UrlConnectionCloudHTTP()
     val engineSettings by lazy {
-        EngineSettings(settings, cloudKeys, homeServerCode, { captions.checkHomeComputer() }, MainScope(), http = { cloudKeyCheckHTTP.send(it) }) { captions.settingsChanged() }
+        EngineSettings(settings, cloudKeys, homeServerCode, { captions.checkHomeComputer() }, errorGuardedScope { captions.unexpectedError(it) }, http = { cloudKeyCheckHTTP.send(it) }) { captions.settingsChanged() }
     }
     private val session = lazy { CaptionSession(this, settings, homeServerCode, cloudKeys) }
     val captions by session

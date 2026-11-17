@@ -532,6 +532,23 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `a model still loading after captions were stopped is counted until it is done`() = runTest {
+        val slow = FakeEngine()
+        val gate = PrepareGate()
+        slow.prepareGate = gate
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to slow))
+        assertEquals(0, pipeline.loadingModelCount)
+        val first = launch { pipeline.start(AppSettings.default) }
+        while (slow.heldPrepares == 0) yield()
+        assertEquals(1, pipeline.loadingModelCount)
+        pipeline.stop()
+        assertEquals(1, pipeline.loadingModelCount)
+        gate.open()
+        first.join()
+        assertEquals(0, pipeline.loadingModelCount)
+    }
+
+    @Test
     fun `captions stopped while their model loads - a recording waits that load out, and stops a download rather than wait for it`() = runTest {
         val slow = FakeEngine()
         val gate = PrepareGate()

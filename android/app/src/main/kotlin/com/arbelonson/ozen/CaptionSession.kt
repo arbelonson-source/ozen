@@ -46,6 +46,7 @@ import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.TorchFlash
 import com.arbelonson.ozen.core.TorchRunner
+import com.arbelonson.ozen.core.errorGuardedScope
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -106,7 +107,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -136,7 +136,7 @@ class CaptionSession(
     private val soundsOnlyChoice: SoundsOnlyStore = PreferencesSoundsOnlyStore(context),
     private val awaySoundStore: AwaySoundStore = PreferencesAwaySoundStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
-    private val scope = MainScope()
+    private val scope: CoroutineScope = errorGuardedScope { pipeline.unexpectedError(it) }
     private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val light = TorchRunner(CameraLight(context.applicationContext), lightScope)
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -442,7 +442,7 @@ class CaptionSession(
 
     /** The clock that delay is measured on; a seam for tests. */
     internal var backgroundClock: () -> Long = SystemClock::elapsedRealtime
-    private var backgroundRelease: Job? = null
+    private var backgroundRelease: BackgroundCleanup? = null
 
     private fun cancelBackgroundRelease() {
         backgroundRelease?.cancel()
@@ -460,31 +460,41 @@ class CaptionSession(
      * asleep for an hour still held the model for the full wait once woken,
      * just as the person's other apps started again. The phone's speech
      * engine is let go of at each look once nothing is being said, captions
-     * running or not; coming back connects it again.
+     * running or not; coming back connects it again. Once no model is held
+     * and the speech engine is let go of, the looking stops, so a phone left
+     * out of sight all night is not woken every half minute for nothing. It
+     * starts again, counting from when the app left, when the captions'
+     * step changes (a model loads only as part of one) or the speech engine
+     * is connected again.
      */
     private fun startBackgroundRelease() {
         cancelBackgroundRelease()
-        val seconds = backgroundReleaseDelaySeconds()
-        val leftAt = backgroundClock()
-        backgroundRelease = scope.launch {
-            while (true) {
-                delay(minOf(seconds, BACKGROUND_CHECK_SECONDS) * 1_000)
-                voice.rest()
-                val away = (backgroundClock() - leftAt) / 1_000
-                if (away < seconds) continue
+        backgroundRelease = BackgroundCleanup(
+            scope = scope,
+            seconds = backgroundReleaseDelaySeconds(),
+            clock = backgroundClock,
+            restVoice = voice::rest,
+            voiceResting = { voice.isResting },
+            loadedModels = { pipeline.loadedModelCount },
+            loadingModels = { pipeline.loadingModelCount },
+            mayRelease = {
                 val phase = pipeline.phase
-                val release = BackgroundModelRelease.shouldRelease(
+                BackgroundModelRelease.shouldRelease(
                     listening = phase.isListening,
                     transitioning = phase.isTransitioning,
                     mayLoadModels = pipeline.mayLoadModels,
                     serviceRunning = ListeningService.running,
                 )
-                if (release && pipeline.loadedModelCount > 0) {
-                    pipeline.releaseModels()
-                    note("model released after $away s in the background")
-                }
-            }
-        }
+            },
+            release = { away ->
+                pipeline.releaseModels()
+                note("model released after $away s in the background")
+            },
+        ).also { it.start() }
+    }
+
+    private fun backgroundStateChanged() {
+        scope.launch { backgroundRelease?.start() }
     }
 
     /**
@@ -647,7 +657,11 @@ class CaptionSession(
             publish = ::publish,
             say = ::announceStopOrReturn,
         )
-        pipeline.onPhaseChange = phaseChanges::phaseChanged
+        voice.onReconnect = ::backgroundStateChanged
+        pipeline.onPhaseChange = {
+            phaseChanges.phaseChanged(it)
+            backgroundStateChanged()
+        }
         pipeline.onSoundAlertsAvailabilityChange = {
             CaptionState.soundAlertsNotWorking(pipeline.soundAlertsNotWorking, pipeline.soundAlertsMicrophoneSilent)
             checkCaptionsStillRunning()
@@ -1410,6 +1424,12 @@ class CaptionSession(
         settings.current.value.let { homeComputerEngine(it).sendReport(text, it.languageCode) }
     }
 
+    /** An error that nothing caught in a coroutine of the app: captions stop with the usual notice and retry. */
+    fun unexpectedError(error: Throwable) = pipeline.unexpectedError(error)
+
+    /** The lock screen watcher failed again and again and was left stopped. */
+    fun noteWatcherGaveUp() = note("lock screen watcher stopped after repeated errors")
+
     private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
 
     private fun appVersion(): String {
@@ -1983,7 +2003,6 @@ class CaptionSession(
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
         const val LISTENING_CUT_IDENTIFIER = "listening-cut"
         private const val SAMPLE_RATE = 16_000
-        private const val BACKGROUND_CHECK_SECONDS = 30L
 
         /** The iPhone's warning buzz: two taps, the second stronger. */
         val BATTERY_BUZZ = AlertVibration(listOf(AlertVibration.Pulse(0.0, 0.1, 0.6f, 0.5f), AlertVibration.Pulse(0.2, 0.15, 1f, 0.5f)))
