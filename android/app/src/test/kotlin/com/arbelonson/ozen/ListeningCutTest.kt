@@ -77,11 +77,20 @@ class ListeningCutTest {
     }
 
     @Test
-    fun `a gap of two minutes or less is a quick restart and says nothing`() {
+    fun `a gap of eight minutes or less is a quick restart and says nothing`() {
         val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
         assertNull(ListeningCut.notice(record, now = at(1, 10) + 119))
-        assertNull(ListeningCut.notice(record, now = at(1, 10) + 120))
-        assertNotNull(ListeningCut.notice(record, now = at(1, 10) + 121))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 121))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 479))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 480))
+        assertNotNull(ListeningCut.notice(record, now = at(1, 10) + 481))
+    }
+
+    @Test
+    fun `the record is written every two minutes and a cut needs a gap four times that`() {
+        assertEquals(120_000L, ListeningRecorder.KEEP_ALIVE_MILLISECONDS)
+        assertEquals(480.0, ListeningCut.LEAST_GAP_SECONDS, 0.0)
+        assertEquals(4 * ListeningRecorder.KEEP_ALIVE_MILLISECONDS / 1_000.0, ListeningCut.LEAST_GAP_SECONDS, 0.0)
     }
 
     @Test

@@ -38,6 +38,8 @@ class ListeningRecorder(
     private val now: () -> Double = { System.currentTimeMillis() / 1_000.0 },
     private val background: Executor = Executors.newSingleThreadExecutor { Thread(it, "listening-record").apply { isDaemon = true } },
 ) {
+    companion object { const val KEEP_ALIVE_MILLISECONDS = 120_000L }
+
     @Volatile private var record: ListeningCut.Record? = null
     @Volatile private var leftover = Leftover.None
 

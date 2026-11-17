@@ -6,7 +6,7 @@ import com.arbelonson.ozen.core.tr
 import java.time.ZoneId
 
 object ListeningCut {
-    const val LEAST_GAP_SECONDS = 120.0
+    const val LEAST_GAP_SECONDS = 480.0
     private const val TAG = "listening"
     private const val LATEST_SECONDS = 32_503_680_000.0
 

@@ -136,9 +136,14 @@ class ListeningService : Service() {
     private suspend fun watch() = coroutineScope {
         launch {
             while (true) {
-                delay(KEEP_ALIVE_MILLISECONDS)
-                captions.keepListeningRecordAlive()
+                delay(REFRESH_MILLISECONDS)
                 refresh()
+            }
+        }
+        launch {
+            while (true) {
+                delay(ListeningRecorder.KEEP_ALIVE_MILLISECONDS)
+                captions.keepListeningRecordAlive()
             }
         }
         CaptionState.screen.combine(settings.current) { _, _ -> }.collect { refresh() }
@@ -189,7 +194,7 @@ class ListeningService : Service() {
         private const val EXTRA_RESULT_CODE = "resultCode"
         private const val EXTRA_CONSENT = "consent"
         private const val MICROPHONE_AND_SHARING = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        private const val KEEP_ALIVE_MILLISECONDS = 30_000L
+        private const val REFRESH_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
 

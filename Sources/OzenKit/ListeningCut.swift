@@ -1,7 +1,7 @@
 import Foundation
 
 public enum ListeningCut {
-    public static let leastGapSeconds: Double = 120
+    public static let leastGapSeconds: Double = 480
     private static let tag = "listening"
 
     public struct Record: Sendable, Equatable {
