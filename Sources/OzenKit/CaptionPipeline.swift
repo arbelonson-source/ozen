@@ -2656,9 +2656,12 @@ public final class CaptionPipeline {
               case .failed(let loadFailure) = phase, loadFailure.engineUnavailability?.kind == .modelLoadFailed,
               let onPhone = activeSettings, onPhone.engine == .whisperKit
         else { return }
-        guard let home = await homeComputerCover(replacing: onPhone, after: failure, chosen: coveredSettings),
-              case .failed(let still) = phase, still == loadFailure, !isRecordingVoice
+        guard await homeComputerCover(replacing: onPhone, after: failure, chosen: coveredSettings) != nil,
+              case .failed(let still) = phase, still == loadFailure, !isRecordingVoice,
+              let latest = activeSettings, engineCacheKey(latest) == engineCacheKey(onPhone)
         else { return }
+        var home = latest
+        home.engine = .homeServer
         homeComputerTriedAfterPhoneModel = true
         cancelScheduledRetry()
         logEvent(.note("the phone's model didn't load, the home computer took over"))

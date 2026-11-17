@@ -2965,9 +2965,13 @@ class CaptionPipeline(
         if (loadFailure.engineUnavailability?.kind != EngineUnavailability.Kind.ModelLoadFailed) return
         val onPhone = settingsInUse ?: return
         if (onPhone.engine != TranscriptionEngineKind.WhisperKit) return
-        val home = homeComputerCover(onPhone, failure, coveredSettings) ?: return
+        if (homeComputerCover(onPhone, failure, coveredSettings) == null) return
         val still = phase
         if (still !is PipelinePhase.Failed || still.reason != loadFailure || isRecordingVoice) return
+        val latest = settingsInUse ?: return
+        if (engineCacheKey(latest) != engineCacheKey(onPhone)) return
+        val home = latest.copy()
+        home.engine = TranscriptionEngineKind.HomeServer
         homeComputerTriedAfterPhoneModel = true
         cancelScheduledRetry()
         logEvent(PipelineEvent.Kind.Note("the phone's model didn't load, the home computer took over"))
