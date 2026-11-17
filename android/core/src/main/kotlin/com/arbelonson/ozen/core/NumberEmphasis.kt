@@ -91,6 +91,7 @@ object NumberEmphasis {
      * what of.
      */
     fun ranges(text: String, languageCode: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
+        if (UILanguage.match(languageCode) == UILanguage.ChineseSimplified) return ChineseNumberEmphasis.ranges(text)
         val profile = NumberWordProfile.profile(languageCode) ?: return hebrewRanges(text, decimalComma)
         val merged = mutableListOf<OpenEndRange<Int>>()
         for (range in (spelledRanges(text, decimalComma, profile) + hebrewRanges(text, decimalComma)).sortedBy { it.start }) {
@@ -156,6 +157,7 @@ object NumberEmphasis {
      * conversation.
      */
     fun hasListableNumber(text: String, languageCode: String, decimalComma: Boolean = false): Boolean {
+        if (UILanguage.match(languageCode) == UILanguage.ChineseSimplified) return ChineseNumberEmphasis.hasListableNumber(text)
         val profile = NumberWordProfile.profile(languageCode)
         if (profile != null && spelledListable(text, decimalComma, profile)) return true
         return hasHebrewListableNumber(text, decimalComma)

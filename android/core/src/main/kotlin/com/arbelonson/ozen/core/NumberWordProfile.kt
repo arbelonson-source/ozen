@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.text.Normalizer
 import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -48,7 +49,7 @@ internal class NumberWordProfile(entry: JsonObject) {
      * "for", "the") written onto the word, unless the word is itself in a list.
      */
     fun normalize(core: String): String {
-        val word = core.lowercase(Locale.ROOT).replace('’', '\'')
+        val word = Normalizer.normalize(core.lowercase(Locale.ROOT).replace('’', '\''), Normalizer.Form.NFC)
         return if (foldsArabic) stripPrefixes(foldArabicLetters(word), 0) else word
     }
 
