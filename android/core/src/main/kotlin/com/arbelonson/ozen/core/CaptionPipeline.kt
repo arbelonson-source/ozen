@@ -1679,8 +1679,10 @@ class CaptionPipeline(
             // Only stopped captions let it go unsaid: paused, starting or
             // waiting to try again, they come back on whatever microphone
             // is left, with nothing saying it changed. Sound alerts alone
-            // keep the phase Idle but are listening too, so they say it.
-            microphoneDrop.inputChanged(lastSelectedInput, current, phase != PipelinePhase.Idle || isListeningForSoundsOnly, settingsInUse?.preferredInputUID)
+            // keep the phase Idle but are listening too, so they say it,
+            // also in the short while the microphone is still being opened.
+            val soundsOnlyOpeningNow = soundsOnlyChosen && runID in soundsOnlyOpening
+            microphoneDrop.inputChanged(lastSelectedInput, current, phase != PipelinePhase.Idle || isListeningForSoundsOnly || soundsOnlyOpeningNow, settingsInUse?.preferredInputUID)
             // Her pick fell silent and is still listed, not disconnected:
             // the routing notice says what happened. One event, one notice.
             if (fallback != null && microphoneDrop.lost?.uid == fallback?.picked?.uid) microphoneDrop.dismiss()
