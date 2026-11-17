@@ -259,7 +259,7 @@ class WhisperResultFilter(
     fun acceptedText(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): String {
         val joined = accepted(segments, echo)
             .map { segment ->
-                val text = trimmingWhisperWhitespace(stripSpecialTokens(segment.text))
+                val text = withoutNotes(trimmingWhisperWhitespace(stripSpecialTokens(segment.text)))
                 if (segment.compressionRatio > compressionRatioThreshold) repeatedSentence(text) ?: text else text
             }
             .filter { it.isNotEmpty() }
@@ -362,8 +362,29 @@ class WhisperResultFilter(
         return tuned
     }
 
+    /**
+     * "[Música]", "[音乐]", "(掌声)": Whisper writes a sound as a note in
+     * brackets, in whatever language it hears. Real speech never comes in
+     * square brackets, so any note there goes, alone or inside a line
+     * ("[Music] Hello there" keeps "Hello there"); digits stay, so "[10:30]"
+     * is kept. Round brackets also hold real words ("(I think)", "(HSBC)"),
+     * so a part in them goes only when it is a known sound or outro, or when
+     * the whole line is one bracketed part (a segment that is nothing but
+     * "(...)" is a tag, as in [isBracketed]).
+     */
+    internal fun withoutNotes(text: String): String {
+        if (text.none { it == '[' || it == '(' || it == '\uFF08' }) return text
+        if (wholeRoundNote.matches(text.trim())) return ""
+        var cleaned = squareNote.replace(text, "")
+        cleaned = roundNote.replace(cleaned) { match ->
+            val inner = normalize(match.groupValues[1])
+            if (inner in knownHallucinations || inner in ambiguousHallucinations) "" else match.value
+        }
+        return multipleSpaces.replace(cleaned, " ").trim()
+    }
+
     fun accepts(segment: WhisperSegmentSummary): Boolean {
-        val text = trimmingWhisperWhitespace(stripSpecialTokens(segment.text))
+        val text = withoutNotes(trimmingWhisperWhitespace(stripSpecialTokens(segment.text)))
         if (text.isEmpty()) return false
         // A lone "...", "-" or a music note is a well-known Whisper
         // hallucination on a quiet or noisy window that doesn't trip the
@@ -419,6 +440,7 @@ class WhisperResultFilter(
      * Whole words only, so "ktuviotayim" or "targumim" never match.
      */
     internal fun isCreditLine(raw: String, normalized: String): Boolean {
+        if (isUnspacedCreditLine(normalized)) return true
         val words = normalized.split(" ").filter { it.isNotEmpty() }
         if (words.isEmpty() || words.size > maximumCreditLineWords) return false
         val byPhrase = hallucinatedCreditPrefixes.any { prefix ->
@@ -443,6 +465,15 @@ class WhisperResultFilter(
             val separator = afterLabel.firstOrNull() ?: return@any false
             if (separator !in creditLabelDashes) return@any false
             words.size <= maximumDashCreditLineWords
+        }
+    }
+
+    /** Chinese and Japanese have no spaces, so a credit prefix there is matched by characters, on a line short enough to be a credit. */
+    internal fun isUnspacedCreditLine(normalized: String): Boolean {
+        val compact = normalized.filter { !it.isWhitespace() }
+        if (compact.isEmpty() || compact.codePointCount(0, compact.length) > maximumUnspacedCreditLineCharacters) return false
+        return hallucinatedCreditPrefixes.any { prefix ->
+            ' ' !in prefix && prefix.codePoints().anyMatch(::isUnspacedScript) && compact.startsWith(prefix)
         }
     }
 
@@ -684,6 +715,15 @@ class WhisperResultFilter(
             }
             return (2 * previous[b.size]).toDouble() / (a.size + b.size).toDouble()
         }
+
+        internal const val maximumUnspacedCreditLineCharacters = 24
+        private val squareNote = Regex("\\[[\\p{L}\\p{M} _-]*\\]")
+        private val wholeRoundNote = Regex("^[(\\uFF08][^()\\uFF08\\uFF09]*[)\\uFF09][.!\\u3002\\uFF01]*$")
+        private val roundNote = Regex("[(\\uFF08]([^()\\uFF08\\uFF09]*)[)\\uFF09]")
+        private val multipleSpaces = Regex("\\s{2,}")
+
+        internal fun isUnspacedScript(codePoint: Int): Boolean =
+            codePoint in 0x3040..0x30FF || codePoint in 0x3400..0x9FFF || codePoint in 0xF900..0xFAFF || codePoint in 0x0E00..0x0E7F
 
         /** Bracketed or parenthesised labels such as a sound tag: nobody's speech comes out in brackets. */
         internal fun isBracketed(text: String): Boolean {
