@@ -1038,6 +1038,7 @@ public final class LiveCaptionViewModel {
     /// starts them again, as on the first run: the caption screen coming
     /// back counts as a first appearance.
     public func showOnboardingAgain() {
+        captionsHeldForRecording = false
         if pipeline.phase != .idle {
             speechPause.userTookControl()
             pipeline.stop()
