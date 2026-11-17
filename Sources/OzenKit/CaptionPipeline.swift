@@ -97,6 +97,13 @@ public final class CaptionPipeline {
     /// alert before it isn't replayed as if it had just been heard.
     public private(set) var screenSoundAlert: SoundAlert?
     private var screenSoundAlertRaisedAt: TimeInterval?
+    /// Alerts delivered to `onSoundAlert` that did not become
+    /// `screenSoundAlert` (a doorbell heard with a smoke alarm): each still
+    /// needs its own buzz and announcement. `ownCueSerial` changes when one
+    /// is added; the screen takes them with `takeOwnCueSoundAlerts()`.
+    private var ownCueSoundAlerts: [(alert: SoundAlert, queuedAt: TimeInterval)] = []
+    public static let ownCueMaxAge: TimeInterval = 5
+    public private(set) var ownCueSerial = 0
     /// The alert whose banner the screen shows. A lesser sound heard while
     /// it lasts is `screenSoundAlert` (it buzzes and is read out) but
     /// doesn't take the banner (`SoundAlert.takesBanner(from:)`): closing a
@@ -108,6 +115,8 @@ public final class CaptionPipeline {
     public var soundPolicy: SoundEventPolicy
     private var soundsIgnoredFrom: TimeInterval = 0
     private var soundsIgnoredUntil: TimeInterval = 0
+    private var buzzingFrom: TimeInterval = 0
+    private var buzzingUntil: TimeInterval = 0
 
     /// The settings the running (or last-run) session was started with.
     /// Engine/model/language changes need a restart; input changes don't.
@@ -1180,6 +1189,10 @@ public final class CaptionPipeline {
         return min(alert.bannerSeconds, max(0, alert.bannerSeconds - (now() - raised)))
     }
 
+    /// A pattern of the phone's own is still playing (without the tail
+    /// the classifier may still report it for).
+    public var isBuzzing: Bool { (buzzingFrom..<buzzingUntil).contains(now()) }
+
     /// Stops taking a buzz for a sound while the phone vibrates for an
     /// alert, and for a moment after, since the classifier reports what it
     /// heard a little late. A phone buzzing on a table is, to the
@@ -1189,6 +1202,12 @@ public final class CaptionPipeline {
     /// alarm or the doorbell in the same moment still comes through.
     public func ignoreSounds(whileVibrating vibration: AlertVibration) {
         let start = now()
+        if (buzzingFrom..<buzzingUntil).contains(start) {
+            buzzingUntil = max(buzzingUntil, start + vibration.totalSeconds)
+        } else {
+            buzzingFrom = start
+            buzzingUntil = start + vibration.totalSeconds
+        }
         let end = start + vibration.totalSeconds + Self.soundReportDelaySeconds
         // A buzz still going on carries on; otherwise the window starts now.
         // Kept as a range: a clock set back an hour after a buzz otherwise
@@ -1238,12 +1257,23 @@ public final class CaptionPipeline {
                 }
                 screenSoundAlert = alert
                 screenSoundAlertRaisedAt = now()
+            } else {
+                ownCueSoundAlerts.append((alert, now()))
+                ownCueSerial += 1
             }
             onSoundAlert?(alert)
         }
         if soundAlerts.count > Self.maxSoundAlerts {
             soundAlerts.removeFirst(soundAlerts.count - Self.maxSoundAlerts)
         }
+    }
+
+    /// The queued alerts still fresh enough to cue; older ones (heard while
+    /// the app was away, already a notification) are dropped.
+    public func takeOwnCueSoundAlerts(at time: TimeInterval? = nil) -> [SoundAlert] {
+        let current = time ?? now()
+        defer { ownCueSoundAlerts = [] }
+        return ownCueSoundAlerts.filter { (0...Self.ownCueMaxAge).contains(current - $0.queuedAt) }.map(\.alert)
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {

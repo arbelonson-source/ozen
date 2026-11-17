@@ -440,12 +440,16 @@ struct LiveCaptionView: View {
             if !isCoveredByAlertScreen, alert.takesBanner(from: visibleSoundAlert) {
                 withAnimation { visibleSoundAlert = alert }
             }
-            vibrate(.pattern(for: alert.event.importance))
-            let critical = alert.event.importance == .critical
-            announceAlert(
-                critical ? tr("שימו לב! %1", "Attention! %1", args: ["\(alert.event.name)"]) : tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]),
-                critical: critical
-            )
+            cueSoundAlert(alert)
+        }
+        // A sound heard with a more important one has no banner of its own
+        // but still buzzes and is read out.
+        .onChange(of: viewModel.pipeline.ownCueSerial) { _, _ in
+            let alerts = viewModel.pipeline.takeOwnCueSoundAlerts()
+            guard viewModel.isAppActive else { return }
+            let buzzing = viewModel.pipeline.isBuzzing
+            if let loudest = OwnCueBuzz.pick(from: alerts, buzzing: buzzing) { vibrate(.pattern(for: loudest.event.importance)) }
+            for alert in alerts { cueSoundAlert(alert, queued: true, buzz: false) }
         }
         // With VoiceOver the banner and pill stay until closed or replaced:
         // see `AlertOverlay`.
@@ -1316,6 +1320,16 @@ struct LiveCaptionView: View {
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
+    private func cueSoundAlert(_ alert: SoundAlert, queued: Bool = false, buzz: Bool = true) {
+        if buzz { vibrate(.pattern(for: alert.event.importance)) }
+        let critical = alert.event.importance == .critical
+        announceAlert(
+            critical ? tr("שימו לב! %1", "Attention! %1", args: ["\(alert.event.name)"]) : tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]),
+            critical: critical,
+            queued: queued
+        )
+    }
+
     /// A doorbell, an alarm or her name, read out by VoiceOver as soon as
     /// it happens. The banner and the buzz can't be seen or felt by
     /// everyone who needs them, so alerts are spoken whatever the setting
@@ -1323,13 +1337,16 @@ struct LiveCaptionView: View {
     /// full: any announcement cuts off the one being spoken, and her name
     /// or "Captions stopped" a moment later left "Attention! Smoke alarm"
     /// unheard.
-    private func announceAlert(_ text: String, critical: Bool = false) {
+    private func announceAlert(_ text: String, critical: Bool = false, queued: Bool = false) {
         guard UIAccessibility.isVoiceOverRunning else { return }
-        guard critical else {
+        guard critical || queued else {
             UIAccessibility.post(notification: .announcement, argument: text)
             return
         }
-        let announcement = NSAttributedString(string: text, attributes: [.accessibilitySpeechAnnouncementPriority: UIAccessibilityPriority.high])
+        var attributes: [NSAttributedString.Key: Any] = [:]
+        if critical { attributes[.accessibilitySpeechAnnouncementPriority] = UIAccessibilityPriority.high }
+        if queued { attributes[.accessibilitySpeechQueueAnnouncement] = true }
+        let announcement = NSAttributedString(string: text, attributes: attributes)
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
