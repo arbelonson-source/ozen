@@ -39,10 +39,10 @@ class RestartingWatcher(
                 return
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: Exception) {
+            } catch (error: Throwable) {
                 try {
                     onError(error)
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                 }
             }
             val at = now()

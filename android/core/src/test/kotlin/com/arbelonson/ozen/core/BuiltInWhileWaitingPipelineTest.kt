@@ -305,6 +305,30 @@ class BuiltInWhileWaitingPipelineTest {
     }
 
     @Test
+    fun `a model loading behind the built-in recognition counts as loading, then as loaded`() = runTest {
+        val network = FakeNetworkMonitor(NetworkConditions.cellular)
+        val model = waitingModel()
+        val gate = PrepareGate()
+        model.prepareGate = gate
+        val pipeline = pipeline(network, model, builtInEngine())
+        onBuiltIn(pipeline)
+        var told = 0
+        var countedWhenTold = -1
+        pipeline.onWaitingModelLoading = {
+            told += 1
+            countedWhenTold = pipeline.loadingModelCount
+        }
+        network.change(NetworkConditions.wifi)
+        assertTrue(eventually { model.heldPrepares == 1 })
+        assertEquals(1, told, "the clean-up was not told a model began to load")
+        assertEquals(1, countedWhenTold, "the model did not count as loading when the clean-up was told")
+        assertEquals(1, pipeline.loadingModelCount)
+        gate.open()
+        assertTrue(eventually { pipeline.loadedModelCount == 1 })
+        assertEquals(0, pipeline.loadingModelCount)
+    }
+
+    @Test
     fun `a model that finishes loading while a recording is transcribed is let go, then loaded again after it`() = runTest {
         val network = FakeNetworkMonitor(NetworkConditions.cellular)
         val model = waitingModel()

@@ -17,7 +17,7 @@ class OzenApplication : Application() {
     @Volatile
     var cloudKeyCheckHTTP: CloudHTTP = UrlConnectionCloudHTTP()
     val engineSettings by lazy {
-        EngineSettings(settings, cloudKeys, homeServerCode, { captions.checkHomeComputer() }, errorGuardedScope { captions.unexpectedError(it) }, http = { cloudKeyCheckHTTP.send(it) }) { captions.settingsChanged() }
+        EngineSettings(settings, cloudKeys, homeServerCode, { captions.checkHomeComputer() }, errorGuardedScope { captions.noteUnrelatedError(it) }, http = { cloudKeyCheckHTTP.send(it) }) { captions.settingsChanged() }
     }
     private val session = lazy { CaptionSession(this, settings, homeServerCode, cloudKeys) }
     val captions by session

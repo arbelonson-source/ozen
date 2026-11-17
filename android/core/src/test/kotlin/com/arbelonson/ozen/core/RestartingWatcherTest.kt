@@ -17,6 +17,7 @@ private class Watching(val scope: TestScope) {
     var gaveUp = 0
     var alive = true
     var failures = Int.MAX_VALUE
+    var failWith: () -> Throwable = { IllegalStateException("watch failed") }
 
     val watcher = RestartingWatcher(
         scope = scope.backgroundScope,
@@ -26,12 +27,27 @@ private class Watching(val scope: TestScope) {
         onGaveUp = { gaveUp += 1 },
     ) {
         starts += 1
-        if (starts <= failures) throw IllegalStateException("watch failed")
+        if (starts <= failures) throw failWith()
         awaitCancellation()
     }
 }
 
 class RestartingWatcherTest {
+    @Test
+    fun `a body that throws an Error is restarted like an exception`() = runTest {
+        val w = Watching(this).apply {
+            failures = 1
+            failWith = { StackOverflowError() }
+        }
+        w.watcher.start()
+        runCurrent()
+        assertEquals(1, w.errors)
+        advanceTimeBy(5_001)
+        runCurrent()
+        assertEquals(2, w.starts)
+        assertTrue(w.watcher.isRunning)
+    }
+
     @Test
     fun `a watcher that fails once is running again after the delay`() = runTest {
         val w = Watching(this).apply { failures = 1 }
