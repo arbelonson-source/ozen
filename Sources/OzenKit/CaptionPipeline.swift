@@ -115,6 +115,8 @@ public final class CaptionPipeline {
     public var soundPolicy: SoundEventPolicy
     private var soundsIgnoredFrom: TimeInterval = 0
     private var soundsIgnoredUntil: TimeInterval = 0
+    private var buzzingFrom: TimeInterval = 0
+    private var buzzingUntil: TimeInterval = 0
 
     /// The settings the running (or last-run) session was started with.
     /// Engine/model/language changes need a restart; input changes don't.
@@ -1184,6 +1186,10 @@ public final class CaptionPipeline {
         return min(alert.bannerSeconds, max(0, alert.bannerSeconds - (now() - raised)))
     }
 
+    /// A pattern of the phone's own is still playing (without the tail
+    /// the classifier may still report it for).
+    public var isBuzzing: Bool { (buzzingFrom..<buzzingUntil).contains(now()) }
+
     /// Stops taking a buzz for a sound while the phone vibrates for an
     /// alert, and for a moment after, since the classifier reports what it
     /// heard a little late. A phone buzzing on a table is, to the
@@ -1191,12 +1197,14 @@ public final class CaptionPipeline {
     /// vibration raises an alert of its own, which vibrates again. Only
     /// `SoundEventCatalog.vibrationLookalikes` are ignored; a siren, a smoke
     /// alarm or the doorbell in the same moment still comes through.
-    /// A buzz of the phone's own is still going on (or the classifier may
-    /// still be reporting it).
-    public var isBuzzing: Bool { (soundsIgnoredFrom..<soundsIgnoredUntil).contains(now()) }
-
     public func ignoreSounds(whileVibrating vibration: AlertVibration) {
         let start = now()
+        if (buzzingFrom..<buzzingUntil).contains(start) {
+            buzzingUntil = max(buzzingUntil, start + vibration.totalSeconds)
+        } else {
+            buzzingFrom = start
+            buzzingUntil = start + vibration.totalSeconds
+        }
         let end = start + vibration.totalSeconds + Self.soundReportDelaySeconds
         // A buzz still going on carries on; otherwise the window starts now.
         // Kept as a range: a clock set back an hour after a buzz otherwise
@@ -1262,7 +1270,7 @@ public final class CaptionPipeline {
     public func takeOwnCueSoundAlerts(at time: TimeInterval? = nil) -> [SoundAlert] {
         let current = time ?? now()
         defer { ownCueSoundAlerts = [] }
-        return ownCueSoundAlerts.filter { current - $0.queuedAt <= Self.ownCueMaxAge }.map(\.alert)
+        return ownCueSoundAlerts.filter { (0...Self.ownCueMaxAge).contains(current - $0.queuedAt) }.map(\.alert)
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {
