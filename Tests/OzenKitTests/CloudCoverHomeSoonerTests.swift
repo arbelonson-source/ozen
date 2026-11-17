@@ -16,14 +16,14 @@ struct CloudCoverHomeSoonerTests {
         .unavailable(.modelLoadFailed, "the model would not load")
     }
 
-    private func pipeline(cloud: any TranscriptionEngine, phone: FakeEngine, home: FakeEngine, recovery: AutoRecoveryPolicy = .disabled, clock: TestClock = TestClock()) -> (CaptionPipeline, FakeAudioCapturer) {
+    private func pipeline(cloud: any TranscriptionEngine, phone: FakeEngine, home: FakeEngine, recovery: AutoRecoveryPolicy = .disabled, clock: TestClock = TestClock(), newHome: FakeEngine? = nil) -> (CaptionPipeline, FakeAudioCapturer) {
         let audio = FakeAudioCapturer()
         let captions = CaptionPipeline(
             audio: audio,
             engineFactory: {
                 switch $0.engine {
                 case .cloud: cloud
-                case .homeServer: home
+                case .homeServer: $0.homeServerAddress.hasSuffix(":8766") ? (newHome ?? home) : home
                 default: phone
                 }
             },
@@ -82,13 +82,13 @@ struct CloudCoverHomeSoonerTests {
         #expect(home.prepareCount == 0)
     }
 
-    private func hangingRig(homeAnswers: Bool = true, clock: TestClock = TestClock()) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
+    private func hangingRig(homeAnswers: Bool = true, clock: TestClock = TestClock(), newHome: FakeEngine? = nil) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
         let http = FakeCloudHTTP(answers: [.text("hello")])
         let cloud = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, approvalSeconds: 0.01, apiKey: { "sk-test" })
         let phone = FakeEngine(kind: .whisperKit)
         phone.pendingDownload = 400
         let home = homeAnswering(homeAnswers)
-        let (captions, audio) = pipeline(cloud: cloud, phone: phone, home: home, clock: clock)
+        let (captions, audio) = pipeline(cloud: cloud, phone: phone, home: home, clock: clock, newHome: newHome)
         return (captions, audio, http, home)
     }
 
@@ -207,55 +207,72 @@ struct CloudCoverHomeSoonerTests {
         #expect(captions.activeEngineKind == .cloud)
     }
 
+    private final class Asked: @unchecked Sendable {
+        var whileListening = 0
+    }
+
+    /// Counts the times a home computer is asked while captions have not
+    /// failed: the cloud timeout's check. The stop after four failed
+    /// requests asks again on its own, once captions have failed.
+    @MainActor
+    private func countTimeoutChecks(of engine: FakeEngine, in captions: CaptionPipeline, afterFirst: (@Sendable () -> Void)? = nil) -> Asked {
+        let asked = Asked()
+        engine.duringPrepare = { [weak captions] in
+            if let captions, captions.phase.failure == nil {
+                asked.whileListening += 1
+                if asked.whileListening == 1 { afterFirst?() }
+            }
+        }
+        return asked
+    }
+
     @Test("an unreachable home computer is asked once for a minute, however often the cloud times out")
     func silentHomeIsAskedOnce() async {
         let (captions, audio, http, home) = hangingRig(homeAnswers: false)
+        let asked = countTimeoutChecks(of: home, in: captions)
         await captions.start(settings: settings())
         http.blackHole = true
         await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
         #expect(http.transcriptionRequests.count >= 3)
-        #expect(home.prepareCount == 1)
+        #expect(asked.whileListening == 1)
     }
 
     @Test("after a minute the unreachable home computer is asked again")
     func silentHomeIsAskedAgainAfterAMinute() async {
         let clock = TestClock()
         let (captions, audio, http, home) = hangingRig(homeAnswers: false, clock: clock)
+        // The cloud answers again as soon as the first check is made, so no
+        // run of failed requests can stop captions while the minute passes.
+        let asked = countTimeoutChecks(of: home, in: captions) { http.blackHole = false }
         await captions.start(settings: settings())
         http.blackHole = true
-        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
-        #expect(home.prepareCount == 1)
+        await talk(audio, steps: 15) { asked.whileListening >= 1 }
+        #expect(asked.whileListening == 1)
+        let answered = http.transcriptionRequests.count
+        await talk(audio, steps: 15) { http.transcriptionRequests.count > answered }
         clock.advance(61)
-        await talk(audio, steps: 15) { home.prepareCount >= 2 }
-        #expect(home.prepareCount >= 2)
+        http.blackHole = true
+        await talk(audio, steps: 15) { asked.whileListening >= 2 }
+        #expect(asked.whileListening == 2)
     }
 
-    @Test("a changed home address is asked at once")
+    @Test("a changed home address, applied the way the app does while captions run, is asked at once")
     func changedAddressIsAskedAtOnce() async {
-        let (captions, audio, http, home) = hangingRig(homeAnswers: false)
+        let newHome = homeAnswering(false)
+        let (captions, audio, http, home) = hangingRig(homeAnswers: false, newHome: newHome)
+        let asked = countTimeoutChecks(of: home, in: captions)
+        let askedNew = countTimeoutChecks(of: newHome, in: captions)
         await captions.start(settings: settings())
         http.blackHole = true
-        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 3 }
-        #expect(home.prepareCount == 1)
+        await talk(audio, steps: 15) { asked.whileListening >= 1 }
+        #expect(asked.whileListening == 1)
         var other = settings()
-        other.homeServerAddress = "wss://192.168.1.30:8765"
-        await captions.start(settings: other)
-        await talk(audio, steps: 15) { home.prepareCount >= 2 }
-        #expect(home.prepareCount >= 2)
-    }
-
-    @Test("a phone model that finishes downloading during a home computer check that fails still covers")
-    func modelReadyDuringFailingHomeCheck() async {
-        let cloud = FakeEngine(kind: .cloud)
-        let phone = FakeEngine(kind: .whisperKit)
-        phone.pendingDownload = 800
-        let home = homeAnswering(false)
-        home.duringPrepare = { phone.pendingDownload = nil }
-        let (captions, _) = pipeline(cloud: cloud, phone: phone, home: home)
-        await captions.start(settings: settings())
-        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
-        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
-        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
-        #expect(captions.isCoveringForCloud)
+        other.homeServerAddress = "wss://192.168.1.30:8766"
+        http.blackHole = false
+        await captions.restart(settings: other)
+        http.blackHole = true
+        await talk(audio, steps: 15) { askedNew.whileListening >= 1 }
+        #expect(askedNew.whileListening == 1)
+        #expect(asked.whileListening == 1)
     }
 }

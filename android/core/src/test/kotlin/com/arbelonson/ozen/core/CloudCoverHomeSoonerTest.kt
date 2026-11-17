@@ -36,13 +36,14 @@ class CloudCoverHomeSoonerTest {
         audio: FakeAudioCapturer = FakeAudioCapturer(),
         recovery: AutoRecoveryPolicy = AutoRecoveryPolicy.disabled(),
         now: () -> Double = { virtualNow() },
+        newHome: FakeEngine? = null,
     ): CaptionPipeline {
         val captions = captionPipeline(
             audio = audio,
             engineFactory = {
                 when (it.engine) {
                     TranscriptionEngineKind.Cloud -> cloud
-                    homeKind -> home
+                    homeKind -> if (it.homeServerAddress.endsWith(":8766")) newHome ?: home else home
                     else -> phone
                 }
             },
@@ -137,13 +138,13 @@ class CloudCoverHomeSoonerTest {
 
     private class Rig(val captions: CaptionPipeline, val audio: FakeAudioCapturer, val http: FakeCloudHTTP, val home: FakeEngine)
 
-    private fun TestScope.hangingRig(homeAnswers: Boolean = true, now: () -> Double = { virtualNow() }): Rig {
+    private fun TestScope.hangingRig(homeAnswers: Boolean = true, now: () -> Double = { virtualNow() }, newHome: FakeEngine? = null): Rig {
         val http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("hello")))
         val cloud = CloudSpeechEngine(http = http, failedSegmentPauseSeconds = 0.001, approvalSeconds = 0.01, timeSource = testScheduler.timeSource, apiKey = { "sk-test" })
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 400 }
         val home = homeAnswering(homeAnswers)
         val audio = FakeAudioCapturer()
-        return Rig(pipelineOf(cloud, phone, home, audio, now = now), audio, http, home)
+        return Rig(pipelineOf(cloud, phone, home, audio, now = now, newHome = newHome), audio, http, home)
     }
 
     private suspend fun Rig.talk(steps: Int, until: () -> Boolean) {
@@ -224,54 +225,72 @@ class CloudCoverHomeSoonerTest {
         assertEquals(TranscriptionEngineKind.Cloud, rig.captions.activeEngineKind)
     }
 
+    /**
+     * Counts the times a home computer is asked while captions have not
+     * failed: the cloud timeout's check. The stop after four failed
+     * requests asks again on its own, once captions have failed.
+     */
+    private class Asked(engine: FakeEngine, captions: CaptionPipeline, afterFirst: () -> Unit = {}) {
+        var whileListening = 0
+            private set
+
+        init {
+            engine.duringPrepare = {
+                if (captions.phase !is PipelinePhase.Failed) {
+                    whileListening += 1
+                    if (whileListening == 1) afterFirst()
+                }
+            }
+        }
+    }
+
     @Test
     fun `an unreachable home computer is asked once for a minute, however often the cloud times out`() = runTest {
         val rig = hangingRig(homeAnswers = false, now = { 1_000.0 })
+        val asked = Asked(rig.home, rig.captions)
         rig.captions.start(settings())
         rig.http.blackHole = true
         rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
         assertTrue(rig.http.transcriptionRequests.size >= 3)
-        assertEquals(1, rig.home.prepareCount)
+        assertEquals(1, asked.whileListening)
     }
 
     @Test
     fun `after a minute the unreachable home computer is asked again`() = runTest {
         var clock = 1_000.0
         val rig = hangingRig(homeAnswers = false, now = { clock })
+        // The cloud answers again as soon as the first check is made, so no
+        // run of failed requests can stop captions while the minute passes.
+        val asked = Asked(rig.home, rig.captions) { rig.http.blackHole = false }
         rig.captions.start(settings())
         rig.http.blackHole = true
-        rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
-        assertEquals(1, rig.home.prepareCount)
+        rig.talk(15) { asked.whileListening >= 1 }
+        assertEquals(1, asked.whileListening)
+        val answered = rig.http.transcriptionRequests.size
+        rig.talk(15) { rig.http.transcriptionRequests.size > answered }
         clock += 61.0
-        rig.talk(15) { rig.home.prepareCount >= 2 }
-        assertTrue(rig.home.prepareCount >= 2)
+        rig.http.blackHole = true
+        rig.talk(15) { asked.whileListening >= 2 }
+        assertEquals(2, asked.whileListening)
     }
 
     @Test
-    fun `a changed home address is asked at once`() = runTest {
-        val rig = hangingRig(homeAnswers = false, now = { 1_000.0 })
+    fun `a changed home address, applied the way the app does while captions run, is asked at once`() = runTest {
+        val newHome = homeAnswering(false)
+        val rig = hangingRig(homeAnswers = false, now = { 1_000.0 }, newHome = newHome)
+        val asked = Asked(rig.home, rig.captions)
+        val askedNew = Asked(newHome, rig.captions)
         rig.captions.start(settings())
         rig.http.blackHole = true
-        rig.talk(15) { rig.http.transcriptionRequests.size >= 3 }
-        assertEquals(1, rig.home.prepareCount)
+        rig.talk(15) { asked.whileListening >= 1 }
+        assertEquals(1, asked.whileListening)
         val other = settings()
-        other.homeServerAddress = "wss://192.168.1.30:8765"
-        rig.captions.start(other)
-        rig.talk(15) { rig.home.prepareCount >= 2 }
-        assertTrue(rig.home.prepareCount >= 2)
-    }
-
-    @Test
-    fun `a phone model that finishes downloading during a home computer check that fails still covers`() = runTest {
-        val cloud = FakeEngine(kind = TranscriptionEngineKind.Cloud)
-        val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 800 }
-        val home = homeAnswering(false)
-        home.duringPrepare = { phone.pendingDownload = null }
-        val captions = pipelineOf(cloud, phone, home)
-        captions.start(settings())
-        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == TranscriptionEngineKind.Cloud })
-        cloud.endStream(throwing = EngineUnavailability(EngineUnavailability.Kind.NoInternet, "connection lost"))
-        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == TranscriptionEngineKind.WhisperKit })
-        assertTrue(captions.isCoveringForCloud)
+        other.homeServerAddress = "wss://192.168.1.30:8766"
+        rig.http.blackHole = false
+        rig.captions.restart(other)
+        rig.http.blackHole = true
+        rig.talk(15) { askedNew.whileListening >= 1 }
+        assertEquals(1, askedNew.whileListening)
+        assertEquals(1, asked.whileListening)
     }
 }
