@@ -141,6 +141,11 @@ final class TranscribeRecordingModel {
             await host.stopCaptions()
             hold()
             if step == .stopKeepSounds { await host.keepSoundsListening() }
+        } else if !handover.pausedHere, host.captionsMayLoadModels {
+            // A retry lined up while the phase is idle: nothing to bring back.
+            // Not after a hand-over began: then the person's own captions
+            // are running and are left alone.
+            await host.stopCaptions()
         }
         stopInFlight = false
         // The screen may have closed while the above was running: close()
