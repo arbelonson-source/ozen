@@ -44,3 +44,32 @@ public struct LevelPostGate: Sendable {
         return true
     }
 }
+
+public struct LevelDemandHold: Sendable {
+    public enum Change: Sendable, Equatable {
+        case acquire
+        case release
+        case none
+    }
+
+    private var holding = false
+
+    public init() {}
+
+    public mutating func update(shown: Bool, inBackground: Bool) -> Change {
+        let wanted = shown && !inBackground
+        if wanted == holding { return .none }
+        holding = wanted
+        return wanted ? .acquire : .release
+    }
+}
+
+extension LevelMeterDemand {
+    public func apply(_ change: LevelDemandHold.Change) {
+        switch change {
+        case .acquire: acquire()
+        case .release: release()
+        case .none: break
+        }
+    }
+}
