@@ -753,6 +753,8 @@ class WhisperResultFilter(
             "and", "&", "de", "del", "la", "van", "von", "der", "den", "di", "da", "el", "al", "bin", "y", "e", "du", "des", "le", "ten", "ter",
         )
 
+        internal val leadingArticles: Set<String> = setOf("the", "la", "le", "les", "el", "los", "las", "die", "der", "das")
+
         internal val communityWords: Set<String> = setOf(
             "community", "comunidad", "comunidade", "communauté", "gemeinschaft", "сообщество", "спільнота",
         )
@@ -775,24 +777,28 @@ class WhisperResultFilter(
          * person talking about captions ("Subtitles by default are off",
          * "Subtitles: on or off?"). A credit names someone or something: a
          * capitalised name, an address ("amara.org", "@name"), or "the
-         * community" when nothing but a name or address follows it. Words in a script without letter case (Hebrew, Arabic,
+         * community", with nothing but such words in the line. Words in a script without letter case (Hebrew, Arabic,
          * Chinese, Hindi...) show no such difference, so they count as a name
          * and a line there is dropped as before, as is a bare year. Nothing
          * after the opening ("Subtitles by") is a credit too.
          */
         internal fun looksLikeCredit(remainder: List<String>): Boolean {
-            val words = remainder.map { word ->
-                val cps = word.codePoints().toArray().toList()
-                val start = cps.indexOfFirst { !isPunctuationOrSymbol(it) }
-                val end = cps.indexOfLast { !isPunctuationOrSymbol(it) }
-                if (start < 0) "" else String(cps.subList(start, end + 1).toIntArray(), 0, end - start + 1)
-            }.filter { it.isNotEmpty() }
+            val words = remainder.map { raw ->
+                val word = run {
+                    val cps = raw.codePoints().toArray().toList()
+                    val start = cps.indexOfFirst { !isPunctuationOrSymbol(it) }
+                    val end = cps.indexOfLast { !isPunctuationOrSymbol(it) }
+                    if (start < 0) "" else String(cps.subList(start, end + 1).toIntArray(), 0, end - start + 1)
+                }
+                raw to word
+            }.filter { it.second.isNotEmpty() }
             if (words.isEmpty()) return true
-            if (remainder.any(::isAddress)) return true
-            val community = words.take(2).indexOfFirst { normalize(it) in communityWords }
-            if (community >= 0 && looksLikeCredit(words.drop(community + 1))) return true
-            return words.withIndex().all { (index, word) ->
-                if (index > 0 && normalize(word) in nameConnectors) return@all true
+            return words.withIndex().all { (index, pair) ->
+                val (raw, word) = pair
+                val plain = normalize(word)
+                if (isAddress(raw) || plain in communityWords) return@all true
+                if (index == 0 && plain in leadingArticles) return@all true
+                if (index > 0 && plain in nameConnectors) return@all true
                 val letter = word.codePoints().toArray().firstOrNull { Character.isLetter(it) }
                     ?: return@all word.codePoints().toArray().any { Character.isDigit(it) }
                 !Character.isLowerCase(letter)
