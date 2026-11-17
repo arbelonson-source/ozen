@@ -69,3 +69,21 @@ public enum ModelFolderInspector {
         }
     }
 }
+
+/// What to do after a model failed to load.
+public struct LoadFailurePlan: Sendable, Equatable {
+    /// Compare the files with the published ones first; damaged means removed.
+    public let checksFiles: Bool
+    /// Download again even when the check found nothing wrong.
+    public let refetchesWhenIntact: Bool
+
+    /// Nil means the failure stands: nothing here can repair it.
+    public static func after(loadFailureOf state: ModelFolderState, fetchedThisTime: Bool) -> LoadFailurePlan? {
+        guard !fetchedThisTime else { return nil }
+        switch state {
+        case .unverified: return LoadFailurePlan(checksFiles: true, refetchesWhenIntact: true)
+        case .verified: return LoadFailurePlan(checksFiles: true, refetchesWhenIntact: false)
+        case .missing, .partial: return nil
+        }
+    }
+}

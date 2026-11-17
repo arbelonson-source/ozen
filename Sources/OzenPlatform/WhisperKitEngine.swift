@@ -193,23 +193,16 @@ public actor WhisperKitEngine: TranscriptionEngine {
             do {
                 loaded = try await load(folder: folder)
             } catch {
-                // A folder no download ever vouched for may be a cut-off
-                // download that happened to pass the file checks. Ask the
-                // hub for whatever is missing (it skips what's there) and
-                // try once more before calling the model broken. A folder
-                // with the marker that still fails to load is checked
-                // against the published files once: damaged means removed
-                // and fetched again under the usual Wi-Fi rule.
-                guard !fetchedThisTime else { throw error }
-                switch store.state(of: variant) {
-                case .unverified:
-                    break
-                case .verified:
+                // Any folder that fails to load is checked against the
+                // published files once (a good result is remembered):
+                // damaged means removed and fetched again under the usual
+                // Wi-Fi rule. A folder no download ever vouched for is also
+                // asked for whatever is missing and tried once more.
+                guard let plan = LoadFailurePlan.after(loadFailureOf: store.state(of: variant), fetchedThisTime: fetchedThisTime) else { throw error }
+                if plan.checksFiles {
                     removedDamaged = await store.removeIfDamaged(variant: variant, allowCellular: allowCellular)
-                    guard removedDamaged else { throw error }
-                default:
-                    throw error
                 }
+                guard removedDamaged || plan.refetchesWhenIntact else { throw error }
                 do {
                     folder = try await downloadAndReport()
                 } catch let downloadError {
