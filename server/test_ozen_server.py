@@ -491,6 +491,13 @@ class StuckPass(unittest.TestCase):
         t.device = "cuda"
         self.assertEqual(t.pass_allowance(30, True), 360.0)
 
+    def test_an_automatic_or_numbered_device_is_judged_by_whether_it_is_a_graphics_card(self):
+        t = self.machine(lambda *a: ("", None, []), floor=60.0, factor=4.0)
+        t.cpu_pass_audio_factor = 30.0
+        for device, expected in (("auto", 900.0), ("cpu", 900.0), ("cuda", 120.0), ("cuda:1", 120.0)):
+            t.device = device
+            self.assertEqual(t.pass_allowance(30, False), expected, device)
+
     def test_the_first_pass_of_each_kind_is_not_cut_by_the_short_floor(self):
         def ran(*a):
             t.model_ran = True

@@ -371,7 +371,7 @@ class Transcriber:
             return result
 
     def pass_allowance(self, seconds, final):
-        factor = self.cpu_pass_audio_factor if self.device == "cpu" else self.pass_audio_factor
+        factor = self.pass_audio_factor if self.device.startswith("cuda") else self.cpu_pass_audio_factor
         floor = self.pass_floor_seconds if final in self.warmed else self.first_pass_floor_seconds
         return (self.final_attempts if final else 1) * max(floor, factor * seconds)
 
