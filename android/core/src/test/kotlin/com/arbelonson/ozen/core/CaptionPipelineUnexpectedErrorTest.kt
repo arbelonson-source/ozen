@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 
@@ -98,6 +99,18 @@ class CaptionPipelineUnexpectedErrorTest {
         assertTrue(eventually { audio.calls.count { it == "stopCapture" } >= 1 })
         assertTrue(pipeline.soundsOnlyChosen)
         assertTrue(eventually { pipeline.isListeningForSoundsOnly && audio.calls.count { it == "prepareSession" } > opened })
+    }
+
+    @Test
+    fun `an error on another scope is only written down and captions keep listening`() = runTest {
+        val (pipeline, _) = guardedPipeline()
+        pipeline.start(AppSettings.default)
+        assertTrue(eventually { pipeline.phase == PipelinePhase.Listening })
+        val other = errorGuardedScope(StandardTestDispatcher(testScheduler)) { pipeline.noteUnrelatedError(it) }
+        other.launch { throw Boom("a cloud key check failed") }
+        runCurrent()
+        assertEquals(PipelinePhase.Listening, pipeline.phase)
+        assertTrue(pipeline.eventLog.events.any { (it.kind as? PipelineEvent.Kind.Note)?.text?.contains("a cloud key check failed") == true })
     }
 
     @Test

@@ -1160,8 +1160,16 @@ class CaptionPipeline(
      */
     val loadedModelCount: Int get() = engineCache.values.count { it.holdsModel }
 
-    /** How many kept engines are loading an on-phone model right now; one stopped meanwhile still holds it when done. */
-    val loadingModelCount: Int get() = engineCache.values.count { it.isLoadingModel }
+    /**
+     * How many engines are loading an on-phone model right now, the kept
+     * ones and the one getting ready behind the built-in recognition, which
+     * joins the kept ones only when done. One stopped meanwhile still holds
+     * its model when done.
+     */
+    val loadingModelCount: Int get() {
+        val waiting = waitingModelEngine?.takeIf { engine -> engineCache.values.none { it === engine } }
+        return engineCache.values.count { it.isLoadingModel } + (if (waiting?.isLoadingModel == true) 1 else 0)
+    }
 
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {
@@ -1853,6 +1861,16 @@ class CaptionPipeline(
             }
             else -> fail(PipelineFailure.Kind.TranscriptionStopped, text)
         }
+    }
+
+    /**
+     * An error from work that is not part of captions, such as a settings
+     * check: it is written to the event log and nothing more, so a healthy
+     * session is not stopped for it.
+     */
+    fun noteUnrelatedError(error: Throwable) {
+        if (error is CancellationException) return
+        logEvent(PipelineEvent.Kind.Note("unrelated error: ${error.javaClass.name}: ${error.message.orEmpty().take(UNEXPECTED_MESSAGE_LIMIT)}"))
     }
 
     private fun logEvent(kind: PipelineEvent.Kind) {
