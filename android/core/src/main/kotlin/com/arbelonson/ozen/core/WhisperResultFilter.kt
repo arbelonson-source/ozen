@@ -775,7 +775,7 @@ class WhisperResultFilter(
          * person talking about captions ("Subtitles by default are off",
          * "Subtitles: on or off?"). A credit names someone or something: a
          * capitalised name, an address ("amara.org", "@name"), or "the
-         * community". Words in a script without letter case (Hebrew, Arabic,
+         * community" when nothing but a name or address follows it. Words in a script without letter case (Hebrew, Arabic,
          * Chinese, Hindi...) show no such difference, so they count as a name
          * and a line there is dropped as before, as is a bare year. Nothing
          * after the opening ("Subtitles by") is a credit too.
@@ -789,7 +789,8 @@ class WhisperResultFilter(
             }.filter { it.isNotEmpty() }
             if (words.isEmpty()) return true
             if (remainder.any(::isAddress)) return true
-            if (words.take(2).any { normalize(it) in communityWords }) return true
+            val community = words.take(2).indexOfFirst { normalize(it) in communityWords }
+            if (community >= 0 && looksLikeCredit(words.drop(community + 1))) return true
             return words.withIndex().all { (index, word) ->
                 if (index > 0 && normalize(word) in nameConnectors) return@all true
                 val letter = word.codePoints().toArray().firstOrNull { Character.isLetter(it) }

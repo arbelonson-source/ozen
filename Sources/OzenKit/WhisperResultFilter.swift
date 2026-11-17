@@ -604,7 +604,7 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// person talking about captions ("Subtitles by default are off",
     /// "Subtitles: on or off?"). A credit names someone or something: a
     /// capitalised name, an address ("amara.org", "@name"), or "the
-    /// community". Words in a script without letter case (Hebrew, Arabic,
+    /// community" when nothing but a name or address follows it. Words in a script without letter case (Hebrew, Arabic,
     /// Chinese, Hindi...) show no such difference, so they count as a name
     /// and a line there is dropped as before, as is a bare year. Nothing after the opening
     /// ("Subtitles by") is a credit too.
@@ -613,7 +613,10 @@ public struct WhisperResultFilter: Sendable, Equatable {
         if words.isEmpty { return true }
         if remainder.contains(where: isAddress) { return true }
         let lowered = words.map { normalize($0) }
-        if lowered.prefix(2).contains(where: communityWords.contains) { return true }
+        if let index = lowered.prefix(2).firstIndex(where: communityWords.contains),
+           looksLikeCredit(Array(words.dropFirst(index + 1))) {
+            return true
+        }
         return words.enumerated().allSatisfy { index, word in
             if index > 0, nameConnectors.contains(normalize(word)) { return true }
             guard let letter = word.first(where: \.isLetter) else { return word.contains(where: \.isNumber) }
