@@ -3015,5 +3015,191 @@ class EncryptedLinkCannotOpen(unittest.TestCase):
             self.assertFalse(os.path.exists(problem))
 
 
+class Backlog(unittest.TestCase):
+    def session(self, gpu=None):
+        return S.Session(Socket(), gpu or SlowGPU(0.05), "he", [], live_interval=0.3)
+
+    def seconds(self, n):
+        return int(n * S.RATE)
+
+    def pile(self, session, length, speech_end, pauses):
+        session.buf = np.arange(self.seconds(length), dtype=np.float32)
+        session.last_speech_end = self.seconds(speech_end)
+        session.pauses = [self.seconds(p) for p in pauses]
+        session.samples_at_last_pass = self.seconds(length)
+        session.speech_end_at_last_pass = self.seconds(speech_end)
+
+    def test_a_backlog_over_the_limit_is_cut_to_the_newest_audio_with_every_index_moved(self):
+        session = self.session()
+        self.pile(session, 130, 125, [50, 110, 120])
+        with self.assertLogs(S.log, "WARNING") as logged:
+            skipped = session.skip_backlog()
+        self.assertEqual(skipped, self.seconds(100))
+        self.assertEqual(len(session.buf), self.seconds(30))
+        self.assertEqual(session.buf[0], self.seconds(100))
+        self.assertIsNone(session.buf.base)
+        self.assertEqual(session.offset, self.seconds(100))
+        self.assertEqual(session.last_speech_end, self.seconds(25))
+        self.assertEqual(session.pauses, [self.seconds(10), self.seconds(20)])
+        self.assertEqual((session.samples_at_last_pass, session.speech_end_at_last_pass), (0, None))
+        self.assertIn("100", logged.output[0])
+
+    def test_speech_that_ended_in_the_skipped_part_is_forgotten(self):
+        session = self.session()
+        self.pile(session, 130, 50, [20])
+        with self.assertLogs(S.log, "WARNING"):
+            session.skip_backlog()
+        self.assertIsNone(session.last_speech_end)
+        self.assertEqual(session.pauses, [])
+
+    def test_a_backlog_under_the_limit_changes_nothing(self):
+        session = self.session()
+        self.pile(session, 100, 95, [50])
+        before = session.buf.copy()
+        self.assertEqual(session.skip_backlog(), 0)
+        self.assertTrue(np.array_equal(session.buf, before))
+        self.assertEqual((session.offset, session.last_speech_end, session.pauses), (0, self.seconds(95), [self.seconds(50)]))
+        self.assertEqual(session.samples_at_last_pass, self.seconds(100))
+
+    def test_the_next_pass_reads_the_newest_audio_and_says_where_it_is(self):
+        windows = []
+
+        class Recording(SlowGPU):
+            async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+                windows.append((float(np.abs(audio).max()), len(audio)))
+                return await super().transcribe(audio, language, prompt, final, hotwords, gate, beam)
+
+        session = self.session(Recording(0.05))
+        loud = np.concatenate([0.1 * np.sin(np.arange(self.seconds(110)) * 0.05),
+                               0.4 * np.sin(np.arange(self.seconds(20)) * 0.05)])
+        session.add_audio((loud * 32767).astype("<i2").tobytes())
+        session.finished = True
+
+        async def go():
+            await asyncio.wait_for(session.run(), 10)
+
+        with self.assertLogs(S.log, "WARNING"):
+            asyncio.run(go())
+        self.assertGreater(windows[0][0], 0.35, windows)
+        first = json.loads(session.ws.sent[0])
+        self.assertGreaterEqual(first["end_s"], 100)
+        self.assertLessEqual(sum(n for _, n in windows), self.seconds(30))
+
+
+class Goodbye(unittest.TestCase):
+    class Phone:
+        def __init__(self, hang=False):
+            self.closed, self.hang = None, hang
+
+        async def close(self, code=1000, reason=""):
+            self.closed = (code, reason)
+            if self.hang:
+                await asyncio.Future()
+
+    def args(self):
+        return types.SimpleNamespace(host="127.0.0.1", port=1, tls_port=0, cert_dir="", live_interval=1.0)
+
+    def run_serve(self, phones, hang=False, handler_error=None):
+        handlers, exits = {}, []
+
+        class Serve:
+            def __init__(self, connection, *a, **kw):
+                self.connection = connection
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+        async def waiting(ws, *a, **kw):
+            await asyncio.Future()
+
+        async def scenario():
+            loop = asyncio.get_running_loop()
+            real = loop.add_signal_handler
+            if handler_error:
+                loop.add_signal_handler = mock.Mock(side_effect=handler_error)
+            else:
+                loop.add_signal_handler = lambda sig, cb, *a: handlers.setdefault(sig, cb)
+            created = []
+
+            class Recording(Serve):
+                def __init__(self, *a, **kw):
+                    super().__init__(*a, **kw)
+                    created.append(self)
+
+            with mock.patch.object(S.websockets, "serve", Recording, create=True), \
+                    mock.patch.object(S, "handle", waiting), \
+                    mock.patch.object(S.os, "_exit", exits.append), \
+                    mock.patch.object(S.logging, "shutdown", lambda: None), \
+                    mock.patch.object(S, "GOODBYE_SECONDS", 0.3):
+                task = asyncio.ensure_future(S.serve(self.args(), types.SimpleNamespace(name="m", unload_after=1), "t", None))
+                await asyncio.sleep(0.05)
+                running = [asyncio.ensure_future(created[0].connection(p)) for p in phones]
+                await asyncio.sleep(0.05)
+                if handler_error is None:
+                    handlers[S.signal.SIGTERM]()
+                await asyncio.wait_for(task, 3)
+                for r in running:
+                    r.cancel()
+            loop.add_signal_handler = real
+
+        asyncio.run(scenario())
+        return handlers, exits
+
+    def test_stopping_the_service_closes_every_open_phone_with_going_away_and_exits_zero(self):
+        phones = [self.Phone(), self.Phone()]
+        with self.assertLogs(S.log, "INFO"):
+            handlers, exits = self.run_serve(phones)
+        self.assertEqual([p.closed[0] for p in phones], [1001, 1001])
+        self.assertEqual(exits, [0])
+        self.assertEqual(set(handlers), {S.signal.SIGTERM, S.signal.SIGINT})
+
+    def test_a_phone_that_never_answers_the_close_does_not_hold_up_the_exit(self):
+        phones = [self.Phone(hang=True), self.Phone()]
+        with self.assertLogs(S.log, "INFO"):
+            _, exits = self.run_serve(phones)
+        self.assertEqual(exits, [0])
+        self.assertEqual(phones[1].closed[0], 1001)
+
+    def test_where_signal_handlers_are_not_supported_serving_still_starts(self):
+        with self.assertRaises(asyncio.TimeoutError):
+            self.run_serve([], handler_error=NotImplementedError())
+
+
+class CleanedOffTheLoop(unittest.TestCase):
+    def test_the_cleaner_runs_off_the_event_loop_and_chunks_keep_their_order(self):
+        calls, main = [], threading.get_ident()
+
+        class Cleaner:
+            def process(self, chunk):
+                calls.append((round(float(chunk[0]) * 32768), threading.get_ident()))
+                time.sleep(0.1)
+                return chunk
+
+        frames = [np.full(1600, level, dtype="<i2").tobytes() for level in (1000, 2000, 3000)]
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123"}, frames + [json.dumps({"type": "end"})])
+        ticks = []
+
+        async def scenario():
+            async def tick():
+                while True:
+                    ticks.append(1)
+                    await asyncio.sleep(0.01)
+
+            ticker = asyncio.ensure_future(tick())
+            models = SlowGPU(0.05)
+            models.name, models.beam = "m", 5
+            await asyncio.wait_for(S.handle(ws, models, "example-code-123", 1.0, lambda: Cleaner()), 10)
+            ticker.cancel()
+
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(scenario())
+        self.assertEqual([level for level, _ in calls], [1000, 2000, 3000])
+        self.assertTrue(all(thread != main for _, thread in calls), calls)
+        self.assertGreater(len(ticks), 15)
+
+
 if __name__ == "__main__":
     unittest.main()
