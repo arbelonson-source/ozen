@@ -59,6 +59,33 @@ struct SoundsOnlyTests {
         #expect(pipeline.soundAlerts.first?.event.identifier == "smoke_detector")
     }
 
+    @Test("sound alerts alone say when the picked microphone drops, and clear when it returns")
+    func pickedMicrophoneDropIsShown() async {
+        let builtIn = AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic)
+        let lapel = AudioInputDescriptor(uid: "usb-lav", portName: "USB Lavalier", portType: .usb)
+        let audio = FakeAudioCapturer()
+        audio.availableInputs = [builtIn, lapel]
+        let pipeline = makeSoundsPipeline(audio: audio)
+        var settings = AppSettings.default
+        settings.preferredInputUID = "usb-lav"
+        await pipeline.start(settings: settings)
+        pipeline.stop()
+        await pipeline.listenForSoundsOnly()
+        #expect(pipeline.isListeningForSoundsOnly)
+        #expect(pipeline.phase == .idle)
+        #expect(pipeline.selectedInputUID == "usb-lav")
+        #expect(pipeline.microphoneDrop.lost == nil)
+
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(inputs: [builtIn])
+        #expect(pipeline.microphoneDrop.lost == lapel)
+        #expect(pipeline.microphoneDrop.title?.contains("USB Lavalier") == true)
+
+        audio.selectedInputUID = "usb-lav"
+        audio.simulateRouteChange(inputs: [builtIn, lapel])
+        #expect(pipeline.microphoneDrop.lost == nil)
+    }
+
     @Test("from paused and from idle likewise")
     func fromPausedAndIdle() async {
         for pauseFirst in [true, false] {
