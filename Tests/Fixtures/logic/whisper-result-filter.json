@@ -794,6 +794,27 @@
   {"kind": "acceptedText", "language": "en", "text": "(Music)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
   {"kind": "acceptedText", "language": "en", "text": "[Music] (laughter)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
   {"kind": "acceptedText", "language": "en", "text": "(HSBC)", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
-  {"kind": "acceptedText", "language": "en", "text": "[Music] (I think) so", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "(I think) so"}
+  {"kind": "acceptedText", "language": "en", "text": "[Music] (I think) so", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "(I think) so"},
+  {"kind": "knownHallucination", "input": "Subtitles by default are off", "hallucinationIn": ""},
+  {"kind": "knownHallucination", "input": "Captions by the TV lag", "hallucinationIn": ""},
+  {"kind": "knownHallucination", "input": "Subtitles: on or off?", "hallucinationIn": ""},
+  {"kind": "knownHallucination", "input": "Subtitles by Netflix are good", "hallucinationIn": ""},
+  {"kind": "knownHallucination", "input": "Captions: on or off", "hallucinationIn": ""},
+  {"kind": "knownHallucination", "input": "Subtitles by the Amara.org community", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Captions by John Smith", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Captions: John Smith", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Subtitles by the community", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Subtitles by amara.org", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Subtitles by @janedoe", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Translated by Jane van der Berg", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "Subtitles by Jane Doe and Co.", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "כתוביות על ידי ישראל ישראלי", "hallucinationIn": "default,he,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "knownHallucination", "input": "תרגום: ישראל", "hallucinationIn": "he,default,en,ar,de,es,fr,pt,ru,uk,zh,am,hi"},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles by default are off", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "Subtitles by default are off"},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles by default are off", "noSpeechProb": 0.4, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles by default are off", "noSpeechProb": 0.1, "avgLogprob": -1.2, "compressionRatio": 1.5, "expected": ""},
+  {"kind": "acceptedText", "language": "en", "text": "Subtitles: on or off?", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "Subtitles: on or off?"},
+  {"kind": "acceptedText", "language": "en", "text": "Captions by the TV lag", "noSpeechProb": 0.1, "avgLogprob": -0.2, "compressionRatio": 1.5, "expected": "Captions by the TV lag"},
+  {"kind": "acceptedText", "language": "en", "text": "Captions by the TV lag", "noSpeechProb": 0.1, "avgLogprob": -1.2, "compressionRatio": 1.5, "expected": ""}
  ]
 }
