@@ -2705,10 +2705,13 @@ class CaptionPipeline(
     private suspend fun phoneModelCanCover(): Boolean {
         val settings = settingsInUse ?: return false
         if (settings.engine != TranscriptionEngineKind.Cloud || isCoveringForCloud) return false
-        if (settings.homeServerAddress.isNotBlank()) return true
         val onPhone = settings.copy()
         onPhone.engine = TranscriptionEngineKind.WhisperKit
-        return probeEngine(onPhone).hasModelOnPhone()
+        if (probeEngine(onPhone).hasModelOnPhone()) return true
+        if (settings.homeServerAddress.isBlank()) return false
+        val home = settings.copy()
+        home.engine = TranscriptionEngineKind.HomeServer
+        return probeEngine(home).checkAvailability(home.languageCode) == EngineAvailability.Available
     }
 
     /**

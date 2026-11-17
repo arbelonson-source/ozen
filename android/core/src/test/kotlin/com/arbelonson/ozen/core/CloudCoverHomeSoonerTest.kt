@@ -135,11 +135,11 @@ class CloudCoverHomeSoonerTest {
 
     private class Rig(val captions: CaptionPipeline, val audio: FakeAudioCapturer, val http: FakeCloudHTTP, val home: FakeEngine)
 
-    private fun TestScope.hangingRig(): Rig {
+    private fun TestScope.hangingRig(homeAnswers: Boolean = true): Rig {
         val http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("hello")))
         val cloud = CloudSpeechEngine(http = http, failedSegmentPauseSeconds = 0.001, approvalSeconds = 0.01, timeSource = testScheduler.timeSource, apiKey = { "sk-test" })
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 400 }
-        val home = homeAnswering()
+        val home = homeAnswering(homeAnswers)
         val audio = FakeAudioCapturer()
         return Rig(pipelineOf(cloud, phone, home, audio), audio, http, home)
     }
@@ -208,5 +208,17 @@ class CloudCoverHomeSoonerTest {
         cloud.availability = EngineAvailability.Available
         assertTrue(eventually { on(captions, TranscriptionEngineKind.Cloud) })
         assertFalse(captions.isCoveringForCloud)
+    }
+
+    @Test
+    fun `a saved home address that does not answer - a timeout is retried by the cloud as before, with no failure and no hand-over`() = runTest {
+        val rig = hangingRig(homeAnswers = false)
+        rig.captions.start(settings())
+        rig.http.blackHole = true
+        rig.talk(3) { rig.http.transcriptionRequests.size >= 2 }
+        assertTrue(rig.http.transcriptionRequests.size >= 2)
+        assertFalse(rig.captions.isCoveringForCloud)
+        assertEquals(PipelinePhase.Listening, rig.captions.phase)
+        assertEquals(TranscriptionEngineKind.Cloud, rig.captions.activeEngineKind)
     }
 }

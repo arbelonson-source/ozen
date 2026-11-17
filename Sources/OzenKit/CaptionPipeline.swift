@@ -2467,10 +2467,13 @@ public final class CaptionPipeline {
     /// the cloud (see `CloudCover`); never while it is the one covering.
     private func phoneModelCanCover() async -> Bool {
         guard let settings = activeSettings, settings.engine == .cloud, !isCoveringForCloud else { return false }
-        if !settings.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty { return true }
         var onPhone = settings
         onPhone.engine = .whisperKit
-        return await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil
+        if await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil { return true }
+        guard !settings.homeServerAddress.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        var home = settings
+        home.engine = .homeServer
+        return await probeEngine(for: home).checkAvailability(languageCode: home.languageCode) == .available
     }
 
     private func engineCacheKey(_ settings: AppSettings) -> String {

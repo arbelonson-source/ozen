@@ -81,12 +81,12 @@ struct CloudCoverHomeSoonerTests {
         #expect(home.prepareCount == 0)
     }
 
-    private func hangingRig(paired: Bool) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
+    private func hangingRig(homeAnswers: Bool = true) -> (CaptionPipeline, FakeAudioCapturer, FakeCloudHTTP, FakeEngine) {
         let http = FakeCloudHTTP(answers: [.text("hello")])
         let cloud = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, approvalSeconds: 0.01, apiKey: { "sk-test" })
         let phone = FakeEngine(kind: .whisperKit)
         phone.pendingDownload = 400
-        let home = homeAnswering()
+        let home = homeAnswering(homeAnswers)
         let (captions, audio) = pipeline(cloud: cloud, phone: phone, home: home)
         return (captions, audio, http, home)
     }
@@ -100,7 +100,7 @@ struct CloudCoverHomeSoonerTests {
 
     @Test("no answer at all with only the home computer to cover: it takes over after the first timeout")
     func timeoutHandsOverToHome() async {
-        let (captions, audio, http, home) = hangingRig(paired: true)
+        let (captions, audio, http, home) = hangingRig()
         await captions.start(settings: settings())
         http.blackHole = true
         await talk(audio, steps: 6) { captions.isCoveringForCloud }
@@ -111,7 +111,7 @@ struct CloudCoverHomeSoonerTests {
 
     @Test("without a home address a timeout is retried as before and nothing is handed over")
     func timeoutWithoutHomeAddress() async {
-        let (captions, audio, http, _) = hangingRig(paired: false)
+        let (captions, audio, http, _) = hangingRig()
         await captions.start(settings: settings(paired: false))
         http.blackHole = true
         await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
@@ -192,5 +192,17 @@ struct CloudCoverHomeSoonerTests {
         cloud.availability = .available
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
         #expect(!captions.isCoveringForCloud)
+    }
+
+    @Test("a saved home address that does not answer: a timeout is retried by the cloud as before, with no failure and no hand-over")
+    func timeoutWithUnreachableHome() async {
+        let (captions, audio, http, home) = hangingRig(homeAnswers: false)
+        await captions.start(settings: settings())
+        http.blackHole = true
+        await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
+        #expect(http.transcriptionRequests.count >= 2)
+        #expect(!captions.isCoveringForCloud)
+        #expect(captions.phase == .listening)
+        #expect(captions.activeEngineKind == .cloud)
     }
 }
