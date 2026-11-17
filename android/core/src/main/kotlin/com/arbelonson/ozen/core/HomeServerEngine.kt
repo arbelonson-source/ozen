@@ -289,6 +289,9 @@ class HomeServerEngine(
         // A frame for a line that already got its final would otherwise
         // get a fresh id and show the same words again as a new line.
         var finished = HashSet<Long>()
+        // An error frame the computer sends before it closes: it answered,
+        // so the loss is not "can't be reached".
+        var closedBecause: String? = null
         while (true) {
             val frame = try {
                 socket.receive()
@@ -339,6 +342,8 @@ class HomeServerEngine(
                 if (state.second) return
                 // Checked again for real next time: the pipeline asks
                 // whether the computer is back.
+                val said = closedBecause
+                if (said != null) throw EngineUnavailability.homeServerUnreachable("${HomeServer.ANSWERED_WRONGLY_PREFIX}server said $said")
                 throw EngineUnavailability.homeServerUnreachable("connection lost: $error")
             }
             // Only a frame the phone understands proves the server is
@@ -346,6 +351,7 @@ class HomeServerEngine(
             // the stall check from ever handing captions to the phone.
             val message = HomeServerMessage.parse(frame) ?: continue
             noteReply()
+            if (message is HomeServerMessage.Refused && message.code.isNotEmpty()) closedBecause = message.code
             if (message !is HomeServerMessage.Text || message.utterance in finished) continue
             val number = message.utterance
             val id = ids[number] ?: UUID.randomUUID()

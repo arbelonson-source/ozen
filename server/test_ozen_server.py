@@ -2272,6 +2272,17 @@ class HandshakeLeaks(unittest.TestCase):
         self.run_handle(ws, models)
         self.assertEqual(models.connections, 0)
 
+    def test_models_that_fail_to_load_say_so_before_the_connection_closes(self):
+        def broken():
+            raise RuntimeError("card full")
+
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123"},
+                         [*speech_frames(1.5), 0.6])
+        self.run_handle(ws, self.models(load=broken))
+        errors = [json.loads(text) for text in ws.sent if json.loads(text)["type"] == "error"]
+        self.assertEqual([e["code"] for e in errors], ["models_unavailable"])
+        self.assertEqual(ws.closed, (1011, "transcription failed"))
+
 
 class OtherLanguages(unittest.TestCase):
     """The Hebrew models stay for Hebrew; a phone whose people speak another
@@ -2407,6 +2418,15 @@ class SessionAfterHello(unittest.TestCase):
             asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(fails=True), "example-code-123", 0.3), 5))
         self.assertEqual(ws.closed, (1011, "transcription failed"))
         self.assertTrue(any("CUDA error" in line for line in logged.output), logged.output)
+
+    def test_a_pass_that_fails_says_why_before_it_closes(self):
+        hello = {"type": "hello", "token": "example-code-123"}
+        ws = PhoneSocket(hello, [*speech_frames(1.5), 0.6])
+        with self.assertLogs(S.log, "ERROR"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(fails=True), "example-code-123", 0.3), 5))
+        errors = [json.loads(text) for text in ws.sent if json.loads(text)["type"] == "error"]
+        self.assertEqual([e["code"] for e in errors], ["transcription_failed"])
+        self.assertEqual(ws.closed, (1011, "transcription failed"))
 
 
 class OddNamesFromThePhone(unittest.TestCase):

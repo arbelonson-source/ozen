@@ -534,4 +534,33 @@ class HomeServerEngineTest {
         assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, (collected.error as? EngineUnavailability)?.kind)
         feed.finish()
     }
+    @Test
+    fun `a computer that says why it closed after ready is told apart from one that cannot be reached, and is still retried`() = runTest {
+        for (code in listOf("transcription_failed", "models_unavailable")) {
+            val socket = socket(READY)
+            val feed = AudioFeed()
+            val heard = collecting(engineWith(socket).stream("he", feed.flow))
+            feed.add(listOf(FloatArray(1600) { 0.0005f }))
+            waitUntil(1.0) { socket.sentBytes > 0 }
+            socket.deliver("""{"type":"error","code":"$code","detail":""}""")
+            socket.drop()
+            heard.job.join()
+            val why = heard.error as? EngineUnavailability
+            assertEquals(EngineUnavailability.Kind.HomeServerUnreachable, why?.kind, code)
+            assertTrue(HomeServer.answeredWrongly(why), "$code: ${why?.detail}")
+            assertTrue(why?.detail?.contains(code) == true, code)
+            feed.finish()
+        }
+    }
+
+    @Test
+    fun `a connection that closes with no word from the computer still counts as unreachable`() = runTest {
+        val socket = socket(READY)
+        val feed = AudioFeed()
+        val heard = collecting(engineWith(socket).stream("he", feed.flow))
+        socket.drop()
+        heard.job.join()
+        assertFalse(HomeServer.answeredWrongly(heard.error as? EngineUnavailability))
+        feed.finish()
+    }
 }
