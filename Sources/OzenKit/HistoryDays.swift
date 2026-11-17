@@ -16,7 +16,7 @@ public enum HistoryDays {
         var days: [HistoryDay] = []
         var indexOfDay: [Int: Int] = [:]
         for session in sessions {
-            let day = CivilDate.localDay(of: session.startedAt, utcOffsetSeconds: utcOffsetSeconds(session.startedAt))
+            let day = CivilDate.localDay(of: session.startedAt, utcOffsetSeconds: session.utcOffsetSeconds ?? utcOffsetSeconds(session.startedAt))
             if let index = indexOfDay[day] {
                 days[index].sessions.append(session)
             } else {
@@ -30,6 +30,15 @@ public enum HistoryDays {
     public static func title(of timestamp: TimeInterval, now: TimeInterval, utcOffsetSeconds: (TimeInterval) -> Int) -> String {
         title(
             day: CivilDate.localDay(of: timestamp, utcOffsetSeconds: utcOffsetSeconds(timestamp)),
+            today: CivilDate.localDay(of: now, utcOffsetSeconds: utcOffsetSeconds(now))
+        )
+    }
+
+    /// The title of the day a conversation fell on in the zone it happened
+    /// in (`ownUTCOffsetSeconds`, when it kept one), against today in the phone's.
+    public static func title(of timestamp: TimeInterval, ownUTCOffsetSeconds: Int?, now: TimeInterval, utcOffsetSeconds: (TimeInterval) -> Int) -> String {
+        title(
+            day: CivilDate.localDay(of: timestamp, utcOffsetSeconds: ownUTCOffsetSeconds ?? utcOffsetSeconds(timestamp)),
             today: CivilDate.localDay(of: now, utcOffsetSeconds: utcOffsetSeconds(now))
         )
     }
@@ -113,7 +122,7 @@ public enum OnThisDay {
         let today = CivilDate(daysSinceEpoch: CivilDate.localDay(of: now, utcOffsetSeconds: utcOffsetSeconds(now)))
         return summaries
             .filter { summary in
-                let day = CivilDate(daysSinceEpoch: CivilDate.localDay(of: summary.startedAt, utcOffsetSeconds: utcOffsetSeconds(summary.startedAt)))
+                let day = CivilDate(daysSinceEpoch: CivilDate.localDay(of: summary.startedAt, utcOffsetSeconds: summary.utcOffsetSeconds ?? utcOffsetSeconds(summary.startedAt)))
                 return day.month == today.month && day.day == today.day && day.year < today.year
             }
             .sorted { $0.startedAt > $1.startedAt }

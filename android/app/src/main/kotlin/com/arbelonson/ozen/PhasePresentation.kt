@@ -171,6 +171,17 @@ class PhasePresentation private constructor(
 
     companion object {
         /** Sound alerts are paused with the captions for a recording only when no microphone is listening for sounds meanwhile. */
+        private fun pausedForARecording(soundAlertsPaused: Boolean) = PhasePresentation(
+            title = if (soundAlertsPaused) {
+                tr("הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט", "Captions and sound alerts are paused while a recording is turned into text")
+            } else {
+                tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text")
+            },
+            detail = tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
+            systemImage = "pause.circle.fill",
+            tint = PhaseTint.Attention,
+        )
+
         fun soundAlertsPausedForRecording(alertsOn: Boolean, listeningForSounds: Boolean): Boolean = alertsOn && !listeningForSounds
 
         /**
@@ -245,7 +256,7 @@ class PhasePresentation private constructor(
             }
 
             return when (phase) {
-                PipelinePhase.Idle -> PhasePresentation(
+                PipelinePhase.Idle -> if (pausedForRecording) pausedForARecording(soundAlertsPaused) else PhasePresentation(
                     title = tr("הכתוביות כבויות", "Captions are off"),
                     detail = tr("הקישו כדי להתחיל", "Tap to start"),
                     systemImage = "play.circle.fill",
@@ -285,16 +296,7 @@ class PhasePresentation private constructor(
                             action = Action.StopSpeaking,
                         )
                     } else if (pausedForRecording) {
-                        PhasePresentation(
-                            title = if (soundAlertsPaused) {
-                                tr("הכתוביות והתראות הצליל מושהות בזמן שהקלטה הופכת לטקסט", "Captions and sound alerts are paused while a recording is turned into text")
-                            } else {
-                                tr("הכתוביות מושהות בזמן שהקלטה הופכת לטקסט", "Captions are paused while a recording is turned into text")
-                            },
-                            detail = tr("הן יחזרו לבד כשהיא תסתיים", "They come back when it’s done"),
-                            systemImage = "pause.circle.fill",
-                            tint = PhaseTint.Attention,
-                        )
+                        pausedForARecording(soundAlertsPaused)
                     } else {
                         PhasePresentation(
                             title = tr("מושהה", "Paused"),

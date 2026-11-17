@@ -1240,7 +1240,8 @@ public final class LiveCaptionViewModel {
             modelVariant: session.modelVariant,
             inputName: session.inputName,
             starred: starredSegmentIDs,
-            languageCode: session.languageCode
+            languageCode: session.languageCode,
+            utcOffsetSeconds: HistoryDays.localOffset(at: session.startedAt)
         )
         saveInBackground(record)
     }
@@ -2598,7 +2599,8 @@ public final class LiveCaptionViewModel {
             modelVariant: transcribingSettings.modelDescription,
             inputName: selectedInput?.portName,
             starred: starredSegmentIDs,
-            languageCode: spokenLanguageCode
+            languageCode: spokenLanguageCode,
+            utcOffsetSeconds: HistoryDays.localOffset(at: startedAt)
         )
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {

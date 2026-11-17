@@ -818,6 +818,7 @@ public final class CaptionPipeline {
             do {
                 for try await token in tokens {
                     guard self.runID == run else { break }
+                    if let crossing, crossing.beginsAfterGrace(token.speechStartSample) { self.endReplayOverlap(run: run) }
                     self.handle(token: token)
                     if let crossing, crossing.tokenHandled() { self.endReplayOverlap(run: run) }
                 }
@@ -2645,6 +2646,7 @@ public final class CaptionPipeline {
         let reader = ReplayReader(queue.makeAsyncIterator())
         let run = runID
         let grace = Int(Self.replayWordsGraceSeconds * Self.sampleRate)
+        reader.setGraceEnd(replay.count + grace)
         let audio = AsyncStream<[Float]>(unfolding: { [weak self] in
             guard let chunk = await reader.next() else { return nil }
             if !byDecoding, chunk.isLive, reader.takeLive(chunk.samples.count, grace: grace) {
@@ -3675,6 +3677,23 @@ private final class ReplayReader: @unchecked Sendable {
 
     private var tokensHandled = 0
     private var crossingAfter: Int?
+    private var graceEnd = Int.max
+    private var crossed = false
+
+    func setGraceEnd(_ position: Int) { decodeLock.withLock { graceEnd = position } }
+
+    /// True once, for a token whose speech begins after the grace: its
+    /// words are live speech, so the crossing happens before they are
+    /// handled, not after, and a report waiting for the tokens before it
+    /// has nothing left to do. Nil (the engine says nothing) never counts.
+    func beginsAfterGrace(_ start: Int?) -> Bool {
+        decodeLock.withLock {
+            guard let start, start >= graceEnd, !crossed else { return false }
+            crossed = true
+            crossingAfter = nil
+            return true
+        }
+    }
 
     /// True once, on the report that takes the decoded live audio past the
     /// grace; the crossing then waits until the pipeline has handled the
@@ -3685,7 +3704,7 @@ private final class ReplayReader: @unchecked Sendable {
         decodeLock.withLock {
             let before = liveDecoded
             liveDecoded = max(before, count)
-            guard before < grace, liveDecoded >= grace else { return false }
+            guard before < grace, liveDecoded >= grace, !crossed else { return false }
             crossingAfter = tokens
             return true
         }
@@ -3704,6 +3723,7 @@ private final class ReplayReader: @unchecked Sendable {
         decodeLock.withLock {
             guard let after = crossingAfter, tokensHandled >= after else { return false }
             crossingAfter = nil
+            crossed = true
             return true
         }
     }

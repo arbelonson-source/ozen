@@ -87,7 +87,14 @@ object PhoneNumbers {
 
     private fun callWordBefore(before: String): Boolean = callWordPattern.matcher(before.takeLast(80)).find()
 
-    private val callWordPattern: Pattern = Pattern.compile("""\b(?:call|calls|calling|dial|dialing|phone|tel|number|reach)\b(?:(?:\s+[\w']+){0,3}\s+(?:me|us|him|her|them|at|on|is|are|to)|(?:\s+(?-i:\p{Lu})[\w'.]*){1,2})?\s*[:,]?\s*$""", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CHARACTER_CLASS)
+    private const val WORD = """[\p{L}\p{M}\p{Nd}\p{Pc}]"""
+
+    private const val SPACE = """[\s\p{Z}]"""
+
+    private val callWordPattern: Pattern = unicodePattern(
+        """(?<!$WORD)(?:call|calls|calling|dial|dialing|phone|tel|number|reach)(?!$WORD)(?:(?:$SPACE+(?:$WORD|')+){0,3}$SPACE+(?:me|us|him|her|them|at|on|is|are|to)|(?:$SPACE+(?-i:\p{Lu})(?:$WORD|['.])*){1,2})?$SPACE*[:,]?$SPACE*$""",
+        Pattern.CASE_INSENSITIVE,
+    )
 
     /**
      * [text] with every digit of another script (Arabic-Indic, Persian,

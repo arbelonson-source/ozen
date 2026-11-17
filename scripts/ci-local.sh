@@ -19,6 +19,7 @@ step app-shortcuts python3 scripts/check-app-shortcuts.py
 step doc-quotes python3 scripts/check-doc-quotes.py
 step no-real-values python3 scripts/check-no-real-values.py
 step pinned-libraries python3 scripts/check-pinned-libraries.py
+step android-regex python3 scripts/check-android-regex.py
 step release-scripts python3 -m unittest discover -s scripts/model-release -p "test_*.py"
 step cloud-trial python3 -m unittest discover -s scripts/cloud-trial -p "test_*.py"
 step swift-test swift test

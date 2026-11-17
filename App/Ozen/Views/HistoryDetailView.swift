@@ -123,6 +123,7 @@ struct HistoryDetailView: View {
                             slots: slots,
                             showsTime: timeMarks.contains(segment.id),
                             recordingStart: record.fromRecording ? record.startedAt : nil,
+                            utcOffsetSeconds: record.utcOffsetSeconds,
                             markUncertain: viewModel.display.markUncertainLines,
                             engine: record.engine,
                             model: record.modelVariant,
@@ -146,7 +147,7 @@ struct HistoryDetailView: View {
                         }
                     }
                 } header: {
-                    Text(HistoryDays.heading(startedAt: record.startedAt))
+                    Text(HistoryDays.heading(startedAt: record.startedAt, utcOffsetSeconds: record.utcOffsetSeconds))
                 } footer: {
                     Text(record.sourceLine)
                 }
@@ -246,7 +247,7 @@ struct HistoryDetailView: View {
                 ShareLink(
                     item: exportedText ?? "",
                     subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
-                    message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
+                    message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened, utcOffsetSeconds: record.utcOffsetSeconds))
                 ) {
                     Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
                 }
@@ -554,6 +555,7 @@ private struct SavedLineRow: View {
     let slots: SpeakerColorSlots
     let showsTime: Bool
     let recordingStart: TimeInterval?
+    let utcOffsetSeconds: Int?
     let markUncertain: Bool
     let engine: TranscriptionEngineKind
     let model: String?
@@ -618,7 +620,7 @@ private struct SavedLineRow: View {
 
     private var timeText: String {
         if let recordingStart { return TranscriptFormats.clock(segment.startTimestamp - recordingStart) }
-        return Date(timeIntervalSince1970: segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened)
+        return Date(timeIntervalSince1970: segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: utcOffsetSeconds)
     }
 
     private var spokenTimeText: String {

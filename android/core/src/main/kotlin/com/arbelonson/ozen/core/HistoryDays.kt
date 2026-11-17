@@ -21,7 +21,7 @@ object HistoryDays {
         val days = ArrayList<HistoryDay>()
         val indexOfDay = HashMap<Long, Int>()
         for (session in sessions) {
-            val day = CivilDate.localDay(session.startedAt, utcOffsetSeconds(session.startedAt))
+            val day = CivilDate.localDay(session.startedAt, session.utcOffsetSeconds ?: utcOffsetSeconds(session.startedAt))
             val index = indexOfDay[day]
             if (index != null) {
                 days[index] = days[index].copy(sessions = days[index].sessions + session)
@@ -36,6 +36,13 @@ object HistoryDays {
     fun title(of: Double, now: Double, utcOffsetSeconds: (Double) -> Int): String =
         title(
             day = CivilDate.localDay(of, utcOffsetSeconds(of)),
+            today = CivilDate.localDay(now, utcOffsetSeconds(now)),
+        )
+
+    /** The title of the day a conversation fell on in the zone it happened in ([ownUtcOffsetSeconds], when it kept one), against today in the phone's. */
+    fun title(of: Double, ownUtcOffsetSeconds: Int?, now: Double, utcOffsetSeconds: (Double) -> Int): String =
+        title(
+            day = CivilDate.localDay(of, ownUtcOffsetSeconds ?: utcOffsetSeconds(of)),
             today = CivilDate.localDay(now, utcOffsetSeconds(now)),
         )
 
@@ -139,7 +146,7 @@ object OnThisDay {
         val today = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(now, utcOffsetSeconds(now)))
         return summaries
             .filter { summary ->
-                val day = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(summary.startedAt, utcOffsetSeconds(summary.startedAt)))
+                val day = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(summary.startedAt, summary.utcOffsetSeconds ?: utcOffsetSeconds(summary.startedAt)))
                 day.month == today.month && day.day == today.day && day.year < today.year
             }
             .sortedByDescending { it.startedAt }

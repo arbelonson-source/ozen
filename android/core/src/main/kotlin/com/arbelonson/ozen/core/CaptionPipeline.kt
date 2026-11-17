@@ -993,6 +993,7 @@ class CaptionPipeline(
                 crossing = counter
                 val grace = (REPLAY_WORDS_GRACE_SECONDS * SAMPLE_RATE).toLong()
                 val replayCount = replay.size
+                counter.setGraceEnd(replayCount + grace)
                 engine.setDecodeProgress { position, tokens ->
                     if (counter.decodedLive(position - replayCount, grace, tokens)) {
                         scope.launch { if (counter.crossingDue()) endReplayOverlap(run) }
@@ -1038,6 +1039,7 @@ class CaptionPipeline(
             var stopReason: String? = null
             try {
                 tokens.takeWhile { runID == run }.collect { token ->
+                    if (crossing?.beginsAfterGrace(token.speechStartSample) == true) endReplayOverlap(run)
                     handleToken(token)
                     if (crossing?.tokenHandled() == true) endReplayOverlap(run)
                 }
@@ -4382,12 +4384,29 @@ private class ReplayCrossing {
     private var liveDecoded = 0
     private var tokensHandled = 0
     private var crossingAfter: Int? = null
+    private var graceEnd = Long.MAX_VALUE
+    private var crossed = false
+
+    fun setGraceEnd(position: Long) = synchronized(lock) { graceEnd = position }
+
+    /**
+     * True once, for a token whose speech begins after the grace: its words
+     * are live speech, so the crossing happens before they are handled, and
+     * a report waiting for the tokens before it has nothing left to do.
+     * Null (the engine says nothing) never counts.
+     */
+    fun beginsAfterGrace(start: Int?): Boolean = synchronized(lock) {
+        if (start == null || start < graceEnd || crossed) return false
+        crossed = true
+        crossingAfter = null
+        true
+    }
 
     /** True once, on the report that takes decoded live audio past [grace]; the crossing then waits for [tokens] to be handled. */
     fun decodedLive(count: Int, grace: Long, tokens: Int): Boolean = synchronized(lock) {
         val before = liveDecoded
         liveDecoded = maxOf(before, count)
-        if (before >= grace || liveDecoded < grace) return false
+        if (before >= grace || liveDecoded < grace || crossed) return false
         crossingAfter = tokens
         true
     }
@@ -4403,6 +4422,7 @@ private class ReplayCrossing {
         val after = crossingAfter ?: return false
         if (tokensHandled < after) return false
         crossingAfter = null
+        crossed = true
         true
     }
 }
