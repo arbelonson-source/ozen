@@ -550,22 +550,26 @@ struct CloudSpeechEngineTests {
     }
 
     @Test("an old approval is not trusted: a check after the internet dropped really asks")
-    func approvalRunsOut() async throws {
+    func approvalRunsOut() async {
         let http = FakeCloudHTTP(keyChecks: [.status(200, "{}"), .offline])
-        let engine = CloudSpeechEngine(http: http, approvalSeconds: 0.05, apiKey: { "sk-test" })
+        let clock = TestClock()
+        let base = ContinuousClock.now
+        let engine = CloudSpeechEngine(http: http, approvalSeconds: 0.05, now: { base + .seconds(clock.now) }, apiKey: { "sk-test" })
         #expect(await engine.checkAvailability(languageCode: "he") == .available)
-        try await Task.sleep(for: .milliseconds(300))
+        clock.advance(0.3)
         #expect(await engine.checkAvailability(languageCode: "he").unavailability?.kind == .noInternet)
     }
 
     @Test("captions coming back from the cloud keep the approval fresh, so a restart right after doesn't ask again")
     func answeredRequestRenewsApproval() async throws {
         let http = FakeCloudHTTP(answers: [.text("A: שלום")], keyChecks: [.status(200, "{}"), .offline])
-        let engine = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, approvalSeconds: 1, apiKey: { "sk-test" })
+        let clock = TestClock()
+        let base = ContinuousClock.now
+        let engine = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, approvalSeconds: 1, now: { base + .seconds(clock.now) }, apiKey: { "sk-test" })
         #expect(await engine.checkAvailability(languageCode: "he") == .available)
-        try await Task.sleep(for: .milliseconds(700))
+        clock.advance(0.7)
         _ = try await transcribe(engine, speech(seconds: 1) + silence(seconds: 1))
-        try await Task.sleep(for: .milliseconds(500))
+        clock.advance(0.5)
         #expect(await engine.checkAvailability(languageCode: "he") == .available)
     }
 

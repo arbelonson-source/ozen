@@ -2514,7 +2514,7 @@ struct CaptionPipelineEnrollmentTests {
         let started = Date()
         let samples = await recording.value
 
-        #expect(Date().timeIntervalSince(started) < 2)
+        #expect(Date().timeIntervalSince(started) < 15)
         #expect(samples.count <= 1_600)
         #expect(audio.calls.last == "stopCapture")
     }

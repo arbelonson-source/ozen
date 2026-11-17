@@ -50,6 +50,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     private var approvedKey: String?
     private var approvedAt: ContinuousClock.Instant?
     private let approvalSeconds: Double
+    private let now: @Sendable () -> ContinuousClock.Instant
     public static let defaultApprovalSeconds: Double = 30
     /// How long a failed final segment waits, per failure in a row, before
     /// its audio is sent again: without it a busy or broken service got
@@ -63,10 +64,12 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         filter: WhisperResultFilter = WhisperResultFilter(),
         failedSegmentPauseSeconds: Double = 1,
         approvalSeconds: Double = CloudSpeechEngine.defaultApprovalSeconds,
+        now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
         apiKey: @escaping @Sendable () -> String?
     ) {
         self.failedSegmentPauseSeconds = failedSegmentPauseSeconds
         self.approvalSeconds = approvalSeconds
+        self.now = now
         self.provider = provider
         self.model = model ?? provider.defaultModel
         self.http = http
@@ -95,7 +98,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         guard let key = currentKey() else {
             return .unavailable(CloudSpeechError.keyMissing.unavailability)
         }
-        if approvedKey == key, let approvedAt, ContinuousClock.now - approvedAt < .seconds(approvalSeconds) {
+        if approvedKey == key, let approvedAt, now() - approvedAt < .seconds(approvalSeconds) {
             return .available
         }
         let response: CloudHTTPResponse
@@ -111,7 +114,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             return .unavailable(CloudSpeechError.outOfCredit.unavailability)
         }
         approvedKey = key
-        approvedAt = .now
+        approvedAt = now()
         return .available
     }
 
@@ -241,7 +244,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
                 do {
                     turns = try await transcribe(window, key: key, languageCode: languageCode)
                     lastFailure = nil
-                    if approvedKey == key { approvedAt = .now }
+                    if approvedKey == key { approvedAt = now() }
                     break
                 } catch let error as CloudSpeechError {
                     if error.needsPerson {
