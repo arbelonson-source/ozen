@@ -124,15 +124,15 @@ private fun validateChineseRun(run: String): Pair<Boolean, Boolean> {
     return Pair(true, false)
 }
 
-private val traditionalLetters = "兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變"
-private val simplifiedLetters = "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变"
+private val traditionalLetters = "兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變議別處體會補"
+private val simplifiedLetters = "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变议别处体会补"
 private val pointNouns = listOf(
     "意见", "不同", "建议", "内容", "原因", "要求", "看法", "想法", "区别", "差别", "问题", "理由", "好处", "优点", "缺点",
     "特点", "相同", "变化", "说明", "结论", "经验", "体会", "规定", "补充", "注意",
 )
 
 private class ChineseLine(original: String) {
-    private val text: String = original.map { traditionalLetters.indexOf(it).let { index -> if (index >= 0) simplifiedLetters[index] else it } }.joinToString("")
+    private val text: String = if (original.none { it in traditionalLetters }) original else original.map { traditionalLetters.indexOf(it).let { index -> if (index >= 0) simplifiedLetters[index] else it } }.joinToString("")
 
     val size: Int get() = text.length
 

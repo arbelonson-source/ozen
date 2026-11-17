@@ -68,7 +68,7 @@ private struct Line {
     }
 
     private static let simplified: [Unicode.Scalar: Unicode.Scalar] = Dictionary(
-        uniqueKeysWithValues: zip("兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變".unicodeScalars, "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变".unicodeScalars)
+        uniqueKeysWithValues: zip("兩點鐘鍾個塊錢萬億時週歲顆針見內區問題說結論經驗優規變議別處體會補".unicodeScalars, "两点钟钟个块钱万亿时周岁颗针见内区问题说结论经验优规变议别处体会补".unicodeScalars)
     )
 
     func starts(_ i: Int, _ word: String) -> Bool {
