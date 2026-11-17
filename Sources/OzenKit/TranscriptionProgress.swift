@@ -23,7 +23,7 @@ public enum TranscriptionProgress {
 
     public static func timeLeftText(_ seconds: Double) -> String {
         if seconds < 60 { return tr("נותרה פחות מדקה", "Less than a minute left") }
-        let minutes = Int((seconds / 60).rounded())
+        let minutes = SafeWhole.int((seconds / 60).rounded())
         let hours = minutes / 60
         let rest = minutes % 60
         if hours == 0 { return tr("נותרו בערך %1 דק׳", "About %1 min left", args: ["\(minutes)"]) }
