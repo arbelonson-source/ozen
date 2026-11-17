@@ -447,7 +447,9 @@ struct LiveCaptionView: View {
         .onChange(of: viewModel.pipeline.ownCueSerial) { _, _ in
             let alerts = viewModel.pipeline.takeOwnCueSoundAlerts()
             guard viewModel.isAppActive else { return }
-            for alert in alerts { cueSoundAlert(alert, queued: true) }
+            let buzzing = viewModel.pipeline.isBuzzing
+            if let loudest = OwnCueBuzz.pick(from: alerts, buzzing: buzzing) { vibrate(.pattern(for: loudest.event.importance)) }
+            for alert in alerts { cueSoundAlert(alert, queued: true, buzz: false) }
         }
         // With VoiceOver the banner and pill stay until closed or replaced:
         // see `AlertOverlay`.
@@ -1318,8 +1320,8 @@ struct LiveCaptionView: View {
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
-    private func cueSoundAlert(_ alert: SoundAlert, queued: Bool = false) {
-        vibrate(.pattern(for: alert.event.importance))
+    private func cueSoundAlert(_ alert: SoundAlert, queued: Bool = false, buzz: Bool = true) {
+        if buzz { vibrate(.pattern(for: alert.event.importance)) }
         let critical = alert.event.importance == .critical
         announceAlert(
             critical ? tr("שימו לב! %1", "Attention! %1", args: ["\(alert.event.name)"]) : tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]),

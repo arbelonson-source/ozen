@@ -1191,6 +1191,10 @@ public final class CaptionPipeline {
     /// vibration raises an alert of its own, which vibrates again. Only
     /// `SoundEventCatalog.vibrationLookalikes` are ignored; a siren, a smoke
     /// alarm or the doorbell in the same moment still comes through.
+    /// A buzz of the phone's own is still going on (or the classifier may
+    /// still be reporting it).
+    public var isBuzzing: Bool { (soundsIgnoredFrom..<soundsIgnoredUntil).contains(now()) }
+
     public func ignoreSounds(whileVibrating vibration: AlertVibration) {
         let start = now()
         let end = start + vibration.totalSeconds + Self.soundReportDelaySeconds

@@ -3838,6 +3838,25 @@ struct CaptionPipelineAlertHookTests {
         #expect(pipeline.takeOwnCueSoundAlerts(at: 1_002).isEmpty)
     }
 
+    @Test("own cues buzz once for the most important, and not while a pattern plays")
+    func ownCueBuzzPick() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        detector.push(SoundObservation(identifier: "civil_defense_siren", confidence: 0.95, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.8, timestamp: 1_000))
+        detector.push(SoundObservation(identifier: "baby_crying", confidence: 0.9, timestamp: 1_000))
+        #expect(await eventually { pipeline.soundAlerts.count == 3 })
+        let own = pipeline.takeOwnCueSoundAlerts()
+        let top = own.map(\.event.importance).max()
+        #expect(OwnCueBuzz.pick(from: own, buzzing: false)?.event.importance == top)
+        #expect(OwnCueBuzz.pick(from: own, buzzing: true) == nil)
+        #expect(OwnCueBuzz.pick(from: [], buzzing: false) == nil)
+        #expect(!pipeline.isBuzzing)
+        pipeline.ignoreSounds(whileVibrating: .pattern(for: .critical))
+        #expect(pipeline.isBuzzing)
+    }
+
     @Test("an air raid siren also scored as a police siren is one notification")
     func sirenLabelsOfOneReadingOneNotification() async {
         let detector = FakeSoundDetector()
