@@ -131,6 +131,46 @@ class CaptionPipelineSoundsOnlyTest {
     }
 
     @Test
+    fun `sounds-only asked for during a call starts when the call ends`() = runTest {
+        val (pipeline, _, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.systemInterruptionChanged(true)
+        pipeline.listenForSoundsOnly()
+        assertFalse(pipeline.isListeningForSoundsOnly)
+
+        pipeline.systemInterruptionChanged(false)
+
+        assertTrue(eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
+    fun `sound alerts turned off during the call leave nothing to start when it ends`() = runTest {
+        val (pipeline, _, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.systemInterruptionChanged(true)
+        pipeline.listenForSoundsOnly()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+
+        pipeline.systemInterruptionChanged(false)
+
+        assertFalse(eventually(500.milliseconds) { pipeline.isListeningForSoundsOnly })
+        assertFalse(pipeline.soundsOnlyChosen)
+    }
+
+    @Test
+    fun `captions stopped during the call leave nothing to start when it ends`() = runTest {
+        val (pipeline, _, _) = makePipeline(soundDetector = FakeSoundDetector())
+        pipeline.start(AppSettings.default)
+        pipeline.systemInterruptionChanged(true)
+        pipeline.listenForSoundsOnly()
+        pipeline.stop()
+
+        pipeline.systemInterruptionChanged(false)
+
+        assertFalse(eventually(500.milliseconds) { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test
     fun `a call pauses sounds-only and its end brings it back by itself`() = runTest {
         val detector = FakeSoundDetector()
         val (pipeline, audio, _) = makePipeline(soundDetector = detector)

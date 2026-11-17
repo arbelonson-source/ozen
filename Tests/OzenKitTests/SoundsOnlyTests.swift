@@ -95,6 +95,40 @@ struct SoundsOnlyTests {
         #expect(await eventually { pipeline.isListeningForSoundsOnly })
     }
 
+    @Test("sounds-only asked for during a call starts when the call ends")
+    func askedDuringACall() async {
+        let pipeline = makeSoundsPipeline()
+        await pipeline.start(settings: .default)
+        pipeline.systemInterruptionChanged(active: true)
+        await pipeline.listenForSoundsOnly()
+        #expect(!pipeline.isListeningForSoundsOnly)
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(await eventually { pipeline.isListeningForSoundsOnly })
+    }
+
+    @Test("sound alerts turned off during the call: nothing starts when it ends")
+    func askedDuringACallThenAlertsOff() async {
+        let pipeline = makeSoundsPipeline()
+        await pipeline.start(settings: .default)
+        pipeline.systemInterruptionChanged(active: true)
+        await pipeline.listenForSoundsOnly()
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(!(await eventually(within: .milliseconds(500)) { pipeline.isListeningForSoundsOnly }))
+        #expect(pipeline.phase.isListening)
+    }
+
+    @Test("captions stopped during the call: nothing starts when it ends")
+    func askedDuringACallThenStopped() async {
+        let pipeline = makeSoundsPipeline()
+        await pipeline.start(settings: .default)
+        pipeline.systemInterruptionChanged(active: true)
+        await pipeline.listenForSoundsOnly()
+        pipeline.stop()
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(!(await eventually(within: .milliseconds(500)) { pipeline.isListeningForSoundsOnly }))
+    }
+
     @Test("starting or resuming afterwards brings captions back with the sounds stopped first")
     func captionsComeBack() async {
         let built = BuiltEngines()
