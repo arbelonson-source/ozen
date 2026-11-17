@@ -48,6 +48,7 @@ final class TranscribeRecordingModel {
     @ObservationIgnored private var running: Task<Void, Never>?
     @ObservationIgnored private var holdsCaptions = false
     @ObservationIgnored private var closed = false
+    @ObservationIgnored private var stopInFlight = false
     @ObservationIgnored private var language: UILanguage
     @ObservationIgnored private var chosenVariant: String?
     @ObservationIgnored private var duration: Double?
@@ -117,27 +118,40 @@ final class TranscribeRecordingModel {
             soundAlertsOn: host.soundAlertsOn,
             waitingForRetry: host.captionsMayLoadModels
         )
+        stopInFlight = true
+        // The hold is set before the waits that the person can interrupt, so
+        // their own start, stop or pause during the wait clears it and is
+        // not undone afterwards. A stop clears it itself, so it is set after.
+        let hold = { if step != .leaveAlone { self.host.setCaptionsHeldForRecording(true) } }
         if step == .keepSounds {
             // The speech model is let go, the microphone and sound alerts
             // go on, so a doorbell is still heard meanwhile.
+            hold()
             await host.keepSoundsListening()
             if CaptionsHandover.needsPlainPause(after: step, phase: host.captionsPhase) {
                 await host.toggleCaptionsPause()
             }
         } else if step == .pause {
+            hold()
             await host.toggleCaptionsPause()
         } else if step == .stop || step == .stopKeepSounds {
             // Still loading, or failed with a retry lined up: stopped so no
             // second model loads beside the recording's, and started again
             // when it ends.
             await host.stopCaptions()
+            hold()
             if step == .stopKeepSounds { await host.keepSoundsListening() }
         } else if host.captionsMayLoadModels {
             await host.stopCaptions()
         }
-        // The screen may have closed while the stop above was running; close()
-        // already cleared the hold, so setting it now would leave it behind.
-        if step != .leaveAlone, !closed { host.setCaptionsHeldForRecording(true) }
+        stopInFlight = false
+        // The screen may have closed while the above was running: close()
+        // left the comeback to this point, so captions only stopped for the
+        // recording come back and no hold is left behind.
+        if closed {
+            await comeBack()
+            host.setCaptionsHeldForRecording(false)
+        }
         state = .ready(makeReady())
     }
 
@@ -176,13 +190,19 @@ final class TranscribeRecordingModel {
         running = nil
         awake.release()
         letCaptionsGo()
+        if !stopInFlight {
+            await comeBack()
+            host.setCaptionsHeldForRecording(false)
+        }
+        discardShares()
+        file.finish()
+    }
+
+    private func comeBack() async {
         if handover.startsAgain, !host.captionsHeldForRecording { handover.cancel() }
         if handover.comeback(phase: host.captionsPhase) != .none {
             await host.toggleCaptionsPause()
         }
-        host.setCaptionsHeldForRecording(false)
-        discardShares()
-        file.finish()
     }
 
     private func makeReady() -> FileTranscription.Ready {

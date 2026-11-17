@@ -27,6 +27,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
     private(set) var log: [String] = []
     var duringWaitOut: (@MainActor () -> Void)?
     var duringStop: (@MainActor () async -> Void)?
+    var duringKeepSounds: (@MainActor () async -> Void)?
 
     var captionsMayLoadModels: Bool { captionsPhase.isListening || captionsPhase.isTransitioning || retryLinedUp }
 
@@ -55,6 +56,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
 
     func keepSoundsListening() async {
         soundsKept += 1
+        await duringKeepSounds?()
         if soundsOnlyTakes, captionsPhase.isListening { captionsPhase = .paused }
     }
 

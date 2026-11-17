@@ -444,6 +444,41 @@ struct TranscribeRecordingModelTests {
         #expect(!host.heldForRecording)
     }
 
+    @Test("leaving while the captions stop is still running brings back captions that were only stopped for the recording")
+    func closeDuringStopStillComesBack() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        let screen = model(host: host)
+        await screen.load()
+        host.duringStop = { await screen.close() }
+        await screen.stopCaptions()
+        #expect(host.starts == 1)
+        #expect(host.captionsPhase == .listening)
+        #expect(!host.heldForRecording)
+    }
+
+    @Test("stopping captions from outside while sounds-only is being set up keeps them off")
+    func stoppedDuringSoundsWaitStaysOff() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.captionsPhase = loadingPhase
+        host.soundAlertsOn = true
+        let screen = model(host: host)
+        await screen.load()
+        host.duringKeepSounds = {
+            host.heldForRecording = false
+            host.captionsPhase = .idle
+        }
+        await screen.stopCaptions()
+        #expect(!host.heldForRecording)
+        screen.start()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.starts == 0)
+        #expect(host.captionsPhase == .idle)
+    }
+
     @Test("sounds-only that does not take falls back to the plain pause")
     func soundsOnlyFallsBack() async throws {
         let host = RecordingHostFake()
