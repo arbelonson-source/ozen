@@ -28,6 +28,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
     private let modelVariant: String
     private let filter: WhisperResultFilter
     private let store: WhisperModelStore
+    private let previewDemand: PreviewDemandBox?
     private var pipe: WhisperKit?
     private var vocabulary: [String] = []
     private var cellularDownloadAllowed = true
@@ -95,11 +96,13 @@ public actor WhisperKitEngine: TranscriptionEngine {
     public init(
         modelVariant: String = WhisperModelCatalog.defaultVariant,
         filter: WhisperResultFilter = WhisperResultFilter(),
-        store: WhisperModelStore = WhisperModelStore()
+        store: WhisperModelStore = WhisperModelStore(),
+        previewDemand: PreviewDemandBox? = nil
     ) {
         self.modelVariant = modelVariant
         self.filter = filter
         self.store = store
+        self.previewDemand = previewDemand
     }
 
     // MARK: - TranscriptionEngine
@@ -395,6 +398,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
         var samplesAtLastPass = 0
         var lastShownText = ""
         var lastShownConfidence: Float?
+        var previewsSkipped = false
 
         while true {
             try Task.checkCancellation()
@@ -452,7 +456,13 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 lastSpeechEnd: speechEnd,
                 sampleRate: sampleRate
             )
-            if !isFinal && !livePassDue {
+            // Nobody can see or hear the live line (app away, no lock screen
+            // captions, no alert words): only the finished line is worth a
+            // model run. Asked again every turn, so the first preview is due
+            // at once when that changes (see `LivePreviews`).
+            let previewsWanted = previewDemand.map { LivePreviews.wanted(engine: kind, demand: $0.current) } ?? true
+            if !isFinal && !(livePassDue && previewsWanted) {
+                if livePassDue { previewsSkipped = true }
                 try await Task.sleep(for: .milliseconds(50))
                 continue
             }
@@ -504,6 +514,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     utteranceID = UUID()
                     samplesAtLastPass = 0
                     lastLivePassSeconds = nil
+                    previewsSkipped = false
                 } else if total > keepSamples {
                     // Clatter that keeps the energy detector busy would
                     // otherwise pile up for 28 s, and the first words after
@@ -615,7 +626,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     utteranceID: utteranceID,
                     text: shown,
                     isFinal: isFinal,
-                    timestamp: Date().timeIntervalSince1970,
+                    timestamp: Date().timeIntervalSince1970 - (isFinal && previewsSkipped && lastShownText.isEmpty ? max(0, windowSeconds - InferenceCadence.firstPassSpeechSeconds) : 0),
                     confidence: shownConfidence,
                     uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
                     voicedChunks: text.isEmpty ? nil : voicedChunks,
@@ -635,6 +646,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 samplesAtLastPass = 0
                 lastShownText = ""
                 lastShownConfidence = nil
+                previewsSkipped = false
                 // How long a pass over the finished line took says little
                 // about the next, shorter one; its first preview shouldn't
                 // wait on it.

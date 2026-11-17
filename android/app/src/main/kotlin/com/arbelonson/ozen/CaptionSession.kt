@@ -63,6 +63,7 @@ import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.PreviewDemand
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.RecentConversation
@@ -506,7 +507,7 @@ class CaptionSession(
         get() = pipeline.phase.failure.let { it != null && it.engineUnavailability?.kind != EngineUnavailability.Kind.NotEnoughStorage }
 
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
-    var appIsActive = false
+    @Volatile var appIsActive = false
         set(active) {
             if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
             val changed = active != field
@@ -1861,12 +1862,23 @@ class CaptionSession(
                 keepAwake = downloadAwake::keepAwake,
             ),
             voiceScorerFactory = ::voiceScore,
+            previewDemand = ::previewDemand,
             heat = { heatNow },
             lowPowerMode = { savingPower },
             onFitMeasurement = { passes, seconds, lowPower ->
                 ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty(), lowPower = lowPower)
                     ?.let { measured -> this.settings.change { if (ModelFitWatch.keeps(it.phoneLiveMeasurement, measured)) it.phoneLiveMeasurement = measured } }
             },
+        )
+    }
+
+    /** Who can see or hear the live line now, read by the phone model before every preview (see `LivePreviews`). */
+    internal fun previewDemand(): PreviewDemand {
+        val current = settings.current.value
+        return PreviewDemand(
+            appInFront = appIsActive,
+            lockScreenCaptions = current.display.lockScreenCaptions,
+            alertWordsSet = current.keywordAlerts.any { it.isEnabled },
         )
     }
 

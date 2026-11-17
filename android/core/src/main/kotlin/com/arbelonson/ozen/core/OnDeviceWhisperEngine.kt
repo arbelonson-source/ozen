@@ -55,6 +55,7 @@ class OnDeviceWhisperEngine(
     private val wallClockSeconds: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val passDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val filter: WhisperResultFilter = WhisperResultFilter(),
+    private val previewDemand: () -> PreviewDemand = { PreviewDemand() },
 ) : TranscriptionEngine {
     override val kind: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit
 
@@ -410,6 +411,7 @@ class OnDeviceWhisperEngine(
         var samplesAtLastPass = 0
         var lastShownText = ""
         var lastShownConfidence: Float? = null
+        var previewsSkipped = false
 
         while (true) {
             currentCoroutineContext().ensureActive()
@@ -459,7 +461,13 @@ class OnDeviceWhisperEngine(
             val enoughNewAudio = total - samplesAtLastPass >= (interval * sampleRate).toInt()
             val speechSoFar = speechEnd - (status.firstSpeechStart ?: speechEnd)
             val enoughSpeech = speechSoFar >= firstPassSpeechSamples
-            if (!isFinal && !(enoughNewAudio && enoughSpeech)) {
+            val previewDue = enoughNewAudio && enoughSpeech
+            // Nobody can see or hear the live line (app away, no lock screen
+            // captions, no alert words): only the finished line is worth a
+            // model run. Asked again every turn, so the first preview is due
+            // at once when that changes (see `LivePreviews`).
+            if (!isFinal && !(previewDue && LivePreviews.wanted(kind, previewDemand()))) {
+                if (previewDue) previewsSkipped = true
                 delay(50)
                 continue
             }
@@ -509,6 +517,7 @@ class OnDeviceWhisperEngine(
                     utteranceID = UUID.randomUUID()
                     samplesAtLastPass = 0
                     lastLivePassSeconds = null
+                    previewsSkipped = false
                 } else if (total > keepSamples) {
                     // Clatter that keeps the energy detector busy would
                     // otherwise pile up for 28 s, and the first words after
@@ -630,7 +639,7 @@ class OnDeviceWhisperEngine(
                         utteranceID = utteranceID,
                         text = shown,
                         isFinal = isFinal,
-                        timestamp = wallClockSeconds(),
+                        timestamp = wallClockSeconds() - if (isFinal && previewsSkipped && lastShownText.isEmpty()) maxOf(0.0, windowSeconds - firstPassSpeechSeconds) else 0.0,
                         confidence = shownConfidence,
                         uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
                         voicedChunks = if (text.isEmpty()) null else voicedChunks,
@@ -651,6 +660,7 @@ class OnDeviceWhisperEngine(
                 samplesAtLastPass = 0
                 lastShownText = ""
                 lastShownConfidence = null
+                previewsSkipped = false
                 // How long a pass over the finished line took says little
                 // about the next, shorter one; its first preview shouldn't
                 // wait on it.
