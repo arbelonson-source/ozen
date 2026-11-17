@@ -44,6 +44,29 @@ private func check(_ error: any Error, atOpen: Bool) async -> (HomeServerCheck, 
         }
     }
 
+    @Test("a connection that drops in the middle of the secure handshake stays unreachable")
+    func droppedHandshakeIsUnreachable() async {
+        let posix = { (code: Int32) in NSError(domain: NSPOSIXErrorDomain, code: Int(code)) }
+        let tls = { (status: Int) in NSError(domain: NSOSStatusErrorDomain, code: status) }
+        let drops: [any Error] = [
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(ECONNRESET)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(EPIPE)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: posix(ECONNABORTED)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9805)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9806)]),
+            URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9816)]),
+        ]
+        for error in drops {
+            for atOpen in [true, false] {
+                let (result, why) = await check(error, atOpen: atOpen)
+                #expect(result == .unreachable, "\(error)")
+                #expect(!HomeServer.answeredWrongly(why))
+            }
+        }
+        let (result, _) = await check(URLError(.secureConnectionFailed, userInfo: [NSUnderlyingErrorKey: tls(-9800)]), atOpen: true)
+        #expect(result == .secureMismatch)
+    }
+
     @Test("something else answering the request to open the connection with an HTTP status is named the same way")
     func httpStatusIsNamed() async {
         for status in [200, 404, 502] {

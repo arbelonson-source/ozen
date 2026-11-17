@@ -211,7 +211,7 @@ public enum HomeServer {
     /// What a connection error means for the home computer: a failed secure handshake, a certificate the system does not trust, a reply that is not a WebSocket answer, or an HTTP refusal of the upgrade all mean something answered on that port, so the computer is on. Anything else (no route, refused, timed out, name not found) stays "unreachable".
     static func connectionFailure(_ error: any Error, prefix: String = "") -> EngineUnavailability {
         if error is SocketRefused { return .homeServerUnreachable("\(secureMismatchPrefix)\(error)") }
-        if let code = (error as? URLError)?.code {
+        if let code = (error as? URLError)?.code, !droppedMidway(error) {
             switch code {
             case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateNotYetValid,
                  .serverCertificateHasUnknownRoot, .clientCertificateRejected, .clientCertificateRequired, .cannotParseResponse, .badServerResponse:
@@ -220,6 +220,19 @@ public enum HomeServer {
             }
         }
         return .homeServerUnreachable("\(prefix)\(error)")
+    }
+
+    /// A connection that was reset, broken or closed while the secure handshake ran (Wi-Fi drop, computer asleep) is not evidence of a mismatch; the underlying POSIX or TLS-closed code tells them apart.
+    private static func droppedMidway(_ error: any Error) -> Bool {
+        let posix: Set<Int> = [Int(ECONNRESET), Int(EPIPE), Int(ECONNABORTED), Int(ENOTCONN)]
+        let closed: Set<Int> = [-9805, -9806, -9816]
+        var current: NSError? = error as NSError
+        while let ns = current {
+            if ns.domain == NSPOSIXErrorDomain, posix.contains(ns.code) { return true }
+            if ns.domain == NSOSStatusErrorDomain, closed.contains(ns.code) { return true }
+            current = ns.userInfo[NSUnderlyingErrorKey] as? NSError
+        }
+        return false
     }
 
     /// The computer answered, but the secure connection did not match or something else answers on its port: it is on, so checking the power would send her the wrong way.
