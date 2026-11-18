@@ -674,7 +674,7 @@ private fun OzenApp(
                                 onDismissPhoneSoundStopped = app.captions::dismissPhoneSoundStopped,
                                 onMarkProblem = app.captions::markProblem,
                                 onSendReport = { markedAt ->
-                                    val journal = withContext(Dispatchers.IO) { app.captions.readJournal() }
+                                    val journal = withContext(Dispatchers.IO) { app.captions.readHelperJournal() }
                                     helperReport(ProblemNotes.reportLine(markedAt), app.captions.diagnostics(journal))
                                 },
                                 savesConversations = current.saveHistory,

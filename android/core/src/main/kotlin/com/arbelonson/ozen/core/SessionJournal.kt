@@ -88,13 +88,28 @@ class SessionJournal(private val file: File) {
      * of lines, and today's offset put those from before a daylight-saving
      * change an hour off.
      */
-    fun reportLines(utcOffsetAt: (Double) -> Int): List<String> = entries().map { entry ->
+    fun reportLines(utcOffsetAt: (Double) -> Int): List<String> = format(entries(), utcOffsetAt)
+
+    /**
+     * What a report for whoever helps her carries: every line the journal
+     * has, but caption rows only from the newest marked problem, the ones
+     * the screen said were saved. Rows of older problems, whose
+     * conversations may have been deleted since, stay on the phone.
+     */
+    fun helperReportLines(utcOffsetAt: (Double) -> Int): List<String> {
+        val all = entries()
+        val newestMarked = all.indexOfLast { it.text.startsWith(PROBLEM_MARKED_PREFIX) }
+        return format(all.filterIndexed { index, entry -> (newestMarked >= 0 && index > newestMarked) || !ProblemSnapshot.isCaptionLine(entry.text) }, utcOffsetAt)
+    }
+
+    private fun format(entries: List<Entry>, utcOffsetAt: (Double) -> Int): List<String> = entries.map { entry ->
         val seconds = utcOffsetAt(entry.at)
         "${formattedDay(entry.at, seconds)} ${TranscriptHistoryStore.formattedClockTime(entry.at, seconds)} ${entry.text}"
     }
 
     companion object {
         const val maximumBytes = 96_000
+        private const val PROBLEM_MARKED_PREFIX = "PROBLEM MARKED:"
         const val keptLines = 500
         internal const val textLimit = 400
         internal const val flushDelayMillis = 2_000L

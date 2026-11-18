@@ -235,4 +235,51 @@ class SessionJournalTest {
         assertEquals(listOf("not on disk yet"), journal.entries().map { it.text }, "entries() must flush and see it right away regardless of the buffering delay")
         assertNotNull(file.takeIf { it.exists() })
     }
+
+    private fun markProblem(journal: SessionJournal, words: List<String>, at: Double) {
+        val segments = words.map {
+            TranscriptSegment(id = UUID.randomUUID(), text = it, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 60.0)
+        }
+        snapshotLines(segments).forEach { journal.append(it, at) }
+        journal.append("  sound saved: problem.wav", at)
+    }
+
+    @Test
+    fun `the helper's lines carry the caption rows of the newest marked problem and none of an older one`() {
+        val journal = SessionJournal(temporaryFile())
+        journal.append("listening", 1_800_000_000.0)
+        markProblem(journal, listOf("older words alpha", "older words beta"), 1_800_000_010.0)
+        journal.append("microphone stopped delivering audio", 1_800_000_020.0)
+        markProblem(journal, listOf("newer words gamma", "newer words delta", "newer words epsilon"), 1_800_000_030.0)
+
+        val lines = journal.helperReportLines { 0 }
+
+        assertEquals(3, lines.count { it.contains("  line (") })
+        assertTrue(lines.any { it.contains("newer words gamma") })
+        assertTrue(lines.any { it.contains("newer words epsilon") })
+        assertFalse(lines.any { it.contains("older words") })
+        assertEquals(2, lines.count { it.contains("PROBLEM MARKED") })
+        assertTrue(lines.any { it.endsWith("microphone stopped delivering audio") })
+        assertTrue(lines.any { it.endsWith("listening") })
+    }
+
+    @Test
+    fun `with one marked problem the helper's lines are the journal's lines`() {
+        val journal = SessionJournal(temporaryFile())
+        journal.append("listening", 1_800_000_000.0)
+        markProblem(journal, listOf("only words one", "only words two"), 1_800_000_010.0)
+        journal.append("stopped", 1_800_000_020.0)
+
+        assertEquals(journal.reportLines { 0 }, journal.helperReportLines { 0 })
+    }
+
+    @Test
+    fun `caption rows left with no marked problem above them stay out of the helper's lines`() {
+        val journal = SessionJournal(temporaryFile())
+        journal.append("  line (final, sure -, 10:00:00): orphan words", 1_800_000_000.0)
+        journal.append("listening", 1_800_000_010.0)
+
+        assertEquals(1, journal.helperReportLines { 0 }.size)
+        assertFalse(journal.helperReportLines { 0 }.joinToString().contains("orphan"))
+    }
 }

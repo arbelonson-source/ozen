@@ -1337,13 +1337,15 @@ class CaptionSession(
     @Volatile
     private var lastFreeBytes: Long? = null
 
-    private fun journalNow(freeBytes: Long?) = DiagnosticsJournal(
-        journal.reportLines(::utcOffsetAt),
+    private fun journalNow(freeBytes: Long?, forHelper: Boolean = false) = DiagnosticsJournal(
+        if (forHelper) journal.helperReportLines(::utcOffsetAt) else journal.reportLines(::utcOffsetAt),
         journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
         freeBytes,
     )
 
     override fun readJournal() = journalNow(freeSpace().also { lastFreeBytes = it })
+
+    override fun readHelperJournal() = journalNow(freeSpace().also { lastFreeBytes = it }, forHelper = true)
 
     override fun diagnostics(journal: DiagnosticsJournal?): DiagnosticsFacts {
         val read = journal ?: journalNow(lastFreeBytes)

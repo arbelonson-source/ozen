@@ -54,7 +54,7 @@ struct ProblemMarkedSheet: View {
             // thread, so the sheet and its waiting button show at once.
             let kept = viewModel.journal
             let journal = await Task.detached(priority: .userInitiated) {
-                kept?.reportLines(utcOffsetAt: { DiagnosticsReport.utcOffset(at: $0) }) ?? []
+                kept?.helperReportLines(utcOffsetAt: { DiagnosticsReport.utcOffset(at: $0) }) ?? []
             }.value
             let notificationsAllowed = await AlertNotifier.shared.isAllowed()
             let builtInRecognition = await AppleSpeechEngine.onDeviceReport(languageCodes: ["he", viewModel.settings.languageCode])

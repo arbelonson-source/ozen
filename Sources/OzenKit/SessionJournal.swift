@@ -126,9 +126,26 @@ public final class SessionJournal: @unchecked Sendable {
     /// of lines, and today's offset put those from before a daylight-saving
     /// change an hour off.
     public func reportLines(utcOffsetAt offset: (TimeInterval) -> Int) -> [String] {
-        entries().map { entry in
+        Self.format(entries(), utcOffsetAt: offset)
+    }
+
+    /// What a report for whoever helps her carries: every line the journal
+    /// has, but caption rows only from the newest marked problem, the ones
+    /// the screen said were saved. Rows of older problems, whose
+    /// conversations may have been deleted since, stay on the phone.
+    public func helperReportLines(utcOffsetAt offset: (TimeInterval) -> Int) -> [String] {
+        let all = entries()
+        let newestMarked = all.lastIndex { $0.text.hasPrefix("PROBLEM MARKED:") }
+        let kept = all.enumerated().filter { index, entry in
+            newestMarked.map { index > $0 } == true || !ProblemSnapshot.isCaptionLine(entry.text)
+        }.map(\.element)
+        return Self.format(kept, utcOffsetAt: offset)
+    }
+
+    private static func format(_ entries: [Entry], utcOffsetAt offset: (TimeInterval) -> Int) -> [String] {
+        entries.map { entry in
             let seconds = offset(entry.at)
-            return "\(Self.formattedDay(entry.at, utcOffsetSeconds: seconds)) \(TranscriptHistoryStore.formattedClockTime(entry.at, utcOffsetSeconds: seconds)) \(entry.text)"
+            return "\(formattedDay(entry.at, utcOffsetSeconds: seconds)) \(TranscriptHistoryStore.formattedClockTime(entry.at, utcOffsetSeconds: seconds)) \(entry.text)"
         }
     }
 

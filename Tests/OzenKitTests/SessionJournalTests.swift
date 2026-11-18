@@ -272,4 +272,53 @@ struct SessionJournalTests {
         #expect(!onDiskAlready.contains("not on disk yet"), "a single fresh append should be buffered, not hit disk immediately")
         #expect(journal.entries().map(\.text) == ["not on disk yet"], "entries() must flush and see it right away regardless of the buffering delay")
     }
+
+    private func markProblem(_ journal: SessionJournal, words: [String], at time: TimeInterval) {
+        let segments = words.map {
+            TranscriptSegment(id: UUID(), text: $0, isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+        }
+        for line in ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, device: "-", utcOffsetSeconds: 0) {
+            journal.append(line, at: time)
+        }
+        journal.append("  sound saved: problem.wav", at: time)
+    }
+
+    @Test("the helper's lines carry the caption rows of the newest marked problem and none of an older one")
+    func helperLinesKeepOnlyTheNewestCaptions() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        journal.append("listening", at: 1_800_000_000)
+        markProblem(journal, words: ["older words alpha", "older words beta"], at: 1_800_000_010)
+        journal.append("microphone stopped delivering audio", at: 1_800_000_020)
+        markProblem(journal, words: ["newer words gamma", "newer words delta", "newer words epsilon"], at: 1_800_000_030)
+
+        let lines = journal.helperReportLines(utcOffsetAt: { _ in 0 })
+
+        #expect(lines.filter { $0.contains("  line (") }.count == 3)
+        #expect(lines.contains { $0.contains("newer words gamma") })
+        #expect(lines.contains { $0.contains("newer words epsilon") })
+        #expect(!lines.contains { $0.contains("older words") })
+        #expect(lines.filter { $0.contains("PROBLEM MARKED") }.count == 2)
+        #expect(lines.contains { $0.hasSuffix("microphone stopped delivering audio") })
+        #expect(lines.contains { $0.hasSuffix("listening") })
+    }
+
+    @Test("with one marked problem the helper's lines are the journal's lines")
+    func helperLinesWithOneProblemAreUnchanged() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        journal.append("listening", at: 1_800_000_000)
+        markProblem(journal, words: ["only words one", "only words two"], at: 1_800_000_010)
+        journal.append("stopped", at: 1_800_000_020)
+
+        #expect(journal.helperReportLines(utcOffsetAt: { _ in 0 }) == journal.reportLines(utcOffsetAt: { _ in 0 }))
+    }
+
+    @Test("caption rows with no marked problem above them stay out of the helper's lines")
+    func helperLinesDropOrphanCaptionRows() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        journal.append("  line (final, sure -, 10:00:00): orphan words", at: 1_800_000_000)
+        journal.append("listening", at: 1_800_000_010)
+
+        #expect(journal.helperReportLines(utcOffsetAt: { _ in 0 }).count == 1)
+        #expect(!journal.helperReportLines(utcOffsetAt: { _ in 0 }).joined().contains("orphan"))
+    }
 }

@@ -105,6 +105,9 @@ interface DiagnosticsSource {
     /** Reads the journal from its file and the room for downloads, away from the main thread too. */
     fun readJournal(): DiagnosticsJournal
 
+    /** The journal as the report for whoever helps her takes it: caption rows only from the newest marked problem. */
+    fun readHelperJournal(): DiagnosticsJournal = readJournal()
+
     /** The microphone's level this moment, read far more often than the rest. */
     fun inputLevelNow(): Float = diagnostics().inputLevel
 
