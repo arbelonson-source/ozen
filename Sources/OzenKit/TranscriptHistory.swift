@@ -174,7 +174,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     }
 
     static func zoneOffset(_ identifier: String?, at time: TimeInterval) -> Int? {
-        guard let identifier, let zone = TimeZone(identifier: identifier) else { return nil }
+        guard time.isFinite, let identifier, let zone = TimeZone(identifier: identifier) else { return nil }
         return zone.secondsFromGMT(for: Date(timeIntervalSince1970: time))
     }
 
@@ -1354,7 +1354,7 @@ public struct TranscriptHistoryStore: Sendable {
                 // would be laid out left to right and read out of order.
                 return CaptionLayout.opensLeftToRight(line) ? CaptionLayout.rightToLeftMark + line : line
             }
-        let date = formattedDate(record.startedAt, utcOffsetSeconds: record.utcOffsetSeconds(orPhone: offset, at: record.startedAt))
+        let date = formattedDate(record.startedAt, utcOffsetSeconds: record.utcOffsetSeconds ?? offset(record.startedAt))
         let heading = namedHeading(title: record.title, date: date) ?? tr("שיחה מתאריך %1", "Conversation from %1", args: ["\(date)"])
         guard !formatted.isEmpty else { return heading }
         let transcript = formatted.joined(separator: "\n")

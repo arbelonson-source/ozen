@@ -305,8 +305,9 @@ data class TranscriptSessionRecord(
         }
 
         internal fun zoneOffset(timeZoneId: String?, at: Double): Int? {
-            val zone = timeZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: return null
-            return zone.rules.getOffset(java.time.Instant.ofEpochSecond(Math.floor(at).toLong())).totalSeconds
+            return runCatching {
+                java.time.ZoneId.of(timeZoneId ?: return null).rules.getOffset(java.time.Instant.ofEpochSecond(Math.floor(at).toLong())).totalSeconds
+            }.getOrNull()
         }
 
         /**
@@ -1539,7 +1540,7 @@ class TranscriptHistoryStore(
                 // would be laid out left to right and read out of order.
                 if (CaptionLayout.opensLeftToRight(line)) CaptionLayout.RIGHT_TO_LEFT_MARK + line else line
             }
-            val date = formattedDate(record.startedAt, record.utcOffsetSeconds(utcOffsetAt, record.startedAt))
+            val date = formattedDate(record.startedAt, record.utcOffsetSeconds ?: utcOffsetAt(record.startedAt))
             val heading = namedHeading(record.title, date) ?: tr("שיחה מתאריך %1", "Conversation from %1", listOf(date))
             if (formatted.isEmpty()) return heading
             val transcript = formatted.joinToString("\n")

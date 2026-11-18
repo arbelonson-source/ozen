@@ -5,6 +5,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -46,6 +47,11 @@ class ClockChangeTimeTest {
     }
 
     @Test
+    fun aDamagedTimestampOutsideTheCalendarFallsBackToTheStartingOffsetInsteadOfFailingTheExport() {
+        assertEquals(summerOffset, record("Asia/Jerusalem", summerOffset).utcOffsetSeconds(1e18))
+    }
+
+    @Test
     fun starredLinesAreSharedWithTheOffsetEachLineHad() {
         val source = record("Asia/Jerusalem", summerOffset)
         val lines = source.segments.map { StarredLine(source.id, beforeChange, it, utcOffsetSeconds = summerOffset, timeZoneId = "Asia/Jerusalem") }
@@ -64,6 +70,7 @@ class ClockChangeTimeTest {
         assertEquals("Asia/Jerusalem", store.load(first.id)?.timeZoneId)
         val plain = record(null, summerOffset)
         store.save(plain)
+        assertNotNull(store.load(plain.id))
         assertNull(store.load(plain.id)?.timeZoneId)
         assertFalse(plain.toJson().contains("timeZoneId"))
     }
