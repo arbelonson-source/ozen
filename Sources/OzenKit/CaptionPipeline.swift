@@ -271,9 +271,12 @@ public final class CaptionPipeline {
         getWaitingModelReadyIfAllowed()
         guard let held = retryAfterTranscription else { return }
         retryAfterTranscription = nil
+        let stops = stopCount
         Task {
-            if held.kind == .start, phase == .idle, let settings = held.settings {
-                await start(settings: settings)
+            if held.kind == .start, phase.failure == nil {
+                if phase == .idle, stopCount == stops, let settings = held.settings {
+                    await start(settings: settings)
+                }
             } else {
                 await retry(settings: held.settings)
             }

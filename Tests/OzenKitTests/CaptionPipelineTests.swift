@@ -4546,6 +4546,18 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(engine.prepareCount == 0)
     }
 
+    @Test("a stop right after the recording ends cancels the start that was about to run", .timeLimit(.minutes(1)))
+    func stopRightAfterRecordingEndsCancelsHeldStart() async {
+        let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.wifi), pendingDownload: nil)
+        pipeline.beginRecordingTranscription()
+        await pipeline.start(settings: settings())
+        pipeline.endRecordingTranscription()
+        pipeline.stop()
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(pipeline.phase == .idle)
+        #expect(engine.prepareCount == 0)
+    }
+
     @Test("on cellular, a model that still has to download waits for Wi-Fi and says how big it is")
     func cellularWaits() async {
         let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.cellular), recovery: AutoRecoveryPolicy())
