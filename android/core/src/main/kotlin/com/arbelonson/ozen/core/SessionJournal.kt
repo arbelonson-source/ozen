@@ -69,8 +69,9 @@ class SessionJournal(private val file: File) {
      * identity, whatever the clock says. An older block, with no id, is
      * tied by the moment it was marked, inside the conversation's start and
      * end; a conversation never closed ends a minute after its last line,
-     * none ends after the next one starts ([nextStartedAt]), and one still
-     * running has no end. Events, headers and stats stay.
+     * one that is followed by another runs up to where the next one starts
+     * ([nextStartedAt], in the journal's hundredths, so a mark in that same
+     * hundredth stays), and one still running has no end. Events, headers and stats stay.
      */
     fun removeCaptionLines(summary: TranscriptSessionSummary, running: Boolean, nextStartedAt: Double? = null) {
         val window = summary.journalWindow(running, nextStartedAt)
@@ -82,7 +83,7 @@ class SessionJournal(private val file: File) {
             } else if (!ProblemSnapshot.isCaptionLine(text)) {
                 false
             } else {
-                blockConversation?.let { it == summary.id } ?: (at >= window.start && (window.end?.let { at <= it } ?: true))
+                blockConversation?.let { it == summary.id } ?: (at >= window.start && (window.end?.let { at < it } ?: true))
             }
         }
     }

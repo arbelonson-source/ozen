@@ -393,4 +393,22 @@ class SessionJournalTest {
         assertEquals(null, ProblemSnapshot.conversationId(plain))
         assertTrue(named.startsWith("PROBLEM MARKED: engine "))
     }
+
+    @Test
+    fun `an older block marked in the quiet after the saved end goes too, while one at the hundredth the next conversation starts in stays`() {
+        val journal = SessionJournal(temporaryFile())
+        val first = summary(1_000.004, 1_500.0)
+        mark(journal, "at the very start", 1_000.004, null)
+        mark(journal, "in the quiet", 1_800.0, null)
+        mark(journal, "in the next hundredth", 1_950.0049, null)
+        mark(journal, "inside the next", 1_951.0, null)
+
+        journal.removeCaptionLines(first, running = false, nextStartedAt = 1_950.004)
+
+        val kept = journal.entries().joinToString("\n") { it.text }
+        assertFalse(kept.contains("at the very start"))
+        assertFalse(kept.contains("in the quiet"))
+        assertTrue(kept.contains("in the next hundredth"))
+        assertTrue(kept.contains("inside the next"))
+    }
 }

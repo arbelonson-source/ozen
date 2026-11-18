@@ -439,4 +439,22 @@ struct SessionJournalTests {
         #expect(ProblemSnapshot.conversationID(inHeader: plain) == nil)
         #expect(named.hasPrefix("PROBLEM MARKED: engine "))
     }
+
+    @Test("an older block marked in the quiet after the saved end goes too, while one at the hundredth the next conversation starts in stays")
+    func olderBlockInTheQuietAndAtTheBoundary() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        let first = summary(from: 1_000.004, to: 1_500)
+        mark(journal, "at the very start", at: 1_000.004, conversation: nil)
+        mark(journal, "in the quiet", at: 1_800, conversation: nil)
+        mark(journal, "in the next hundredth", at: 1_950.0049, conversation: nil)
+        mark(journal, "inside the next", at: 1_951, conversation: nil)
+
+        journal.removeCaptionLines(of: first, running: false, nextStartedAt: 1_950.004)
+
+        let kept = journal.entries().map(\.text).joined(separator: "\n")
+        #expect(!kept.contains("at the very start"))
+        #expect(!kept.contains("in the quiet"))
+        #expect(kept.contains("in the next hundredth"))
+        #expect(kept.contains("inside the next"))
+    }
 }

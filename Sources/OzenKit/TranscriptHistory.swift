@@ -455,9 +455,12 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
     }
 
     public func journalWindow(running: Bool, nextStartedAt: TimeInterval? = nil) -> (start: TimeInterval, end: TimeInterval?) {
-        if running { return (startedAt, nil) }
-        let end = endedAt ?? max(startedAt, lastLineAt ?? startedAt) + 60
-        return (startedAt, nextStartedAt.map { min(end, $0) } ?? end)
+        func hundredths(_ time: TimeInterval) -> Double { (time * 100).rounded() }
+        let start = hundredths(startedAt) / 100
+        if running { return (start, nil) }
+        if let nextStartedAt { return (start, hundredths(nextStartedAt) / 100) }
+        let own = endedAt ?? max(startedAt, lastLineAt ?? startedAt) + 60
+        return (start, (hundredths(own) + 1) / 100)
     }
 }
 

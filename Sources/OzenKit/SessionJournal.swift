@@ -108,8 +108,10 @@ public final class SessionJournal: @unchecked Sendable {
     /// that identity, whatever the clock says. An older block, with no id,
     /// is tied by the moment it was marked, inside the conversation's
     /// start and end; a conversation never closed ends a minute after its
-    /// last line, none ends after the next one starts (`nextStartedAt`),
-    /// and one still running has no end. Events, headers and stats stay.
+    /// last line, one that is followed by another runs up to where the
+    /// next one starts (`nextStartedAt`, the journal's hundredths, so a
+    /// mark in that same hundredth stays), and one still running has no
+    /// end. Events, headers and stats stay.
     public func removeCaptionLines(of summary: TranscriptSessionSummary, running: Bool, nextStartedAt: TimeInterval? = nil) {
         let window = summary.journalWindow(running: running, nextStartedAt: nextStartedAt)
         var blockConversation: UUID?
@@ -120,7 +122,7 @@ public final class SessionJournal: @unchecked Sendable {
             }
             guard ProblemSnapshot.isCaptionLine(text) else { return false }
             if let blockConversation { return blockConversation == summary.id }
-            return at >= window.start && window.end.map { at <= $0 } ?? true
+            return at >= window.start && window.end.map { at < $0 } ?? true
         }
     }
 
