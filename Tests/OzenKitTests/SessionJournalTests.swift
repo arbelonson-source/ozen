@@ -351,7 +351,7 @@ struct SessionJournalTests {
         let journal = markedJournal()
         let before = journal.entries()
 
-        journal.removeCaptionLines(of: summary(from: 1_000, to: 2_000), running: false)
+        journal.removeCaptionLines(of: summary(from: 1_000, to: 2_000), running: false, nextStartedAt: 3_000)
 
         let kept = journal.entries()
         #expect(!kept.contains { $0.text.contains("of the first") })
@@ -371,10 +371,10 @@ struct SessionJournalTests {
         #expect(journal.entries() == before)
     }
 
-    @Test("a conversation with no end time is bounded by its last line plus a minute, and a running one by the open end")
+    @Test("a conversation with no end time runs up to the next one, and a running one has no end")
     func conversationWithoutEndTime() {
         let cutShort = markedJournal()
-        cutShort.removeCaptionLines(of: summary(from: 1_000, to: nil, lastLineAt: 1_900), running: false)
+        cutShort.removeCaptionLines(of: summary(from: 1_000, to: nil, lastLineAt: 1_900), running: false, nextStartedAt: 3_000)
         #expect(!cutShort.entries().contains { $0.text.contains("of the first") })
         #expect(cutShort.entries().contains { $0.text.contains("of the second") })
 
@@ -456,5 +456,15 @@ struct SessionJournalTests {
         #expect(!kept.contains("in the quiet"))
         #expect(kept.contains("in the next hundredth"))
         #expect(kept.contains("inside the next"))
+    }
+
+    @Test("an older block marked after the saved end of the newest conversation goes with it")
+    func olderBlockAfterTheNewestConversationsEnd() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        mark(journal, "after the saved end", at: 1_800, conversation: nil)
+
+        journal.removeCaptionLines(of: summary(from: 1_000, to: 1_500), running: false)
+
+        #expect(!journal.entries().contains { $0.text.contains("after the saved end") })
     }
 }

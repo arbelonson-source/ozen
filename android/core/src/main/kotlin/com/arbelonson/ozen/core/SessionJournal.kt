@@ -67,11 +67,12 @@ class SessionJournal(private val file: File) {
      * A deleted conversation takes the caption lines marked problems kept
      * of it. A block whose header names the conversation is tied by that
      * identity, whatever the clock says. An older block, with no id, is
-     * tied by the moment it was marked, inside the conversation's start and
-     * end; a conversation never closed ends a minute after its last line,
-     * one that is followed by another runs up to where the next one starts
-     * ([nextStartedAt], in the journal's hundredths, so a mark in that same
-     * hundredth stays), and one still running has no end. Events, headers and stats stay.
+     * tied by the moment it was marked, from the conversation's start up to
+     * where the next saved conversation starts ([nextStartedAt], in the
+     * journal's hundredths, so a mark in that same hundredth stays), or with
+     * no end when none follows or it is still running: the saved end time
+     * may be only the newest caption's, and a mark in the quiet after it is
+     * still this conversation's. Events, headers and stats stay.
      */
     fun removeCaptionLines(summary: TranscriptSessionSummary, running: Boolean, nextStartedAt: Double? = null) {
         val window = summary.journalWindow(running, nextStartedAt)

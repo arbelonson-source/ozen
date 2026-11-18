@@ -307,7 +307,7 @@ class SessionJournalTest {
         val journal = markedJournal()
         val before = journal.entries()
 
-        journal.removeCaptionLines(summary(1_000.0, 2_000.0), running = false)
+        journal.removeCaptionLines(summary(1_000.0, 2_000.0), running = false, nextStartedAt = 3_000.0)
 
         val kept = journal.entries()
         assertFalse(kept.any { it.text.contains("of the first") })
@@ -328,9 +328,9 @@ class SessionJournalTest {
     }
 
     @Test
-    fun `a conversation with no end time is bounded by its last line plus a minute, and a running one by the open end`() {
+    fun `a conversation with no end time runs up to the next one, and a running one has no end`() {
         val cutShort = markedJournal()
-        cutShort.removeCaptionLines(summary(1_000.0, null, lastLineAt = 1_900.0), running = false)
+        cutShort.removeCaptionLines(summary(1_000.0, null, lastLineAt = 1_900.0), running = false, nextStartedAt = 3_000.0)
         assertFalse(cutShort.entries().any { it.text.contains("of the first") })
         assertTrue(cutShort.entries().any { it.text.contains("of the second") })
 
@@ -410,5 +410,15 @@ class SessionJournalTest {
         assertFalse(kept.contains("in the quiet"))
         assertTrue(kept.contains("in the next hundredth"))
         assertTrue(kept.contains("inside the next"))
+    }
+
+    @Test
+    fun `an older block marked after the saved end of the newest conversation goes with it`() {
+        val journal = SessionJournal(temporaryFile())
+        mark(journal, "after the saved end", 1_800.0, null)
+
+        journal.removeCaptionLines(summary(1_000.0, 1_500.0), running = false)
+
+        assertFalse(journal.entries().any { it.text.contains("after the saved end") })
     }
 }

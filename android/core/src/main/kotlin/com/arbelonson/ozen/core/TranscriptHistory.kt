@@ -461,12 +461,8 @@ data class TranscriptSessionSummary(
     data class JournalWindow(val start: Double, val end: Double?)
 
     fun journalWindow(running: Boolean, nextStartedAt: Double? = null): JournalWindow {
-        fun hundredths(time: Double): Double = Math.round(time * 100).toDouble()
-        val start = hundredths(startedAt) / 100
-        if (running) return JournalWindow(start, null)
-        if (nextStartedAt != null) return JournalWindow(start, hundredths(nextStartedAt) / 100)
-        val own = endedAt ?: (maxOf(startedAt, lastLineAt ?: startedAt) + 60.0)
-        return JournalWindow(start, (hundredths(own) + 1) / 100)
+        fun hundredths(time: Double): Double = Math.round(time * 100).toDouble() / 100
+        return JournalWindow(hundredths(startedAt), if (running) null else nextStartedAt?.let(::hundredths))
     }
 
     internal fun toJsonObject(): JsonObject = buildJsonObject {

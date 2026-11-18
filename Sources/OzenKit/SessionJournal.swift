@@ -107,11 +107,11 @@ public final class SessionJournal: @unchecked Sendable {
     /// kept of it. A block whose header names the conversation is tied by
     /// that identity, whatever the clock says. An older block, with no id,
     /// is tied by the moment it was marked, inside the conversation's
-    /// start and end; a conversation never closed ends a minute after its
-    /// last line, one that is followed by another runs up to where the
-    /// next one starts (`nextStartedAt`, the journal's hundredths, so a
-    /// mark in that same hundredth stays), and one still running has no
-    /// end. Events, headers and stats stay.
+    /// start up to where the next saved conversation starts (`nextStartedAt`,
+    /// in the journal's hundredths, so a mark in that same hundredth stays),
+    /// or with no end when none follows or it is still running: the saved
+    /// end time may be only the newest caption's, and a mark in the quiet
+    /// after it is still this conversation's. Events, headers and stats stay.
     public func removeCaptionLines(of summary: TranscriptSessionSummary, running: Bool, nextStartedAt: TimeInterval? = nil) {
         let window = summary.journalWindow(running: running, nextStartedAt: nextStartedAt)
         var blockConversation: UUID?
