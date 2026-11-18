@@ -121,7 +121,7 @@ public final class SessionJournal: @unchecked Sendable {
                 return false
             }
             guard ProblemSnapshot.isCaptionLine(text) else { return false }
-            if let blockConversation { return blockConversation == summary.id }
+            if let owner = ProblemSnapshot.conversationID(inCaptionLine: text) ?? blockConversation { return owner == summary.id }
             return at >= window.start && window.end.map { at < $0 } ?? true
         }
     }

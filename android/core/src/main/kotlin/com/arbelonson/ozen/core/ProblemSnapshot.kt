@@ -13,15 +13,24 @@ object ProblemSnapshot {
 
     fun isHeader(text: String): Boolean = text.startsWith(HEADER_PREFIX)
 
+    fun conversationIdOfLine(line: String): UUID? {
+        if (!isCaptionLine(line)) return null
+        val head = line.substringBefore("): ")
+        val at = head.lastIndexOf(CONVERSATION_MARKER)
+        return if (at < 0) null else parseUuid(head.substring(at + CONVERSATION_MARKER.length))
+    }
+
     fun conversationId(header: String): UUID? {
         if (!isHeader(header)) return null
         val at = header.lastIndexOf(CONVERSATION_MARKER)
         if (at < 0) return null
-        return try {
-            UUID.fromString(header.substring(at + CONVERSATION_MARKER.length))
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        return parseUuid(header.substring(at + CONVERSATION_MARKER.length))
+    }
+
+    private fun parseUuid(text: String): UUID? = try {
+        UUID.fromString(text)
+    } catch (_: IllegalArgumentException) {
+        null
     }
 
     fun lines(
@@ -35,6 +44,7 @@ object ProblemSnapshot {
         includeCaptions: Boolean = true,
         held: TranscriptSegment? = null,
         conversationId: UUID? = null,
+        conversationOf: (TranscriptSegment) -> UUID? = { null },
     ): List<String> {
         val engine = activeEngine ?: settings.engine
         val microphone = input?.let { "${it.portName} [${it.portType.rawValue}]" } ?: "-"
@@ -48,15 +58,17 @@ object ProblemSnapshot {
         // The line held to mark the problem is the one she found wrong: it
         // goes in, marked, even when it is older than the newest few.
         val newest = segments.takeLast(lineCount)
-        for (segment in newest) lines.add(line(segment, segment.id == held?.id, utcOffsetSeconds))
-        if (held != null && newest.none { it.id == held.id }) lines.add(line(held, true, utcOffsetSeconds))
+        for (segment in newest) lines.add(line(segment, segment.id == held?.id, utcOffsetSeconds, other(conversationOf(segment), conversationId)))
+        if (held != null && newest.none { it.id == held.id }) lines.add(line(held, true, utcOffsetSeconds, other(conversationOf(held), conversationId)))
         return lines
     }
 
-    private fun line(segment: TranscriptSegment, held: Boolean, utcOffsetSeconds: Int): String {
+    private fun other(owner: UUID?, header: UUID?): UUID? = if (owner == header) null else owner
+
+    private fun line(segment: TranscriptSegment, held: Boolean, utcOffsetSeconds: Int, owner: UUID?): String {
         val sureness = segment.confidence?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-"
         val time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds)
-        return "$CAPTION_LINE_PREFIX${if (held) "held, " else ""}${if (segment.isCommitted) "final" else "live"}, sure $sureness, $time): ${segment.text}"
+        return "$CAPTION_LINE_PREFIX${if (held) "held, " else ""}${if (segment.isCommitted) "final" else "live"}, sure $sureness, $time${owner?.let { "$CONVERSATION_MARKER$it" } ?: ""}): ${segment.text}"
     }
 
     private fun number(value: Double?, format: String): String =

@@ -467,4 +467,25 @@ struct SessionJournalTests {
 
         #expect(!journal.entries().contains { $0.text.contains("after the saved end") })
     }
+
+    @Test("a problem marked after a break, while the screen still shows the earlier conversation, leaves each line with its own conversation")
+    func rowsKeepTheirOwnConversation() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        let earlier = summary(from: 1_000, to: 1_500)
+        let later = summary(from: 2_000, to: nil)
+        let old = TranscriptSegment(id: UUID(), text: "said in the earlier", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+        let new = TranscriptSegment(id: UUID(), text: "said in the later", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+        for line in ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: [old, new], device: "-", utcOffsetSeconds: 0, conversationID: later.id, conversationOf: { $0.id == old.id ? earlier.id : later.id }) {
+            journal.append(line, at: 2_100)
+        }
+        #expect(journal.entries().filter { ProblemSnapshot.isCaptionLine($0.text) }.count == 2)
+
+        journal.removeCaptionLines(of: earlier, running: false, nextStartedAt: 2_000)
+
+        let kept = journal.entries().map(\.text).joined(separator: "\n")
+        #expect(!kept.contains("said in the earlier"))
+        #expect(kept.contains("said in the later"))
+        journal.removeCaptionLines(of: later, running: true)
+        #expect(!journal.entries().contains { $0.text.contains("said in the later") })
+    }
 }

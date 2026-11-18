@@ -1430,6 +1430,9 @@ class CaptionSession(
             includeCaptions = settings.current.value.saveHistory,
             held = heldLine?.let { id -> pipeline.segments.firstOrNull { it.id == id } },
             conversationId = conversations.currentId,
+            conversationOf = { segment ->
+                pipeline.segments.indexOfFirst { it.id == segment.id }.takeIf { it >= 0 }?.let { conversations.savedConversation(it) }
+            },
         )
         lines.forEach { journal.append(it, now) }
         // With saving conversations off, the room's sound isn't kept either.

@@ -547,7 +547,10 @@ public final class LiveCaptionViewModel {
             device: Self.deviceStateText,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now)),
             includeCaptions: settings.saveHistory,
-            conversationID: historySessionID
+            conversationID: historySessionID,
+            conversationOf: { segment in
+                self.pipeline.segments.firstIndex { $0.id == segment.id }.flatMap { self.savedConversationID(holdingLineAt: $0) }
+            }
         )
         problemKeptCaptions = settings.saveHistory
         for line in lines {

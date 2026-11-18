@@ -421,4 +421,24 @@ class SessionJournalTest {
 
         assertFalse(journal.entries().any { it.text.contains("after the saved end") })
     }
+
+    @Test
+    fun `a problem marked after a break, while the screen still shows the earlier conversation, leaves each line with its own conversation`() {
+        val journal = SessionJournal(temporaryFile())
+        val earlier = summary(1_000.0, 1_500.0)
+        val later = summary(2_000.0, null)
+        val old = TranscriptSegment(id = UUID.randomUUID(), text = "said in the earlier", isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 60.0)
+        val new = TranscriptSegment(id = UUID.randomUUID(), text = "said in the later", isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 60.0)
+        ProblemSnapshot.lines(AppSettings.default, null, null, PipelineStats(), listOf(old, new), "-", 0, conversationId = later.id, conversationOf = { if (it.id == old.id) earlier.id else later.id })
+            .forEach { journal.append(it, 2_100.0) }
+        assertEquals(2, journal.entries().count { ProblemSnapshot.isCaptionLine(it.text) })
+
+        journal.removeCaptionLines(earlier, running = false, nextStartedAt = 2_000.0)
+
+        val kept = journal.entries().joinToString("\n") { it.text }
+        assertFalse(kept.contains("said in the earlier"))
+        assertTrue(kept.contains("said in the later"))
+        journal.removeCaptionLines(later, running = true)
+        assertFalse(journal.entries().any { it.text.contains("said in the later") })
+    }
 }

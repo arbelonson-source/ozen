@@ -84,7 +84,7 @@ class SessionJournal(private val file: File) {
             } else if (!ProblemSnapshot.isCaptionLine(text)) {
                 false
             } else {
-                blockConversation?.let { it == summary.id } ?: (at >= window.start && (window.end?.let { at < it } ?: true))
+                (ProblemSnapshot.conversationIdOfLine(text) ?: blockConversation)?.let { it == summary.id } ?: (at >= window.start && (window.end?.let { at < it } ?: true))
             }
         }
     }
