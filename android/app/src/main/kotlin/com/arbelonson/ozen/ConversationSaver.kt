@@ -349,7 +349,12 @@ class ConversationSaver(
      * for a line said while saving was off, or while saves are failing.
      */
     fun savedConversation(index: Int): UUID? {
-        if (!settings().saveHistory || writer.lastFailure != null || index !in lines().indices) return null
+        if (!settings().saveHistory || writer.lastFailure != null) return null
+        return conversationOfLine(index)
+    }
+
+    fun conversationOfLine(index: Int): UUID? {
+        if (index !in lines().indices) return null
         if (index >= offset) return id
         return closed.entries.lastOrNull { index in it.value.lines }?.key
     }

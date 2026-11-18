@@ -1431,7 +1431,7 @@ class CaptionSession(
             held = heldLine?.let { id -> pipeline.segments.firstOrNull { it.id == id } },
             conversationId = conversations.currentId,
             conversationOf = { segment ->
-                pipeline.segments.indexOfFirst { it.id == segment.id }.takeIf { it >= 0 }?.let { conversations.savedConversation(it) }
+                pipeline.segments.indexOfFirst { it.id == segment.id }.takeIf { it >= 0 }?.let { conversations.conversationOfLine(it) }
             },
         )
         lines.forEach { journal.append(it, now) }

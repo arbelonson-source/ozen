@@ -549,7 +549,7 @@ public final class LiveCaptionViewModel {
             includeCaptions: settings.saveHistory,
             conversationID: historySessionID,
             conversationOf: { segment in
-                self.pipeline.segments.firstIndex { $0.id == segment.id }.flatMap { self.savedConversationID(holdingLineAt: $0) }
+                self.pipeline.segments.firstIndex { $0.id == segment.id }.flatMap { self.conversationID(holdingLineAt: $0) }
             }
         )
         problemKeptCaptions = settings.saveHistory
@@ -2773,7 +2773,12 @@ public final class LiveCaptionViewModel {
     /// caption screen can open it; nil when saving is off or failing (it
     /// might never have reached the disk) or that conversation was deleted.
     public func savedConversationID(holdingLineAt index: Int) -> UUID? {
-        guard settings.saveHistory, historySaveFailure == nil, pipeline.segments.indices.contains(index) else { return nil }
+        guard settings.saveHistory, historySaveFailure == nil else { return nil }
+        return conversationID(holdingLineAt: index)
+    }
+
+    private func conversationID(holdingLineAt index: Int) -> UUID? {
+        guard pipeline.segments.indices.contains(index) else { return nil }
         if index >= historySegmentOffset { return historySessionID }
         return closedHistorySessions.last(where: { $0.lines.contains(index) })?.id
     }
