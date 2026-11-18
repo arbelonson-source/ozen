@@ -273,8 +273,8 @@ public final class CaptionPipeline {
         retryAfterTranscription = nil
         let stops = stopCount
         Task {
-            if held.kind == .start, phase.failure == nil {
-                if phase == .idle, stopCount == stops, let settings = held.settings {
+            if held.kind == .start {
+                if phase == .idle || phase.failure != nil, stopCount == stops, let settings = held.settings {
                     await start(settings: settings)
                 }
             } else {
