@@ -579,7 +579,10 @@ class CaptionSession(
         override fun noteDeleteFailure(detail: String) = note("delete failed: $detail")
 
         override fun delete(id: UUID) {
+            val summary = historyStore.listSummaries().firstOrNull { it.id == id }
+            val running = conversations.isCurrent(id)
             conversations.delete(id)
+            summary?.let { journal.removeCaptionLines(it, running) }
             forgetSharedCopy()
             if (CaptionState.screen.value.recentConversation?.id == id) dismissRecentConversation()
             publish()

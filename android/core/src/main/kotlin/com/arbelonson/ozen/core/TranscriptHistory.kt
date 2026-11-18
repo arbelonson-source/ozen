@@ -458,6 +458,14 @@ data class TranscriptSessionSummary(
     /** See [TranscriptSessionRecord.languageCode]. */
     fun languageCode(orCurrent: String): String = languageCode ?: orCurrent
 
+    data class JournalWindow(val start: Double, val end: Double?)
+
+    fun journalWindow(running: Boolean): JournalWindow = when {
+        endedAt != null -> JournalWindow(startedAt, endedAt)
+        running -> JournalWindow(startedAt, null)
+        else -> JournalWindow(startedAt, maxOf(startedAt, lastLineAt ?: startedAt) + 60.0)
+    }
+
     internal fun toJsonObject(): JsonObject = buildJsonObject {
         put("id", historyUuidText(id))
         put("startedAt", historyNumber(startedAt))

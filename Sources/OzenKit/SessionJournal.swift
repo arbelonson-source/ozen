@@ -100,16 +100,34 @@ public final class SessionJournal: @unchecked Sendable {
     /// Takes out every kept line `shouldRemove` picks, whether still
     /// buffered or on disk; the rest stay, in order.
     public func removeEntries(where shouldRemove: (String) -> Bool) {
+        remove { _, text in shouldRemove(text) }
+    }
+
+    /// A deleted conversation takes the caption lines marked problems
+    /// kept of it. They are tied to it by the moment the problem was
+    /// marked (every row of a block carries that moment), inside the
+    /// conversation's start and end. A conversation never closed ends a
+    /// minute after its last line (the autosave is 20 seconds apart), so
+    /// it cannot reach into one that came later; one still running has no
+    /// end. Events, headers and stats stay.
+    public func removeCaptionLines(of summary: TranscriptSessionSummary, running: Bool) {
+        let window = summary.journalWindow(running: running)
+        remove { at, text in
+            ProblemSnapshot.isCaptionLine(text) && at >= window.start && window.end.map { at <= $0 } ?? true
+        }
+    }
+
+    private func remove(where shouldRemove: (TimeInterval, String) -> Bool) {
         Self.queue.sync {
             Self.flush(fileURL)
             if let pending = Self.pendingLines[fileURL] {
                 Self.pendingLines[fileURL] = pending.filter { line in
-                    guard let tab = line.firstIndex(of: "\t") else { return true }
-                    return !shouldRemove(String(line[line.index(after: tab)...].dropLast()))
+                    guard let tab = line.firstIndex(of: "\t"), let at = TimeInterval(line[..<tab]) else { return true }
+                    return !shouldRemove(at, String(line[line.index(after: tab)...].dropLast()))
                 }
             }
             let entries = Self.read(fileURL)
-            let kept = entries.filter { !shouldRemove($0.text) }
+            let kept = entries.filter { !shouldRemove($0.at, $0.text) }
             guard kept.count < entries.count else { return }
             let text = kept.map { "\(String(format: "%.2f", $0.at))\t\($0.text)\n" }.joined()
             try? Data(text.utf8).write(to: fileURL, options: .privateFile)

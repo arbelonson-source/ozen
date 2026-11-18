@@ -453,6 +453,12 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
     public func languageCode(orCurrent current: String) -> String {
         languageCode ?? current
     }
+
+    public func journalWindow(running: Bool) -> (start: TimeInterval, end: TimeInterval?) {
+        if let endedAt { return (startedAt, endedAt) }
+        if running { return (startedAt, nil) }
+        return (startedAt, max(startedAt, lastLineAt ?? startedAt) + 60)
+    }
 }
 
 extension TranscriptSessionSummary {

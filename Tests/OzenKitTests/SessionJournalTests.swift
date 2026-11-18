@@ -321,4 +321,66 @@ struct SessionJournalTests {
         #expect(journal.helperReportLines(utcOffsetAt: { _ in 0 }).count == 1)
         #expect(!journal.helperReportLines(utcOffsetAt: { _ in 0 }).joined().contains("orphan"))
     }
+
+    private func markedJournal() -> SessionJournal {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        func mark(_ words: [String], at time: TimeInterval) {
+            let segments = words.map {
+                TranscriptSegment(id: UUID(), text: $0, isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+            }
+            for line in ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, device: "-", utcOffsetSeconds: 0) {
+                journal.append(line, at: time)
+            }
+        }
+        journal.append("listening", at: 1_000)
+        mark(["words of the first"], at: 1_100)
+        mark(["more of the first"], at: 1_900)
+        journal.append("stopped", at: 2_000)
+        journal.append("listening", at: 3_000)
+        mark(["words of the second"], at: 3_100)
+        journal.append("stopped", at: 4_000)
+        return journal
+    }
+
+    private func summary(from start: TimeInterval, to end: TimeInterval?, lastLineAt: TimeInterval? = nil) -> TranscriptSessionSummary {
+        TranscriptSessionSummary(id: UUID(), startedAt: start, endedAt: end, segmentCount: 1, preview: "", engine: .whisperKit, lastLineAt: lastLineAt)
+    }
+
+    @Test("deleting a conversation takes out the caption lines marked inside it, and only those")
+    func deletingConversationRemovesItsCaptionLines() {
+        let journal = markedJournal()
+        let before = journal.entries()
+
+        journal.removeCaptionLines(of: summary(from: 1_000, to: 2_000), running: false)
+
+        let kept = journal.entries()
+        #expect(!kept.contains { $0.text.contains("of the first") })
+        #expect(kept.filter { $0.text.contains("of the second") }.count == 1)
+        #expect(kept.filter { !ProblemSnapshot.isCaptionLine($0.text) } == before.filter { !ProblemSnapshot.isCaptionLine($0.text) })
+        #expect(kept.filter { $0.text.hasPrefix("PROBLEM MARKED") }.count == 3)
+        #expect(kept.count == before.count - 2)
+    }
+
+    @Test("deleting a conversation nothing was marked in changes nothing")
+    func deletingUnmarkedConversationChangesNothing() throws {
+        let journal = markedJournal()
+        let before = journal.entries()
+
+        journal.removeCaptionLines(of: summary(from: 5_000, to: 6_000), running: false)
+
+        #expect(journal.entries() == before)
+    }
+
+    @Test("a conversation with no end time is bounded by its last line plus a minute, and a running one by the open end")
+    func conversationWithoutEndTime() {
+        let cutShort = markedJournal()
+        cutShort.removeCaptionLines(of: summary(from: 1_000, to: nil, lastLineAt: 1_900), running: false)
+        #expect(!cutShort.entries().contains { $0.text.contains("of the first") })
+        #expect(cutShort.entries().contains { $0.text.contains("of the second") })
+
+        let running = markedJournal()
+        running.removeCaptionLines(of: summary(from: 3_000, to: nil), running: true)
+        #expect(running.entries().contains { $0.text.contains("of the first") })
+        #expect(!running.entries().contains { $0.text.contains("of the second") })
+    }
 }

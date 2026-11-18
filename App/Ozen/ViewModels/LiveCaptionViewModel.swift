@@ -2746,7 +2746,9 @@ public final class LiveCaptionViewModel {
         // Disk first: if the delete fails, the conversation on screen keeps
         // saving to the record that is still there. Nothing can queue an
         // autosave in between, since this runs on the main actor.
+        let summary = historyStore.listSummaries().first { $0.id == id }
         try historyWriter.deleteNow(id: id)
+        if let summary { journal?.removeCaptionLines(of: summary, running: id == historySessionID) }
         ExportScratchFolder.standard.clear()
         closedHistorySessions.removeAll { $0.id == id }
         if recentConversation?.id == id { recentConversation = nil }

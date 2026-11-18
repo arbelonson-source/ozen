@@ -60,17 +60,36 @@ class SessionJournal(private val file: File) {
      * Takes out every kept line [shouldRemove] picks, whether still
      * buffered or on disk; the rest stay, in order.
      */
-    fun removeEntries(shouldRemove: (String) -> Boolean) {
+    fun removeEntries(shouldRemove: (String) -> Boolean) = remove { _, text -> shouldRemove(text) }
+
+    /**
+     * A deleted conversation takes the caption lines marked problems kept
+     * of it. They are tied to it by the moment the problem was marked
+     * (every row of a block carries that moment), inside the conversation's
+     * start and end. A conversation never closed ends a minute after its
+     * last line (the autosave is 20 seconds apart), so it cannot reach into
+     * one that came later; one still running has no end. Events, headers
+     * and stats stay.
+     */
+    fun removeCaptionLines(summary: TranscriptSessionSummary, running: Boolean) {
+        val window = summary.journalWindow(running)
+        remove { at, text ->
+            ProblemSnapshot.isCaptionLine(text) && at >= window.start && (window.end?.let { at <= it } ?: true)
+        }
+    }
+
+    private fun remove(shouldRemove: (Double, String) -> Boolean) {
         synchronized(lock) {
             flush(file)
             pendingLines[file]?.let { pending ->
                 pendingLines[file] = pending.filter { line ->
                     val tab = line.indexOf('\t')
-                    tab < 0 || !shouldRemove(line.substring(tab + 1).dropLast(1))
+                    val at = if (tab > 0) timeOrNull(line.substring(0, tab)) else null
+                    at == null || !shouldRemove(at, line.substring(tab + 1).dropLast(1))
                 }.toMutableList()
             }
             val entries = read(file)
-            val kept = entries.filter { !shouldRemove(it.text) }
+            val kept = entries.filter { !shouldRemove(it.at, it.text) }
             if (kept.size >= entries.size) return
             val text = kept.joinToString("") { "${formatted(it.at)}\t${it.text}\n" }
             try {

@@ -282,4 +282,61 @@ class SessionJournalTest {
         assertEquals(1, journal.helperReportLines { 0 }.size)
         assertFalse(journal.helperReportLines { 0 }.joinToString().contains("orphan"))
     }
+
+    private fun markedJournal(file: File = temporaryFile()): SessionJournal {
+        val journal = SessionJournal(file)
+        fun mark(words: String, at: Double) {
+            val segments = listOf(TranscriptSegment(id = UUID.randomUUID(), text = words, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 60.0))
+            snapshotLines(segments).forEach { journal.append(it, at) }
+        }
+        journal.append("listening", 1_000.0)
+        mark("words of the first", 1_100.0)
+        mark("more of the first", 1_900.0)
+        journal.append("stopped", 2_000.0)
+        journal.append("listening", 3_000.0)
+        mark("words of the second", 3_100.0)
+        journal.append("stopped", 4_000.0)
+        return journal
+    }
+
+    private fun summary(start: Double, end: Double?, lastLineAt: Double? = null) =
+        TranscriptSessionSummary(id = UUID.randomUUID(), startedAt = start, endedAt = end, segmentCount = 1, preview = "", engine = TranscriptionEngineKind.WhisperKit, lastLineAt = lastLineAt)
+
+    @Test
+    fun `deleting a conversation takes out the caption lines marked inside it, and only those`() {
+        val journal = markedJournal()
+        val before = journal.entries()
+
+        journal.removeCaptionLines(summary(1_000.0, 2_000.0), running = false)
+
+        val kept = journal.entries()
+        assertFalse(kept.any { it.text.contains("of the first") })
+        assertEquals(1, kept.count { it.text.contains("of the second") })
+        assertEquals(before.filter { !ProblemSnapshot.isCaptionLine(it.text) }, kept.filter { !ProblemSnapshot.isCaptionLine(it.text) })
+        assertEquals(3, kept.count { it.text.startsWith("PROBLEM MARKED") })
+        assertEquals(before.size - 2, kept.size)
+    }
+
+    @Test
+    fun `deleting a conversation nothing was marked in changes nothing`() {
+        val journal = markedJournal()
+        val before = journal.entries()
+
+        journal.removeCaptionLines(summary(5_000.0, 6_000.0), running = false)
+
+        assertEquals(before, journal.entries())
+    }
+
+    @Test
+    fun `a conversation with no end time is bounded by its last line plus a minute, and a running one by the open end`() {
+        val cutShort = markedJournal()
+        cutShort.removeCaptionLines(summary(1_000.0, null, lastLineAt = 1_900.0), running = false)
+        assertFalse(cutShort.entries().any { it.text.contains("of the first") })
+        assertTrue(cutShort.entries().any { it.text.contains("of the second") })
+
+        val running = markedJournal()
+        running.removeCaptionLines(summary(3_000.0, null), running = true)
+        assertTrue(running.entries().any { it.text.contains("of the first") })
+        assertFalse(running.entries().any { it.text.contains("of the second") })
+    }
 }
