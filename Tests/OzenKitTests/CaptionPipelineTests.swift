@@ -4520,6 +4520,32 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(pipeline.phase == .idle)
     }
 
+    @Test("a start that arrives while a recording is transcribed waits and runs once, when it is done", .timeLimit(.minutes(1)))
+    func startDuringRecordingWaits() async {
+        let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.wifi), pendingDownload: nil)
+        pipeline.beginRecordingTranscription()
+        await pipeline.start(settings: settings())
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(pipeline.phase == .idle)
+        #expect(engine.prepareCount == 0, "a second speech model loaded beside the recording's")
+
+        pipeline.endRecordingTranscription()
+        #expect(await eventually { pipeline.phase == .listening })
+        #expect(engine.prepareCount == 1)
+    }
+
+    @Test("a start held for a recording is dropped when captions are stopped meanwhile", .timeLimit(.minutes(1)))
+    func stoppedStartDuringRecordingIsDropped() async {
+        let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.wifi), pendingDownload: nil)
+        pipeline.beginRecordingTranscription()
+        await pipeline.start(settings: settings())
+        pipeline.stop()
+        pipeline.endRecordingTranscription()
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(pipeline.phase == .idle)
+        #expect(engine.prepareCount == 0)
+    }
+
     @Test("on cellular, a model that still has to download waits for Wi-Fi and says how big it is")
     func cellularWaits() async {
         let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.cellular), recovery: AutoRecoveryPolicy())

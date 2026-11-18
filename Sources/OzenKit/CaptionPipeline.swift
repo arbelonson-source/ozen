@@ -271,7 +271,13 @@ public final class CaptionPipeline {
         getWaitingModelReadyIfAllowed()
         guard let held = retryAfterTranscription else { return }
         retryAfterTranscription = nil
-        Task { await retry(settings: held.settings) }
+        Task {
+            if held.kind == .start, phase == .idle, let settings = held.settings {
+                await start(settings: settings)
+            } else {
+                await retry(settings: held.settings)
+            }
+        }
     }
 
     /// Captions stopped while their model was still loading go on loading
@@ -543,6 +549,12 @@ public final class CaptionPipeline {
         guard !isRecordingVoice else {
             if phase == .idle || phase.failure != nil, retryAfterRecording == nil {
                 retryAfterRecording = HeldRetry(settings: settings, kind: .start)
+            }
+            return
+        }
+        guard !isTranscribingRecording else {
+            if phase == .idle || phase.failure != nil, retryAfterTranscription == nil {
+                retryAfterTranscription = HeldRetry(settings: settings, kind: .start)
             }
             return
         }
