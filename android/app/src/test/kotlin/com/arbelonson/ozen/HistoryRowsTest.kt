@@ -349,4 +349,27 @@ class HistoryRowsTest {
         val live = SavedLine.of(record(false), jerusalem, languageCode = "en").single()
         assertEquals("${live.time}. Hello", live.spoken)
     }
+
+    @Test
+    fun `lines across the night the clocks go back read 1 30 then 2 30, and a record with only an offset keeps its old reading`() {
+        val before = 1_792_881_000.0
+        val after = 1_792_888_200.0
+        fun record(zone: String?) = TranscriptSessionRecord(
+            startedAt = before,
+            engine = TranscriptionEngineKind.WhisperKit,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(line("before", before), line("after", after)),
+            utcOffsetSeconds = 10_800,
+            timeZoneId = zone,
+        )
+        val phone = ZoneId.of("UTC")
+        val own = SavedLine.of(record("Asia/Jerusalem"), phone, languageCode = "en")
+        assertTrue(own[1].time!!.contains("2:30"), own[1].time)
+        assertFalse(own[1].time!!.contains("3:30"), own[1].time)
+        val old = SavedLine.of(record(null), phone, languageCode = "en")
+        assertTrue(old[1].time!!.contains("3:30"), old[1].time)
+        val starred = StarredLine(UUID.randomUUID(), before, line("after", after), utcOffsetSeconds = 10_800, timeZoneId = "Asia/Jerusalem")
+        assertTrue(SavedLine.of(starred, phone, languageCode = "en").time!!.contains("2:30"))
+    }
 }

@@ -118,6 +118,7 @@ class ConversationSaver(
             starred = starred.toSet(),
             languageCode = spokenLanguage?.invoke() ?: using.languageCode,
             utcOffsetSeconds = utcOffsetAt(startedAt),
+            timeZoneId = java.time.ZoneId.systemDefault().id,
         )
         val written = if (inBackground) {
             writer.saveInBackground(record)
@@ -154,6 +155,7 @@ class ConversationSaver(
                     starred = starred.toSet(),
                     languageCode = record.languageCode,
                     utcOffsetSeconds = record.utcOffsetSeconds,
+                    timeZoneId = record.timeZoneId,
                 ),
             )
         }

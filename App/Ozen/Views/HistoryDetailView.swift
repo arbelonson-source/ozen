@@ -123,7 +123,7 @@ struct HistoryDetailView: View {
                             slots: slots,
                             showsTime: timeMarks.contains(segment.id),
                             recordingStart: record.fromRecording ? record.startedAt : nil,
-                            utcOffsetSeconds: record.utcOffsetSeconds,
+                            utcOffsetSeconds: record.utcOffsetSeconds(at: segment.startTimestamp),
                             markUncertain: viewModel.display.markUncertainLines,
                             engine: record.engine,
                             model: record.modelVariant,

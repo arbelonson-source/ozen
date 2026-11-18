@@ -40,7 +40,7 @@ struct StarredLinesView: View {
                                 } label: {
                                     VStack(alignment: .leading, spacing: 2) {
                                         HStack(spacing: 6) {
-                                            Text(Date(timeIntervalSince1970: line.segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: line.utcOffsetSeconds))
+                                            Text(Date(timeIntervalSince1970: line.segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: line.utcOffsetSeconds(at: line.segment.startTimestamp)))
                                                 .font(.caption2.monospacedDigit())
                                                 .foregroundStyle(.secondary)
                                             if let name = line.segment.speakerName, !TranscriptSessionSummary.isGenericLabel(name) {
@@ -71,7 +71,7 @@ struct StarredLinesView: View {
                                     .accessibilityLabel(Text(CaptionSpeechText.label(
                                         whole: SavedLineSpeech.label(
                                             for: line.segment,
-                                            time: Date(timeIntervalSince1970: line.segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: line.utcOffsetSeconds),
+                                            time: Date(timeIntervalSince1970: line.segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened, utcOffsetSeconds: line.utcOffsetSeconds(at: line.segment.startTimestamp)),
                                             uncertain: viewModel.display.markUncertainLines && line.isUncertain
                                         ),
                                         endingWith: line.segment.text,

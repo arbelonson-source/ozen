@@ -166,9 +166,24 @@ data class TranscriptSessionRecord(
      * follow the phone's zone.
      */
     val utcOffsetSeconds: Int? = null,
+    /**
+     * The zone's name (such as "Asia/Jerusalem") where the conversation
+     * started. A conversation that runs across the night the clocks change
+     * reads each line by the offset the zone had at that line, which the
+     * single offset above cannot say. Records saved before this existed have
+     * none and keep reading by that offset.
+     */
+    val timeZoneId: String? = null,
 ) {
     /** The offset to read a time of this conversation by: its own, or the phone's at that moment. */
-    fun utcOffsetSeconds(orPhone: (Double) -> Int, at: Double): Int = utcOffsetSeconds ?: orPhone(at)
+    fun utcOffsetSeconds(orPhone: (Double) -> Int, at: Double): Int = utcOffsetSeconds(at) ?: orPhone(at)
+
+    /**
+     * The conversation's own offset at [at]: its zone's at that moment, or the
+     * one it started with when it has no zone (or one this phone does not
+     * know). Null for a record saved with neither.
+     */
+    fun utcOffsetSeconds(at: Double): Int? = zoneOffset(timeZoneId, at) ?: utcOffsetSeconds
 
     /** How a line's time reads: the time into the recording, or the clock time of a live conversation. */
     fun timeText(segment: SavedSegment, utcOffsetSeconds: Int): String =
@@ -229,6 +244,7 @@ data class TranscriptSessionRecord(
         if (cutShort) put("cutShort", true)
         if (fromRecording) put("fromRecording", true)
         utcOffsetSeconds?.let { put("utcOffsetSeconds", it) }
+        timeZoneId?.let { put("timeZoneId", it) }
     }.toString()
 
     companion object {
@@ -255,6 +271,7 @@ data class TranscriptSessionRecord(
             starred: Set<UUID> = emptySet(),
             languageCode: String? = null,
             utcOffsetSeconds: Int? = null,
+            timeZoneId: String? = null,
         ): TranscriptSessionRecord {
             val saved = from.mapNotNull { segment ->
                 if (historyTrimmed(segment.text).isEmpty()) {
@@ -283,7 +300,13 @@ data class TranscriptSessionRecord(
                 segments = saved,
                 languageCode = languageCode,
                 utcOffsetSeconds = utcOffsetSeconds,
+                timeZoneId = timeZoneId,
             )
+        }
+
+        internal fun zoneOffset(timeZoneId: String?, at: Double): Int? {
+            val zone = timeZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: return null
+            return zone.rules.getOffset(java.time.Instant.ofEpochSecond(Math.floor(at).toLong())).totalSeconds
         }
 
         /**
@@ -313,6 +336,7 @@ data class TranscriptSessionRecord(
                 cutShort = lenientHistory { container.optional("cutShort")?.asHistoryBoolean() } ?: false,
                 fromRecording = lenientHistory { container.optional("fromRecording")?.asHistoryBoolean() } ?: false,
                 utcOffsetSeconds = lenientHistory { container.optional("utcOffsetSeconds")?.asHistoryInt() }?.let(::plausibleUtcOffset),
+                timeZoneId = lenientHistory { container.optional("timeZoneId")?.asHistoryString() },
             )
         }
 
@@ -350,8 +374,13 @@ data class StarredLine(
     val languageCode: String? = null,
     /** See [TranscriptSessionRecord.utcOffsetSeconds]. */
     val utcOffsetSeconds: Int? = null,
+    /** See [TranscriptSessionRecord.timeZoneId]. */
+    val timeZoneId: String? = null,
 ) {
     val id: UUID get() = segment.id
+
+    /** See [TranscriptSessionRecord.utcOffsetSeconds]. */
+    fun utcOffsetSeconds(at: Double): Int? = TranscriptSessionRecord.zoneOffset(timeZoneId, at) ?: utcOffsetSeconds
 
     /** See [TranscriptSessionRecord.languageCode]. */
     fun languageCode(orCurrent: String): String = languageCode ?: orCurrent
@@ -682,7 +711,7 @@ class TranscriptHistoryStore(
             if (toSave.title == null) toSave = toSave.copy(title = remembered.title)
             val engine = remembered.engine
             if (engine != null) {
-                toSave = toSave.copy(engine = engine, modelVariant = remembered.modelVariant, inputName = remembered.inputName, languageCode = remembered.languageCode, utcOffsetSeconds = remembered.utcOffsetSeconds)
+                toSave = toSave.copy(engine = engine, modelVariant = remembered.modelVariant, inputName = remembered.inputName, languageCode = remembered.languageCode, utcOffsetSeconds = remembered.utcOffsetSeconds, timeZoneId = remembered.timeZoneId)
             }
         } else {
             val data = readConversation(file)
@@ -701,7 +730,7 @@ class TranscriptHistoryStore(
                 // and judged its uncertain lines by them.
                 val source = lenientHistory { savedSource(data) }
                 if (source != null) {
-                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName, languageCode = source.languageCode, utcOffsetSeconds = source.utcOffsetSeconds)
+                    toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName, languageCode = source.languageCode, utcOffsetSeconds = source.utcOffsetSeconds, timeZoneId = source.timeZoneId)
                 }
             } else if (toSave.title == null) {
                 toSave = toSave.copy(title = cachedSummary(file)?.title)
@@ -734,6 +763,7 @@ class TranscriptHistoryStore(
         val inputName: String?,
         val languageCode: String?,
         val utcOffsetSeconds: Int?,
+        val timeZoneId: String?,
         val modifiedAt: Long,
         val size: Long,
         val version: Long,
@@ -756,7 +786,7 @@ class TranscriptHistoryStore(
     private fun remember(saved: TranscriptSessionRecord, file: File) = synchronized(memory) {
         val modifiedAt = file.lastModified()
         if (modifiedAt == 0L) return@synchronized
-        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, saved.languageCode, saved.utcOffsetSeconds, modifiedAt, file.length(), shared.version(saved.id))
+        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, saved.languageCode, saved.utcOffsetSeconds, saved.timeZoneId, modifiedAt, file.length(), shared.version(saved.id))
     }
 
     private fun forget(id: UUID) = synchronized(memory) {
@@ -773,7 +803,7 @@ class TranscriptHistoryStore(
         true
     }
 
-    private class SavedSource(val engine: TranscriptionEngineKind?, val modelVariant: String?, val inputName: String?, val languageCode: String?, val utcOffsetSeconds: Int?)
+    private class SavedSource(val engine: TranscriptionEngineKind?, val modelVariant: String?, val inputName: String?, val languageCode: String?, val utcOffsetSeconds: Int?, val timeZoneId: String?)
 
     private fun savedTitle(data: ByteArray): String? =
         parseHistoryBytes(data).asHistoryObject().optional("title")?.asHistoryString()
@@ -786,6 +816,7 @@ class TranscriptHistoryStore(
             inputName = lenientHistory { container.optional("inputName")?.asHistoryString() },
             languageCode = lenientHistory { container.optional("languageCode")?.asHistoryString() }?.let(TranscriptSessionRecord.Companion::plausibleLanguageCode),
             utcOffsetSeconds = lenientHistory { container.optional("utcOffsetSeconds")?.asHistoryInt() }?.let(TranscriptSessionRecord.Companion::plausibleUtcOffset),
+            timeZoneId = lenientHistory { container.optional("timeZoneId")?.asHistoryString() },
         )
     }
 
@@ -973,7 +1004,7 @@ class TranscriptHistoryStore(
             .flatMap { record ->
                 record.segments
                     .filter { it.isStarred }
-                    .map { StarredLine(record.id, record.startedAt, it, record.title, record.engine, record.modelVariant, record.languageCode, record.utcOffsetSeconds) }
+                    .map { StarredLine(record.id, record.startedAt, it, record.title, record.engine, record.modelVariant, record.languageCode, record.utcOffsetSeconds, record.timeZoneId) }
             }
 
     /**
@@ -1688,7 +1719,7 @@ class TranscriptHistoryStore(
                     block = arrayListOf(namedHeading(line.sessionTitle, date) ?: date)
                     currentSession = line.sessionID
                 }
-                val time = formattedClockTime(line.segment.startTimestamp, line.utcOffsetSeconds ?: utcOffsetAt(line.segment.startTimestamp))
+                val time = formattedClockTime(line.segment.startTimestamp, line.utcOffsetSeconds(line.segment.startTimestamp) ?: utcOffsetAt(line.segment.startTimestamp))
                 val said = CaptionLayout.isolatingNumbers(line.segment.text)
                 val warning = if (marksUncertain && line.isUncertain) tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") else ""
                 val name = line.segment.speakerName

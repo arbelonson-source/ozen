@@ -1280,7 +1280,8 @@ public final class LiveCaptionViewModel {
             inputName: session.inputName,
             starred: starredSegmentIDs,
             languageCode: session.languageCode,
-            utcOffsetSeconds: HistoryDays.localOffset(at: session.startedAt)
+            utcOffsetSeconds: HistoryDays.localOffset(at: session.startedAt),
+            timeZoneIdentifier: TimeZone.current.identifier
         )
         saveInBackground(record)
     }
@@ -2649,7 +2650,8 @@ public final class LiveCaptionViewModel {
             inputName: selectedInput?.portName,
             starred: starredSegmentIDs,
             languageCode: spokenLanguageCode,
-            utcOffsetSeconds: HistoryDays.localOffset(at: startedAt)
+            utcOffsetSeconds: HistoryDays.localOffset(at: startedAt),
+            timeZoneIdentifier: TimeZone.current.identifier
         )
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {

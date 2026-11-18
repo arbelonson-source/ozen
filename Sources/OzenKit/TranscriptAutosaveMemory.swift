@@ -43,6 +43,7 @@ final class TranscriptAutosaveMemory: @unchecked Sendable {
         let inputName: String?
         let languageCode: String?
         let utcOffsetSeconds: Int?
+        let timeZoneIdentifier: String?
         let modifiedAt: Date
         let size: Int
         let version: (epoch: Int, count: Int)
@@ -92,6 +93,7 @@ final class TranscriptAutosaveMemory: @unchecked Sendable {
             inputName: record.inputName,
             languageCode: record.languageCode,
             utcOffsetSeconds: record.utcOffsetSeconds,
+            timeZoneIdentifier: record.timeZoneIdentifier,
             modifiedAt: stamp.modifiedAt,
             size: stamp.size,
             version: edits.version(of: key)

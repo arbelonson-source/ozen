@@ -104,6 +104,12 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     /// is in when it is read or shared. Records saved before this existed
     /// have none and follow the phone's zone.
     public var utcOffsetSeconds: Int?
+    /// The zone's name (such as "Asia/Jerusalem") where the conversation
+    /// started. A conversation that runs across the night the clocks change
+    /// reads each line by the offset the zone had at that line, which the
+    /// single offset above cannot say. Records saved before this existed
+    /// have none and keep reading by that offset.
+    public var timeZoneIdentifier: String?
 
     public init(
         id: UUID = UUID(),
@@ -117,7 +123,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         languageCode: String? = nil,
         fromRecording: Bool = false,
         cutShort: Bool = false,
-        utcOffsetSeconds: Int? = nil
+        utcOffsetSeconds: Int? = nil,
+        timeZoneIdentifier: String? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -131,6 +138,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         self.fromRecording = fromRecording
         self.cutShort = cutShort
         self.utcOffsetSeconds = utcOffsetSeconds
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 
     /// Said when a cut-short conversation is opened from History.
@@ -155,7 +163,19 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
     /// The offset to read this conversation's times by: its own, or the
     /// phone's at that moment when it was saved without one.
     public func utcOffsetSeconds(orPhone phone: (TimeInterval) -> Int, at time: TimeInterval) -> Int {
-        utcOffsetSeconds ?? phone(time)
+        utcOffsetSeconds(at: time) ?? phone(time)
+    }
+
+    /// The conversation's own offset at `time`: its zone's at that moment,
+    /// or the one it started with when it has no zone (or one this phone
+    /// does not know). Nil for a record saved with neither.
+    public func utcOffsetSeconds(at time: TimeInterval) -> Int? {
+        Self.zoneOffset(timeZoneIdentifier, at: time) ?? utcOffsetSeconds
+    }
+
+    static func zoneOffset(_ identifier: String?, at time: TimeInterval) -> Int? {
+        guard let identifier, let zone = TimeZone(identifier: identifier) else { return nil }
+        return zone.secondsFromGMT(for: Date(timeIntervalSince1970: time))
     }
 
     /// Converts a live in-memory transcript into a saveable record. A
@@ -174,7 +194,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         inputName: String?,
         starred: Set<UUID> = [],
         languageCode: String? = nil,
-        utcOffsetSeconds: Int? = nil
+        utcOffsetSeconds: Int? = nil,
+        timeZoneIdentifier: String? = nil
     ) -> TranscriptSessionRecord {
         let saved = segments.compactMap { segment -> SavedSegment? in
             guard !segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -201,12 +222,13 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
             inputName: inputName,
             segments: saved,
             languageCode: languageCode,
-            utcOffsetSeconds: utcOffsetSeconds
+            utcOffsetSeconds: utcOffsetSeconds,
+            timeZoneIdentifier: timeZoneIdentifier
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode, fromRecording, cutShort, utcOffsetSeconds
+        case id, startedAt, endedAt, engine, modelVariant, inputName, segments, title, languageCode, fromRecording, cutShort, utcOffsetSeconds, timeZoneIdentifier
     }
 
     // Decoding is tolerant of missing keys on the fields a later build
@@ -231,6 +253,7 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
         fromRecording = container.lenient(Bool.self, forKey: .fromRecording) ?? false
         cutShort = container.lenient(Bool.self, forKey: .cutShort) ?? false
         utcOffsetSeconds = container.lenient(Int.self, forKey: .utcOffsetSeconds).flatMap(Self.plausibleUTCOffset)
+        timeZoneIdentifier = container.lenient(String.self, forKey: .timeZoneIdentifier)
     }
 
     /// Real zones lie within 18 hours of UTC; anything else is damage.
@@ -303,7 +326,14 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     public let languageCode: String?
     /// See `TranscriptSessionRecord.utcOffsetSeconds`.
     public let utcOffsetSeconds: Int?
+    /// See `TranscriptSessionRecord.timeZoneIdentifier`.
+    public let timeZoneIdentifier: String?
     public var id: UUID { segment.id }
+
+    /// See `TranscriptSessionRecord.utcOffsetSeconds(at:)`.
+    public func utcOffsetSeconds(at time: TimeInterval) -> Int? {
+        TranscriptSessionRecord.zoneOffset(timeZoneIdentifier, at: time) ?? utcOffsetSeconds
+    }
 
     /// The language to show this line in: its conversation's, or the
     /// current setting when that conversation did not keep one.
@@ -316,7 +346,7 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
         CaptionConfidence.isUncertain(segment, engine: engine, model: model)
     }
 
-    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit, model: String? = nil, languageCode: String? = nil, utcOffsetSeconds: Int? = nil) {
+    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit, model: String? = nil, languageCode: String? = nil, utcOffsetSeconds: Int? = nil, timeZoneIdentifier: String? = nil) {
         self.sessionID = sessionID
         self.sessionStartedAt = sessionStartedAt
         self.segment = segment
@@ -325,6 +355,7 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
         self.model = model
         self.languageCode = languageCode
         self.utcOffsetSeconds = utcOffsetSeconds
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 }
 
@@ -659,6 +690,7 @@ public struct TranscriptHistoryStore: Sendable {
             record.inputName = remembered.inputName
             record.languageCode = remembered.languageCode
             record.utcOffsetSeconds = remembered.utcOffsetSeconds
+            record.timeZoneIdentifier = remembered.timeZoneIdentifier
         } else if let data = readConversation(at: url) {
             if record.title == nil {
                 // A save that skipped the caches leaves the summary older than
@@ -678,6 +710,7 @@ public struct TranscriptHistoryStore: Sendable {
                 record.inputName = source.inputName
                 record.languageCode = source.languageCode
                 record.utcOffsetSeconds = source.utcOffsetSeconds
+                record.timeZoneIdentifier = source.timeZoneIdentifier
             }
         }
         memory.forget(url)
@@ -711,8 +744,9 @@ public struct TranscriptHistoryStore: Sendable {
         let inputName: String?
         let languageCode: String?
         let utcOffsetSeconds: Int?
+        let timeZoneIdentifier: String?
 
-        private enum CodingKeys: String, CodingKey { case engine, modelVariant, inputName, languageCode, utcOffsetSeconds }
+        private enum CodingKeys: String, CodingKey { case engine, modelVariant, inputName, languageCode, utcOffsetSeconds, timeZoneIdentifier }
 
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -721,6 +755,7 @@ public struct TranscriptHistoryStore: Sendable {
             inputName = container.lenient(String.self, forKey: .inputName)
             languageCode = container.lenient(String.self, forKey: .languageCode).flatMap(TranscriptSessionRecord.plausibleLanguageCode)
             utcOffsetSeconds = container.lenient(Int.self, forKey: .utcOffsetSeconds).flatMap(TranscriptSessionRecord.plausibleUTCOffset)
+            timeZoneIdentifier = container.lenient(String.self, forKey: .timeZoneIdentifier)
         }
     }
 
@@ -1109,7 +1144,7 @@ public struct TranscriptHistoryStore: Sendable {
             .flatMap { record in
                 record.segments
                     .filter(\.isStarred)
-                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title, engine: record.engine, model: record.modelVariant, languageCode: record.languageCode, utcOffsetSeconds: record.utcOffsetSeconds) }
+                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title, engine: record.engine, model: record.modelVariant, languageCode: record.languageCode, utcOffsetSeconds: record.utcOffsetSeconds, timeZoneIdentifier: record.timeZoneIdentifier) }
             }
     }
 
@@ -1438,7 +1473,7 @@ public struct TranscriptHistoryStore: Sendable {
                 block = [namedHeading(title: line.sessionTitle, date: date) ?? date]
                 currentSession = line.sessionID
             }
-            let time = formattedClockTime(line.segment.startTimestamp, utcOffsetSeconds: line.utcOffsetSeconds ?? offset(line.segment.startTimestamp))
+            let time = formattedClockTime(line.segment.startTimestamp, utcOffsetSeconds: line.utcOffsetSeconds(at: line.segment.startTimestamp) ?? offset(line.segment.startTimestamp))
             let said = CaptionLayout.isolatingNumbers(line.segment.text)
             let warning = marksUncertain && line.isUncertain ? tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") : ""
             let text: String

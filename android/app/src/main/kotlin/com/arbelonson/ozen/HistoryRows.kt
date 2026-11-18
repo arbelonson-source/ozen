@@ -85,7 +85,7 @@ data class SavedLine(
             slots: SpeakerColorSlots = slotsOf(record.segments),
         ): List<SavedLine> {
             val language = record.languageCode(languageCode)
-            val here = ownZone(record.utcOffsetSeconds, zone)
+            val here = ownZone(record.utcOffsetSeconds, zone, record.timeZoneId)
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
@@ -132,7 +132,7 @@ data class SavedLine(
         ): SavedLine {
             val segment = line.segment
             val language = line.languageCode(languageCode)
-            val time = clockTime(segment.startTimestamp, ownZone(line.utcOffsetSeconds, zone))
+            val time = clockTime(segment.startTimestamp, ownZone(line.utcOffsetSeconds, zone, line.timeZoneId))
             val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
             val unsure = markUncertain && line.isUncertain
             return SavedLine(
@@ -154,8 +154,10 @@ data class SavedLine(
 }
 
 /** The zone a conversation's times are read in: the one it happened in, or the phone's when it was saved without one. */
-fun ownZone(utcOffsetSeconds: Int?, phone: ZoneId = ZoneId.systemDefault()): ZoneId =
-    utcOffsetSeconds?.let { ZoneOffset.ofTotalSeconds(it) } ?: phone
+fun ownZone(utcOffsetSeconds: Int?, phone: ZoneId = ZoneId.systemDefault(), timeZoneId: String? = null): ZoneId =
+    timeZoneId?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+        ?: utcOffsetSeconds?.let { ZoneOffset.ofTotalSeconds(it) }
+        ?: phone
 
 fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
