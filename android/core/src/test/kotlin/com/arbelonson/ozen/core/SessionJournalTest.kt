@@ -339,4 +339,12 @@ class SessionJournalTest {
         assertTrue(running.entries().any { it.text.contains("of the first") })
         assertFalse(running.entries().any { it.text.contains("of the second") })
     }
+
+    @Test
+    fun `a conversation that listening resumed in before its summary was saved again still takes the lines marked after its old end`() {
+        val journal = markedJournal()
+        journal.removeCaptionLines(summary(3_000.0, 3_050.0), running = true)
+        assertFalse(journal.entries().any { it.text.contains("of the second") })
+        assertTrue(journal.entries().any { it.text.contains("of the first") })
+    }
 }

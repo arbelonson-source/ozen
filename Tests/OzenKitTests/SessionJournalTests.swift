@@ -383,4 +383,12 @@ struct SessionJournalTests {
         #expect(running.entries().contains { $0.text.contains("of the first") })
         #expect(!running.entries().contains { $0.text.contains("of the second") })
     }
+
+    @Test("a conversation that listening resumed in before its summary was saved again still takes the lines marked after its old end")
+    func resumedConversationKeepsOpenEnd() {
+        let journal = markedJournal()
+        journal.removeCaptionLines(of: summary(from: 3_000, to: 3_050), running: true)
+        #expect(!journal.entries().contains { $0.text.contains("of the second") })
+        #expect(journal.entries().contains { $0.text.contains("of the first") })
+    }
 }

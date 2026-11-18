@@ -455,8 +455,8 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
     }
 
     public func journalWindow(running: Bool) -> (start: TimeInterval, end: TimeInterval?) {
-        if let endedAt { return (startedAt, endedAt) }
         if running { return (startedAt, nil) }
+        if let endedAt { return (startedAt, endedAt) }
         return (startedAt, max(startedAt, lastLineAt ?? startedAt) + 60)
     }
 }
