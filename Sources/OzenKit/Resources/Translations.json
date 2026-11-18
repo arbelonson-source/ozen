@@ -1211,7 +1211,8 @@
   "The address wasn’t kept on the phone.": "አድራሻው በስልኩ ላይ አልተቀመጠም።",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "የቤት ኮምፒዩተሩ አድራሻ በስልኩ ላይ አልተቀመጠም፣ ስልኩ እንደገና ሲነሳ ይጠፋል።",
   "Close anyway": "ለማንኛውም ዝጋ",
-  "Before you sleep": "ከመተኛትዎ በፊት"
+  "Before you sleep": "ከመተኛትዎ በፊት",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "ይህ ኮምፒዩተር በቤትዎ አውታረ መረብ ላይ አይደለም፤ የውይይቶችዎ ድምፅ በበይነመረብ ወደ %1 ይላካል። ይህን ኮምፒዩተር እርስዎ ራስዎ ካዘጋጁት ብቻ ይገናኙ።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2425,7 +2426,8 @@
   "The address wasn’t kept on the phone.": "لم يُحفظ العنوان على الهاتف.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "لم يُحفظ عنوان الكمبيوتر المنزلي على الهاتف وسيضيع بعد إعادة التشغيل.",
   "Close anyway": "إغلاق على أي حال",
-  "Before you sleep": "قبل أن تنام"
+  "Before you sleep": "قبل أن تنام",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "هذا الكمبيوتر ليس على شبكتكم المنزلية: سيُرسَل صوت محادثاتكم عبر الإنترنت إلى %1. لا تتصلوا إلا إذا كنتم قد أعددتم هذا الكمبيوتر بأنفسكم."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3639,7 +3641,8 @@
   "The address wasn’t kept on the phone.": "地址没有保存在手机上。",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "家用电脑的地址没有保存在手机上，重启后会丢失。",
   "Close anyway": "仍然关闭",
-  "Before you sleep": "睡觉前"
+  "Before you sleep": "睡觉前",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "这台电脑不在您的家庭网络中：您对话的声音将通过互联网发送到 %1。只有在这台电脑是您自己设置的情况下才连接。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4853,7 +4856,8 @@
   "The address wasn’t kept on the phone.": "L’adresse n’a pas été conservée sur le téléphone.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "L’adresse de l’ordinateur à la maison n’a pas été conservée sur le téléphone et sera perdue après un redémarrage.",
   "Close anyway": "Fermer quand même",
-  "Before you sleep": "Avant de dormir"
+  "Before you sleep": "Avant de dormir",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Cet ordinateur n’est pas sur votre réseau domestique : le son de vos conversations passerait par Internet jusqu’à %1. Ne vous connectez que si vous avez configuré cet ordinateur vous-même."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6067,7 +6071,8 @@
   "The address wasn’t kept on the phone.": "Die Adresse wurde nicht auf dem Telefon behalten.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Die Adresse des Heimcomputers wurde nicht auf dem Telefon behalten und geht nach einem Neustart verloren.",
   "Close anyway": "Trotzdem schließen",
-  "Before you sleep": "Bevor Sie schlafen"
+  "Before you sleep": "Bevor Sie schlafen",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Dieser Computer ist nicht in Ihrem Heimnetz: Der Ton Ihrer Gespräche würde über das Internet an %1 gehen. Verbinden Sie sich nur, wenn Sie diesen Computer selbst eingerichtet haben."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7281,7 +7286,8 @@
   "The address wasn’t kept on the phone.": "पता फ़ोन पर नहीं रखा गया।",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "घर के कंप्यूटर का पता फ़ोन पर नहीं रखा गया और रीस्टार्ट के बाद खो जाएगा।",
   "Close anyway": "फिर भी बंद करें",
-  "Before you sleep": "सोने से पहले"
+  "Before you sleep": "सोने से पहले",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "यह कंप्यूटर आपके घर के नेटवर्क पर नहीं है: आपकी बातचीत की आवाज़ इंटरनेट के ज़रिए %1 तक जाएगी। केवल तभी जुड़ें जब आपने इस कंप्यूटर को खुद सेट किया हो।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8495,7 +8501,8 @@
   "The address wasn’t kept on the phone.": "O endereço não foi guardado no telemóvel.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "O endereço do computador lá de casa não foi guardado no telemóvel e perder-se-á após um reinício.",
   "Close anyway": "Fechar mesmo assim",
-  "Before you sleep": "Antes de dormir"
+  "Before you sleep": "Antes de dormir",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este computador não está na sua rede doméstica: o som das suas conversas iria pela internet até %1. Só ligue se este computador tiver sido configurado por si."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9709,7 +9716,8 @@
   "The address wasn’t kept on the phone.": "Адрес не сохранён на телефоне.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адрес домашнего компьютера не сохранён на телефоне и пропадёт после перезапуска.",
   "Close anyway": "Всё равно закрыть",
-  "Before you sleep": "Перед сном"
+  "Before you sleep": "Перед сном",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Этот компьютер не в вашей домашней сети: звук ваших разговоров уйдёт через интернет на %1. Подключайтесь, только если вы сами настроили этот компьютер."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10923,7 +10931,8 @@
   "The address wasn’t kept on the phone.": "La dirección no se guardó en el teléfono.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "La dirección del ordenador de casa no se guardó en el teléfono y se perderá tras reiniciar.",
   "Close anyway": "Cerrar de todos modos",
-  "Before you sleep": "Antes de dormir"
+  "Before you sleep": "Antes de dormir",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este ordenador no está en su red doméstica: el sonido de sus conversaciones iría por internet a %1. Conéctese solo si fue usted quien configuró este ordenador."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12137,6 +12146,7 @@
   "The address wasn’t kept on the phone.": "Адресу не збережено на телефоні.",
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адресу домашнього комп’ютера не збережено на телефоні, і вона зникне після перезапуску.",
   "Close anyway": "Усе одно закрити",
-  "Before you sleep": "Перед сном"
+  "Before you sleep": "Перед сном",
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Цей комп’ютер не у вашій домашній мережі: звук ваших розмов піде через інтернет на %1. Підключайтеся, лише якщо ви самі налаштували цей комп’ютер."
  }
 }

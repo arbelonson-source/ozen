@@ -474,6 +474,26 @@ class HomeServerPairing private constructor(val address: String, val code: Strin
     val computerName: String
         get() = HomeServer.url(address)?.let { hostOf(it) } ?: address
 
+    val isOutsideHome: Boolean
+        get() = !HomeServer.isPrivate(HomeServer.url(address)?.let { hostOf(it) } ?: "")
+
+    fun confirmationText(language: UILanguage = Localization.language): String =
+        if (isOutsideHome) {
+            tr(
+                "המחשב הזה לא ברשת הביתית שלכם: קול השיחות שלכם יישלח דרך האינטרנט אל %1. התחברו רק אם הגדרתם את המחשב הזה בעצמכם.",
+                "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.",
+                listOf(address),
+                language,
+            )
+        } else {
+            tr(
+                "כדי ליצור כתוביות, הקול יישלח למחשב שאת הקוד שלו סרקתם עכשיו (%1, כמו שכתוב בדף שלו). התחברו רק אם זה מחשב שלכם או של המשפחה.",
+                "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.",
+                listOf(computerName),
+                language,
+            )
+        }
+
     val url: URI
         get() = URI(
             "$SCHEME://pair?address=${queryEncoded(address)}&code=${queryEncoded(code)}" + (pin?.let { "&pin=${queryEncoded(it)}" } ?: ""),

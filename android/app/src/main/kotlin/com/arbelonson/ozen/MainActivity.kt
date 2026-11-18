@@ -853,13 +853,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             onDismissRequest = { pairing.pending.value = null },
             title = { Text(tr("להתחבר למחשב בבית?", "Connect to the home computer?")) },
             text = {
-                DialogText(
-                    tr(
-                        "כדי ליצור כתוביות, הקול יישלח למחשב שאת הקוד שלו סרקתם עכשיו (%1, כמו שכתוב בדף שלו). התחברו רק אם זה מחשב שלכם או של המשפחה.",
-                        "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.",
-                        listOf(shown.computerName),
-                    ),
-                )
+                DialogText(shown.confirmationText())
             },
             confirmButton = { TextButton(onClick = { scope.launch { pairing.accept(shown) } }) { Text(tr("להתחבר", "Connect")) } },
             dismissButton = { TextButton(onClick = { pairing.pending.value = null }) { Text(tr("ביטול", "Cancel")) } },
