@@ -450,15 +450,17 @@ public struct HomeServerPairing: Sendable, Equatable {
     }
 
     public var isOutsideHome: Bool {
-        !HomeServer.isPrivate(host: HomeServer.url(from: address)?.host ?? "")
+        let host = HomeServer.url(from: address)?.host ?? ""
+        return host.isEmpty || host.contains("%") || !HomeServer.isPrivate(host: host)
     }
 
     public func confirmationText(in language: UILanguage = Localization.language) -> String {
         if isOutsideHome {
+            let shown = language.isRightToLeft ? "\u{2066}\(address)\u{2069}" : address
             return tr(
                 "המחשב הזה לא ברשת הביתית שלכם: קול השיחות שלכם יישלח דרך האינטרנט אל %1. התחברו רק אם הגדרתם את המחשב הזה בעצמכם.",
                 "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.",
-                args: ["\(address)"],
+                args: ["\(shown)"],
                 in: language
             )
         }

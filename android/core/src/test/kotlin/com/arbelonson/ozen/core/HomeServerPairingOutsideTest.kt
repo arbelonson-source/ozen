@@ -56,6 +56,17 @@ class HomeServerPairingOutsideTest {
     }
 
     @Test
+    fun `the address stays in left to right order inside a Hebrew warning`() {
+        val text = assertNotNull(pairing("wss://captions.example.org:8766")).confirmationText(UILanguage.Hebrew)
+        assertTrue(text.contains("\u2066wss://captions.example.org:8766\u2069"))
+    }
+
+    @Test
+    fun `an escaped host name is never taken for a home computer`() {
+        assertTrue(pairing("wss://captions%2eexample%2eorg:8766")?.isOutsideHome ?: true)
+    }
+
+    @Test
     fun `a home link keeps the usual text`() {
         val text = assertNotNull(pairing("wss://192.168.1.20:8766")).confirmationText(UILanguage.English)
         assertTrue(text.contains("192.168.1.20"))

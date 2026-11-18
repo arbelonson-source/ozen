@@ -45,6 +45,15 @@ struct HomeServerPairingOutsideTests {
         #expect(found.confirmationText(in: .hebrew).contains("wss://captions.example.org:8766"))
     }
 
+    @Test func theAddressStaysLeftToRightInsideAHebrewWarning() throws {
+        let found = try #require(pairing("wss://captions.example.org:8766"))
+        #expect(found.confirmationText(in: .hebrew).contains("\u{2066}wss://captions.example.org:8766\u{2069}"))
+    }
+
+    @Test func anEscapedHostNameIsNeverTakenForAHomeComputer() {
+        #expect(pairing("wss://captions%2eexample%2eorg:8766")?.isOutsideHome ?? true)
+    }
+
     @Test func aHomeLinkKeepsTheUsualText() throws {
         let found = try #require(pairing("wss://192.168.1.20:8766"))
         #expect(found.confirmationText(in: .english).contains("192.168.1.20"))
