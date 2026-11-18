@@ -4,6 +4,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.text.BreakIterator
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -64,23 +65,33 @@ class SessionJournal(private val file: File) {
 
     /**
      * A deleted conversation takes the caption lines marked problems kept
-     * of it. They are tied to it by the moment the problem was marked
-     * (every row of a block carries that moment), inside the conversation's
-     * start and end. A conversation never closed ends a minute after its
-     * last line (the autosave is 20 seconds apart), so it cannot reach into
-     * one that came later; one still running has no end. Events, headers
-     * and stats stay.
+     * of it. A block whose header names the conversation is tied by that
+     * identity, whatever the clock says. An older block, with no id, is
+     * tied by the moment it was marked, inside the conversation's start and
+     * end; a conversation never closed ends a minute after its last line,
+     * none ends after the next one starts ([nextStartedAt]), and one still
+     * running has no end. Events, headers and stats stay.
      */
-    fun removeCaptionLines(summary: TranscriptSessionSummary, running: Boolean) {
-        val window = summary.journalWindow(running)
+    fun removeCaptionLines(summary: TranscriptSessionSummary, running: Boolean, nextStartedAt: Double? = null) {
+        val window = summary.journalWindow(running, nextStartedAt)
+        var blockConversation: UUID? = null
         remove { at, text ->
-            ProblemSnapshot.isCaptionLine(text) && at >= window.start && (window.end?.let { at <= it } ?: true)
+            if (ProblemSnapshot.isHeader(text)) {
+                blockConversation = ProblemSnapshot.conversationId(text)
+                false
+            } else if (!ProblemSnapshot.isCaptionLine(text)) {
+                false
+            } else {
+                blockConversation?.let { it == summary.id } ?: (at >= window.start && (window.end?.let { at <= it } ?: true))
+            }
         }
     }
 
     private fun remove(shouldRemove: (Double, String) -> Boolean) {
         synchronized(lock) {
             flush(file)
+            val entries = read(file)
+            val kept = entries.filter { !shouldRemove(it.at, it.text) }
             pendingLines[file]?.let { pending ->
                 pendingLines[file] = pending.filter { line ->
                     val tab = line.indexOf('\t')
@@ -88,8 +99,6 @@ class SessionJournal(private val file: File) {
                     at == null || !shouldRemove(at, line.substring(tab + 1).dropLast(1))
                 }.toMutableList()
             }
-            val entries = read(file)
-            val kept = entries.filter { !shouldRemove(it.at, it.text) }
             if (kept.size >= entries.size) return
             val text = kept.joinToString("") { "${formatted(it.at)}\t${it.text}\n" }
             try {
@@ -117,7 +126,7 @@ class SessionJournal(private val file: File) {
      */
     fun helperReportLines(utcOffsetAt: (Double) -> Int): List<String> {
         val all = entries()
-        val newestMarked = all.indexOfLast { it.text.startsWith(PROBLEM_MARKED_PREFIX) }
+        val newestMarked = all.indexOfLast { ProblemSnapshot.isHeader(it.text) }
         return format(all.filterIndexed { index, entry -> (newestMarked >= 0 && index > newestMarked) || !ProblemSnapshot.isCaptionLine(entry.text) }, utcOffsetAt)
     }
 
@@ -128,7 +137,6 @@ class SessionJournal(private val file: File) {
 
     companion object {
         const val maximumBytes = 96_000
-        private const val PROBLEM_MARKED_PREFIX = "PROBLEM MARKED:"
         const val keptLines = 500
         internal const val textLimit = 400
         internal const val flushDelayMillis = 2_000L

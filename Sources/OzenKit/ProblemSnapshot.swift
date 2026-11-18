@@ -4,8 +4,20 @@ public enum ProblemSnapshot {
     public static let lineCount = 4
     static let captionLinePrefix = "  line ("
 
+    static let headerPrefix = "PROBLEM MARKED:"
+    static let conversationMarker = " conversation "
+
     public static func isCaptionLine(_ text: String) -> Bool {
         text.hasPrefix(captionLinePrefix)
+    }
+
+    public static func isHeader(_ text: String) -> Bool {
+        text.hasPrefix(headerPrefix)
+    }
+
+    public static func conversationID(inHeader text: String) -> UUID? {
+        guard isHeader(text), let marker = text.range(of: conversationMarker, options: .backwards) else { return nil }
+        return UUID(uuidString: String(text[marker.upperBound...]))
     }
 
     public static func lines(
@@ -17,11 +29,12 @@ public enum ProblemSnapshot {
         held: TranscriptSegment? = nil,
         device: String,
         utcOffsetSeconds: Int,
-        includeCaptions: Bool = true
+        includeCaptions: Bool = true,
+        conversationID: UUID? = nil
     ) -> [String] {
         let engine = activeEngine ?? settings.engine
         var lines = [
-            "PROBLEM MARKED: engine \(engine.rawValue) model \(settings.modelDescription(for: engine) ?? "-") lang \(settings.languageCode) microphone \(input.map { "\($0.portName) [\($0.portType.rawValue)]" } ?? "-")",
+            "\(headerPrefix) engine \(engine.rawValue) model \(settings.modelDescription(for: engine) ?? "-") lang \(settings.languageCode) microphone \(input.map { "\($0.portName) [\($0.portType.rawValue)]" } ?? "-")\(conversationID.map { "\(conversationMarker)\($0.uuidString)" } ?? "")",
             "  lag \(number(stats.captionLagSeconds, "%.2f"))s levels \(stats.inputLevels.summary ?? "-") speech \(number(stats.speechShare.map { $0 * 100 }, "%.0f"))% floor \(number(stats.noiseFloorDecibels, "%.1f")) margin \(number(stats.noiseMarginDecibels, "%.1f"))dB restarts \(stats.engineRestarts) stalls \(stats.audioStalls) updates \(stats.tokensReceived) lines \(stats.segmentsCommitted)",
             "  \(device)",
         ]

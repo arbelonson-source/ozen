@@ -347,4 +347,50 @@ class SessionJournalTest {
         assertFalse(journal.entries().any { it.text.contains("of the second") })
         assertTrue(journal.entries().any { it.text.contains("of the first") })
     }
+
+    private fun mark(journal: SessionJournal, words: String, at: Double, conversation: UUID?, microphone: String? = null) {
+        val segment = TranscriptSegment(id = UUID.randomUUID(), text = words, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 60.0)
+        val input = microphone?.let { AudioInputDescriptor(uid = "u", portName = it, portType = AudioPortType.BuiltInMic) }
+        ProblemSnapshot.lines(AppSettings.default, null, input, PipelineStats(), listOf(segment), "-", 0, conversationId = conversation)
+            .forEach { journal.append(it, at) }
+    }
+
+    @Test
+    fun `a problem marked in the quiet after the last caption, before the conversation closed, goes with its conversation`() {
+        val journal = SessionJournal(temporaryFile())
+        val first = summary(1_000.0, 1_500.0)
+        mark(journal, "said before the quiet", 1_900.0, first.id)
+        mark(journal, "said in another", 1_950.0, UUID.randomUUID(), microphone = "mic conversation ${first.id}")
+
+        journal.removeCaptionLines(first, running = false)
+
+        assertFalse(journal.entries().any { it.text.contains("said before the quiet") })
+        assertTrue(journal.entries().any { it.text.contains("said in another") })
+    }
+
+    @Test
+    fun `an interrupted conversation's window stops where the next one starts, and a block naming the next one is never touched`() {
+        val journal = SessionJournal(temporaryFile())
+        val interrupted = summary(1_000.0, null, lastLineAt = 1_900.0)
+        mark(journal, "old block of the interrupted", 1_920.0, null)
+        mark(journal, "old block of the new", 1_960.0, null)
+        mark(journal, "named block of the new", 1_940.0, UUID.randomUUID())
+
+        journal.removeCaptionLines(interrupted, running = false, nextStartedAt = 1_950.0)
+
+        val kept = journal.entries().joinToString("\n") { it.text }
+        assertFalse(kept.contains("old block of the interrupted"))
+        assertTrue(kept.contains("old block of the new"))
+        assertTrue(kept.contains("named block of the new"))
+    }
+
+    @Test
+    fun `the conversation named in a header is read back, and a header without one reads as none`() {
+        val id = UUID.randomUUID()
+        val named = ProblemSnapshot.lines(AppSettings.default, null, null, PipelineStats(), emptyList(), "-", 0, conversationId = id)[0]
+        val plain = ProblemSnapshot.lines(AppSettings.default, null, null, PipelineStats(), emptyList(), "-", 0)[0]
+        assertEquals(id, ProblemSnapshot.conversationId(named))
+        assertEquals(null, ProblemSnapshot.conversationId(plain))
+        assertTrue(named.startsWith("PROBLEM MARKED: engine "))
+    }
 }

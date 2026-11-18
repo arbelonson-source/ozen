@@ -579,10 +579,14 @@ class CaptionSession(
         override fun noteDeleteFailure(detail: String) = note("delete failed: $detail")
 
         override fun delete(id: UUID) {
-            val summary = historyStore.listSummaries().firstOrNull { it.id == id }
+            val summaries = historyStore.listSummaries()
+            val summary = summaries.firstOrNull { it.id == id }
             val running = conversations.isCurrent(id)
             conversations.delete(id)
-            summary?.let { journal.removeCaptionLines(it, running) }
+            summary?.let { gone ->
+                val next = summaries.filter { it.startedAt > gone.startedAt }.minOfOrNull { it.startedAt }
+                journal.removeCaptionLines(gone, running, next)
+            }
             forgetSharedCopy()
             if (CaptionState.screen.value.recentConversation?.id == id) dismissRecentConversation()
             publish()
@@ -1425,6 +1429,7 @@ class CaptionSession(
             utcOffsetSeconds = utcOffsetAt(now),
             includeCaptions = settings.current.value.saveHistory,
             held = heldLine?.let { id -> pipeline.segments.firstOrNull { it.id == id } },
+            conversationId = conversations.currentId,
         )
         lines.forEach { journal.append(it, now) }
         // With saving conversations off, the room's sound isn't kept either.

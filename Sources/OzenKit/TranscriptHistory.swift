@@ -454,10 +454,10 @@ public struct TranscriptSessionSummary: Codable, Sendable, Equatable, Identifiab
         languageCode ?? current
     }
 
-    public func journalWindow(running: Bool) -> (start: TimeInterval, end: TimeInterval?) {
+    public func journalWindow(running: Bool, nextStartedAt: TimeInterval? = nil) -> (start: TimeInterval, end: TimeInterval?) {
         if running { return (startedAt, nil) }
-        if let endedAt { return (startedAt, endedAt) }
-        return (startedAt, max(startedAt, lastLineAt ?? startedAt) + 60)
+        let end = endedAt ?? max(startedAt, lastLineAt ?? startedAt) + 60
+        return (startedAt, nextStartedAt.map { min(end, $0) } ?? end)
     }
 }
 

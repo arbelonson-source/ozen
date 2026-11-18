@@ -104,30 +104,37 @@ public final class SessionJournal: @unchecked Sendable {
     }
 
     /// A deleted conversation takes the caption lines marked problems
-    /// kept of it. They are tied to it by the moment the problem was
-    /// marked (every row of a block carries that moment), inside the
-    /// conversation's start and end. A conversation never closed ends a
-    /// minute after its last line (the autosave is 20 seconds apart), so
-    /// it cannot reach into one that came later; one still running has no
-    /// end. Events, headers and stats stay.
-    public func removeCaptionLines(of summary: TranscriptSessionSummary, running: Bool) {
-        let window = summary.journalWindow(running: running)
+    /// kept of it. A block whose header names the conversation is tied by
+    /// that identity, whatever the clock says. An older block, with no id,
+    /// is tied by the moment it was marked, inside the conversation's
+    /// start and end; a conversation never closed ends a minute after its
+    /// last line, none ends after the next one starts (`nextStartedAt`),
+    /// and one still running has no end. Events, headers and stats stay.
+    public func removeCaptionLines(of summary: TranscriptSessionSummary, running: Bool, nextStartedAt: TimeInterval? = nil) {
+        let window = summary.journalWindow(running: running, nextStartedAt: nextStartedAt)
+        var blockConversation: UUID?
         remove { at, text in
-            ProblemSnapshot.isCaptionLine(text) && at >= window.start && window.end.map { at <= $0 } ?? true
+            if ProblemSnapshot.isHeader(text) {
+                blockConversation = ProblemSnapshot.conversationID(inHeader: text)
+                return false
+            }
+            guard ProblemSnapshot.isCaptionLine(text) else { return false }
+            if let blockConversation { return blockConversation == summary.id }
+            return at >= window.start && window.end.map { at <= $0 } ?? true
         }
     }
 
     private func remove(where shouldRemove: (TimeInterval, String) -> Bool) {
         Self.queue.sync {
             Self.flush(fileURL)
+            let entries = Self.read(fileURL)
+            let kept = entries.filter { !shouldRemove($0.at, $0.text) }
             if let pending = Self.pendingLines[fileURL] {
                 Self.pendingLines[fileURL] = pending.filter { line in
                     guard let tab = line.firstIndex(of: "\t"), let at = TimeInterval(line[..<tab]) else { return true }
                     return !shouldRemove(at, String(line[line.index(after: tab)...].dropLast()))
                 }
             }
-            let entries = Self.read(fileURL)
-            let kept = entries.filter { !shouldRemove($0.at, $0.text) }
             guard kept.count < entries.count else { return }
             let text = kept.map { "\(String(format: "%.2f", $0.at))\t\($0.text)\n" }.joined()
             try? Data(text.utf8).write(to: fileURL, options: .privateFile)
@@ -153,7 +160,7 @@ public final class SessionJournal: @unchecked Sendable {
     /// conversations may have been deleted since, stay on the phone.
     public func helperReportLines(utcOffsetAt offset: (TimeInterval) -> Int) -> [String] {
         let all = entries()
-        let newestMarked = all.lastIndex { $0.text.hasPrefix("PROBLEM MARKED:") }
+        let newestMarked = all.lastIndex { $0.text.hasPrefix(ProblemSnapshot.headerPrefix) }
         let kept = all.enumerated().filter { index, entry in
             newestMarked.map { index > $0 } == true || !ProblemSnapshot.isCaptionLine(entry.text)
         }.map(\.element)

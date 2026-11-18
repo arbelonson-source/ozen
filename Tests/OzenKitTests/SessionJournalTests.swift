@@ -391,4 +391,52 @@ struct SessionJournalTests {
         #expect(!journal.entries().contains { $0.text.contains("of the second") })
         #expect(journal.entries().contains { $0.text.contains("of the first") })
     }
+
+    private func mark(_ journal: SessionJournal, _ words: String, at time: TimeInterval, conversation: UUID?, microphone: String? = nil) {
+        let segment = TranscriptSegment(id: UUID(), text: words, isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+        let input = microphone.map { AudioInputDescriptor(uid: "u", portName: $0, portType: .builtInMic) }
+        for line in ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: input, stats: PipelineStats(), segments: [segment], device: "-", utcOffsetSeconds: 0, conversationID: conversation) {
+            journal.append(line, at: time)
+        }
+    }
+
+    @Test("a problem marked in the quiet after the last caption, before the conversation closed, goes with its conversation")
+    func markedInTheQuietAfterTheLastCaption() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        let first = summary(from: 1_000, to: 1_500)
+        let other = UUID()
+        mark(journal, "said before the quiet", at: 1_900, conversation: first.id)
+        mark(journal, "said in another", at: 1_950, conversation: other, microphone: "mic conversation \(first.id.uuidString)")
+
+        journal.removeCaptionLines(of: first, running: false)
+
+        #expect(!journal.entries().contains { $0.text.contains("said before the quiet") })
+        #expect(journal.entries().contains { $0.text.contains("said in another") })
+    }
+
+    @Test("an interrupted conversation's window stops where the next one starts, and a block naming the next one is never touched")
+    func interruptedThenNewConversation() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        let interrupted = summary(from: 1_000, to: nil, lastLineAt: 1_900)
+        mark(journal, "old block of the interrupted", at: 1_920, conversation: nil)
+        mark(journal, "old block of the new", at: 1_960, conversation: nil)
+        mark(journal, "named block of the new", at: 1_940, conversation: UUID())
+
+        journal.removeCaptionLines(of: interrupted, running: false, nextStartedAt: 1_950)
+
+        let kept = journal.entries().map(\.text).joined(separator: "\n")
+        #expect(!kept.contains("old block of the interrupted"))
+        #expect(kept.contains("old block of the new"))
+        #expect(kept.contains("named block of the new"))
+    }
+
+    @Test("the conversation named in a header is read back, and a header without one reads as none")
+    func readsConversationFromHeader() {
+        let id = UUID()
+        let named = ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: [], device: "-", utcOffsetSeconds: 0, conversationID: id)[0]
+        let plain = ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: [], device: "-", utcOffsetSeconds: 0)[0]
+        #expect(ProblemSnapshot.conversationID(inHeader: named) == id)
+        #expect(ProblemSnapshot.conversationID(inHeader: plain) == nil)
+        #expect(named.hasPrefix("PROBLEM MARKED: engine "))
+    }
 }

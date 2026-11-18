@@ -1,12 +1,28 @@
 package com.arbelonson.ozen.core
 
 import java.util.Locale
+import java.util.UUID
 
 object ProblemSnapshot {
     const val lineCount = 4
     private const val CAPTION_LINE_PREFIX = "  line ("
+    const val HEADER_PREFIX = "PROBLEM MARKED:"
+    private const val CONVERSATION_MARKER = " conversation "
 
     fun isCaptionLine(text: String): Boolean = text.startsWith(CAPTION_LINE_PREFIX)
+
+    fun isHeader(text: String): Boolean = text.startsWith(HEADER_PREFIX)
+
+    fun conversationId(header: String): UUID? {
+        if (!isHeader(header)) return null
+        val at = header.lastIndexOf(CONVERSATION_MARKER)
+        if (at < 0) return null
+        return try {
+            UUID.fromString(header.substring(at + CONVERSATION_MARKER.length))
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
 
     fun lines(
         settings: AppSettings,
@@ -18,11 +34,12 @@ object ProblemSnapshot {
         utcOffsetSeconds: Int,
         includeCaptions: Boolean = true,
         held: TranscriptSegment? = null,
+        conversationId: UUID? = null,
     ): List<String> {
         val engine = activeEngine ?: settings.engine
         val microphone = input?.let { "${it.portName} [${it.portType.rawValue}]" } ?: "-"
         val lines = mutableListOf(
-            "PROBLEM MARKED: engine ${engine.rawValue} model ${settings.modelDescription(engine) ?: "-"} lang ${settings.languageCode} microphone $microphone",
+            "$HEADER_PREFIX engine ${engine.rawValue} model ${settings.modelDescription(engine) ?: "-"} lang ${settings.languageCode} microphone $microphone${conversationId?.let { "$CONVERSATION_MARKER$it" } ?: ""}",
             "  lag ${number(stats.captionLagSeconds, "%.2f")}s levels ${stats.inputLevels.summary ?: "-"} speech ${number(stats.speechShare?.let { it * 100 }, "%.0f")}% floor ${number(stats.noiseFloorDecibels, "%.1f")} margin ${number(stats.noiseMarginDecibels, "%.1f")}dB restarts ${stats.engineRestarts} stalls ${stats.audioStalls} updates ${stats.tokensReceived} lines ${stats.segmentsCommitted}",
             "  $device",
         )

@@ -546,7 +546,8 @@ public final class LiveCaptionViewModel {
             held: held,
             device: Self.deviceStateText,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now)),
-            includeCaptions: settings.saveHistory
+            includeCaptions: settings.saveHistory,
+            conversationID: historySessionID
         )
         problemKeptCaptions = settings.saveHistory
         for line in lines {
@@ -2746,9 +2747,13 @@ public final class LiveCaptionViewModel {
         // Disk first: if the delete fails, the conversation on screen keeps
         // saving to the record that is still there. Nothing can queue an
         // autosave in between, since this runs on the main actor.
-        let summary = historyStore.listSummaries().first { $0.id == id }
+        let summaries = historyStore.listSummaries()
+        let summary = summaries.first { $0.id == id }
         try historyWriter.deleteNow(id: id)
-        if let summary { journal?.removeCaptionLines(of: summary, running: id == historySessionID) }
+        if let summary {
+            let next = summaries.filter { $0.startedAt > summary.startedAt }.map(\.startedAt).min()
+            journal?.removeCaptionLines(of: summary, running: id == historySessionID, nextStartedAt: next)
+        }
         ExportScratchFolder.standard.clear()
         closedHistorySessions.removeAll { $0.id == id }
         if recentConversation?.id == id { recentConversation = nil }

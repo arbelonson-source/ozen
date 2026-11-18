@@ -460,10 +460,10 @@ data class TranscriptSessionSummary(
 
     data class JournalWindow(val start: Double, val end: Double?)
 
-    fun journalWindow(running: Boolean): JournalWindow = when {
-        running -> JournalWindow(startedAt, null)
-        endedAt != null -> JournalWindow(startedAt, endedAt)
-        else -> JournalWindow(startedAt, maxOf(startedAt, lastLineAt ?: startedAt) + 60.0)
+    fun journalWindow(running: Boolean, nextStartedAt: Double? = null): JournalWindow {
+        if (running) return JournalWindow(startedAt, null)
+        val end = endedAt ?: (maxOf(startedAt, lastLineAt ?: startedAt) + 60.0)
+        return JournalWindow(startedAt, nextStartedAt?.let { minOf(end, it) } ?: end)
     }
 
     internal fun toJsonObject(): JsonObject = buildJsonObject {

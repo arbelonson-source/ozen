@@ -341,6 +341,8 @@ class ConversationSaver(
 
     fun isCurrent(id: UUID): Boolean = id == this.id
 
+    val currentId: UUID get() = id
+
     /**
      * The saved conversation a caption line belongs to, by its place among
      * the lines: the one being captioned or one a long quiet closed. None
