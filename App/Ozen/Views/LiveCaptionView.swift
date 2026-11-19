@@ -273,7 +273,9 @@ struct LiveCaptionView: View {
         .announcing(microphoneDropAnnouncement, whenTurningTrue: viewModel.microphoneDrop.title != nil, alsoWhenFirstShown: true)
         .announcing(routedElsewhereAnnouncement, whenTurningTrue: viewModel.routedElsewhere != nil, alsoWhenFirstShown: true)
         .announcing(viewModel.listeningCut?.text() ?? "", whenTurningTrue: viewModel.listeningCut != nil, alsoWhenFirstShown: true)
-        .announcing(viewModel.repeatNotHeard ?? "", whenTurningTrue: viewModel.repeatNotHeard != nil)
+        .onChange(of: viewModel.repeatNotHeard) { _, text in
+            if let text { Announcement.post(text) }
+        }
         // Each new battery warning, a critical one after a low one too: the
         // banner only buzzed, and a reader who can't see it missed that the
         // phone may shut down.
@@ -389,7 +391,7 @@ struct LiveCaptionView: View {
             }
             if let notHeard = viewModel.repeatNotHeard {
                 RepeatNotHeardBanner(text: notHeard) {
-                    withAnimation { viewModel.dismissRepeatNotHeard() }
+                    withAnimation(reduceMotion ? nil : .default) { viewModel.dismissRepeatNotHeard() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }

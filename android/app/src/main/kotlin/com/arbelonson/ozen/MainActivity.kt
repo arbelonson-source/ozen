@@ -474,7 +474,7 @@ private fun OzenApp(
     val inUseModelBytes = remember(current, comebacks) { app.captions.phoneModels.inUseBytes() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
     val listeningCut by app.captions.listeningCut.collectAsStateWithLifecycle()
-    var repeatSilentNotice by remember { mutableStateOf<String?>(null) }
+    var repeatSilentNotice by rememberSaveable { mutableStateOf<String?>(null) }
     val damagedModel by app.captions.damagedModelRemoved.collectAsStateWithLifecycle()
     LaunchedEffect(loadCrash != null) { if (loadCrash != null) app.captions.removeDamagedAfterCrash() }
     // Once only: the notice stays up until dismissed, and a recreated screen must not start the captions again.
