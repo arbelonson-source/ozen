@@ -75,11 +75,13 @@ that is on. The History screen says so under the switch. The downloaded
 speech models are left out of those backups, so after a restore they are
 downloaded again. On Android, Ozen turns off Android's cloud backup for
 itself. Moving to a new Android phone with Android's phone-to-phone transfer
-during setup is different: that copies the saved conversations, the settings,
+during setup is different: that can copy the saved conversations, the settings,
 the voice prints, the names and alert words, and the downloaded speech
 models. It leaves behind the cloud keys, the home computer's pairing code,
 the journal and the problem clips, so on the new phone you enter the keys and
 pair again.
+How far the transfer goes for an app with backup turned off varies by phone
+maker, so check the new phone before you erase the old one.
 
 ### Recent sound
 
