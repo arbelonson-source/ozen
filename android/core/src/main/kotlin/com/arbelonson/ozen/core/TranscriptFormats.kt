@@ -40,7 +40,7 @@ object TranscriptFormats {
     private fun isSpace(character: Char): Boolean = character == '\t' || Character.getType(character) == Character.SPACE_SEPARATOR.toInt()
 
     private fun directed(line: String, text: String, languageCode: String): String =
-        if (CaptionLayout.readsRightToLeft(text, languageCode)) RIGHT_TO_LEFT_MARK + line else line
+        if (CaptionLayout.readsRightToLeft(text, languageCode) && !line.startsWith(RIGHT_TO_LEFT_MARK)) RIGHT_TO_LEFT_MARK + line else line
 
     private fun wholeSeconds(seconds: Double): Long = if (seconds.isFinite()) Math.floor(seconds.coerceIn(0.0, 1e9)).toLong() else 0L
 

@@ -117,7 +117,16 @@ public enum CaptionLayout {
     /// only its phone numbers and star codes isolated, as in a shared
     /// conversation, so a Hebrew chat doesn't turn "050 123 4567" around.
     public static func copiedText(_ text: String) -> String {
-        isolatingNumbers(text)
+        marked(isolatingNumbers(text))
+    }
+
+    /// `text` with a right-to-left mark in front when it opens with a
+    /// left-to-right letter but holds a right-to-left one ("OK, see you
+    /// tomorrow" in Hebrew). Text with no right-to-left letter is left as
+    /// it is: a mark would turn an English line around.
+    static func marked(_ text: String) -> String {
+        guard opensLeftToRight(text), text.unicodeScalars.contains(where: isRightToLeftLetter) else { return text }
+        return rightToLeftMark + text
     }
 
     /// A number is read left to right inside Hebrew too, but the spaces,
@@ -174,7 +183,7 @@ public enum CaptionLayout {
         return false
     }
 
-    private static func isRightToLeftLetter(_ scalar: Unicode.Scalar) -> Bool {
+    static func isRightToLeftLetter(_ scalar: Unicode.Scalar) -> Bool {
         switch scalar.value {
         case 0x0590...0x08FF, 0xFB1D...0xFDFF, 0xFE70...0xFEFF: return true
         default: return false

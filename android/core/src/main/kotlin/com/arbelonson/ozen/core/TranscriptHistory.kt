@@ -1545,7 +1545,7 @@ class TranscriptHistoryStore(
                 }
                 // Pasted into a chat, a line opening with an English word
                 // would be laid out left to right and read out of order.
-                if (CaptionLayout.opensLeftToRight(line)) CaptionLayout.RIGHT_TO_LEFT_MARK + line else line
+                CaptionLayout.marked(line)
             }
             val date = formattedDate(record.startedAt, record.utcOffsetSeconds ?: utcOffsetAt(record.startedAt))
             val heading = namedHeading(record.title, date) ?: tr("שיחה מתאריך %1", "Conversation from %1", listOf(date))
@@ -1737,7 +1737,7 @@ class TranscriptHistoryStore(
                     "[$time] $warning$said"
                 }
                 // As in `exportText`: read in order when pasted into a chat.
-                block.add(if (CaptionLayout.opensLeftToRight(text)) CaptionLayout.RIGHT_TO_LEFT_MARK + text else text)
+                block.add(CaptionLayout.marked(text))
             }
             if (block.isNotEmpty()) blocks.add(block.joinToString("\n"))
             return blocks.joinToString("\n\n")
@@ -1751,8 +1751,7 @@ class TranscriptHistoryStore(
          */
         private fun namedHeading(title: String?, date: String): String? {
             if (title == null || title.isEmpty()) return null
-            val hebrew = title.codePoints().anyMatch { it in 0x05D0..0x05EA }
-            return (if (hebrew && CaptionLayout.opensLeftToRight(title)) CaptionLayout.RIGHT_TO_LEFT_MARK else "") + "$title, $date"
+            return CaptionLayout.marked(title) + ", $date"
         }
 
         /** Day.month.year of a timestamp in the given UTC offset. */

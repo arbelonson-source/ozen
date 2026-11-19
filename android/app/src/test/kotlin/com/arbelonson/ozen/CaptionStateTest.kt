@@ -617,7 +617,7 @@ class CaptionStateTest {
         show(PipelinePhase.Listening, listOf(fixed, live.copy(text = "ועוד מילה")))
         val corrected = CaptionState.screen.value.lines
         assertEquals(CaptionLayout.displayText("OK, נתראה מחרתיים", "he"), corrected[0].text)
-        assertEquals("OK, נתראה מחרתיים", corrected[0].copied)
+        assertEquals("\u200FOK, נתראה מחרתיים", corrected[0].copied)
         assertSame(after[1], corrected[1])
 
         CaptionState.markStarred(said.id, starred = true)

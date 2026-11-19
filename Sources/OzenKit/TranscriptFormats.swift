@@ -49,7 +49,7 @@ public enum TranscriptFormats {
     }
 
     private static func directed(_ line: String, reading text: String, languageCode: String) -> String {
-        CaptionLayout.readsRightToLeft(text, languageCode: languageCode) ? rightToLeftMark + line : line
+        CaptionLayout.readsRightToLeft(text, languageCode: languageCode) && !line.hasPrefix(rightToLeftMark) ? rightToLeftMark + line : line
     }
 
     private static func wholeSeconds(_ seconds: Double) -> Int {

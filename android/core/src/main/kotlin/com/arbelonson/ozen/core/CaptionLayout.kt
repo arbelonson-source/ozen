@@ -126,7 +126,7 @@ object CaptionLayout {
      * only its phone numbers and star codes isolated, as in a shared
      * conversation, so a Hebrew chat doesn't turn "050 123 4567" around.
      */
-    fun copiedText(text: String): String = isolatingNumbers(text)
+    fun copiedText(text: String): String = marked(isolatingNumbers(text))
 
     /**
      * A number is read left to right inside Hebrew too, but the spaces,
@@ -188,6 +188,8 @@ object CaptionLayout {
      * direction of their own) isn't a right-to-left one.
      */
     internal fun opensLeftToRight(text: String): Boolean = TextDirection.opensLeftToRight(text)
+
+    internal fun marked(text: String): String = TextDirection.marked(text)
 
     internal fun isRightToLeft(languageCode: String): Boolean = TextDirection.isRightToLeft(languageCode)
 

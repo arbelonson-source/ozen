@@ -1358,7 +1358,7 @@ public struct TranscriptHistoryStore: Sendable {
                 }
                 // Pasted into a chat, a line opening with an English word
                 // would be laid out left to right and read out of order.
-                return CaptionLayout.opensLeftToRight(line) ? CaptionLayout.rightToLeftMark + line : line
+                return CaptionLayout.marked(line)
             }
         let date = formattedDate(record.startedAt, utcOffsetSeconds: record.utcOffsetSeconds ?? offset(record.startedAt))
         let heading = namedHeading(title: record.title, date: date) ?? tr("שיחה מתאריך %1", "Conversation from %1", args: ["\(date)"])
@@ -1489,7 +1489,7 @@ public struct TranscriptHistoryStore: Sendable {
                 text = "[\(time)] \(warning)\(said)"
             }
             // As in `exportText`: read in order when pasted into a chat.
-            block.append(CaptionLayout.opensLeftToRight(text) ? CaptionLayout.rightToLeftMark + text : text)
+            block.append(CaptionLayout.marked(text))
         }
         if !block.isEmpty { blocks.append(block.joined(separator: "\n")) }
         return blocks.joined(separator: "\n\n")
@@ -1501,8 +1501,7 @@ public struct TranscriptHistoryStore: Sendable {
     /// right-to-left mark; an all-English name stays as it is.
     private static func namedHeading(title: String?, date: String) -> String? {
         guard let title, !title.isEmpty else { return nil }
-        let hebrew = title.unicodeScalars.contains { (0x05D0...0x05EA).contains($0.value) }
-        return (hebrew && CaptionLayout.opensLeftToRight(title) ? CaptionLayout.rightToLeftMark : "") + "\(title), \(date)"
+        return CaptionLayout.marked(title) + ", \(date)"
     }
 
     /// Day.month.year of a timestamp in the given UTC offset.

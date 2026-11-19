@@ -94,3 +94,24 @@ class ListeningNoticeTest {
         assertEquals("…እና መድሃኒቱን እንገዛለን", glance)
     }
 }
+
+class ListeningNoticeDirectionTest {
+    private val mark = "‏"
+
+    private fun line(text: String, speaker: String?) =
+        LockScreenCaptionLine(speaker = speaker, text = text, isFinal = true, sameSpeakerAsAbove = false)
+
+    @Test
+    fun `a Latin name before a Hebrew line puts the mark in front of the name`() {
+        val content = LockScreenCaptionContent(listOf(line(mark + "קח Acamol מחר", "Avi")))
+        assertEquals("${mark}Avi: קח Acamol מחר", ListeningNotice.glance(content))
+        assertEquals("${mark}Avi: קח Acamol מחר", ListeningNotice.opened(content))
+    }
+
+    @Test
+    fun `an English line with a Latin name has no mark`() {
+        val content = LockScreenCaptionContent(listOf(line("Take it tomorrow", "Avi")))
+        assertEquals("Avi: Take it tomorrow", ListeningNotice.glance(content))
+        assertEquals("Avi: Take it tomorrow", ListeningNotice.opened(content))
+    }
+}

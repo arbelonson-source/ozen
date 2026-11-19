@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.LockScreenCaptionContent
 import com.arbelonson.ozen.core.LockScreenCaptions
+import com.arbelonson.ozen.core.TextDirection
 import com.arbelonson.ozen.core.tr
 import java.text.BreakIterator
 import java.util.Locale
@@ -25,7 +26,11 @@ object ListeningNotice {
     fun opened(content: LockScreenCaptionContent): String? =
         content.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { said(it.text, it.speaker) }
 
-    private fun said(text: String, name: String?) = if (name == null) text else "$name: $text"
+    private fun said(text: String, name: String?): String {
+        if (name == null) return text
+        val mark = TextDirection.RIGHT_TO_LEFT_MARK
+        return if (text.startsWith(mark)) mark + name + ": " + text.removePrefix(mark) else "$name: $text"
+    }
 
     private fun fitted(text: String, roomHalves: Int): String {
         var letters = roomHalves / 2

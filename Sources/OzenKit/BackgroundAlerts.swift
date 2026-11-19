@@ -150,7 +150,7 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
     }
 
     private static func rightToLeft(_ text: String) -> String {
-        CaptionLayout.opensLeftToRight(text) ? CaptionLayout.rightToLeftMark + text : text
+        CaptionLayout.marked(text)
     }
 
     /// Notification bodies get cut off by the system anyway; cut at a word

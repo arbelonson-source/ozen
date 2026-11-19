@@ -144,7 +144,7 @@ class BackgroundAlertPolicy(
             )
 
         private fun rightToLeft(text: String): String =
-            if (CaptionLayout.opensLeftToRight(text)) CaptionLayout.RIGHT_TO_LEFT_MARK + text else text
+            CaptionLayout.marked(text)
 
         private fun isPlainSpace(character: Char): Boolean = character.isWhitespace() && character != '\n' && character != '\r'
 
