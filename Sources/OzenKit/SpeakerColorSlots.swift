@@ -71,3 +71,19 @@ public struct SpeakerColorSlots: Sendable, Equatable {
         return Int(hash % UInt64(count))
     }
 }
+
+public extension SpeakerColorSlots {
+    /// Same slots as building from every line, but `name` runs once per
+    /// distinct voice, on its first line. A voice's name is the same on
+    /// all of its lines in one update, so nothing changes; lines with no
+    /// voice are skipped.
+    init(segments: [TranscriptSegment], name: (TranscriptSegment) -> String?) {
+        var seen = Set<Int>()
+        var speakers: [Speaker] = []
+        for segment in segments {
+            guard let id = segment.speakerClusterID, seen.insert(id).inserted else { continue }
+            if let speaker = Self.speaker(clusterID: id, name: name(segment)) { speakers.append(speaker) }
+        }
+        self.init(speakers)
+    }
+}

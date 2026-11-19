@@ -909,11 +909,10 @@ struct LiveCaptionView: View {
         }
     }
 
-    /// One slot per speaker on screen, read once per update like `awayMark`.
+    /// One slot per speaker on screen, read once per update like `awayMark`;
+    /// each voice's name is looked up once, not once per line.
     private var speakerSlots: SpeakerColorSlots {
-        SpeakerColorSlots(viewModel.segments.map {
-            (clusterID: $0.speakerClusterID, name: $0.speakerClusterID == nil ? nil : viewModel.displayName(for: $0))
-        })
+        SpeakerColorSlots(segments: viewModel.segments) { viewModel.displayName(for: $0) }
     }
 
     /// Where the lines said while the screen was away begin, as drawn (see
