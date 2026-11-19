@@ -32,6 +32,8 @@ object VoiceNotice {
         if (installed != null && installed.isEmpty()) listOfNotNull(missingFor(language, installed))
         else listOfNotNull(missingFor(language, installed), missingHebrew(installed))
 
+    fun unreadableText(): String = tr("אין קול שמקריא את הכתב הזה, ולכן אי אפשר להשמיע את הטקסט.", "No voice reads this writing, so the text can’t be played aloud.")
+
     fun openSettings(): String = tr("פתיחת הגדרות הטלפון", "Open phone settings")
 
     fun silentMedia(mediaVolume: Int, maxVolume: Int): String? = SpeakingVolume.notice(mediaVolume, maxVolume)

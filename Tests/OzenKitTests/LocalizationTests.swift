@@ -207,6 +207,35 @@ struct LocalizationTests {
         }
     }
 
+    @Test("text whose letters are in a script no voice reads gets no voice, while known scripts, digits and emoji are unchanged")
+    @MainActor
+    func unknownScriptGetsNoVoice() {
+        for text in ["안녕하세요", "こんにちは", "สวัสดี", "Γειά σου", "Բարեւ", "გამარჯობა", "안녕 123"] {
+            for language in UILanguage.allCases {
+                #expect(UILanguage.forSpeaking(text, otherwise: language) == nil, "\(text) \(language)")
+            }
+            #expect(!FakeSynthesizer().canSay(text), "\(text)")
+            #expect(UILanguage.isUnreadable(text, otherwise: .hebrew), "\(text)")
+        }
+        let known: [(String, UILanguage)] = [
+            ("שלום", .hebrew), ("مرحبا", .arabic), ("Привет", .russian), ("Hello", .english),
+            ("你好", .chineseSimplified), ("नमस्ते", .hindi), ("ሰላም", .amharic), ("ﬡ", .hebrew),
+        ]
+        for (text, expected) in known {
+            #expect(UILanguage.forSpeaking(text, otherwise: .english) == expected, "\(text)")
+            #expect(FakeSynthesizer().canSay(text), "\(text)")
+        }
+        for text in ["123", "😀", "10:30", "", "   "] {
+            #expect(UILanguage.forSpeaking(text, otherwise: .hebrew) == .hebrew, "\(text)")
+            #expect(!UILanguage.isUnreadable(text, otherwise: .hebrew), "\(text)")
+        }
+        #expect(UILanguage.forSpeaking("OK 👍", otherwise: .hebrew) == .english)
+        #expect(!UILanguage.isUnreadable("OK 👍", otherwise: .hebrew))
+        #expect(UILanguage.forSpeaking("שלום 안녕", otherwise: .english) == .hebrew)
+        #expect(UILanguage.forSpeaking("Hello 안녕", otherwise: .hebrew) == .english)
+        #expect(FakeSynthesizer().canSay("שלום 안녕"))
+    }
+
     @Test("text in a language the phone has no voice for is held back; Hebrew still follows the Hebrew voice")
     @MainActor
     func heldBackWithoutAVoice() {

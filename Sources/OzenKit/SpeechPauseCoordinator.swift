@@ -39,7 +39,8 @@ extension SpeechSynthesizing {
     /// Whether `text` would come out as speech someone can understand:
     /// only text in a language the phone has no voice for is held back.
     public func canSay(_ text: String) -> Bool {
-        hasVoice(for: UILanguage.forSpeaking(text, otherwise: Localization.language))
+        guard let language = UILanguage.forSpeaking(text, otherwise: Localization.language) else { return false }
+        return hasVoice(for: language)
     }
 }
 

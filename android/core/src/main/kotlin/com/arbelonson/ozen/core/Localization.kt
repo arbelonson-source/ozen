@@ -52,14 +52,16 @@ enum class UILanguage(
          * app's language when that is written in Latin letters (a French
          * phrase gets the French voice), and are English otherwise. Text with
          * no letters at all (a time, a number) follows the app's language.
+         * Letters of a script none of these voices read (Korean, Greek,
+         * Thai) give null: any voice would read them as noise.
          */
-        fun forSpeaking(text: String, otherwise: UILanguage): UILanguage {
+        fun forSpeaking(text: String, otherwise: UILanguage): UILanguage? {
             val values = text.codePoints().toArray()
             fun has(vararg ranges: IntRange) = values.any { value -> ranges.any { value in it } }
-            if (has(0x0590..0x05FF)) return Hebrew
+            if (has(0x0590..0x05FF, 0xFB1D..0xFB4F)) return Hebrew
             // Not U+FEFF at the end of that block: an invisible byte order
             // mark pasted along with a time is no Arabic letter.
-            if (has(0x0600..0x06FF, 0x0750..0x077F, 0xFB50..0xFDFF, 0xFE70..0xFEFC)) return Arabic
+            if (has(0x0600..0x06FF, 0x0750..0x077F, 0x08A0..0x08FF, 0xFB50..0xFDFF, 0xFE70..0xFEFC)) return Arabic
             if (has(0x1200..0x139F, 0x2D80..0x2DDF)) return Amharic
             if (has(0x0900..0x097F)) return Hindi
             if (has(0x3400..0x4DBF, 0x4E00..0x9FFF)) return ChineseSimplified
@@ -76,8 +78,13 @@ enum class UILanguage(
             ) {
                 return if (otherwise.writesInLatinLetters) otherwise else English
             }
+            if (values.any { it >= 0x250 && it !in 0x1E00..0x1EFF && Character.isAlphabetic(it) }) return null
             return otherwise
         }
+
+        /** Text with something to say in a script no voice reads. */
+        fun isUnreadable(text: String, otherwise: UILanguage): Boolean =
+            forSpeaking(text, otherwise) == null && text.isNotBlank()
 
         /**
          * Matches a phone preferred-language tag ("pt-BR", "zh-Hans-US",

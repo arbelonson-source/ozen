@@ -40,7 +40,7 @@ interface SpeechSynthesizing {
      * only text in a language the phone has no voice for is held back.
      */
     fun canSay(text: String): Boolean =
-        hasVoice(UILanguage.forSpeaking(text, otherwise = Localization.language))
+        UILanguage.forSpeaking(text, otherwise = Localization.language)?.let(::hasVoice) ?: false
 }
 
 /**

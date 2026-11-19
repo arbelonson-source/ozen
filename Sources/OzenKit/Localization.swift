@@ -22,15 +22,17 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
     /// app's language when that is written in Latin letters (a French
     /// phrase gets the French voice), and are English otherwise. Text with
     /// no letters at all (a time, a number) follows the app's language.
-    public static func forSpeaking(_ text: String, otherwise fallback: UILanguage) -> UILanguage {
+    /// Letters of a script none of these voices read (Korean, Greek, Thai)
+    /// give nil: any voice would read them as noise.
+    public static func forSpeaking(_ text: String, otherwise fallback: UILanguage) -> UILanguage? {
         let values = text.unicodeScalars.map(\.value)
         func has(_ ranges: ClosedRange<UInt32>...) -> Bool {
             values.contains { value in ranges.contains { $0.contains(value) } }
         }
-        if has(0x0590...0x05FF) { return .hebrew }
+        if has(0x0590...0x05FF, 0xFB1D...0xFB4F) { return .hebrew }
         // Not U+FEFF at the end of that block: an invisible byte order
         // mark pasted along with a time is no Arabic letter.
-        if has(0x0600...0x06FF, 0x0750...0x077F, 0xFB50...0xFDFF, 0xFE70...0xFEFC) { return .arabic }
+        if has(0x0600...0x06FF, 0x0750...0x077F, 0x08A0...0x08FF, 0xFB50...0xFDFF, 0xFE70...0xFEFC) { return .arabic }
         if has(0x1200...0x139F, 0x2D80...0x2DDF) { return .amharic }
         if has(0x0900...0x097F) { return .hindi }
         if has(0x3400...0x4DBF, 0x4E00...0x9FFF) { return .chineseSimplified }
@@ -47,7 +49,16 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
         }) {
             return fallback.writesInLatinLetters ? fallback : .english
         }
+        if text.unicodeScalars.contains(where: { $0.value >= 0x250 && !(0x1E00...0x1EFF).contains($0.value) && $0.properties.isAlphabetic }) {
+            return nil
+        }
         return fallback
+    }
+
+    /// Text with something to say in a script no voice reads.
+    public static func isUnreadable(_ text: String, otherwise fallback: UILanguage) -> Bool {
+        forSpeaking(text, otherwise: fallback) == nil
+            && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var writesInLatinLetters: Bool {

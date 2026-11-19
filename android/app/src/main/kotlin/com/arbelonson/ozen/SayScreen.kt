@@ -77,7 +77,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.QuickPhraseUndo
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenTopBar
@@ -232,6 +234,7 @@ internal fun SayScreen(
                         icon = Icons.Rounded.Fullscreen,
                         modifier = Modifier.fillMaxWidth().semantics { onClick(label = bigLettersFor) { bigLetters = true; true } },
                     )
+                    if (UILanguage.isUnreadable(draft, Localization.language)) Text(VoiceNotice.unreadableText(), color = cautionOrange())
                     VoiceNotices(voiceNotices)
                     MediaVolumeNotice()
                     SpeakingRouteNotice()
