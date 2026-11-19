@@ -961,6 +961,16 @@ class CaptionSession(
         }
     }
 
+    fun phoneModelChosen() {
+        scope.launch {
+            when (pipeline.phase) {
+                PipelinePhase.Idle -> Unit
+                PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
+                else -> settings.current.value.let { pipeline.phoneModelChanged(it.whisperModelVariant, it.phoneModelFile) { chosenSettings() } }
+            }
+        }
+    }
+
     /**
      * Posts or takes away the "captions stopped" notice, as the iPhone does:
      * with the phone put away, a stop nothing will undo also stops the
@@ -2007,7 +2017,7 @@ class CaptionSession(
             makeRoom = { makeRoom(it) },
             scope = scope,
             measure = { progress -> PhoneSpeedMeter(context.applicationInfo.nativeLibraryDir).run(progress) },
-            applied = ::settingsChanged,
+            applied = ::phoneModelChosen,
             captionsBusy = captionsBusy,
             device = Build.MODEL.orEmpty(),
             totalMemory = ::totalMemory,
