@@ -533,6 +533,22 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `the conversation of a caption line is still known while saves fail, so a marked problem can name it`() {
+        start()
+        say("Good morning")
+        saver.save(ended = false)
+        val morning = saved().single().id
+        say("Good evening")
+        folder.deleteRecursively()
+        folder.writeText("not a folder")
+        saver.save(ended = false)
+        assertNotNull(saver.lastSaveFailure)
+        assertNull(saver.savedConversation(0))
+        assertEquals(morning, saver.conversationOfLine(0))
+        assertEquals(saver.currentId, saver.conversationOfLine(1))
+    }
+
+    @Test
     fun `deleting all conversations deletes every saved one, and lines already on screen stay out of the next`() {
         oldConversation(clock - 3_600)
         start()
