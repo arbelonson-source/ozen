@@ -269,12 +269,9 @@ class FileTranscriber(
                         kept = true
                         if (history !is HistorySave.Failed) captions.fileKeeper.finished()
                     }
-                }
+                }.also { if (it is FileTranscription.Done) shown.value = it }
             }
-            if (shownPartway is FileTranscription.Done) {
-                shown.value = shownPartway
-                return
-            }
+            if (shownPartway is FileTranscription.Done) return
             withContext(NonCancellable + Dispatchers.IO) {
                 textKept = captions.fileKeeper.keepCutShort()
                 leftForRecovery = !textKept && captions.fileKeeper.hasUnfinishedCopy()
