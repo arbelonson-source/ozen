@@ -16,6 +16,7 @@ import com.arbelonson.ozen.core.FileTranscriptionJob
 import com.arbelonson.ozen.core.FileTranscriptionProblem
 import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.PartialFileRun
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDownloader
@@ -83,6 +84,7 @@ class FileTranscriber(
 
     private var textKept = false
     private var leftForRecovery = false
+    @Volatile private var madeLines: List<TranscribedLine> = emptyList()
 
     init {
         scope.launch { shown.collect { busyNotice.follow(it); replacement.follow(it)?.let(::openShared) } }
@@ -243,6 +245,7 @@ class FileTranscriber(
         var scorer: SileroVoiceScorer? = null
         var kept = false
         captions.fileKeeper.begin(name, ready.durationSeconds, model.variant, ready.language.languageCode)
+        madeLines = emptyList()
         val passes = Executors.newSingleThreadExecutor { Thread(it, "ozen-recording-pass") }
         try {
             scorer = SileroVoiceScorer.fromAssets(context) ?: throw Problem(FileTranscriptionProblem.ModelFailed)
@@ -258,6 +261,20 @@ class FileTranscriber(
         } catch (stopped: CancellationException) {
             throw stopped
         } catch (failure: Exception) {
+            val problem = (failure as? Problem)?.kind ?: FileTranscriptionProblem.Unexpected
+            val shownPartway = withContext(NonCancellable + Dispatchers.IO) {
+                PartialFileRun.result(name, language, model, madeLines, problem) { lines ->
+                    val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, id = captions.fileKeeper.id, languageCode = ready.language.languageCode, cutShort = true)
+                    captions.saveRecording(record).also { history ->
+                        kept = true
+                        if (history !is HistorySave.Failed) captions.fileKeeper.finished()
+                    }
+                }
+            }
+            if (shownPartway is FileTranscription.Done) {
+                shown.value = shownPartway
+                return
+            }
             withContext(NonCancellable + Dispatchers.IO) {
                 textKept = captions.fileKeeper.keepCutShort()
                 leftForRecovery = !textKept && captions.fileKeeper.hasUnfinishedCopy()
@@ -292,6 +309,7 @@ class FileTranscriber(
                 lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
                 val fixes = settings.current.value.wordFixes
                 val soFar = lines.map { it.copy(text = WordFixes.apply(fixes, it.text)) }
+                madeLines = soFar
                 withContext(Dispatchers.IO) { captions.fileKeeper.linesSoFar(soFar) }
             }
         }
