@@ -9,7 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -20,6 +19,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.arbelonson.ozen.core.SpeakingOutput
 import com.arbelonson.ozen.core.SpeakingRoute
+import com.arbelonson.ozen.core.SpeakingVolume
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.delay
@@ -34,7 +34,12 @@ object VoiceNotice {
 
     fun openSettings(): String = tr("פתיחת הגדרות הטלפון", "Open phone settings")
 
-    fun silentMedia(mediaVolume: Int): String? = if (mediaVolume > 0) null else tr("עוצמת המדיה בטלפון על אפס, ולכן אף אחד לא ישמע את המשפטים.", "The phone’s media volume is at zero, so nobody will hear these phrases.")
+    fun silentMedia(mediaVolume: Int, maxVolume: Int): String? = SpeakingVolume.notice(mediaVolume, maxVolume)
+
+    fun silentMedia(audio: AudioManager): String? {
+        val stream = if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
+        return silentMedia(audio.getStreamVolume(stream), audio.getStreamMaxVolume(stream))
+    }
 
     fun turnUp(): String = tr("הגברת הקול", "Turn the volume up")
 
@@ -69,18 +74,18 @@ internal fun VoiceNotices(notices: List<String>) {
 @Composable
 internal fun MediaVolumeNotice() {
     val audio = LocalContext.current.getSystemService(AudioManager::class.java) ?: return
-    var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    var notice by remember { mutableStateOf(VoiceNotice.silentMedia(audio)) }
     LaunchedEffect(audio) {
         while (true) {
-            volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
+            notice = VoiceNotice.silentMedia(audio)
             delay(1_000)
         }
     }
-    val notice = VoiceNotice.silentMedia(volume) ?: return
-    Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    val shown = notice ?: return
+    Text(shown, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     TextButton(onClick = {
         audio.adjustStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
-        volume = audio.getStreamVolume(if (SpeakerChoice.chosen) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC)
+        notice = VoiceNotice.silentMedia(audio)
     }) { Text(VoiceNotice.turnUp()) }
 }
 

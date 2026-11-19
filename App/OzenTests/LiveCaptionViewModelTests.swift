@@ -2590,6 +2590,38 @@ struct LiveCaptionViewModelAskToRepeatTests {
         #expect(synthesizer.requests.last == LiveCaptionViewModel.repeatRequest)
         #expect(pipeline.phase == .paused)
     }
+
+    @Test("asking to repeat at a muted or very quiet phone says nobody may hear it, and still speaks")
+    func saysWhenTheVolumeIsOff() async {
+        let synthesizer = FakeSynthesizer()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-repeat-quiet-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            synthesizer: synthesizer
+        )
+        var volume: Float = 0
+        viewModel.outputVolume = { volume }
+
+        viewModel.askToRepeat()
+        #expect(viewModel.repeatNotHeard == SpeakingVolume.notice(outputVolume: 0))
+        #expect(viewModel.repeatNotHeard != nil)
+        #expect(synthesizer.requests.last == LiveCaptionViewModel.repeatRequest)
+
+        volume = 0.0625
+        viewModel.askToRepeat()
+        #expect(viewModel.repeatNotHeard == SpeakingVolume.notice(outputVolume: 0.0625))
+
+        volume = 0.5
+        viewModel.askToRepeat()
+        #expect(viewModel.repeatNotHeard == nil)
+
+        volume = 0
+        viewModel.askToRepeat()
+        viewModel.dismissRepeatNotHeard()
+        #expect(viewModel.repeatNotHeard == nil)
+    }
 }
 
 @Suite("LiveCaptionViewModel startup work")

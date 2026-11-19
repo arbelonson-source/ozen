@@ -273,6 +273,7 @@ struct LiveCaptionView: View {
         .announcing(microphoneDropAnnouncement, whenTurningTrue: viewModel.microphoneDrop.title != nil, alsoWhenFirstShown: true)
         .announcing(routedElsewhereAnnouncement, whenTurningTrue: viewModel.routedElsewhere != nil, alsoWhenFirstShown: true)
         .announcing(viewModel.listeningCut?.text() ?? "", whenTurningTrue: viewModel.listeningCut != nil, alsoWhenFirstShown: true)
+        .announcing(viewModel.repeatNotHeard ?? "", whenTurningTrue: viewModel.repeatNotHeard != nil)
         // Each new battery warning, a critical one after a low one too: the
         // banner only buzzed, and a reader who can't see it missed that the
         // phone may shut down.
@@ -386,6 +387,12 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if let notHeard = viewModel.repeatNotHeard {
+                RepeatNotHeardBanner(text: notHeard) {
+                    withAnimation { viewModel.dismissRepeatNotHeard() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let cut = viewModel.listeningCut {
                 ListeningCutBanner(text: cut.text()) {
                     withAnimation { viewModel.dismissListeningCut() }
@@ -410,6 +417,7 @@ struct LiveCaptionView: View {
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
+            || viewModel.repeatNotHeard != nil
             || viewModel.pipeline.soundAlertsNotWorking
             || viewModel.awayAlertsBlocked
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))

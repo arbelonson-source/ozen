@@ -14,8 +14,8 @@ class VoiceNoticeTest {
 
     @Test
     fun `with the media volume at zero it says nobody will hear the phrases, and nothing once there is any volume`() = Localization.withLanguage(UILanguage.English) {
-        assertEquals("The phone’s media volume is at zero, so nobody will hear these phrases.", VoiceNotice.silentMedia(0))
-        assertNull(VoiceNotice.silentMedia(1))
+        assertEquals("The phone’s media volume is at zero, so nobody will hear these phrases.", VoiceNotice.silentMedia(0, 15))
+        assertNull(VoiceNotice.silentMedia(2, 15))
         assertEquals("Turn the volume up", VoiceNotice.turnUp())
     }
 

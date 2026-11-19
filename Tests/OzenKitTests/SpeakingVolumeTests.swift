@@ -10,9 +10,18 @@ struct SpeakingVolumeTests {
         }
     }
 
-    @Test("one step up from zero, or more, says nothing")
+    @Test("the lowest step above zero is too quiet to hear, and says so")
+    func lowestStepWarns() {
+        Localization.$override.withValue(.english) {
+            for volume: Float in [0.0625, 0.05, 0.069] {
+                #expect(SpeakingVolume.notice(outputVolume: volume) == "The phone’s media volume is very low, so nobody may hear these phrases.")
+            }
+        }
+    }
+
+    @Test("a level just above the threshold, or more, says nothing")
     func audibleSaysNothing() {
-        for volume: Float in [0.0625, 0.5, 1] {
+        for volume: Float in [0.07, 0.08, 0.125, 0.5, 1] {
             #expect(SpeakingVolume.notice(outputVolume: volume) == nil)
         }
     }

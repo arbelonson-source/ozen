@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -473,6 +474,7 @@ private fun OzenApp(
     val inUseModelBytes = remember(current, comebacks) { app.captions.phoneModels.inUseBytes() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
     val listeningCut by app.captions.listeningCut.collectAsStateWithLifecycle()
+    var repeatSilentNotice by remember { mutableStateOf<String?>(null) }
     val damagedModel by app.captions.damagedModelRemoved.collectAsStateWithLifecycle()
     LaunchedEffect(loadCrash != null) { if (loadCrash != null) app.captions.removeDamagedAfterCrash() }
     // Once only: the notice stays up until dismissed, and a recreated screen must not start the captions again.
@@ -666,7 +668,12 @@ private fun OzenApp(
                                 onNameSpeaker = app.captions::nameSpeaker,
                                 savedPersonRenamed = app.captions::savedPersonRenamed,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
-                                onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
+                                onAskToRepeat = {
+                                    repeatSilentNotice = context.getSystemService(AudioManager::class.java)?.let(VoiceNotice::silentMedia)
+                                    app.captions.askToRepeat()
+                                }.takeIf { app.captions.canAskToRepeat() },
+                                repeatSilentNotice = repeatSilentNotice,
+                                onDismissRepeatSilent = { repeatSilentNotice = null },
                                 onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                                 onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                                 onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
@@ -925,6 +932,8 @@ private fun CaptionScreen(
     onDismissSavingTrouble: () -> Unit,
     onDismissMicrophoneDrop: () -> Unit,
     onDismissRoutedElsewhere: () -> Unit = {},
+    repeatSilentNotice: String? = null,
+    onDismissRepeatSilent: () -> Unit = {},
     onDismissPhoneSoundStopped: () -> Unit,
     onMarkProblem: (heldLine: UUID?) -> Boolean,
     onSendReport: suspend (markedAt: Double) -> String,
@@ -1253,6 +1262,7 @@ private fun CaptionScreen(
                             onDismiss = onDismissRoutedElsewhere,
                         )
                     }
+                    ArrivingBanner(repeatSilentNotice) { SilentRepeatBanner(it, onDismissRepeatSilent) }
                     ArrivingBanner(Unit.takeIf { state.phoneSoundStopped }) { PhoneSoundStoppedBanner(onDismissPhoneSoundStopped) }
                     ArrivingBanner(state.battery) { BatteryBanner(it, onDismissBattery) }
                 }

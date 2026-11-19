@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Observation
 import OzenKit
@@ -2275,8 +2276,19 @@ public final class LiveCaptionViewModel {
     /// What the phone says for "ask them to repeat that" on a caption line.
     public static var repeatRequest: String { tr("סליחה, אפשר לחזור על זה?", "Sorry, could you say that again?") }
 
+    /// Reads the phone's media volume; replaced in tests.
+    @ObservationIgnored public var outputVolume: () -> Float? = { AVAudioSession.sharedInstance().outputVolume }
+
+    /// Said on the caption screen when the phrase was spoken into a phone whose media volume is off or very low.
+    public private(set) var repeatNotHeard: String?
+
+    public func dismissRepeatNotHeard() {
+        repeatNotHeard = nil
+    }
+
     /// Asks the room to say that again, aloud, straight from a caption line.
     public func askToRepeat() {
+        repeatNotHeard = outputVolume().flatMap { SpeakingVolume.notice(outputVolume: $0) }
         speak(Self.repeatRequest)
     }
 

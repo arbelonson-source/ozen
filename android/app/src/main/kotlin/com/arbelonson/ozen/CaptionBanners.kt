@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Warning
@@ -157,6 +158,18 @@ internal fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         PhoneSound.stoppedNotice,
         "",
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
+}
+
+/** Asking them to repeat was spoken into a phone whose media volume is off or very low; the close button puts this away. */
+@Composable
+internal fun SilentRepeatBanner(notice: String, onDismiss: () -> Unit) {
+    NoticeBanner(
+        Icons.Rounded.VolumeOff,
+        NoticeTone.Warning,
+        notice,
+        "",
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.testTag("silent-repeat"),
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
