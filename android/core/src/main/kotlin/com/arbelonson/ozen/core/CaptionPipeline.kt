@@ -2311,18 +2311,19 @@ class CaptionPipeline(
 
     /**
      * The phone's model was changed while captions run. Only the phone's
-     * own engine runs the new model now, so it restarts; captions from the
-     * home computer or the cloud carry on untouched and only the copy a
+     * own engine runs the new model now (also while the built-in recognition
+     * waits for it to download), so it restarts; captions from the home
+     * computer or the cloud carry on untouched and only the copy a
      * later cover loads from learns the choice.
      */
     suspend fun phoneModelChanged(variant: String, file: String?, restartWith: () -> AppSettings) {
-        val running = settingsInUse
-        if (!isCoveringForCloud && (running == null || running.engine == TranscriptionEngineKind.WhisperKit)) {
+        val chosen = coveredSettings?.engine ?: settingsInUse?.engine
+        if (chosen == null || chosen == TranscriptionEngineKind.WhisperKit) {
             restart(restartWith())
             return
         }
         setWhisperModelVariant(variant)
-        running?.phoneModelFile = file
+        settingsInUse?.phoneModelFile = file
         coveredSettings?.phoneModelFile = file
     }
 

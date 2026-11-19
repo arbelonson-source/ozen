@@ -105,4 +105,34 @@ class PhoneModelChangeTest {
         assertEquals(phoneKind, captions.activeEngineKind)
         assertEquals(loads, built.kinds.size)
     }
+
+    @Test
+    fun `a model chosen while the built-in recognition waits for the phone's model to download restarts with it`() = runTest {
+        val model = FakeEngine(phoneKind).apply { pendingDownload = 626 }
+        val builtIn = FakeEngine(TranscriptionEngineKind.AppleSpeech)
+        val built = Built()
+        val captions = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings ->
+                built.kinds.add(settings.engine)
+                built.variants.add(settings.whisperModelVariant)
+                built.files.add(settings.phoneModelFile)
+                if (settings.engine == TranscriptionEngineKind.AppleSpeech) builtIn else model
+            },
+            recovery = AutoRecoveryPolicy.disabled(),
+            network = FakeNetworkMonitor(NetworkConditions.cellular),
+        )
+        val chosen = settingsFor(phoneKind)
+        chosen.allowServerFallbackForAppleSpeech = true
+        captions.start(chosen)
+        captions.captionWithBuiltInWhileWaiting(chosen)
+        assertTrue(captions.isCoveringForCloud)
+        assertEquals(PipelinePhase.Listening, captions.phase)
+        val restarts = captions.stats.engineRestarts
+        val next = settingsFor(phoneKind)
+        next.whisperModelVariant = "small"
+        captions.phoneModelChanged("small", "small.bin") { next }
+        assertEquals(restarts + 1, captions.stats.engineRestarts)
+        assertEquals("small", built.variants.last())
+    }
 }
