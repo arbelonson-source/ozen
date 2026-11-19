@@ -194,9 +194,9 @@ internal fun SayScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (speaking) {
-                            TonalButton(tr("עצירה", "Stop"), onClick = onStop, icon = Icons.Rounded.Stop, modifier = Modifier.weight(1f))
-                        }
+                        // Stop is always there, dimmed until the phone talks: it used to appear
+                        // where Play had been, so a second tap on Play, by someone who can't hear
+                        // that the sentence had started, cut it off.
                         PrimaryButton(
                             play,
                             onClick = speakTyped,
@@ -204,6 +204,7 @@ internal fun SayScreen(
                             enabled = draft.isNotBlank() && canSay(draft),
                             modifier = Modifier.weight(1f),
                         )
+                        TonalButton(tr("עצירה", "Stop"), onClick = onStop, icon = Icons.Rounded.Stop, enabled = speaking, modifier = Modifier.weight(1f))
                     }
                     lastTyped?.let { phrase ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
