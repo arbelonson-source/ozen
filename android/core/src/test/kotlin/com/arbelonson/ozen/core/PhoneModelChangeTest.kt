@@ -104,6 +104,7 @@ class PhoneModelChangeTest {
         assertEquals(PipelinePhase.Listening, captions.phase)
         assertEquals(phoneKind, captions.activeEngineKind)
         assertEquals(loads, built.kinds.size)
+        assertEquals(built.variants.last(), captions.activeSettings?.whisperModelVariant)
     }
 
     @Test

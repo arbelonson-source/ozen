@@ -2314,7 +2314,8 @@ class CaptionPipeline(
      * own engine runs the new model now (also while the built-in recognition
      * waits for it to download), so it restarts; captions from the home
      * computer or the cloud carry on untouched and only the copy a
-     * later cover loads from learns the choice.
+     * later cover loads from learns the choice. A cover that runs keeps its
+     * own settings, so the lines it scores name the model it loaded.
      */
     suspend fun phoneModelChanged(variant: String, file: String?, restartWith: () -> AppSettings) {
         val chosen = coveredSettings?.engine ?: settingsInUse?.engine
@@ -2322,9 +2323,11 @@ class CaptionPipeline(
             restart(restartWith())
             return
         }
-        setWhisperModelVariant(variant)
-        settingsInUse?.phoneModelFile = file
+        coveredSettings?.whisperModelVariant = variant
         coveredSettings?.phoneModelFile = file
+        if (isCoveringForCloud && phase !is PipelinePhase.Failed) return
+        settingsInUse?.whisperModelVariant = variant
+        settingsInUse?.phoneModelFile = file
     }
 
     fun setSoundAlertPreferences(preferences: SoundAlertPreferences) {
