@@ -2288,8 +2288,7 @@ public final class LiveCaptionViewModel {
 
     /// Asks the room to say that again, aloud, straight from a caption line.
     public func askToRepeat() {
-        repeatNotHeard = outputVolume().flatMap { SpeakingVolume.notice(outputVolume: $0) }
-        speak(Self.repeatRequest)
+        repeatNotHeard = speak(Self.repeatRequest) ? outputVolume().flatMap { SpeakingVolume.notice(outputVolume: $0) } : nil
     }
 
     public func stopSpeaking() {

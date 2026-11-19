@@ -892,9 +892,7 @@ class CaptionSession(
 
     fun canAskToRepeat() = replies.canSay(SpokenReplies.REPEAT_REQUEST)
 
-    fun askToRepeat() {
-        replies.askToRepeat(settings.current.value.speechRate)
-    }
+    fun askToRepeat(): Boolean = replies.askToRepeat(settings.current.value.speechRate)
 
     fun canSay(text: String) = replies.canSay(text)
 

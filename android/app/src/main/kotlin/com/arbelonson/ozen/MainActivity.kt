@@ -669,8 +669,7 @@ private fun OzenApp(
                                 savedPersonRenamed = app.captions::savedPersonRenamed,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
                                 onAskToRepeat = {
-                                    repeatSilentNotice = context.getSystemService(AudioManager::class.java)?.let(VoiceNotice::silentMedia)
-                                    app.captions.askToRepeat()
+                                    repeatSilentNotice = if (app.captions.askToRepeat()) context.getSystemService(AudioManager::class.java)?.let(VoiceNotice::silentMedia) else null
                                 }.takeIf { app.captions.canAskToRepeat() },
                                 repeatSilentNotice = repeatSilentNotice,
                                 onDismissRepeatSilent = { repeatSilentNotice = null },
