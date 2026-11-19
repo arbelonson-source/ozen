@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.ClockFormat
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
@@ -262,7 +263,7 @@ object DiagnosticsReport {
         } catch (_: DateTimeParseException) {
             return stamp
         }
-        return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Localization.locale).format(at)
+        return ClockFormat.formatter(FormatStyle.MEDIUM, FormatStyle.MEDIUM, Localization.locale).format(at)
     }
 
     /** "-" when she never picked a microphone, "away" when hers is not connected. */

@@ -244,6 +244,37 @@ struct LocalizationTests {
         #expect(inEnglish.contains("Oct") || inEnglish.contains("Sep"))
     }
 
+    @Test("the phone's 24-hour or 12-hour choice survives the swap to the app's language")
+    func hourCycleSurvivesLanguageSwap() {
+        var components = Locale.Components(locale: Locale(identifier: "en_US"))
+        components.hourCycle = .zeroToTwentyThree
+        let twentyFour = Locale(components: components)
+        components.hourCycle = .oneToTwelve
+        let twelve = Locale(components: components)
+        let date = Date(timeIntervalSince1970: 1_791_043_200)
+        let style = Date.FormatStyle(date: .omitted, time: .shortened, timeZone: TimeZone(identifier: "UTC")!)
+        for language in UILanguage.allCases {
+            let kept = language.locale(keepingRegionOf: twentyFour)
+            #expect(kept.hourCycle == .zeroToTwentyThree, "\(language)")
+            #expect(language.locale(keepingRegionOf: twelve).hourCycle == .oneToTwelve, "\(language)")
+        }
+        let english = UILanguage.english.locale(keepingRegionOf: twentyFour)
+        let hebrew = UILanguage.hebrew.locale(keepingRegionOf: twelve)
+        let shownEnglish = date.formatted(style.locale(english))
+        let shownHebrew = date.formatted(style.locale(hebrew))
+        #expect(shownEnglish == "16:00", "\(shownEnglish)")
+        #expect(shownHebrew.hasPrefix("04:00") || shownHebrew.hasPrefix("4:00"), "[\(shownHebrew)]")
+        #expect(shownHebrew.unicodeScalars.contains { (0x05D0...0x05EA).contains($0.value) } || shownHebrew.contains("PM"), "[\(shownHebrew)]")
+    }
+
+    @Test("a phone with no hour choice keeps each language's usual clock")
+    func defaultHourCycleUnchanged() {
+        for identifier in ["en_US", "he_IL", "de_DE", "ar_EG"] {
+            let base = Locale(identifier: identifier)
+            #expect(UILanguage.english.locale(keepingRegionOf: base).hourCycle == base.hourCycle, "\(identifier)")
+        }
+    }
+
     @Test("every supported language formats a date in its own script or wording, keeping the phone's region")
     func dateLanguageForNewLanguages() {
         let base = Locale(identifier: "en_US")

@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.ClockFormat
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
@@ -20,7 +21,6 @@ import com.arbelonson.ozen.core.tr
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.UUID
 
@@ -160,8 +160,7 @@ fun ownZone(utcOffsetSeconds: Int?, phone: ZoneId = ZoneId.systemDefault(), time
         ?: phone
 
 fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
-    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-        .withLocale(Localization.locale)
+    ClockFormat.formatter(null, FormatStyle.SHORT, Localization.locale)
         .format(Instant.ofEpochMilli((at * 1_000).toLong()).atZone(zone))
 
 /** A conversation's day and the time it started, over its lines and over each group of starred lines, as on the iPhone. */
@@ -176,7 +175,7 @@ fun resumedTime(gap: QuietGap, zone: ZoneId = ZoneId.systemDefault()): String {
     val resumed = Instant.ofEpochMilli((gap.resumedAt * 1_000).toLong()).atZone(zone)
     val before = Instant.ofEpochMilli((gap.lastWordsAt * 1_000).toLong()).atZone(zone)
     if (resumed.toLocalDate() == before.toLocalDate()) return clockTime(gap.resumedAt, zone)
-    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(Localization.locale).format(resumed)
+    return ClockFormat.formatter(FormatStyle.MEDIUM, FormatStyle.SHORT, Localization.locale).format(resumed)
 }
 
 object HistoryTexts {

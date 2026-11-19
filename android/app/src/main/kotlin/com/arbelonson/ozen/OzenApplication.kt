@@ -2,6 +2,8 @@ package com.arbelonson.ozen
 
 import android.app.Application
 import android.os.Debug
+import android.text.format.DateFormat
+import com.arbelonson.ozen.core.ClockFormat
 import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.PhoneModelPartialCleanup
 import com.arbelonson.ozen.core.SettingsStore
@@ -25,6 +27,7 @@ class OzenApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ClockFormat.phoneUses24Hours = { DateFormat.is24HourFormat(this) }
         Thread({ PhoneModelPartialCleanup.removeStale(filesDir, System.currentTimeMillis()) }, "ozen-part-cleanup").start()
     }
 
