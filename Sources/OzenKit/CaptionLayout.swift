@@ -125,7 +125,7 @@ public enum CaptionLayout {
     /// tomorrow" in Hebrew). Text with no right-to-left letter is left as
     /// it is: a mark would turn an English line around.
     static func marked(_ text: String) -> String {
-        guard opensLeftToRight(text), text.unicodeScalars.contains(where: isRightToLeftLetter) else { return text }
+        guard opensLeftToRight(text), text.unicodeScalars.contains(where: { $0.properties.isAlphabetic && isRightToLeftLetter($0) }) else { return text }
         return rightToLeftMark + text
     }
 

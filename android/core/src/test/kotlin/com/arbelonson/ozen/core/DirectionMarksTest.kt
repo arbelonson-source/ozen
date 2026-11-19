@@ -52,6 +52,7 @@ class DirectionMarksTest {
         assertEquals("בשעה 10:30, 3 כדורים", CaptionLayout.copiedText("בשעה 10:30, 3 כדורים"))
         assertEquals("Take 3 pills at 10:30", CaptionLayout.copiedText("Take 3 pills at 10:30"))
         assertEquals("10:30", CaptionLayout.copiedText("10:30"))
+        assertEquals("OK\u060C thanks!", CaptionLayout.copiedText("OK\u060C thanks!"))
     }
 
     @Test

@@ -36,9 +36,14 @@ object ListeningNotice {
         var letters = roomHalves / 2
         while (true) {
             val kept = LockScreenCaptions.tail(text, letters)
-            if (halves(kept) <= roomHalves || letters <= 2) return kept
+            if (halves(kept) <= roomHalves || letters <= 2) return withMark(text, kept)
             letters--
         }
+    }
+
+    private fun withMark(whole: String, kept: String): String {
+        val mark = TextDirection.RIGHT_TO_LEFT_MARK
+        return if (whole.startsWith(mark) && !kept.startsWith(mark)) mark + kept else kept
     }
 
     private fun halves(text: String): Int {

@@ -50,6 +50,7 @@ struct DirectionMarksTests {
         #expect(CaptionLayout.copiedText("בשעה 10:30, 3 כדורים") == "בשעה 10:30, 3 כדורים")
         #expect(CaptionLayout.copiedText("Take 3 pills at 10:30") == "Take 3 pills at 10:30")
         #expect(CaptionLayout.copiedText("10:30") == "10:30")
+        #expect(CaptionLayout.copiedText("OK\u{060C} thanks!") == "OK\u{060C} thanks!")
     }
 
     @Test("an Arabic title opening with a Latin word gets the mark, an English one does not")

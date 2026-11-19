@@ -109,6 +109,14 @@ class ListeningNoticeDirectionTest {
     }
 
     @Test
+    fun `a long marked line cut to fit keeps the mark in front of the name`() {
+        val content = LockScreenCaptionContent(listOf(line(mark + "קח את הכדור עם Acamol מחר בבוקר לפני האוכל ואחרי כן", "Avi")))
+        val shown = ListeningNotice.glance(content, rowCharacters = 20)
+        assertTrue(shown.startsWith("${mark}Avi: "), shown)
+        assertEquals(1, shown.count { it == '\u200F' })
+    }
+
+    @Test
     fun `an English line with a Latin name has no mark`() {
         val content = LockScreenCaptionContent(listOf(line("Take it tomorrow", "Avi")))
         assertEquals("Avi: Take it tomorrow", ListeningNotice.glance(content))
