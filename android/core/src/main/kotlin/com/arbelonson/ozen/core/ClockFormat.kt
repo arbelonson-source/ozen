@@ -64,10 +64,18 @@ object ClockFormat {
     }
 
     private fun to12(parts: List<Part>, locale: Locale): String {
-        val body = parts.joinToString("") { part ->
-            if (part.quoted) part.text else part.text.replace(Regex("[Hk]+"), "h")
+        val body = StringBuilder()
+        val timeField = mutableListOf<Boolean>()
+        for (part in parts) {
+            val text = if (part.quoted) part.text else part.text.replace(Regex("[Hk]+"), "h")
+            body.append(text)
+            text.forEach { timeField += !part.quoted && (it == 'h' || it == 'm' || it == 's') }
         }
-        return if (locale.language in marksFirst) "a $body" else "$body a"
+        if (locale.language in marksFirst) {
+            val at = timeField.indexOf(true)
+            return body.insert(at, "a ").toString()
+        }
+        return body.insert(timeField.lastIndexOf(true) + 1, " a").toString()
     }
 
     private val marksFirst = setOf("zh", "ja", "ko")

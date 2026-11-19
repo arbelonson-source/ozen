@@ -22,7 +22,7 @@ class ClockFormatTest {
     fun `hebrew with the 24-hour switch off reads in 12 hours`() {
         val shown = time("he-IL", false)
         assertTrue(shown.startsWith("3:05"), shown)
-        assertTrue(shown.length > "3:05".length, shown)
+        assertTrue(shown.endsWith("PM") || shown.endsWith("אחה״צ") || shown.endsWith("אחר הצהריים"), shown)
     }
 
     @Test
@@ -51,5 +51,12 @@ class ClockFormatTest {
     fun `a date with a time keeps its date when the hours change`() {
         val with24 = ClockFormat.formatter(FormatStyle.MEDIUM, FormatStyle.SHORT, Locale.US, true).format(afternoon)
         assertEquals("Oct 11, 2026, 15:05", with24)
+    }
+
+    @Test
+    fun `the day-period mark stays beside the time in a Chinese date and time`() {
+        val shown = ClockFormat.formatter(FormatStyle.MEDIUM, FormatStyle.SHORT, Locale.forLanguageTag("zh-CN"), false).format(afternoon)
+        assertTrue(shown.startsWith("2026年10月11日"), shown)
+        assertTrue(Regex("下午 ?3:05$").containsMatchIn(shown), shown)
     }
 }
