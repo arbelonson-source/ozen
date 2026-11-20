@@ -57,15 +57,28 @@ enum class UILanguage(
          */
         fun forSpeaking(text: String, otherwise: UILanguage): UILanguage? {
             val values = text.codePoints().toArray()
-            fun has(vararg ranges: IntRange) = values.any { value -> ranges.any { value in it } }
-            if (has(0x0590..0x05FF, 0xFB1D..0xFB4F)) return Hebrew
+            val hebrew = listOf(0x0590..0x05FF, 0xFB1D..0xFB4F)
             // Not U+FEFF at the end of that block: an invisible byte order
             // mark pasted along with a time is no Arabic letter.
-            if (has(0x0600..0x06FF, 0x0750..0x077F, 0x08A0..0x08FF, 0xFB50..0xFDFF, 0xFE70..0xFEFC)) return Arabic
-            if (has(0x1200..0x139F, 0x2D80..0x2DDF)) return Amharic
-            if (has(0x0900..0x097F)) return Hindi
-            if (has(0x3400..0x4DBF, 0x4E00..0x9FFF)) return ChineseSimplified
-            if (has(0x0400..0x04FF)) {
+            val arabic = listOf(0x0600..0x06FF, 0x0750..0x077F, 0x08A0..0x08FF, 0xFB50..0xFDFF, 0xFE70..0xFEFC)
+            val amharic = listOf(0x1200..0x139F, 0x2D80..0x2DDF)
+            val hindi = listOf(0x0900..0x097F)
+            val chinese = listOf(0x3400..0x4DBF, 0x4E00..0x9FFF, 0x20000..0x323AF)
+            val cyrillic = listOf(0x0400..0x04FF)
+            val otherLatin = listOf(0x1E00..0x1EFF, 0xFF21..0xFF3A, 0xFF41..0xFF5A)
+            val known = hebrew + arabic + amharic + hindi + chinese + cyrillic + otherLatin
+            val hasUnknownLetter = values.any { value ->
+                value >= 0x250 && Character.isLetter(value) && known.none { value in it }
+            }
+            fun has(ranges: List<IntRange>) = values.any { value ->
+                ranges.any { value in it } && (!hasUnknownLetter || Character.isLetter(value))
+            }
+            if (has(hebrew)) return Hebrew
+            if (has(arabic)) return Arabic
+            if (has(amharic)) return Amharic
+            if (has(hindi)) return Hindi
+            if (has(chinese)) return ChineseSimplified
+            if (has(cyrillic)) {
                 if (otherwise == Ukrainian || text.any { it in "іїєґІЇЄҐ" }) return Ukrainian
                 return Russian
             }
@@ -78,8 +91,7 @@ enum class UILanguage(
             ) {
                 return if (otherwise.writesInLatinLetters) otherwise else English
             }
-            if (values.any { it >= 0x250 && it !in 0x1E00..0x1EFF && Character.isAlphabetic(it) }) return null
-            return otherwise
+            return if (hasUnknownLetter) null else otherwise
         }
 
         /** Text with something to say in a script no voice reads. */

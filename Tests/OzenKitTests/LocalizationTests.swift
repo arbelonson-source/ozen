@@ -210,7 +210,7 @@ struct LocalizationTests {
     @Test("text whose letters are in a script no voice reads gets no voice, while known scripts, digits and emoji are unchanged")
     @MainActor
     func unknownScriptGetsNoVoice() {
-        for text in ["안녕하세요", "こんにちは", "สวัสดี", "Γειά σου", "Բարեւ", "გამარჯობა", "안녕 123"] {
+        for text in ["안녕하세요", "こんにちは", "สวัสดี", "Γειά σου", "Բարեւ", "გამარჯობა", "안녕 123", "안녕،", "안녕 ١٢٣"] {
             for language in UILanguage.allCases {
                 #expect(UILanguage.forSpeaking(text, otherwise: language) == nil, "\(text) \(language)")
             }
@@ -229,6 +229,10 @@ struct LocalizationTests {
             #expect(UILanguage.forSpeaking(text, otherwise: .hebrew) == .hebrew, "\(text)")
             #expect(!UILanguage.isUnreadable(text, otherwise: .hebrew), "\(text)")
         }
+        #expect(UILanguage.forSpeaking("𠮷", otherwise: .hebrew) == .chineseSimplified)
+        #expect(UILanguage.forSpeaking("🅰️", otherwise: .hebrew) == .hebrew)
+        #expect(UILanguage.forSpeaking("Ｈｅｌｌｏ", otherwise: .english) == .english)
+        #expect(UILanguage.forSpeaking("١٢٣", otherwise: .hebrew) == .arabic)
         #expect(UILanguage.forSpeaking("OK 👍", otherwise: .hebrew) == .english)
         #expect(!UILanguage.isUnreadable("OK 👍", otherwise: .hebrew))
         #expect(UILanguage.forSpeaking("שלום 안녕", otherwise: .english) == .hebrew)
