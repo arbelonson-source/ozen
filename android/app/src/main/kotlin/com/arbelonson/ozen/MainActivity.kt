@@ -140,7 +140,7 @@ import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
-import com.arbelonson.ozen.core.SharedRecordingLink
+import com.arbelonson.ozen.core.RecordingIntent
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.tr
@@ -280,14 +280,12 @@ class MainActivity : ComponentActivity() {
         startFromRequest(intent, newIntent = true, recreated = false)
     }
 
-    /** A voice note, recording or video shared to Ozen from another app is offered for transcribing. */
+    /** A voice note, recording or video shared to Ozen, or opened with Ozen from a Files app, is offered for transcribing. */
     private fun takeSharedRecording(intent: Intent?): Boolean {
-        if (intent?.action != Intent.ACTION_SEND) return false
-        val type = intent.type ?: return false
-        if (!type.startsWith("audio/") && !type.startsWith("video/")) return false
-        val recording = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return false
-        if (!SharedRecordingLink.isAcceptable(recording.toString(), packageName)) return false
-        return (application as OzenApplication).transcriber.open(recording)
+        if (intent == null) return false
+        val stream = if (intent.action == Intent.ACTION_SEND) IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) else null
+        val link = RecordingIntent.source(intent.action, intent.type, intent.dataString, stream?.toString(), packageName) ?: return false
+        return (application as OzenApplication).transcriber.open(Uri.parse(link))
     }
 
     private fun systemBarsFor(lightScreen: Boolean) {
@@ -299,7 +297,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openLink(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
+        if (intent?.action != Intent.ACTION_VIEW || intent.data?.scheme == "content") return
         intent.dataString?.let { (application as OzenApplication).pairing.open(it) }
     }
 
