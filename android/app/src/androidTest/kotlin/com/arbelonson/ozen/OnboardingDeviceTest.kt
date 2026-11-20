@@ -684,6 +684,26 @@ class OnboardingDeviceTest {
     }
 
     @Test
+    fun withCaptionsFromTheHomeComputerThereIsNoModelPageAndSkipDoesNotTestThePhone() {
+        app.settings.change {
+            it.phoneSpeed = null
+            it.languageCode = "en"
+            it.engine = TranscriptionEngineKind.HomeServer
+        }
+        val models = FakePhoneModels(app.settings)
+        models.checkRuns = true
+        val finished = AtomicInteger()
+        showTheWalkthroughWith(models) { finished.incrementAndGet() }
+        compose.onNodeWithContentDescription("1 of 6").assertExists()
+        repeat(3) { compose.onNodeWithText("Next").performClick() }
+        compose.onNodeWithText("The microphone").assertExists()
+        compose.onNodeWithText("The speech model").assertDoesNotExist()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { finished.get() > 0 }
+        assertTrue("tested the phone for the home computer", models.checks.isEmpty())
+    }
+
+    @Test
     fun skippingTheWalkthroughOnAPhoneAlreadyCheckedFinishesAtOnce() {
         app.settings.change { it.phoneSpeed = PhoneSpeed(gflops = 50.0, threads = 4, measuredAt = 1_000.0) }
         val models = FakePhoneModels(app.settings)
