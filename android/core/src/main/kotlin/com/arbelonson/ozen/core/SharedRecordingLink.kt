@@ -10,7 +10,7 @@ object SharedRecordingLink {
             return false
         }
         if (parsed.scheme != "content") return false
-        val authority = parsed.authority?.lowercase() ?: return false
+        val authority = parsed.authority?.lowercase()?.substringAfterLast('@') ?: return false
         val own = ownPackage.lowercase()
         return authority != own && !authority.startsWith(own)
     }
