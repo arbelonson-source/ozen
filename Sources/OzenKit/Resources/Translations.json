@@ -1213,7 +1213,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "የቤት ኮምፒዩተሩ አድራሻ በስልኩ ላይ አልተቀመጠም፣ ስልኩ እንደገና ሲነሳ ይጠፋል።",
   "Close anyway": "ለማንኛውም ዝጋ",
   "Before you sleep": "ከመተኛትዎ በፊት",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "ይህ ኮምፒዩተር በቤትዎ አውታረ መረብ ላይ አይደለም፤ የውይይቶችዎ ድምፅ በበይነመረብ ወደ %1 ይላካል። ይህን ኮምፒዩተር እርስዎ ራስዎ ካዘጋጁት ብቻ ይገናኙ።"
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "ይህ ኮምፒዩተር በቤትዎ አውታረ መረብ ላይ አይደለም፤ የውይይቶችዎ ድምፅ በበይነመረብ ወደ %1 ይላካል። ይህን ኮምፒዩተር እርስዎ ራስዎ ካዘጋጁት ብቻ ይገናኙ።",
+  "Merge with %1?": "ከ%1 ጋር ይዋሃድ?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ቀድሞ ተቀምጧል። ሁለቱም ድምፆች ባለፉ ንግግሮች ውስጥም ጭምር በዚያ አንድ ስም ይታያሉ።",
+  "Merge": "አዋህድ"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2429,7 +2432,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "لم يُحفظ عنوان الكمبيوتر المنزلي على الهاتف وسيضيع بعد إعادة التشغيل.",
   "Close anyway": "إغلاق على أي حال",
   "Before you sleep": "قبل أن تنام",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "هذا الكمبيوتر ليس على شبكتكم المنزلية: سيُرسَل صوت محادثاتكم عبر الإنترنت إلى %1. لا تتصلوا إلا إذا كنتم قد أعددتم هذا الكمبيوتر بأنفسكم."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "هذا الكمبيوتر ليس على شبكتكم المنزلية: سيُرسَل صوت محادثاتكم عبر الإنترنت إلى %1. لا تتصلوا إلا إذا كنتم قد أعددتم هذا الكمبيوتر بأنفسكم.",
+  "Merge with %1?": "الدمج مع %1؟",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 محفوظ بالفعل. سيظهر الصوتان باسم واحد هو هذا الاسم، بما في ذلك في المحادثات السابقة.",
+  "Merge": "دمج"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3645,7 +3651,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "家用电脑的地址没有保存在手机上，重启后会丢失。",
   "Close anyway": "仍然关闭",
   "Before you sleep": "睡觉前",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "这台电脑不在您的家庭网络中：您对话的声音将通过互联网发送到 %1。只有在这台电脑是您自己设置的情况下才连接。"
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "这台电脑不在您的家庭网络中：您对话的声音将通过互联网发送到 %1。只有在这台电脑是您自己设置的情况下才连接。",
+  "Merge with %1?": "要与 %1 合并吗？",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 已经保存过了。之后两个声音都会以这一个名字显示，包括以往的对话。",
+  "Merge": "合并"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4861,7 +4870,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "L’adresse de l’ordinateur à la maison n’a pas été conservée sur le téléphone et sera perdue après un redémarrage.",
   "Close anyway": "Fermer quand même",
   "Before you sleep": "Avant de dormir",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Cet ordinateur n’est pas sur votre réseau domestique : le son de vos conversations passerait par Internet jusqu’à %1. Ne vous connectez que si vous avez configuré cet ordinateur vous-même."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Cet ordinateur n’est pas sur votre réseau domestique : le son de vos conversations passerait par Internet jusqu’à %1. Ne vous connectez que si vous avez configuré cet ordinateur vous-même.",
+  "Merge with %1?": "Fusionner avec %1 ?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 est déjà enregistré. Les deux voix seront alors affichées sous ce seul nom, y compris dans les conversations passées.",
+  "Merge": "Fusionner"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6077,7 +6089,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Die Adresse des Heimcomputers wurde nicht auf dem Telefon behalten und geht nach einem Neustart verloren.",
   "Close anyway": "Trotzdem schließen",
   "Before you sleep": "Bevor Sie schlafen",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Dieser Computer ist nicht in Ihrem Heimnetz: Der Ton Ihrer Gespräche würde über das Internet an %1 gehen. Verbinden Sie sich nur, wenn Sie diesen Computer selbst eingerichtet haben."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Dieser Computer ist nicht in Ihrem Heimnetz: Der Ton Ihrer Gespräche würde über das Internet an %1 gehen. Verbinden Sie sich nur, wenn Sie diesen Computer selbst eingerichtet haben.",
+  "Merge with %1?": "Mit %1 zusammenführen?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ist bereits gespeichert. Beide Stimmen werden dann unter diesem einen Namen angezeigt, auch in früheren Gesprächen.",
+  "Merge": "Zusammenführen"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7293,7 +7308,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "घर के कंप्यूटर का पता फ़ोन पर नहीं रखा गया और रीस्टार्ट के बाद खो जाएगा।",
   "Close anyway": "फिर भी बंद करें",
   "Before you sleep": "सोने से पहले",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "यह कंप्यूटर आपके घर के नेटवर्क पर नहीं है: आपकी बातचीत की आवाज़ इंटरनेट के ज़रिए %1 तक जाएगी। केवल तभी जुड़ें जब आपने इस कंप्यूटर को खुद सेट किया हो।"
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "यह कंप्यूटर आपके घर के नेटवर्क पर नहीं है: आपकी बातचीत की आवाज़ इंटरनेट के ज़रिए %1 तक जाएगी। केवल तभी जुड़ें जब आपने इस कंप्यूटर को खुद सेट किया हो।",
+  "Merge with %1?": "%1 के साथ मिलाएं?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 पहले से सहेजा हुआ है। इसके बाद दोनों आवाज़ें इसी एक नाम से दिखेंगी, पिछली बातचीत में भी।",
+  "Merge": "मिलाएं"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8509,7 +8527,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "O endereço do computador lá de casa não foi guardado no telemóvel e perder-se-á após um reinício.",
   "Close anyway": "Fechar mesmo assim",
   "Before you sleep": "Antes de dormir",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este computador não está na sua rede doméstica: o som das suas conversas iria pela internet até %1. Só ligue se este computador tiver sido configurado por si."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este computador não está na sua rede doméstica: o som das suas conversas iria pela internet até %1. Só ligue se este computador tiver sido configurado por si.",
+  "Merge with %1?": "Unir com %1?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 já está guardado. As duas vozes passarão a aparecer com esse único nome, incluindo nas conversas anteriores.",
+  "Merge": "Unir"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9725,7 +9746,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адрес домашнего компьютера не сохранён на телефоне и пропадёт после перезапуска.",
   "Close anyway": "Всё равно закрыть",
   "Before you sleep": "Перед сном",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Этот компьютер не в вашей домашней сети: звук ваших разговоров уйдёт через интернет на %1. Подключайтесь, только если вы сами настроили этот компьютер."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Этот компьютер не в вашей домашней сети: звук ваших разговоров уйдёт через интернет на %1. Подключайтесь, только если вы сами настроили этот компьютер.",
+  "Merge with %1?": "Объединить с «%1»?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже сохранён. Оба голоса будут показываться под одним этим именем, в том числе в прошлых разговорах.",
+  "Merge": "Объединить"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10941,7 +10965,10 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "La dirección del ordenador de casa no se guardó en el teléfono y se perderá tras reiniciar.",
   "Close anyway": "Cerrar de todos modos",
   "Before you sleep": "Antes de dormir",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este ordenador no está en su red doméstica: el sonido de sus conversaciones iría por internet a %1. Conéctese solo si fue usted quien configuró este ordenador."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este ordenador no está en su red doméstica: el sonido de sus conversaciones iría por internet a %1. Conéctese solo si fue usted quien configuró este ordenador.",
+  "Merge with %1?": "¿Combinar con %1?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ya está guardado. Las dos voces se mostrarán entonces con ese único nombre, también en conversaciones anteriores.",
+  "Merge": "Combinar"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12157,6 +12184,9 @@
   "The home computer’s address wasn’t kept on the phone, and will be lost after a restart.": "Адресу домашнього комп’ютера не збережено на телефоні, і вона зникне після перезапуску.",
   "Close anyway": "Усе одно закрити",
   "Before you sleep": "Перед сном",
-  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Цей комп’ютер не у вашій домашній мережі: звук ваших розмов піде через інтернет на %1. Підключайтеся, лише якщо ви самі налаштували цей комп’ютер."
+  "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Цей комп’ютер не у вашій домашній мережі: звук ваших розмов піде через інтернет на %1. Підключайтеся, лише якщо ви самі налаштували цей комп’ютер.",
+  "Merge with %1?": "Об’єднати з «%1»?",
+  "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже збережено. Обидва голоси показуватимуться під цим одним іменем, зокрема в минулих розмовах.",
+  "Merge": "Об’єднати"
  }
 }

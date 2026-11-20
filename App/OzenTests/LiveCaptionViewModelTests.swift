@@ -1643,6 +1643,21 @@ struct LiveCaptionViewModelSpeakerTests {
         #expect(!viewModel.pipeline.speakerClusters.contains { $0.name == "Daniela" })
     }
 
+    @Test("a new name another saved person has is reported as a merge, in the spelling that person is saved under")
+    func renameOntoSavedName() {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.enroll(name: "Dana", samples: [Float](repeating: 0.3, count: 96_000)))
+        #expect(viewModel.enroll(name: "Yossi", samples: [Float](repeating: 0.3, count: 96_000)))
+        let dana = viewModel.settings.speakerProfiles[0].id
+
+        #expect(viewModel.mergeTarget(id: dana, renamingTo: "  yossi ") == "Yossi")
+        #expect(viewModel.mergeTarget(id: dana, renamingTo: "Dani") == nil)
+        #expect(viewModel.mergeTarget(id: dana, renamingTo: "dana") == nil)
+
+        viewModel.renameProfile(id: dana, to: "yossi")
+        #expect(viewModel.settings.speakerProfiles.map(\.name) == ["Yossi", "Yossi"])
+    }
+
     @Test("a blank new name is ignored")
     func blankRename() {
         let (viewModel, _) = makeViewModel()

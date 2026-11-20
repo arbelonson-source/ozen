@@ -25,6 +25,7 @@ struct SettingsView: View {
     @State private var isOnScreen = false
     @State private var renamingProfile: SpeakerProfile?
     @State private var renameText = ""
+    @State private var mergeQuestion: (profile: SpeakerProfile, target: String)?
     /// A saved speaker swiped away, waiting for a yes: getting them back
     /// means recording their voice again.
     @State private var pendingSpeakerRemoval: String?
@@ -238,13 +239,34 @@ struct SettingsView: View {
                 TextField(tr("שם", "Name"), text: $renameText)
                 Button(tr("שמירה", "Save")) {
                     if let profile = renamingProfile {
-                        viewModel.renameProfile(id: profile.id, to: renameText)
+                        if let target = viewModel.mergeTarget(id: profile.id, renamingTo: renameText) {
+                            mergeQuestion = (profile, target)
+                        } else {
+                            viewModel.renameProfile(id: profile.id, to: renameText)
+                        }
                     }
                     renamingProfile = nil
                 }
                 Button(tr("ביטול", "Cancel"), role: .cancel) { renamingProfile = nil }
             } message: {
                 Text(tr("השם החדש יופיע גם בשורות שכבר מוצגות.", "The new name will also appear on lines already in the captions."))
+            }
+            .alert(
+                tr("למזג עם %1?", "Merge with %1?", args: [mergeQuestion?.target ?? ""]),
+                isPresented: Binding(get: { mergeQuestion != nil }, set: { if !$0 { mergeQuestion = nil } })
+            ) {
+                Button(tr("מיזוג", "Merge")) {
+                    if let question = mergeQuestion {
+                        viewModel.renameProfile(id: question.profile.id, to: question.target)
+                    }
+                    mergeQuestion = nil
+                }
+                Button(tr("ביטול", "Cancel"), role: .cancel) {
+                    renamingProfile = mergeQuestion?.profile
+                    mergeQuestion = nil
+                }
+            } message: {
+                Text(tr("%1 כבר שמור. שני הקולות יוצגו תחת השם הזה, גם בשיחות קודמות.", "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.", args: [mergeQuestion?.target ?? ""]))
             }
             .confirmationDialog(
                 tr("למחוק את %1 מהדוברים השמורים?", "Delete %1 from saved speakers?", args: ["\(pendingSpeakerRemoval ?? "")"]),
