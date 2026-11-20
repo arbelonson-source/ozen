@@ -139,6 +139,15 @@ class SpeechPauseCoordinatorTest {
     }
 
     @Test
+    fun `text in a script no voice reads is never sayable, known scripts and mixed text keep their voice`() {
+        val synthesizer = FakeSynthesizer()
+        for (text in listOf("안녕하세요", "こんにちは", "สวัสดี", "Γειά σου")) assertFalse(synthesizer.canSay(text), text)
+        for (text in listOf("שלום", "مرحبا", "Привет", "Hello", "你好", "नमस्ते", "ሰላም", "123", "😀", "OK 👍", "שלום 안녕")) {
+            assertTrue(synthesizer.canSay(text), text)
+        }
+    }
+
+    @Test
     fun `without a Hebrew voice only Hebrew text is held back - English still has a voice`() {
         val synthesizer = FakeSynthesizer()
         assertTrue(synthesizer.canSay("שלום"))

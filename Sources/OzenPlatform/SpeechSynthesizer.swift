@@ -94,7 +94,8 @@ public final class SpeechSynthesizer: SpeechSynthesizing {
         let utterance = AVSpeechUtterance(string: trimmed)
         // Spoken before the voice list was read: ask for the language, so
         // Hebrew never falls back to an English voice.
-        switch UILanguage.forSpeaking(trimmed, otherwise: Localization.language) {
+        guard let language = UILanguage.forSpeaking(trimmed, otherwise: Localization.language) else { return }
+        switch language {
         case .hebrew:
             utterance.voice = voice ?? AVSpeechSynthesisVoice(language: languageCode)
         case .english:

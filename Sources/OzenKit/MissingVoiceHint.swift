@@ -25,4 +25,8 @@ public enum MissingVoiceHint {
             ? tr("לא מותקן קול בעברית. הגדרות ← נגישות ← קריאה ודיבור ← קולות ← עברית.", "No Hebrew voice installed. Settings → Accessibility → Read & Speak → Voices → Hebrew.")
             : tr("לא מותקן קול בעברית. הגדרות ← נגישות ← הקראת תוכן ← קולות ← עברית.", "No Hebrew voice installed. Settings → Accessibility → Spoken Content → Voices → Hebrew.")
     }
+
+    public static var unreadableText: String {
+        tr("אין קול שמקריא את הכתב הזה, ולכן אי אפשר להשמיע את הטקסט.", "No voice reads this writing, so the text can’t be played aloud.")
+    }
 }

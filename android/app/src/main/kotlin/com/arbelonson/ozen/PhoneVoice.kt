@@ -186,7 +186,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     // False when the engine wouldn't take every piece of the reply: what it
     // had taken is dropped, so it is said again whole or not at all.
     private fun say(text: String, rate: Float): Boolean {
-        val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
+        val language = UILanguage.forSpeaking(text, otherwise = Localization.language) ?: return false
         engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
         engine.setSpeechRate(rate / NORMAL_RATE)
         SpeakerChoice.beforeSpeaking(appContext, engine)

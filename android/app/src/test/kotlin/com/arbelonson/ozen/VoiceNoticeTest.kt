@@ -26,6 +26,11 @@ class VoiceNoticeTest {
     }
 
     @Test
+    fun `text in a script no voice reads gets its own notice`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("No voice reads this writing, so the text can’t be played aloud.", VoiceNotice.unreadableText())
+    }
+
+    @Test
     fun `settings says when the app's language has no voice, and the hebrew one only when the app is in hebrew`() = Localization.withLanguage(UILanguage.English) {
         assertEquals(noFrench, VoiceNotice.forSettings(UILanguage.French, setOf(UILanguage.English)))
         assertEquals(noHebrew, VoiceNotice.forSettings(UILanguage.Hebrew, setOf(UILanguage.English)))
