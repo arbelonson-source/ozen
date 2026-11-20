@@ -284,7 +284,8 @@ class MainActivity : ComponentActivity() {
     private fun takeSharedRecording(intent: Intent?): Boolean {
         if (intent == null) return false
         val stream = if (intent.action == Intent.ACTION_SEND) IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) else null
-        val link = RecordingIntent.source(intent.action, intent.type, intent.dataString, stream?.toString(), packageName) ?: return false
+        val resolved = if (intent.action == Intent.ACTION_VIEW && intent.type == null) intent.data?.let { runCatching { contentResolver.getType(it) }.getOrNull() } else null
+        val link = RecordingIntent.source(intent.action, intent.type, intent.dataString, stream?.toString(), packageName, resolved) ?: return false
         return (application as OzenApplication).transcriber.open(Uri.parse(link))
     }
 

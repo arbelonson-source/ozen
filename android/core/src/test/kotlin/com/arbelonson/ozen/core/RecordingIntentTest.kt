@@ -8,8 +8,8 @@ class RecordingIntentTest {
     private val own = "com.arbelonson.ozen"
     private val note = "content://com.example.files/voice/1"
 
-    private fun pick(action: String?, type: String?, data: String? = null, stream: String? = null) =
-        RecordingIntent.source(action, type, data, stream, own)
+    private fun pick(action: String?, type: String?, data: String? = null, stream: String? = null, resolved: String? = null) =
+        RecordingIntent.source(action, type, data, stream, own, resolved)
 
     @Test
     fun aSharedVoiceNoteIsReadFromTheStream() {
@@ -44,5 +44,12 @@ class RecordingIntentTest {
         assertNull(pick(RecordingIntent.VIEW, null, data = note))
         assertNull(pick("android.intent.action.MAIN", "audio/mp4", data = note))
         assertNull(pick(RecordingIntent.VIEW, "audio/mp4", data = null))
+    }
+
+    @Test
+    fun anOpenedRecordingWithNoTypeOnTheIntentUsesTheTypeTheProviderGives() {
+        assertEquals(note, pick(RecordingIntent.VIEW, null, data = note, resolved = "audio/mp4"))
+        assertNull(pick(RecordingIntent.VIEW, null, data = note, resolved = "text/plain"))
+        assertNull(pick(RecordingIntent.SEND, null, stream = note, resolved = "audio/mp4"))
     }
 }
