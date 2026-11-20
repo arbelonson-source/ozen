@@ -12,6 +12,8 @@ else
   filter="-e class $SELECTORS"
 fi
 
+adb uninstall $APP.test > /dev/null 2>&1
+adb uninstall $APP > /dev/null 2>&1
 ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 || exit $?
 
 for model in "$HOME"/ozen-models/*.bin; do
