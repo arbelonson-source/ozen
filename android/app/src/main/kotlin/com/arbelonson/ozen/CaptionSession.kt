@@ -616,6 +616,8 @@ class CaptionSession(
 
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
 
+        override fun wordFixes() = settings.current.value.wordFixes
+
         override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
             val fix = WordFix(heard, written)
             val onScreen = { line: UUID, change: WordFix ->
@@ -1833,7 +1835,8 @@ class CaptionSession(
         val fix = WordFix(heard, written)
         val known = settings.current.value.vocabulary.any { it.equals(fix.written.trim(), ignoreCase = true) }
         if (fix.written.isNotBlank() && !known) addWord(fix.written.trim())
-        if (everyTime) setWordFixes(WordFixes.adding(fix, settings.current.value.wordFixes))
+        val fixes = settings.current.value.wordFixes
+        if (everyTime && WordFixes.canAdd(fix, fixes)) setWordFixes(WordFixes.adding(fix, fixes))
     }
 
     /**

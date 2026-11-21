@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -53,7 +54,7 @@ import com.arbelonson.ozen.core.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun FixWordDialog(shown: String, languageCode: String, error: String? = null, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
+internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<WordFix>, error: String? = null, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
     val words = WordFixes.wordsOf(shown)
     var first by rememberSaveable { mutableStateOf(-1) }
     var last by rememberSaveable { mutableStateOf(-1) }
@@ -64,6 +65,11 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
     val heard = if (typed.isNotBlank()) typed.trim() else picked
     val ready = FixWordForm.changes(shown, heard, written)
     val note = FixWordForm.note(shown, typed, heard, written)
+    // With the list full, a new fix kept for next time pushed another one
+    // off the end without a word. The switch now stays off and says why,
+    // as the Words screen does, and Save still fixes this line.
+    val keepNote = WordFixes.refusalNote(FixWordForm.keepRefusal(shown, heard, written, fixes))
+    val keeps = everyTime && keepNote == null
     val direction = if (CaptionLayout.readsRightToLeft(shown, languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val everyTimeLabel = tr("תיקון בכל פעם", "Fix it every time")
     // Said as the dialog closes on a Save, as on the iPhone, not on the tap:
@@ -146,19 +152,21 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 48.dp)
-                        .clickable(role = Role.Switch) { everyTime = !everyTime }
+                        .clickable(enabled = keepNote == null, role = Role.Switch) { everyTime = !everyTime }
                         .clearAndSetSemantics {
                             contentDescription = everyTimeLabel
                             role = Role.Switch
-                            toggleableState = if (everyTime) ToggleableState.On else ToggleableState.Off
+                            toggleableState = if (keeps) ToggleableState.On else ToggleableState.Off
+                            if (keepNote != null) disabled()
                         },
                 ) {
                     Text(everyTimeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(end = 12.dp))
-                    Switch(checked = everyTime, onCheckedChange = null)
+                    Switch(checked = keeps, onCheckedChange = null, enabled = keepNote == null)
                 }
+                keepNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
             }
         },
-        confirmButton = { TextButton(onClick = { saving = true; onSave(heard, written.trim(), everyTime) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
+        confirmButton = { TextButton(onClick = { saving = true; onSave(heard, written.trim(), keeps) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
         dismissButton = { TextButton(onClick = dismiss) { Text(tr("ביטול", "Cancel")) } },
     )
 }
@@ -177,6 +185,13 @@ internal object FixWordForm {
         return fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty() &&
             WordFixes.apply(listOf(WordFix(heard, written.trim())), shown) != shown
     }
+
+    /**
+     * Why Fix it every time can't keep a fix that changes the line: the
+     * Words screen's own refusal, so a full list says so here too.
+     */
+    fun keepRefusal(shown: String, heard: String, written: String, fixes: List<WordFix>): WordFixes.Refusal? =
+        if (changes(shown, heard, written)) WordFixes.refusal(WordFix(heard, written.trim()), fixes) else null
 
     /**
      * The line under the first box: a typed word the line does not have,

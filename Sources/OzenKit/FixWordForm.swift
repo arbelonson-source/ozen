@@ -32,6 +32,10 @@ public enum FixWordForm {
         return .heardWords
     }
 
+    public static func keepRefusal(line: String, heard: String, written: String, to list: [WordFix]) -> WordFixes.Refusal? {
+        changes(line: line, heard: heard, written: written) ? refusal(WordFix(heard: heard, written: written), to: list) : nil
+    }
+
     public static func tapped(_ picked: ClosedRange<Int>?, index: Int, words: [String]) -> ClosedRange<Int>? {
         guard let range = picked else { return index...index }
         if range.contains(index) {

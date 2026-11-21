@@ -143,6 +143,7 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.RecordingIntent
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SpokenLanguageNote
+import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
@@ -669,6 +670,7 @@ private fun OzenApp(
                                         if (fixed) app.captions.saveWordFix(heard, written, everyTime)
                                     }
                                 },
+                                wordFixes = current.wordFixes,
                                 onNameSpeaker = app.captions::nameSpeaker,
                                 savedPersonRenamed = app.captions::savedPersonRenamed,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
@@ -927,6 +929,7 @@ private fun CaptionScreen(
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFixWord: (UUID, String, String, Boolean) -> Boolean,
+    wordFixes: List<WordFix>,
     onNameSpeaker: (line: UUID, name: String, onlyThisLine: Boolean) -> Boolean,
     savedPersonRenamed: (line: UUID, name: String) -> String?,
     savedSpeakerNames: () -> List<String>,
@@ -1050,6 +1053,7 @@ private fun CaptionScreen(
         FixWordDialog(
             text,
             languageCode = languageCode,
+            fixes = wordFixes,
             error = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.").takeIf { fixRefused },
             onSave = { heard, written, everyTime ->
                 if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {

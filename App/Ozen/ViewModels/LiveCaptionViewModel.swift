@@ -2168,7 +2168,7 @@ public final class LiveCaptionViewModel {
     public var wordFixes: [WordFix] { settings.wordFixes }
 
     public func addWordFix(_ fix: WordFix) {
-        guard FixWordForm.hasHeardWord(fix.heard) else { return }
+        guard FixWordForm.refusal(fix, to: settings.wordFixes) == nil else { return }
         let cleaned = WordFixes.adding(fix, to: settings.wordFixes)
         guard cleaned != settings.wordFixes else { return }
         settings.wordFixes = cleaned

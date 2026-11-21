@@ -2934,6 +2934,34 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(!viewModel.settings.vocabulary.contains("Avital"))
     }
 
+    @Test("Fix it every time with the list full fixes the line and keeps every saved fix: before, the last one in the list was dropped without a word")
+    func wordFixWithAFullListDropsNothing() async throws {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID()).json"))
+        var saved = AppSettings.default
+        saved.wordFixes = (0..<WordFixes.maximumFixes).map { WordFix(heard: "word\($0)", written: "Word \($0)") }
+        try store.save(saved)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        let full = viewModel.wordFixes
+        #expect(full.count == WordFixes.maximumFixes)
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        let line = viewModel.segments[0]
+
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, toLine: line))
+        #expect(viewModel.segments[0].text.contains("Avi"))
+        #expect(viewModel.wordFixes == full)
+        #expect(store.load().wordFixes == full)
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()
