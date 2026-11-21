@@ -2542,12 +2542,19 @@ public final class LiveCaptionViewModel {
     /// Renames the person `id` belongs to: every saved voice print with
     /// that name, like the labels on screen.
     public func renameProfile(id: UUID, to newName: String) {
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              let index = settings.speakerProfiles.firstIndex(where: { $0.id == id }),
-              settings.speakerProfiles[index].name != trimmed
-        else { return }
-        renamePerson(from: settings.speakerProfiles[index].name, to: trimmed)
+        guard let index = settings.speakerProfiles.firstIndex(where: { $0.id == id }) else { return }
+        let oldName = settings.speakerProfiles[index].name
+        let destination = SavedPersonMerge.destination(renaming: oldName, to: newName, savedNames: settings.speakerProfiles.map(\.name))
+        guard !destination.isEmpty, oldName != destination else { return }
+        renamePerson(from: oldName, to: destination)
+    }
+
+    /// The other saved person `newName` already belongs to, in the
+    /// spelling they are saved under: renaming onto it joins two people
+    /// into one, which the screen asks about first.
+    public func mergeTarget(id: UUID, renamingTo newName: String) -> String? {
+        guard let old = settings.speakerProfiles.first(where: { $0.id == id })?.name else { return nil }
+        return SavedPersonMerge.target(renaming: old, to: newName, savedNames: settings.speakerProfiles.map(\.name))
     }
 
     private func renamePerson(from oldName: String, to newName: String) {

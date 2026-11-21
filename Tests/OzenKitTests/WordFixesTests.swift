@@ -188,4 +188,121 @@ struct WordFixesTests {
             #expect(!WordFixes.spokenLabel(one, in: language).contains("→"), "\(language)")
         }
     }
+
+    @Test("a curly apostrophe typed on the phone matches the straight one the engine writes, and the reverse")
+    func curlyApostrophe() {
+        #expect(WordFixes.apply([fix("O\u{2019}Neil", "Neil")], to: "I met O'Neil today") == "I met Neil today")
+        #expect(WordFixes.apply([fix("O'Neil", "Neil")], to: "I met O\u{2019}Neil today") == "I met Neil today")
+        #expect(WordFixes.apply([fix("O\u{02BC}Neil", "Neil")], to: "I met O'Neil today") == "I met Neil today")
+        #expect(WordFixes.normalized([fix("O\u{2019}Neil", "Neil"), fix("O'Neil", "Neil")]).count == 1)
+    }
+
+    @Test("Arabic vowel marks, tatweel and the alef's hamza are looked past when matching, as for alert words, but not the alef maqsura or ta marbuta")
+    func arabicFolding() {
+        let ahmad = "\u{0623}\u{062D}\u{0645}\u{062F}"
+        let typed = "\u{0627}\u{062D}\u{0645}\u{062F}"
+        #expect(WordFixes.apply([fix(typed, "Ahmad")], to: "hi \(ahmad) hi") == "hi Ahmad hi")
+        #expect(WordFixes.apply([fix(ahmad, "Ahmad")], to: "hi \(typed) hi") == "hi Ahmad hi")
+        let marked = "\u{0645}\u{064F}\u{062D}\u{0645}\u{0640}\u{062F}"
+        #expect(WordFixes.apply([fix("\u{0645}\u{062D}\u{0645}\u{062F}", "Muhammad")], to: marked) == "Muhammad")
+        let maqsura = "\u{0645}\u{0648}\u{0633}\u{0649}"
+        #expect(WordFixes.apply([fix("\u{0645}\u{0648}\u{0633}\u{064A}", "Musa")], to: maqsura) == maqsura)
+        let marbuta = "\u{0641}\u{0627}\u{0637}\u{0645}\u{0629}"
+        #expect(WordFixes.apply([fix("\u{0641}\u{0627}\u{0637}\u{0645}\u{0647}", "Fatima")], to: marbuta) == marbuta)
+        #expect(WordFixes.apply([fix("jose", "Joseph")], to: "hi Jos\u{00E9}") == "hi Jos\u{00E9}")
+    }
+
+    @Test("a short Hebrew name does not rewrite the everyday word it hides in")
+    func shortNameInEverydayWord() {
+        let lea = "\u{05DC}\u{05D0}\u{05D4}"
+        let full = "\u{05DE}\u{05DC}\u{05D0}\u{05D4}"
+        #expect(WordFixes.apply([fix(lea, "\u{05DC}\u{05D9}\u{05D4}")], to: full) == full)
+        #expect(WordFixes.apply([fix(lea, "\u{05DC}\u{05D9}\u{05D4}")], to: "\u{05D5}\u{05DC}\u{05D0}\u{05D4}") == "\u{05D5}\u{05DC}\u{05D9}\u{05D4}")
+        #expect(WordFixes.apply([fix(lea, "\u{05DC}\u{05D9}\u{05D4}")], to: lea) == "\u{05DC}\u{05D9}\u{05D4}")
+        let whenFull = "\u{05DB}\u{05E9}\u{05DE}\u{05DC}\u{05D0}\u{05D4}"
+        #expect(WordFixes.apply([fix(lea, "\u{05DC}\u{05D9}\u{05D4}")], to: whenFull) == whenFull)
+        let sara = "\u{05E9}\u{05E8}\u{05D4}"
+        let job = "\u{05DE}\u{05E9}\u{05E8}\u{05D4}"
+        let kosher = "\u{05DB}\u{05E9}\u{05E8}\u{05D4}"
+        #expect(WordFixes.apply([fix(sara, "\u{05E9}\u{05E8}\u{05D9}")], to: "\(job) \(kosher)") == "\(job) \(kosher)")
+        #expect(WordFixes.apply([fix(sara, "\u{05E9}\u{05E8}\u{05D9}")], to: "\u{05DC}\u{05E9}\u{05E8}\u{05D4}") == "\u{05DC}\u{05E9}\u{05E8}\u{05D9}")
+        #expect(WordFixes.apply([fix(sara, "\u{05E9}\u{05E8}\u{05D9}")], to: "\u{05D5}\u{05DC}\u{05E9}\u{05E8}\u{05D4}") == "\u{05D5}\u{05DC}\u{05E9}\u{05E8}\u{05D9}")
+    }
+
+    @Test("a name does not rewrite the everyday Arabic word that differs only in a final ya or alef maqsura")
+    func arabicEverydayWordKept() {
+        let on = "وضع الكتاب على الطاولة"
+        #expect(WordFixes.apply([fix("علي", "Ali")], to: on) == on)
+        #expect(WordFixes.apply([fix("علي", "Ali")], to: "قال علي اليوم") == "قال Ali اليوم")
+        #expect(WordFixes.apply([fix("علي", "Ali")], to: "قال عليّ اليوم") == "قال Ali اليوم")
+    }
+
+    @Test("a fix that only adds a hamza is allowed, kept and applied once")
+    func hamzaOnlyFix() {
+        let hamza = fix("احمد", "أحمد")
+        #expect(WordFixes.refusal(hamza, to: []) == nil)
+        #expect(WordFixes.normalized([hamza]) == [hamza])
+        #expect(WordFixes.apply([hamza], to: "قال احمد اليوم") == "قال أحمد اليوم")
+        #expect(WordFixes.apply([hamza], to: "قال أحمد اليوم") == "قال أحمد اليوم")
+        #expect(WordFixes.apply([hamza], to: "قال إحمد اليوم") == "قال أحمد اليوم")
+        let curly = fix("don\u{2019}t", "don't")
+        #expect(WordFixes.refusal(curly, to: []) == nil)
+        #expect(WordFixes.normalized([curly]) == [curly])
+        #expect(WordFixes.refusal(fix("nasa", "NASA"), to: []) == .sameWord)
+    }
+
+    @Test("an Arabic word with a mark inside, between Arabic words, is replaced and the rest kept exactly")
+    func arabicMarkMidSentence() {
+        #expect(WordFixes.apply([fix("محمد", "Muhammad")], to: "قال مُحمد اليوم") == "قال Muhammad اليوم")
+    }
+
+    @Test("a curly apostrophe inside the heard word matches next to a full stop and keeps it")
+    func curlyApostropheBeforePunctuation() {
+        #expect(WordFixes.apply([fix("don't", "do not")], to: "I don\u{2019}t.") == "I do not.")
+        #expect(WordFixes.apply([fix("don\u{2019}t", "do not")], to: "Wait, don't!") == "Wait, do not!")
+    }
+
+    @Test("a fix that adds words is not written twice where the line spells the name with the other apostrophe or with vowel marks")
+    func addedWordsOnceAcrossSpellings() {
+        let smith = fix("O\u{2019}Neil", "O\u{2019}Neil Smith")
+        #expect(WordFixes.apply([smith], to: "I met O'Neil Smith") == "I met O'Neil Smith")
+        #expect(WordFixes.apply([smith], to: "I met O'Neil") == "I met O\u{2019}Neil Smith")
+        let surname = fix("احمد", "أحمد علي")
+        #expect(WordFixes.apply([surname], to: "قال أَحمد علي") == "قال أَحمد علي")
+        #expect(WordFixes.apply([surname], to: "قال احمد") == "قال أحمد علي")
+    }
+
+    @Test("a fix that only respells its word still applies where the line spells it another way, and can take vowel marks away")
+    func respellingAcrossSpellings() {
+        let plain = fix("مُحمّد", "محمد")
+        #expect(WordFixes.normalized([plain]) == [plain])
+        #expect(WordFixes.apply([plain], to: "قال مُحَمَّد") == "قال محمد")
+        #expect(WordFixes.apply([plain], to: "قال مُحمّد") == "قال محمد")
+        #expect(WordFixes.apply([plain], to: "قال محمد") == "قال محمد")
+    }
+
+    @Test("a dotted capital I matches its small i, and a fix that only adds the dot is kept, the same on both phones")
+    func dottedCapitalI() {
+        #expect(WordFixes.apply([fix("istanbul", "Constantinople")], to: "\u{0130}stanbul g\u{00FC}zel") == "Constantinople g\u{00FC}zel")
+        let dot = fix("izmir", "\u{0130}zmir")
+        #expect(WordFixes.refusal(dot, to: []) == nil)
+        #expect(WordFixes.apply([dot], to: "izmir ve \u{0130}zmir") == "\u{0130}zmir ve \u{0130}zmir")
+        #expect(WordFixes.refusal(fix("istanbul", "Istanbul"), to: []) == .sameWord)
+    }
+
+    @Test("an acronym or a name typed with the phone's curly quote, gershayim or geresh matches the engine's straight one")
+    func hebrewQuoteMarks() {
+        #expect(WordFixes.apply([fix("\u{05D3}\u{201D}\u{05E8}", "\u{05D3}\u{05D5}\u{05E7}\u{05D8}\u{05D5}\u{05E8}")], to: "\u{05D3}\"\u{05E8} \u{05DB}\u{05D4}\u{05DF}") == "\u{05D3}\u{05D5}\u{05E7}\u{05D8}\u{05D5}\u{05E8} \u{05DB}\u{05D4}\u{05DF}")
+        #expect(WordFixes.apply([fix("\u{05E6}\u{05D4}\u{05F4}\u{05DC}", "IDF")], to: "\u{05E6}\u{05D4}\"\u{05DC} \u{05D1}\u{05D0}") == "IDF \u{05D1}\u{05D0}")
+        #expect(WordFixes.apply([fix("\u{05E6}\u{05F3}\u{05E8}\u{05DC}\u{05D9}", "Charlie")], to: "\u{05E6}'\u{05E8}\u{05DC}\u{05D9} \u{05D1}\u{05D0}") == "Charlie \u{05D1}\u{05D0}")
+        #expect(WordFixes.apply([fix("\u{05E6}'\u{05E8}\u{05DC}\u{05D9}", "Charlie")], to: "\u{05E6}\u{05F3}\u{05E8}\u{05DC}\u{05D9} \u{05D1}\u{05D0}") == "Charlie \u{05D1}\u{05D0}")
+    }
+
+    @Test("a heard word of only vowel marks or tatweel can't be added and changes nothing")
+    func onlyMarksHeard() {
+        #expect(WordFixes.refusal(fix("\u{05B8}", "x"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix("\u{0640}", "x"), to: []) == .heardWords)
+        #expect(WordFixes.normalized([fix("\u{064E}", "x")]).isEmpty)
+        #expect(WordFixes.apply([fix("\u{0640}", "x")], to: "a \u{0640} b") == "a \u{0640} b")
+    }
 }

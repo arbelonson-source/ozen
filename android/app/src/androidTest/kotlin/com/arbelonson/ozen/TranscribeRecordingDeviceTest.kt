@@ -140,6 +140,31 @@ class TranscribeRecordingDeviceTest {
         }
     }
 
+    // Ozen already open on the first-run guide, so the recording arrives in
+    // onNewIntent: it left the caption screen's first appearance unused, and
+    // the captions started by themselves once the recording screen closed.
+    @Test
+    fun aRecordingSharedWhileTheFirstRunGuideIsOpenUsesUpTheCaptionScreensFirstAppearance() {
+        val uri = lecture(2, "Shared while running.wav")
+        val intent = Intent(Intent.ACTION_SEND).setClassName(context, MainActivity::class.java.name).setType("audio/wav")
+            .putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        app.settings.change { it.hasCompletedOnboarding = false }
+        compose.runOnUiThread { app.captions.launchHandled = false }
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.waitForIdle()
+                assertTrue("the guide used up the first appearance", app.captions.firstAppearancePending())
+                scenario.onActivity { it.startActivity(intent) }
+                compose.waitUntil(10_000) { transcriber.state.value !is FileTranscription.Idle }
+                compose.waitUntil(5_000) { !app.captions.firstAppearancePending() }
+            }
+        } finally {
+            compose.runOnUiThread { app.captions.launchHandled = true }
+            transcriber.close()
+            app.settings.change { it.hasCompletedOnboarding = true }
+        }
+    }
+
     @Test
     fun cancellingStopsTheWorkQuicklyAndLeavesNothingInHistory() {
         val uri = lecture(240, "Cancel me.wav")
