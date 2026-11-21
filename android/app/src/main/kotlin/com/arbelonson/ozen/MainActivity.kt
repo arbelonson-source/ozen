@@ -587,6 +587,7 @@ private fun OzenApp(
                             query = "",
                             marksUncertain = current.display.markUncertainLines,
                             emphasizeNumbers = current.display.emphasizeNumbers,
+                            captionSize = current.display.fontSize,
                             // Renamed or deleted inside: the empty screen's offer follows.
                             onClose = {
                                 reading = null
@@ -639,6 +640,7 @@ private fun OzenApp(
                             retention = current.historyRetention,
                             marksUncertain = current.display.markUncertainLines,
                             emphasizeNumbers = current.display.emphasizeNumbers,
+                            captionSize = current.display.fontSize,
                             onClose = { showingHistory = false },
                             languageCode = current.languageCode,
                             onTranscribe = { app.transcriber.open(it) },

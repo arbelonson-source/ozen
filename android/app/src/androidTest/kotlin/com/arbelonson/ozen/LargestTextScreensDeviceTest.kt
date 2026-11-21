@@ -39,6 +39,7 @@ import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.DisplayPreferences.Theme
 import java.io.File
 import java.util.UUID
@@ -145,7 +146,7 @@ class LargestTextScreensDeviceTest {
         store.save(record)
         try {
             onASmallPhoneAtTheLargestText(scrolling = false) {
-                StarredLinesScreen(app.captions.savedConversations, marksUncertain = true, emphasizeNumbers = true, onClose = {}, languageCode = "en")
+                StarredLinesScreen(app.captions.savedConversations, marksUncertain = true, emphasizeNumbers = true, captionSize = DisplayPreferences.default.fontSize, onClose = {}, languageCode = "en")
             }
             compose.waitUntil(5_000) { compose.onAllNodes(hasContentDescription("Starred line 1:", substring = true)).fetchSemanticsNodes().isNotEmpty() }
             assertNothingCutOrOverlapping()
