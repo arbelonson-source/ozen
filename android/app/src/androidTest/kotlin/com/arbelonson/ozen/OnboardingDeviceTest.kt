@@ -82,6 +82,10 @@ class OnboardingDeviceTest {
     @Before
     fun firstLaunch() {
         modelFiles.hold()
+        // The app listed the models on the phone when it started; since
+        // the Ready page's download note follows that list, it has to
+        // see them gone, as on a new phone.
+        app.captions.phoneModels.refreshInstalled()
         instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
@@ -104,6 +108,7 @@ class OnboardingDeviceTest {
     @After
     fun putBack() {
         modelFiles.putBack()
+        app.captions.phoneModels.refreshInstalled()
         AlertNotifier.allowed = notificationsAllowed
         compose.runOnUiThread {
             if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
@@ -319,6 +324,8 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Next").performClick()
 
         compose.onNodeWithText("✓ Microphone approved").assertExists()
+        // On a new phone the system's yes is what turns Ozen's notifications on.
+        AlertNotifier.allowed = { true }
         compose.onNodeWithText("Approve notifications").performScrollTo().performClick()
         compose.waitUntil(5_000) { shown("✓ Notifications approved") }
         compose.onNodeWithText("Next").performClick()

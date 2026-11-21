@@ -190,6 +190,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     renaming?.let { name ->
         RenameSpeakerDialog(
             name,
+            savedNames = profiles.map { it.name },
             onRename = { newName ->
                 renaming = null
                 speakers.renameSpeaker(name, newName)
@@ -216,8 +217,9 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
 }
 
 @Composable
-private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDismiss: () -> Unit) {
+private fun RenameSpeakerDialog(name: String, savedNames: List<String>, onRename: (String) -> Unit, onDismiss: () -> Unit) {
     var draft by rememberSaveable(name) { mutableStateOf(name) }
+    var merging by rememberSaveable(name) { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("שינוי שם", "Rename")) },
@@ -227,9 +229,25 @@ private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDism
                 OutlinedTextField(value = draft, onValueChange = { draft = it }, label = { Text(tr("שם", "Name")) }, singleLine = true)
             }
         },
-        confirmButton = { TextButton(onClick = { onRename(draft) }) { Text(tr("שמירה", "Save")) } },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val target = SavedPersonMerge.target(name, draft, savedNames)
+                    if (target == null) onRename(draft) else merging = target
+                },
+            ) { Text(tr("שמירה", "Save")) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("ביטול", "Cancel")) } },
     )
+    merging?.let { target ->
+        AlertDialog(
+            onDismissRequest = { merging = null },
+            title = { Text(tr("למזג עם %1?", "Merge with %1?", listOf(target))) },
+            text = { DialogText(tr("%1 כבר שמור. שני הקולות יוצגו תחת השם הזה, גם בשיחות קודמות.", "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.", listOf(target))) },
+            confirmButton = { TextButton(onClick = { merging = null; onRename(target) }) { Text(tr("מיזוג", "Merge")) } },
+            dismissButton = { TextButton(onClick = { merging = null }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
 }
 
 /**
