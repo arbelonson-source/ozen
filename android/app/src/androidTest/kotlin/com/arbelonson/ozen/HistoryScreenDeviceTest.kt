@@ -93,6 +93,7 @@ class HistoryScreenDeviceTest {
     @After
     fun restore() {
         seeded.forEach(store::delete)
+        File(app.cacheDir, CaptionSession.SHARED_FOLDER).deleteRecursively()
         app.settings.change {
             it.saveHistory = savingBefore
             it.historyRetention = retentionBefore
@@ -666,6 +667,7 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
+        File(app.cacheDir, CaptionSession.SHARED_FOLDER).deleteRecursively()
         val record = longConversation("Shared then deleted opening")
         val started = CopyOnWriteArrayList<Intent>()
         val sheet = startsHeldBack(started)
@@ -678,6 +680,9 @@ class HistoryScreenDeviceTest {
             compose.onNodeWithText("Delete").performClick()
             compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
             compose.waitUntil(5_000) { store.load(record.id) == null }
+            // The record goes first and the shared copy a moment later, in the
+            // same background delete: the conversation closes once both are gone.
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Conversation").fetchSemanticsNodes().isEmpty() }
             assertEquals(emptyList<File>(), sharedCopies())
         } finally {
             instrumentation.removeMonitor(sheet)
