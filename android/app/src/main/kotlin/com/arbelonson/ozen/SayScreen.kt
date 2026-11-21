@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -172,9 +173,9 @@ internal fun SayScreen(
         }
         Unit
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-            Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
+            Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
                 OzenTopBar(tr("להגיד משהו", "Say something"), onClose = onClose, closeLabel = tr("סגירה", "Close"))
                 Column(
                     modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp).navigationBarsPadding(),
@@ -318,9 +319,13 @@ internal fun SayScreen(
                     Spacer(Modifier.height(16.dp))
                 }
             }
+            // Under the page, not over it: over it, the end of the page, Restore defaults
+            // there, sat under the Undo bar and could not be scrolled out from under it.
+            // Read before the page, so a screen reader finds Undo at once.
+            SnackbarHost(undo, modifier = Modifier.align(Alignment.CenterHorizontally).semantics { isTraversalGroup = true; traversalIndex = -1f }) {
+                Snackbar(it, modifier = Modifier.navigationBarsPadding().padding(16.dp))
+            }
         }
-        // Read before the page, so a screen reader finds Undo at once.
-        SnackbarHost(undo, modifier = Modifier.align(Alignment.BottomCenter).semantics { isTraversalGroup = true; traversalIndex = -1f }.navigationBarsPadding().imePadding().padding(16.dp))
     }
     if (confirmingRestore) {
         AlertDialog(

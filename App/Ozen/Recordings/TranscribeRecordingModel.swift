@@ -82,6 +82,13 @@ final class TranscribeRecordingModel {
         return false
     }
 
+    /// A line of the recording's text is sized as a saved line in History:
+    /// seven tenths of the captions the person chose, never below the
+    /// phone's body text.
+    func lineSize(bodySize: Double) -> Double {
+        DisplayPreferences.savedLineSize(captionSize: host.captionSize, bodySize: bodySize)
+    }
+
     func load() async {
         switch state {
         case .idle, .failed: break

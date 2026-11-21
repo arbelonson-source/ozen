@@ -862,4 +862,27 @@ struct TranscribeRecordingModelTests {
         #expect(host.log.filter { $0 == "hold" }.count == 1)
         await screen.close()
     }
+
+    // Captions turned up to 64 for weak eyes, the recording's text was read
+    // back at the body size, a quarter of that, unlike a saved line in History.
+    @Test("the recording's lines are sized as saved lines in History: seven tenths of the captions the person chose, never below the body text")
+    func linesFollowTheCaptionSize() {
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory
+                .appendingPathComponent("ozen-transcribe-size-test-\(UUID()).json")),
+            pipeline: CaptionPipeline(
+                audio: FakeAudioCapturer(),
+                engineFactory: { settings in FakeEngine(kind: settings.engine) },
+                embedder: FakeEmbedder()
+            )
+        )
+        let file = RecordingFile(url: URL(fileURLWithPath: "/tmp/Voice 12.m4a"), displayName: "Voice 12.m4a", cleanups: [])
+        let screen = TranscribeRecordingModel(file: file, host: LiveRecordingHost(viewModel: viewModel), transcriber: RecordingTranscriberFake(), awake: RecordingAwakeFake())
+        viewModel.display.fontSize = DisplayPreferences.maximumFontSize
+        #expect(screen.lineSize(bodySize: 17) == DisplayPreferences.savedLineSize(captionSize: DisplayPreferences.maximumFontSize, bodySize: 17))
+        #expect(screen.lineSize(bodySize: 17) > 17)
+        viewModel.display.fontSize = DisplayPreferences.minimumFontSize
+        #expect(screen.lineSize(bodySize: 17) == 17)
+        #expect(screen.lineSize(bodySize: 53) == 53)
+    }
 }

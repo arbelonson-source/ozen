@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.FileLinePass
@@ -81,6 +82,9 @@ class FileTranscriber(
     fun interruptedNoteShown() {
         interrupted.value = null
     }
+
+    /** The person's settings, for the caption size the screen's lines follow as saved lines do. */
+    internal val currentSettings: StateFlow<AppSettings> get() = settings.current
 
     private var textKept = false
     private var leftForRecovery = false

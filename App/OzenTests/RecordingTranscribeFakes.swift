@@ -12,6 +12,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
     var wordFixes: [WordFix] = []
     var allowsCellularDownload = false
     var savesHistory = true
+    var captionSize = DisplayPreferences.default.fontSize
     var captionsPhase: PipelinePhase = .idle
     var retryLinedUp = false
     var soundAlertsOn = false

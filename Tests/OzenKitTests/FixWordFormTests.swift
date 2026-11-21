@@ -79,4 +79,15 @@ struct FixWordFormTests {
         #expect(FixWordForm.refusal(WordFix(heard: "aval", written: "Avi"), to: full) == .full)
         #expect(WordFixes.apply([WordFix(heard: "...", written: "Avi")], to: "Wait ... ok") == "Wait ... ok")
     }
+
+    @Test("Fix it every time with the list full says so, as the Words screen does, unless the fix replaces one already there")
+    func fullListIsSaidUnderFixItEveryTime() {
+        let full = (0..<WordFixes.maximumFixes).map { WordFix(heard: "word\($0)", written: "Word \($0)") }
+        let shown = "I saw shera and word7 today"
+        #expect(FixWordForm.keepRefusal(line: shown, heard: "shera", written: "Shira", to: full) == .full)
+        #expect(FixWordForm.keepRefusal(line: shown, heard: "word7", written: "Word Seven", to: full) == nil)
+        #expect(FixWordForm.keepRefusal(line: shown, heard: "shera", written: "Shira", to: Array(full.dropLast())) == nil)
+        #expect(FixWordForm.keepRefusal(line: shown, heard: "shera", written: "", to: full) == nil)
+        #expect(FixWordForm.keepRefusal(line: shown, heard: "zzzz", written: "Avi", to: full) == nil)
+    }
 }

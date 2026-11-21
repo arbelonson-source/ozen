@@ -9,6 +9,7 @@ protocol RecordingTranscribeHost: AnyObject {
     var wordFixes: [WordFix] { get }
     var allowsCellularDownload: Bool { get }
     var savesHistory: Bool { get }
+    var captionSize: Double { get }
     var captionsPhase: PipelinePhase { get }
     var captionsMayLoadModels: Bool { get }
     func installedModelVariants() -> Set<String>
@@ -41,6 +42,7 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     var wordFixes: [WordFix] { viewModel.wordFixes }
     var allowsCellularDownload: Bool { viewModel.allowCellularModelDownload }
     var savesHistory: Bool { viewModel.saveHistory }
+    var captionSize: Double { viewModel.display.fontSize }
     var captionsPhase: PipelinePhase { viewModel.phase }
     var captionsMayLoadModels: Bool { viewModel.pipeline.mayLoadModels }
 
