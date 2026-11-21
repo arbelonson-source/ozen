@@ -52,6 +52,17 @@ dump_stacks() {
   } >> "$STACKS"
 }
 
+for _ in 1 2 3; do
+  timeout 30 adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null 2>&1
+  sleep 3
+  focus=$(timeout 30 adb shell dumpsys window displays 2> /dev/null | grep -m 1 mCurrentFocus | tr -d '\r' | sed 's/^ *//')
+  case "$focus" in *"Not Responding"* | *"Application Error"*) ;; *) break ;; esac
+done
+echo "Focused window before the tests: ${focus:-unknown}"
+case "$focus" in *"Not Responding"* | *"Application Error"*)
+  echo "::warning::a system box still holds the screen's focus ($focus), so the tests that read the clipboard will fail for that reason, not the app's" ;;
+esac
+
 mkdir -p app/build
 rm -f "$STACKS"
 timeout "${INSTRUMENT_MINUTES}m" adb shell am instrument -w -r $filter $APP.test/$APP.OzenTestRunner > "$OUT" &
