@@ -141,6 +141,18 @@ class WordFixesTest {
         assertEquals(listOf("Hello", "wor'ld"), WordFixes.wordsOf("Hello, wor'ld!"))
     }
 
+    @Test fun aWordToTapKeepsTheGereshThatEndsANameButNotThePunctuationAfterIt() {
+        assertEquals(listOf("שלום", "ג׳ורג׳", "מה", "נשמע"), WordFixes.wordsOf("שלום ג׳ורג׳, מה נשמע?"))
+        assertEquals(listOf("ג'ורג'", "בא"), WordFixes.wordsOf("ג'ורג' בא"))
+        assertEquals(listOf("ג’ורג’", "בא"), WordFixes.wordsOf("ג’ורג’ בא"))
+        assertEquals(listOf("ג׳וֹרְגְ׳", "בא"), WordFixes.wordsOf("ג׳וֹרְגְ׳ בא"))
+        assertEquals(listOf("ג׳ורג׳"), WordFixes.wordsOf("\"ג׳ורג׳\"."))
+        assertEquals(listOf("פרופ׳", "כהן"), WordFixes.wordsOf("פרופ׳ כהן"))
+        assertEquals(listOf("ג׳ורג", "בא"), WordFixes.wordsOf("ג׳ורג בא"))
+        assertEquals(listOf("james", "said"), WordFixes.wordsOf("‘james’ said"))
+        assertEquals(listOf("James", "car"), WordFixes.wordsOf("James' car"))
+    }
+
     @Test fun normalizedDropsBlankWrittenAndPhrasesApplyCannotUse() {
         assertEquals(emptyList(), WordFixes.normalized(listOf(fix("aval", "   "))))
         assertEquals(emptyList(), WordFixes.normalized(listOf(fix("a b c d e", "X"))))

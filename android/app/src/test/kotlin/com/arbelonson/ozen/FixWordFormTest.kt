@@ -30,6 +30,18 @@ class FixWordFormTest {
     }
 
     @Test
+    fun aPickedNameKeepsItsEndingGereshAndSavingItFixesTheWholeName() {
+        val shown = "שלום ג׳ורג׳, מה נשמע?"
+        val heard = WordFixes.wordsOf(shown)[1]
+        assertEquals("ג׳ורג׳", heard)
+        assertTrue(FixWordForm.changes(shown, heard, written = "George"))
+        assertEquals(FixWordForm.Note.NowWrite, FixWordForm.note(shown, typed = "", heard = heard, written = ""))
+        assertEquals("שלום George, מה נשמע?", WordFixes.apply(listOf(WordFix(heard, "George")), shown))
+        assertEquals(listOf(WordFix(heard, "George")), WordFixes.adding(WordFix(heard, "George"), listOf(WordFix("ג׳ורג", "Georg"))))
+        assertEquals("George בא", WordFixes.apply(listOf(WordFix(heard, "George")), "ג'ורג' בא"))
+    }
+
+    @Test
     fun fixItEveryTimeWithTheListFullSaysSoAsTheWordsScreenDoesUnlessTheFixReplacesOneAlreadyThere() {
         val full = (0 until WordFixes.MAXIMUM_FIXES).map { WordFix("word$it", "Word $it") }
         val shown = "I saw shera and word7 today"

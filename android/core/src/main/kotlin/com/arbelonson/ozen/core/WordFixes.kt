@@ -236,7 +236,8 @@ object WordFixes {
         return if (changed) out.toString() else null
     }
 
-    fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.end) }
+    /** The words to tap in the fix-word dialog, each as the line writes it: a name's ending geresh with it, the punctuation around it left out. */
+    fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.replacedEnd) }
 
     /** Whether word [first] and the next one in [text] are one plain space apart, so a phrase can cover both. */
     fun joinedBySpace(text: String, first: Int): Boolean {
