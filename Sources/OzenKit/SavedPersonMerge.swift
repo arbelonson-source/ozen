@@ -4,7 +4,8 @@ public enum SavedPersonMerge {
     public static func target(renaming oldName: String?, to newName: String, savedNames: [String]) -> String? {
         let wanted = key(newName)
         guard !wanted.isEmpty else { return nil }
-        return savedNames.first { $0 != oldName && key($0) == wanted }
+        let others = savedNames.filter { $0 != oldName }
+        return others.first { $0 == newName } ?? others.first { key($0) == wanted }
     }
 
     public static func destination(renaming oldName: String?, to newName: String, savedNames: [String]) -> String {

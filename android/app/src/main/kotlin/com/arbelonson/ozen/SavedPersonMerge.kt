@@ -6,7 +6,8 @@ internal object SavedPersonMerge {
     fun target(renaming: String?, to: String, savedNames: Collection<String>): String? {
         val wanted = to.trim().lowercase()
         if (wanted.isEmpty()) return null
-        return savedNames.firstOrNull { it != renaming && it.trim().lowercase() == wanted }
+        val others = savedNames.filter { it != renaming }
+        return others.firstOrNull { it == to } ?: others.firstOrNull { it.trim().lowercase() == wanted }
     }
 
     fun destination(renaming: String?, to: String, savedNames: Collection<String>): String =

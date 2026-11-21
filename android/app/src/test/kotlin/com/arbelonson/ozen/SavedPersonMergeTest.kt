@@ -53,4 +53,11 @@ class SavedPersonMergeTest {
         assertEquals("Merge with Yossi?", question)
         assertEquals("Yossi is already saved. Both voices will then be shown under that one name, including in past conversations.", explanation)
     }
+
+    @Test
+    fun `with two people saved as Yossi, one with a space after the name, the exact saved name is the one meant, whichever was saved first`() {
+        assertEquals("Yossi", SavedPersonMerge.target("Dana", "Yossi", listOf("Dana", "Yossi ", "Yossi")))
+        assertEquals("Yossi", SavedPersonMerge.destination(null, "Yossi", listOf("Yossi ", "Yossi")))
+        assertEquals("Yossi ", SavedPersonMerge.target("Dana", "Yossi ", listOf("Dana", "Yossi", "Yossi ")))
+    }
 }

@@ -49,4 +49,11 @@ struct SavedPersonMergeTests {
             #expect(question.message == "Yossi is already saved. Both voices will then be shown under that one name, including in past conversations.")
         }
     }
+
+    @Test("with two people saved as Yossi, one with a space after the name, the exact saved name is the one meant, whichever was saved first")
+    func exactSavedNameFirst() {
+        #expect(SavedPersonMerge.target(renaming: "Dana", to: "Yossi", savedNames: ["Dana", "Yossi ", "Yossi"]) == "Yossi")
+        #expect(SavedPersonMerge.destination(renaming: nil, to: "Yossi", savedNames: ["Yossi ", "Yossi"]) == "Yossi")
+        #expect(SavedPersonMerge.target(renaming: "Dana", to: "Yossi ", savedNames: ["Dana", "Yossi", "Yossi "]) == "Yossi ")
+    }
 }
