@@ -565,6 +565,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
 /// tests can point it at a temp file instead of touching real app storage.
 public struct SettingsStore: Sendable {
     private let fileURL: URL
+    private let standInBox = StandInBox()
 
     public init(fileURL: URL) {
         self.fileURL = fileURL
@@ -575,14 +576,26 @@ public struct SettingsStore: Sendable {
     /// first (see `damagedCopyURL`): the next save would otherwise write
     /// the defaults over the only copy of recorded voices, names and alert
     /// words, which take real effort to make again.
+    ///
+    /// A file that is there but can't be read right now (a read error, or
+    /// iOS keeping it locked until the first unlock after a restart) isn't
+    /// damaged and stays where it is: the defaults only stand in for it,
+    /// and `save` never writes them over it.
     public func load() -> AppSettings {
-        guard let data = try? Data(contentsOf: fileURL) else { return .default }
-        if let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
-            return settings
+        standInBox.withLock { (standIn: inout AppSettings?) -> AppSettings in
+            standIn = nil
+            switch read() {
+            case .missing:
+                return .default
+            case .unreadable:
+                standIn = .default
+                return .default
+            case .read(let data):
+                if let settings = decoded(data) { return settings }
+                setAside()
+                return .default
+            }
         }
-        try? FileManager.default.removeItem(at: damagedCopyURL)
-        try? FileManager.default.moveItem(at: fileURL, to: damagedCopyURL)
-        return .default
     }
 
     /// Where a settings file that couldn't be read is kept, next to it:
@@ -596,10 +609,165 @@ public struct SettingsStore: Sendable {
     /// Creates the folder first: on a fresh install iOS hasn't made
     /// Application Support yet, and without this the very first saves
     /// (finishing the walkthrough, say) fail and are forgotten on relaunch.
+    ///
+    /// After a `load` that couldn't read the file, `settings` began as the
+    /// defaults, not as what the file holds, so the file is read again
+    /// first. Still unreadable: nothing is written and this throws
+    /// `SettingsFileUnreadable`; the caller keeps its settings in memory
+    /// and the next save tries again. Readable again: what changed in
+    /// `settings` since the defaults (or since the last such save) is
+    /// added to the file's own settings, so neither the saved voices,
+    /// names and alerts nor this session's changes are lost (see
+    /// `SettingsJSON.merged`). The caller still holds only its own
+    /// settings until the next launch loads the whole file, so later saves
+    /// keep adding to the file the same way.
     public func save(_ settings: AppSettings) throws {
-        let data = try JSONEncoder().encode(settings)
-        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: fileURL, options: .privateFile)
+        try standInBox.withLock { (standIn: inout AppSettings?) throws -> Void in
+            var written = settings
+            if let base = standIn {
+                switch read() {
+                case .unreadable(let error):
+                    throw SettingsFileUnreadable(underlying: error)
+                case .missing:
+                    break
+                case .read(let data):
+                    if let saved = decoded(data) {
+                        written = try SettingsJSON.merged(base: base, mine: settings, theirs: saved)
+                    } else {
+                        setAside()
+                    }
+                }
+            }
+            let data = try JSONEncoder().encode(written)
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: fileURL, options: .privateFile)
+            if standIn != nil { standIn = written == settings ? nil : settings }
+        }
+    }
+
+    private enum FileRead {
+        case missing
+        case unreadable(any Error)
+        case read(Data)
+    }
+
+    /// Only "no such file" counts as no settings yet; any other failure
+    /// means a file may well be there.
+    private func read() -> FileRead {
+        do {
+            return .read(try Data(contentsOf: fileURL))
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return .missing
+        } catch {
+            return .unreadable(error)
+        }
+    }
+
+    private func decoded(_ data: Data) -> AppSettings? {
+        try? JSONDecoder().decode(AppSettings.self, from: data)
+    }
+
+    private func setAside() {
+        try? FileManager.default.removeItem(at: damagedCopyURL)
+        try? FileManager.default.moveItem(at: fileURL, to: damagedCopyURL)
+    }
+}
+
+/// Why a settings save wrote nothing: the saved file is there but can't be
+/// read, and writing would replace it with settings that never saw it.
+public struct SettingsFileUnreadable: Error, CustomStringConvertible {
+    public let underlying: any Error
+
+    public var description: String {
+        "The saved settings can't be read right now, so they were not written over: \(underlying)"
+    }
+}
+
+/// The settings a `SettingsStore` handed out or was last given in place of
+/// a file it couldn't read; nil when the caller holds what the file holds.
+private final class StandInBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var settings: AppSettings?
+
+    func withLock<T>(_ body: (inout AppSettings?) throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body(&settings)
+    }
+}
+
+/// Settings as plain JSON, to add one copy's changes to another.
+private enum SettingsJSON: Codable, Equatable {
+    case object([String: SettingsJSON])
+    case array([SettingsJSON])
+    case string(String)
+    case bool(Bool)
+    case integer(Int64)
+    case number(Double)
+    case null
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self = .null
+        } else if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode(Int64.self) {
+            self = .integer(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .number(value)
+        } else if let value = try? container.decode(String.self) {
+            self = .string(value)
+        } else if let value = try? container.decode([SettingsJSON].self) {
+            self = .array(value)
+        } else {
+            self = .object(try container.decode([String: SettingsJSON].self))
+        }
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .object(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        case .bool(let value): try container.encode(value)
+        case .integer(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .null: try container.encodeNil()
+        }
+    }
+
+    /// `theirs` (the file) with the changes from `base` to `mine` (the
+    /// caller's settings) added. A value `mine` didn't change keeps the
+    /// file's; one it changed is `mine`'s. Lists (voices, names, word
+    /// fixes, alerts, muted sounds) are merged by entry: entries `mine`
+    /// added join the file's, entries it removed leave them, and the
+    /// file's other entries stay. Settings Android writes use the same
+    /// rules (`SettingsStore` in AppSettings.kt).
+    static func merged(base: AppSettings, mine: AppSettings, theirs: AppSettings) throws -> AppSettings {
+        func json(_ settings: AppSettings) throws -> SettingsJSON {
+            try JSONDecoder().decode(SettingsJSON.self, from: JSONEncoder().encode(settings))
+        }
+        let result = mergedValue(base: try json(base), mine: try json(mine), theirs: try json(theirs)) ?? .object([:])
+        return try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(result))
+    }
+
+    private static func mergedValue(base: SettingsJSON?, mine: SettingsJSON?, theirs: SettingsJSON?) -> SettingsJSON? {
+        if mine == base { return theirs }
+        switch (base, mine, theirs) {
+        case let (.object(baseFields)?, .object(myFields)?, .object(savedFields)?):
+            var result: [String: SettingsJSON] = [:]
+            for key in Set(baseFields.keys).union(myFields.keys).union(savedFields.keys) {
+                result[key] = mergedValue(base: baseFields[key], mine: myFields[key], theirs: savedFields[key])
+            }
+            return .object(result)
+        case let (.array(baseItems)?, .array(myItems)?, .array(savedItems)?):
+            let kept = savedItems.filter { myItems.contains($0) || !baseItems.contains($0) }
+            return .array(kept + myItems.filter { !baseItems.contains($0) && !savedItems.contains($0) })
+        default:
+            return mine
+        }
     }
 }
 

@@ -1,7 +1,9 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.StandardCopyOption
 import java.util.Locale
 import java.util.UUID
@@ -840,27 +842,36 @@ class AppSettings(
  */
 class SettingsStore(private val file: File) {
     /**
+     * The settings this store handed out or was last given in place of a
+     * file it couldn't read, as JSON; null when the caller holds what the
+     * file holds.
+     */
+    private var standIn: JsonObject? = null
+
+    /**
      * The saved settings, or the defaults when there are none or the file
      * can't be read as settings at all. A damaged file is moved aside
      * first (see [damagedCopy]): the next save would otherwise write
      * the defaults over the only copy of recorded voices, names and alert
      * words, which take real effort to make again.
+     *
+     * A file that is there but can't be read right now (a read error) isn't
+     * damaged and stays where it is: the defaults only stand in for it, and
+     * [save] never writes them over it.
      */
+    @Synchronized
     fun load(): AppSettings {
-        val data = try {
-            file.readBytes()
-        } catch (_: Exception) {
-            return AppSettings.default
+        standIn = null
+        val data = when (val read = read()) {
+            FileRead.Missing -> return AppSettings.default
+            is FileRead.Unreadable -> {
+                standIn = settingsJson(AppSettings.default)
+                return AppSettings.default
+            }
+            is FileRead.Bytes -> read.data
         }
-        try {
-            return AppSettings.fromJson(String(data, Charsets.UTF_8))
-        } catch (_: Exception) {
-        }
-        try {
-            damagedCopy.delete()
-            Files.move(file.toPath(), damagedCopy.toPath(), StandardCopyOption.REPLACE_EXISTING)
-        } catch (_: Exception) {
-        }
+        decoded(data)?.let { return it }
+        setAside()
         return AppSettings.default
     }
 
@@ -876,11 +887,107 @@ class SettingsStore(private val file: File) {
      * Creates the folder first: on a fresh install the app's folder may
      * not exist yet, and without this the very first saves (finishing the
      * walkthrough, say) fail and are forgotten on relaunch.
+     *
+     * After a [load] that couldn't read the file, [settings] began as the
+     * defaults, not as what the file holds, so the file is read again
+     * first. Still unreadable: nothing is written and this throws
+     * [SettingsFileUnreadableException]; the caller keeps its settings in
+     * memory and the next save tries again. Readable again: what changed
+     * in [settings] since the defaults (or since the last such save) is
+     * added to the file's own settings, so neither the saved voices, names
+     * and alerts nor this session's changes are lost (see
+     * [mergedSettingsJson]). The caller still holds only its own settings
+     * until the next launch loads the whole file, so later saves keep
+     * adding to the file the same way. The iPhone's store does the same.
      */
+    @Synchronized
     fun save(settings: AppSettings) {
-        val data = settings.toJson().toByteArray(Charsets.UTF_8)
-        PrivateFileWrites.write(file, data)
+        val base = standIn
+        if (base == null) {
+            PrivateFileWrites.write(file, settings.toJson().toByteArray(Charsets.UTF_8))
+            return
+        }
+        val mine = settingsJson(settings)
+        val written = when (val read = read()) {
+            FileRead.Missing -> mine
+            is FileRead.Unreadable -> throw SettingsFileUnreadableException(read.error)
+            is FileRead.Bytes -> {
+                val saved = decoded(read.data)
+                if (saved == null) {
+                    setAside()
+                    mine
+                } else {
+                    val merged = mergedSettingsJson(base, mine, settingsJson(saved)) ?: mine
+                    settingsJson(AppSettings.fromJson(merged.toString()))
+                }
+            }
+        }
+        PrivateFileWrites.write(file, written.toString().toByteArray(Charsets.UTF_8))
+        standIn = if (written == mine) null else mine
     }
+
+    private sealed interface FileRead {
+        object Missing : FileRead
+
+        class Unreadable(val error: Exception) : FileRead
+
+        class Bytes(val data: ByteArray) : FileRead
+    }
+
+    /** Only "no such file" counts as no settings yet; any other failure means a file may well be there. */
+    private fun read(): FileRead = try {
+        FileRead.Bytes(Files.readAllBytes(file.toPath()))
+    } catch (_: NoSuchFileException) {
+        FileRead.Missing
+    } catch (error: Exception) {
+        FileRead.Unreadable(error)
+    }
+
+    private fun decoded(data: ByteArray): AppSettings? = try {
+        AppSettings.fromJson(String(data, Charsets.UTF_8))
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun setAside() {
+        try {
+            damagedCopy.delete()
+            Files.move(file.toPath(), damagedCopy.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } catch (_: Exception) {
+        }
+    }
+}
+
+/**
+ * Why a settings save wrote nothing: the saved file is there but can't be
+ * read, and writing would replace it with settings that never saw it.
+ */
+class SettingsFileUnreadableException(cause: Exception) :
+    IOException("The saved settings can't be read right now, so they were not written over", cause)
+
+private fun settingsJson(settings: AppSettings): JsonObject = Json.parseToJsonElement(settings.toJson()) as JsonObject
+
+/**
+ * [theirs] (the file) with the changes from [base] to [mine] (the caller's
+ * settings) added. A value [mine] didn't change keeps the file's; one it
+ * changed is [mine]'s. Lists (voices, names, word fixes, alerts, muted
+ * sounds) are merged by entry: entries [mine] added join the file's,
+ * entries it removed leave them, and the file's other entries stay. The
+ * iPhone merges by the same rules (`SettingsJSON` in AppSettings.swift).
+ */
+private fun mergedSettingsJson(base: JsonElement?, mine: JsonElement?, theirs: JsonElement?): JsonElement? {
+    if (mine == base) return theirs
+    if (base is JsonObject && mine is JsonObject && theirs is JsonObject) {
+        val fields = (base.keys + mine.keys + theirs.keys).mapNotNull { key ->
+            mergedSettingsJson(base[key], mine[key], theirs[key])?.let { key to it }
+        }
+        return JsonObject(fields.toMap())
+    }
+    if (base is JsonArray && mine is JsonArray && theirs is JsonArray) {
+        val kept = theirs.filter { it in mine || it !in base }
+        return JsonArray(kept + mine.filter { it !in base && it !in theirs })
+    }
+    return mine
 }
 
 private val settingsUuidPattern = Regex("[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")
