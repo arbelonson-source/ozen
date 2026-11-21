@@ -13,8 +13,12 @@ object WordFixes {
     private const val SIGMA = 0x03C3
     private const val DOTTED_CAPITAL_I = 0x0130
 
-    /** A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last. */
-    private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
+    /**
+     * A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last.
+     * [replacedEnd] is [end], or one past a geresh (or an apostrophe standing in for one) right after the last Hebrew letter:
+     * it belongs to the word, as at the end of George spelt in Hebrew, so a fix replaces it too, while [key] still looks past it.
+     */
+    private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>, val replacedEnd: Int)
     /** [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't". */
     private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean)
 
@@ -105,7 +109,10 @@ object WordFixes {
             }
             val key = StringBuilder()
             for ((c, _) in bases) key.appendCodePoint(c)
-            if (bare || start < end) out.add(Word(i, j, start, end, key.toString(), bases))
+            val after = if (end < j) text.codePointAt(end) else -1
+            val geresh = after >= 0 && folded(after) == 0x27 && bases.lastOrNull()?.first in 0x05D0..0x05EA
+            val replacedEnd = if (geresh) end + Character.charCount(after) else end
+            if (bare || start < end) out.add(Word(i, j, start, end, key.toString(), bases, replacedEnd))
             i = j
         }
         return out
@@ -402,7 +409,7 @@ object WordFixes {
             val replacement = prefix + (if (prefix.isNotEmpty() && needsMaqaf(best.written)) "\u05BE" else "") + best.written
             sb.append(text, copied, all[index].start).append(replacement)
             spans.add(Span(index, index + best.words.size - 1, replacement))
-            copied = last.end
+            copied = last.replacedEnd
             index += best.words.size
         }
         return Rewrite(sb.append(text, copied, text.length).toString(), all, spans)

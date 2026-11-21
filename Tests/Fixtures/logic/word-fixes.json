@@ -1,5 +1,5 @@
 {
- "about": "Cases for WordFixes.apply, the reader's own word fixes applied to a caption line, read by both OzenKitTests (WordFixesSharedCasesTests, Swift) and core WordFixesSharedCasesTest (Kotlin). fixes is the list as saved, each [heard, written], normalized before it is applied; expected is the line afterwards. Every case where a fix applies is here, and the ones where a heard word appears but must not change (a prefix the word may not take, a longer word, another case). Text joined by a maqaf (U+05BE) is in: both phones split words there as at a space, and a heard phrase matches only words joined the same way, by a space or by a maqaf. A fix whose written form the line already reads there (case, niqqud and maqaf against hyphen aside) leaves those words alone.",
+ "about": "Cases for WordFixes.apply, the reader's own word fixes applied to a caption line, read by both OzenKitTests (WordFixesSharedCasesTests, Swift) and core WordFixesSharedCasesTest (Kotlin). fixes is the list as saved, each [heard, written], normalized before it is applied; expected is the line afterwards. Every case where a fix applies is here, and the ones where a heard word appears but must not change (a prefix the word may not take, a longer word, another case). Text joined by a maqaf (U+05BE) is in: both phones split words there as at a space, and a heard phrase matches only words joined the same way, by a space or by a maqaf. A fix whose written form the line already reads there (case, niqqud and maqaf against hyphen aside) leaves those words alone. A geresh, or an apostrophe standing in for one, right after the last Hebrew letter of a word belongs to it (George spelt in Hebrew ends in one): a fix replaces it with the rest, and a heard word is found with or without it; after any other letter it stays, as other punctuation does.",
  "cases": [
   {"fixes": [["אורי", "אוריה"]], "text": "אורי בא", "expected": "אוריה בא"},
   {"fixes": [["אורי", "אוריה"]], "text": "ואורי בא", "expected": "ואוריה בא"},
@@ -165,6 +165,17 @@
   {"fixes": [["תל\u05BE\u05BEאביב", "Tel Aviv"]], "text": "תל\u05BE\u05BEאביב", "expected": "תל\u05BE\u05BEאביב"},
   {"fixes": [["נועה", "נעמי"], ["לנועה", "לדנה"]], "text": "לנועה נועה", "expected": "לדנה נעמי"},
   {"fixes": [["לנועה", "לדנה"], ["נועה", "נעמי"]], "text": "לנועה נועה", "expected": "לדנה נעמי"},
-  {"fixes": [["נועה", "נעמי"], ["לנועה", "לדנה"]], "text": "ונועה ולנועה", "expected": "ונעמי ולדנה"}
+  {"fixes": [["נועה", "נעמי"], ["לנועה", "לדנה"]], "text": "ונועה ולנועה", "expected": "ונעמי ולדנה"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "ג׳ורג׳ בא", "expected": "George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "ג'ורג' בא", "expected": "George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "ג’ורג’ בא", "expected": "George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "ג׳ורג בא", "expected": "George בא"},
+  {"fixes": [["ג׳ורג", "George"]], "text": "ג׳ורג׳ בא", "expected": "George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "שלום ג׳ורג׳, מה נשמע?", "expected": "שלום George, מה נשמע?"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "\"ג׳ורג׳\".", "expected": "\"George\"."},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "לג׳ורג׳", "expected": "ל\u05BEGeorge"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "ג׳וֹרְגְ׳ בא", "expected": "George בא"},
+  {"fixes": [["פרופ׳", "פרופסור"]], "text": "פרופ׳ כהן", "expected": "פרופסור כהן"},
+  {"fixes": [["james", "Jim"]], "text": "‘james’", "expected": "‘Jim’"}
  ]
 }
