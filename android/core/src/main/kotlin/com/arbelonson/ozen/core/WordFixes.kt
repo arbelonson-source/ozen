@@ -118,9 +118,12 @@ object WordFixes {
         return out
     }
 
-    /** The one space or maqaf between [word] and [next], with no punctuation on either side of it, or null. */
+    /**
+     * The one space or maqaf between [word] and [next], with no punctuation on either side of it, or null. A name's ending geresh
+     * is part of [word] (its [Word.replacedEnd]), so "George Bush" spelt in Hebrew is two joined words.
+     */
     private fun joint(text: String, word: Word, next: Word): Int? {
-        if (word.end != word.tokenEnd || next.start != next.tokenStart || next.tokenStart != word.tokenEnd + 1) return null
+        if (word.replacedEnd != word.tokenEnd || next.start != next.tokenStart || next.tokenStart != word.tokenEnd + 1) return null
         return text[word.tokenEnd].code.takeIf { it == ' '.code || it == MAQAF }
     }
 
@@ -233,7 +236,8 @@ object WordFixes {
         return if (changed) out.toString() else null
     }
 
-    fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.end) }
+    /** The words to tap in the fix-word dialog, each as the line writes it: a name's ending geresh with it, the punctuation around it left out. */
+    fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.replacedEnd) }
 
     /** Whether word [first] and the next one in [text] are one plain space apart, so a phrase can cover both. */
     fun joinedBySpace(text: String, first: Int): Boolean {

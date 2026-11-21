@@ -179,6 +179,20 @@ struct WordFixesTests {
         #expect(!WordFixes.canJoin("bat", "(sheva"))
     }
 
+    @Test("a name's ending geresh is no punctuation before the next heard word, a comma after it is")
+    func phraseAfterAnEndingGeresh() {
+        for geresh in ["\u{05F3}", "'", "\u{2019}"] {
+            let name = "ג\(geresh)ורג\(geresh)"
+            #expect(WordFixes.refusal(fix("\(name) בוש", "George Bush"), to: []) == nil, "\(name)")
+            #expect(WordFixes.canJoin(name, "בוש"), "\(name)")
+        }
+        #expect(WordFixes.refusal(fix("ג׳ורג׳, בוש", "George Bush"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix("james' car", "the car"), to: []) == .heardWords)
+        #expect(!WordFixes.canJoin("ג׳ורג׳,", "בוש"))
+        #expect(!WordFixes.canJoin("james'", "car"))
+        #expect(!WordFixes.canJoin("׳", "בוש"))
+    }
+
     @Test("VoiceOver hears a fix as what was heard and what is written, not as an arrow")
     func spokenLabel() {
         let one = fix("aval", "Avi")

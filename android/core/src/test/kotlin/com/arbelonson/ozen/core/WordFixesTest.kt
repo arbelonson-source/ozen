@@ -141,6 +141,18 @@ class WordFixesTest {
         assertEquals(listOf("Hello", "wor'ld"), WordFixes.wordsOf("Hello, wor'ld!"))
     }
 
+    @Test fun aWordToTapKeepsTheGereshThatEndsANameButNotThePunctuationAfterIt() {
+        assertEquals(listOf("שלום", "ג׳ורג׳", "מה", "נשמע"), WordFixes.wordsOf("שלום ג׳ורג׳, מה נשמע?"))
+        assertEquals(listOf("ג'ורג'", "בא"), WordFixes.wordsOf("ג'ורג' בא"))
+        assertEquals(listOf("ג’ורג’", "בא"), WordFixes.wordsOf("ג’ורג’ בא"))
+        assertEquals(listOf("ג׳וֹרְגְ׳", "בא"), WordFixes.wordsOf("ג׳וֹרְגְ׳ בא"))
+        assertEquals(listOf("ג׳ורג׳"), WordFixes.wordsOf("\"ג׳ורג׳\"."))
+        assertEquals(listOf("פרופ׳", "כהן"), WordFixes.wordsOf("פרופ׳ כהן"))
+        assertEquals(listOf("ג׳ורג", "בא"), WordFixes.wordsOf("ג׳ורג בא"))
+        assertEquals(listOf("james", "said"), WordFixes.wordsOf("‘james’ said"))
+        assertEquals(listOf("James", "car"), WordFixes.wordsOf("James' car"))
+    }
+
     @Test fun normalizedDropsBlankWrittenAndPhrasesApplyCannotUse() {
         assertEquals(emptyList(), WordFixes.normalized(listOf(fix("aval", "   "))))
         assertEquals(emptyList(), WordFixes.normalized(listOf(fix("a b c d e", "X"))))
@@ -154,5 +166,26 @@ class WordFixesTest {
         assertEquals(true, connected(1))
         assertEquals(1..1, WordFixes.tapped(0..0, 1, connected))
         assertEquals(1..2, WordFixes.tapped(1..1, 2, connected))
+    }
+
+    @Test fun aNamesEndingGereshIsNoPunctuationBeforeTheNextHeardWordACommaAfterItIs() {
+        for (geresh in listOf("׳", "'", "’")) {
+            val name = "ג${geresh}ורג$geresh"
+            assertNull(WordFixes.refusal(fix("$name בוש", "George Bush"), emptyList()), name)
+        }
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("ג׳ורג׳, בוש", "George Bush"), emptyList()))
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("james' car", "the car"), emptyList()))
+    }
+
+    @Test fun aSelectionReachesPastANamesEndingGereshNotPastACommaAfterIt() {
+        for (geresh in listOf("׳", "'", "’")) {
+            val line = "ראיתי את ג${geresh}ורג$geresh בוש אתמול"
+            val connected = { first: Int -> WordFixes.joinedBySpace(line, first) }
+            assertEquals(true, connected(2), line)
+            assertEquals(2..3, WordFixes.tapped(2..2, 3, connected), line)
+            assertEquals(2..3, WordFixes.tapped(3..3, 2, connected), line)
+        }
+        assertEquals(false, WordFixes.joinedBySpace("ראיתי את ג׳ורג׳, בוש אתמול", 2))
+        assertEquals(false, WordFixes.joinedBySpace("james' car", 0))
     }
 }
