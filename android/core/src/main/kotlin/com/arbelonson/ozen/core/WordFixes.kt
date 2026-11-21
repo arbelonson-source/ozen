@@ -109,7 +109,8 @@ object WordFixes {
                 }
                 j = next
             }
-            if (start < 0) { start = j; end = j }
+            val marksOnly = start < 0
+            if (marksOnly) { start = j; end = j }
             val bases = ArrayList<Pair<Int, Int>>()
             var k = start
             while (k < end) {
@@ -122,7 +123,7 @@ object WordFixes {
             var at = i
             while (at < start) {
                 val c = text.codePointAt(at)
-                closingQuote[c]?.let { open.add(it) }
+                if (marksOnly) open.remove(c) else closingQuote[c]?.let { open.add(it) }
                 at += Character.charCount(c)
             }
             val after = if (end < j) text.codePointAt(end) else -1

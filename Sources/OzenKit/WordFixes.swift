@@ -477,7 +477,9 @@ public enum WordFixes {
         /// Words between spaces and, unless `atMaqaf` is false, a maqaf, as
         /// on Android: two words joined by a maqaf each take their own fixes.
         /// A single quote before a word's first letter stays open until the
-        /// matching mark after the last letter of that word or a later one.
+        /// matching mark after the last letter of that word or a later one;
+        /// a word of marks alone (‘’, or a quote standing by itself) can
+        /// close it but opens none.
         static func split(_ all: [Unicode.Scalar], atMaqaf: Bool = true) -> [Token] {
             func isBreak(_ scalar: Unicode.Scalar) -> Bool {
                 scalar.properties.isWhitespace || (atMaqaf && scalar.value == 0x05BE)
@@ -493,7 +495,11 @@ public enum WordFixes {
                 let word = Array(all[position..<end])
                 let start = word.firstIndex(where: isCore) ?? word.count
                 let stop = max(start, (word.lastIndex(where: isCore).map { $0 + 1 }) ?? word.count)
-                for scalar in word[..<start] { if let closing = closingQuote[scalar] { open.insert(closing) } }
+                if start == word.count {
+                    for scalar in word { open.remove(scalar) }
+                } else {
+                    for scalar in word[..<start] { if let closing = closingQuote[scalar] { open.insert(closing) } }
+                }
                 let replaced = endOfGeresh(word, start, stop, open)
                 for scalar in word[replaced...] { open.remove(scalar) }
                 tokens.append(Token(scalars: word, gap: Array(all[end..<gapEnd]), coreStart: start, coreEnd: stop, replacedEnd: replaced))

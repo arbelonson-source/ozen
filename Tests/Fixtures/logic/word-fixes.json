@@ -205,6 +205,9 @@
   {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "'ג׳ורג׳ בוש'", "expected": "'George Bush'"},
   {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "ראיתי את ‘ג׳ורג׳ בוש’ אתמול", "expected": "ראיתי את ‘George Bush’ אתמול"},
   {"fixes": [["תל־אביב", "Tel Aviv"]], "text": "‘תל־אביב’", "expected": "‘Tel Aviv’"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘’ ג’ורג’ בא", "expected": "‘’ George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘שלום ’ ואז ג’ורג’ בא", "expected": "‘שלום ’ ואז George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "'שלום ' ואז ג'ורג' בא", "expected": "'שלום ' ואז George בא"},
   {"fixes": [["שלום בא", "Shalom ba"]], "text": "‘שלום’ בא", "expected": "‘שלום’ בא"}
  ]
 }
