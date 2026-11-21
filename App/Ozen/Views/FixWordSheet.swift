@@ -4,6 +4,9 @@ import OzenKit
 struct FixWordSheet: View {
     let text: String
     let languageCode: String
+    /// The saved word fixes, so Fix it every time can tell when the list
+    /// has no room left, as the Words screen does.
+    let fixes: [WordFix]
     /// What Save says when the line didn't take the fix.
     var notSaved = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.")
     /// Returns whether the line changed.
@@ -30,6 +33,11 @@ struct FixWordSheet: View {
     /// worked and the word still went into the list. As on Android.
     private var canSave: Bool { FixWordForm.changes(line: text, heard: heard, written: written) }
     private var note: FixWordForm.Note? { FixWordForm.note(line: text, heard: heard, written: written) }
+    /// With the list full, a new fix kept for next time pushed another one
+    /// off the end without a word. The toggle now stays off and says why,
+    /// and Save still fixes this line.
+    private var keepNote: String? { WordFixes.refusalNote(FixWordForm.keepRefusal(line: text, heard: heard, written: written, to: fixes)) }
+    private var keeps: Bool { always && keepNote == nil }
 
     var body: some View {
         NavigationStack {
@@ -70,7 +78,14 @@ struct FixWordSheet: View {
                     }
                 }
                 Section {
-                    Toggle(tr("תיקון בכל פעם", "Fix it every time"), isOn: $always)
+                    Toggle(tr("תיקון בכל פעם", "Fix it every time"), isOn: Binding(get: { keeps }, set: { always = $0 }))
+                        .disabled(keepNote != nil)
+                        .accessibilityHint(keepNote ?? "")
+                    if let keepNote {
+                        Text(keepNote)
+                            .font(.footnote)
+                            .foregroundStyle(ReadableColor(color: .secondary))
+                    }
                 }
             }
             .navigationTitle(tr("תיקון מילה", "Fix a word"))
@@ -78,7 +93,7 @@ struct FixWordSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(tr("שמירה", "Save")) {
-                        if onSave(fix, always) {
+                        if onSave(fix, keeps) {
                             Announcement.post(tr("השורה תוקנה", "Line fixed"))
                             dismiss()
                         } else {
@@ -102,6 +117,9 @@ struct FixWordSheet: View {
         // word isn't in the line; Android's note is a live region.
         .onChange(of: note) { _, note in
             if let note { Announcement.post(noteText(note)) }
+        }
+        .onChange(of: keepNote) { _, note in
+            if let note { Announcement.post(note) }
         }
         // Half the screen left Fix it every time below the edge of an
         // iPhone SE; seven tenths still shows the caption above the sheet.

@@ -1,5 +1,7 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -25,5 +27,16 @@ class FixWordFormTest {
         assertEquals(FixWordForm.Note.NowWrite, FixWordForm.note(line, typed = "Shera", heard = "Shera", written = "  "))
         assertNull(FixWordForm.note(line, typed = "", heard = "", written = ""))
         assertNull(FixWordForm.note(line, typed = "", heard = "Shera", written = "Shira"))
+    }
+
+    @Test
+    fun fixItEveryTimeWithTheListFullSaysSoAsTheWordsScreenDoesUnlessTheFixReplacesOneAlreadyThere() {
+        val full = (0 until WordFixes.MAXIMUM_FIXES).map { WordFix("word$it", "Word $it") }
+        val shown = "I saw shera and word7 today"
+        assertEquals(WordFixes.Refusal.Full, FixWordForm.keepRefusal(shown, heard = "shera", written = "Shira", fixes = full))
+        assertNull(FixWordForm.keepRefusal(shown, heard = "word7", written = "Word Seven", fixes = full))
+        assertNull(FixWordForm.keepRefusal(shown, heard = "shera", written = "Shira", fixes = full.dropLast(1)))
+        assertNull(FixWordForm.keepRefusal(shown, heard = "shera", written = "", fixes = full))
+        assertNull(FixWordForm.keepRefusal(shown, heard = "zzzz", written = "Avi", fixes = full))
     }
 }

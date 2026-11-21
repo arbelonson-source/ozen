@@ -120,6 +120,7 @@ import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
+import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.EmptyState
@@ -178,6 +179,9 @@ interface SavedConversations {
     fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean
 
     fun saveWordFix(heard: String, written: String, everyTime: Boolean)
+
+    /** The saved word fixes, so Fix it every time can say when the list is full. */
+    fun wordFixes(): List<WordFix>
 
     fun switchSaving(on: Boolean)
 
@@ -757,6 +761,7 @@ internal fun ConversationScreen(
         FixWordDialog(
             line.text,
             languageCode = line.languageCode,
+            fixes = conversations.wordFixes(),
             error = tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.").takeIf { fixRejected },
             onSave = { heard, written, everyTime ->
                 if (!fixSaving) {

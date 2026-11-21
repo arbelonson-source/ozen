@@ -41,6 +41,8 @@ import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -1667,6 +1669,31 @@ class CaptionSessionDeviceTest {
                 true
             }
             assertTrue("the person's own choice ends the hand-over", dropped == true)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun fixItEveryTimeWithTheListFullKeepsEverySavedFixWhileOneAlreadyListedIsStillReplaced(): Unit = runBlocking {
+        val work = File(context.cacheDir, "full-word-fixes-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val full = (0 until WordFixes.MAXIMUM_FIXES).map { WordFix("word$it", "Word $it") }
+        settings.change { it.wordFixes = full }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        try {
+            withContext(Dispatchers.Main) { session.saveWordFix("aval", "Avi", everyTime = true) }
+            assertEquals("the last fix in the list was dropped without a word", full, settings.current.value.wordFixes)
+            assertTrue("the line's word still joins the names list", "Avi" in settings.current.value.vocabulary)
+            withContext(Dispatchers.Main) { session.saveWordFix("word7", "Word Seven", everyTime = true) }
+            assertEquals(listOf(WordFix("word7", "Word Seven")) + full.filter { it.heard != "word7" }, settings.current.value.wordFixes)
         } finally {
             withContext(Dispatchers.Main) {
                 session.close()
