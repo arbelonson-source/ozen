@@ -117,7 +117,7 @@ internal fun CaptionLines(
                 if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks)
             }
     }
-    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(DisplayPreferences.captionLineSpacing(display.fontSize).dp)) {
         items(lines, key = { it.id }) { line ->
             val row = @Composable {
                 CaptionLineRow(
