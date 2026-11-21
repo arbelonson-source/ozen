@@ -55,4 +55,12 @@ class SpeakerNamingTest {
     fun `whenever Save would ask, saving everywhere renames the saved person`() {
         assertEquals(SpeakerNaming.Rename(from = "Noa"), SpeakerNaming.of(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), isRespelling = true))
     }
+
+    @Test
+    fun `another saved person's name typed in another case, or saved with spaces around it, is still that person, as a rename in Settings is`() {
+        val saved = setOf("Noa", "Noam ")
+        assertEquals(true, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "noam", savedNames = saved, asked = false))
+        assertEquals(SpeakerNaming.NewPrint, SpeakerNaming.of(oldName = "Noa", name = "noam", savedNames = saved, isRespelling = true))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "noam", savedNames = saved, isRespelling = true))
+    }
 }

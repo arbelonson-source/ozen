@@ -240,10 +240,11 @@ private fun RenameSpeakerDialog(name: String, savedNames: List<String>, onRename
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("ביטול", "Cancel")) } },
     )
     merging?.let { target ->
+        val (question, explanation) = SavedPersonMerge.question(target)
         AlertDialog(
             onDismissRequest = { merging = null },
-            title = { Text(tr("למזג עם %1?", "Merge with %1?", listOf(target))) },
-            text = { DialogText(tr("%1 כבר שמור. שני הקולות יוצגו תחת השם הזה, גם בשיחות קודמות.", "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.", listOf(target))) },
+            title = { Text(question) },
+            text = { DialogText(explanation) },
             confirmButton = { TextButton(onClick = { merging = null; onRename(target) }) { Text(tr("מיזוג", "Merge")) } },
             dismissButton = { TextButton(onClick = { merging = null }) { Text(tr("ביטול", "Cancel")) } },
         )

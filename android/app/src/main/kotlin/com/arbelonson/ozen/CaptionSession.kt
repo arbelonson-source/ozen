@@ -1572,15 +1572,19 @@ class CaptionSession(
         // phone can't listen for them (a print from an older voice model):
         // the voice it was taken for keeps its name on its other lines.
         val savedNames = settings.current.value.speakerProfiles.map { it.name }.toSet()
+        // Another saved person typed in another case, or saved with spaces
+        // around the name, is that person under the name as saved, as a
+        // rename in Settings is.
+        val named = SavedPersonMerge.destination(oldName, trimmed, savedNames)
         val lineOnly = SpeakerNaming.movesOnlyTheLine(oldName, trimmed, savedNames, asked = onlyThisLine)
         val isRespelling = !lineOnly && pipeline.isRespelling(trimmed, line)
-        val print = pipeline.nameSpeaker(line, trimmed, lineOnly)
-            ?: return pipeline.segments.firstOrNull { it.id == lineID }?.let { pipeline.displayName(it) == trimmed } == true
+        val print = pipeline.nameSpeaker(line, named, lineOnly)
+            ?: return pipeline.segments.firstOrNull { it.id == lineID }?.let { pipeline.displayName(it) == named } == true
         when (val naming = SpeakerNaming.of(oldName, trimmed, savedNames, isRespelling)) {
-            is SpeakerNaming.Rename -> renamePerson(naming.from, trimmed)
+            is SpeakerNaming.Rename -> renamePerson(naming.from, named)
             SpeakerNaming.Unchanged -> Unit
             SpeakerNaming.NewPrint -> {
-                settings.change { it.speakerProfiles = it.speakerProfiles + SpeakerProfile(name = trimmed, embedding = print) }
+                settings.change { it.speakerProfiles = it.speakerProfiles + SpeakerProfile(name = named, embedding = print) }
                 speakerLabelsChanged()
             }
         }
