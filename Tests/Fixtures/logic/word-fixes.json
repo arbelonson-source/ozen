@@ -1,5 +1,5 @@
 {
- "about": "Cases for WordFixes.apply, the reader's own word fixes applied to a caption line, read by both OzenKitTests (WordFixesSharedCasesTests, Swift) and core WordFixesSharedCasesTest (Kotlin). fixes is the list as saved, each [heard, written], normalized before it is applied; expected is the line afterwards. Every case where a fix applies is here, and the ones where a heard word appears but must not change (a prefix the word may not take, a longer word, another case). Text joined by a maqaf (U+05BE) is in: both phones split words there as at a space, and a heard phrase matches only words joined the same way, by a space or by a maqaf. A fix whose written form the line already reads there (case, niqqud and maqaf against hyphen aside) leaves those words alone. A geresh, or an apostrophe standing in for one, right after the last Hebrew letter of a word belongs to it (George spelt in Hebrew ends in one): a fix replaces it with the rest, a heard word is found with or without it, and a heard phrase goes on past it to the next word, as it does not past a comma or a full stop; after any other letter it stays, as other punctuation does.",
+ "about": "Cases for WordFixes.apply, the reader's own word fixes applied to a caption line, read by both OzenKitTests (WordFixesSharedCasesTests, Swift) and core WordFixesSharedCasesTest (Kotlin). fixes is the list as saved, each [heard, written], normalized before it is applied; expected is the line afterwards. Every case where a fix applies is here, and the ones where a heard word appears but must not change (a prefix the word may not take, a longer word, another case). Text joined by a maqaf (U+05BE) is in: both phones split words there as at a space, and a heard phrase matches only words joined the same way, by a space or by a maqaf. A fix whose written form the line already reads there (case, niqqud and maqaf against hyphen aside) leaves those words alone. A geresh, or an apostrophe standing in for one, right after the last Hebrew letter of a word belongs to it (George spelt in Hebrew ends in one): a fix replaces it with the rest, a heard word is found with or without it, and a heard phrase goes on past it to the next word, as it does not past a comma or a full stop; after any other letter it stays, as other punctuation does. A single quote that opens before a word's first letter (‘ or a straight ') is closed by the first matching mark after the last letter of that word or a later one: there it is the closing quote, not a geresh, and stays when a fix replaces the word, unless another apostrophe-like mark follows it (then that one closes the quote). A Hebrew geresh (U+05F3) is never a quote.",
  "cases": [
   {"fixes": [["אורי", "אוריה"]], "text": "אורי בא", "expected": "אוריה בא"},
   {"fixes": [["אורי", "אוריה"]], "text": "ואורי בא", "expected": "ואוריה בא"},
@@ -188,6 +188,23 @@
   {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "ראיתי את ג׳ורג׳, בוש אתמול", "expected": "ראיתי את ג׳ורג׳, בוש אתמול"},
   {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "ראיתי את ג׳ורג׳. בוש אתמול", "expected": "ראיתי את ג׳ורג׳. בוש אתמול"},
   {"fixes": [["james' car", "the car"]], "text": "james' car", "expected": "james' car"},
-  {"fixes": [["james", "Jim"]], "text": "‘james’", "expected": "‘Jim’"}
+  {"fixes": [["james", "Jim"]], "text": "‘james’", "expected": "‘Jim’"},
+  {"fixes": [["שלום", "Shalom"]], "text": "‘שלום’", "expected": "‘Shalom’"},
+  {"fixes": [["שלום", "Shalom"]], "text": "'שלום'", "expected": "'Shalom'"},
+  {"fixes": [["שלום", "Shalom"]], "text": "אמרתי ‘שלום’ לכולם", "expected": "אמרתי ‘Shalom’ לכולם"},
+  {"fixes": [["שלום", "Shalom"]], "text": "(‘שלום’)", "expected": "(‘Shalom’)"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘ג׳ורג׳’", "expected": "‘George’"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "'ג'ורג''", "expected": "'George'"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘ג’ורג’’", "expected": "‘George’"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘ג׳ורג׳ בא’", "expected": "‘George בא’"},
+  {"fixes": [["שלום", "Shalom"], ["ג׳ורג׳", "George"]], "text": "‘שלום’ לג’ורג’", "expected": "‘Shalom’ ל־George"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘hello’ ג’ורג’ בא", "expected": "‘hello’ George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "'hello' ג'ורג' בא", "expected": "'hello' George בא"},
+  {"fixes": [["ג׳ורג׳", "George"]], "text": "‘שלום ג'ורג' בא", "expected": "‘שלום George בא"},
+  {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "‘ג׳ורג׳ בוש’", "expected": "‘George Bush’"},
+  {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "'ג׳ורג׳ בוש'", "expected": "'George Bush'"},
+  {"fixes": [["ג׳ורג׳ בוש", "George Bush"]], "text": "ראיתי את ‘ג׳ורג׳ בוש’ אתמול", "expected": "ראיתי את ‘George Bush’ אתמול"},
+  {"fixes": [["תל־אביב", "Tel Aviv"]], "text": "‘תל־אביב’", "expected": "‘Tel Aviv’"},
+  {"fixes": [["שלום בא", "Shalom ba"]], "text": "‘שלום’ בא", "expected": "‘שלום’ בא"}
  ]
 }

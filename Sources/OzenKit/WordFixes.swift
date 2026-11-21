@@ -101,7 +101,8 @@ public enum WordFixes {
 
     /// Whether two words tapped side by side can be one heard phrase: no
     /// punctuation between them, a name's ending geresh aside, as
-    /// `hasCleanJoints` takes them.
+    /// `hasCleanJoints` takes them. `left` may be the line up to and
+    /// including the left word, so a quote opened before it is seen closing.
     public static func canJoin(_ left: String, _ right: String) -> Bool {
         guard let start = right.unicodeScalars.first, Token.isCore(start),
               let end = Token.split(Array(left.unicodeScalars)).last, end.gap.isEmpty else { return false }
@@ -416,7 +417,8 @@ public enum WordFixes {
         /// `coreEnd`, or one past a geresh (or an apostrophe standing in for
         /// one) right after the last Hebrew letter: it belongs to the word, as
         /// at the end of George spelt in Hebrew, so a fix replaces it too,
-        /// while the key still looks past it.
+        /// while the key still looks past it. The closing quote of a quoted
+        /// word (‘שלום’) is no geresh, and stays.
         let replacedEnd: Int
 
         var key: String {
@@ -458,19 +460,30 @@ public enum WordFixes {
             scalar.properties.isAlphabetic || scalar.properties.numericType != nil || isMark(scalar)
         }
 
-        private static func endOfGeresh(_ word: [Unicode.Scalar], _ start: Int, _ stop: Int) -> Int {
+        /// The closing mark each opening single quote waits for.
+        private static let closingQuote: [Unicode.Scalar: Unicode.Scalar] = ["\u{2018}": "\u{2019}", "'": "'"]
+
+        /// `stop`, or one past a geresh right after the last Hebrew letter.
+        /// A mark `open` waits for there is the closing quote instead
+        /// (‘שלום’), unless another apostrophe-like mark follows it to close
+        /// the quote ('ג'ורג''); the Hebrew geresh is never a quote.
+        private static func endOfGeresh(_ word: [Unicode.Scalar], _ start: Int, _ stop: Int, _ open: Set<Unicode.Scalar>) -> Int {
             guard stop < word.count, WordFixes.foldedScalar(word[stop]) == "'",
                   let letter = word[start..<stop].last(where: { !isMark($0) }), (0x05D0...0x05EA).contains(letter.value) else { return stop }
-            return stop + 1
+            let doubled = stop + 1 < word.count && WordFixes.foldedScalar(word[stop + 1]) == "'"
+            return open.contains(word[stop]) && !doubled ? stop : stop + 1
         }
 
         /// Words between spaces and, unless `atMaqaf` is false, a maqaf, as
         /// on Android: two words joined by a maqaf each take their own fixes.
+        /// A single quote before a word's first letter stays open until the
+        /// matching mark after the last letter of that word or a later one.
         static func split(_ all: [Unicode.Scalar], atMaqaf: Bool = true) -> [Token] {
             func isBreak(_ scalar: Unicode.Scalar) -> Bool {
                 scalar.properties.isWhitespace || (atMaqaf && scalar.value == 0x05BE)
             }
             var tokens: [Token] = []
+            var open = Set<Unicode.Scalar>()
             var position = 0
             while position < all.count {
                 var end = position
@@ -480,7 +493,10 @@ public enum WordFixes {
                 let word = Array(all[position..<end])
                 let start = word.firstIndex(where: isCore) ?? word.count
                 let stop = max(start, (word.lastIndex(where: isCore).map { $0 + 1 }) ?? word.count)
-                tokens.append(Token(scalars: word, gap: Array(all[end..<gapEnd]), coreStart: start, coreEnd: stop, replacedEnd: endOfGeresh(word, start, stop)))
+                for scalar in word[..<start] { if let closing = closingQuote[scalar] { open.insert(closing) } }
+                let replaced = endOfGeresh(word, start, stop, open)
+                for scalar in word[replaced...] { open.remove(scalar) }
+                tokens.append(Token(scalars: word, gap: Array(all[end..<gapEnd]), coreStart: start, coreEnd: stop, replacedEnd: replaced))
                 position = gapEnd
             }
             return tokens

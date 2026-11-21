@@ -43,8 +43,8 @@ public enum FixWordForm {
             return index == range.lowerBound ? (index + 1)...range.upperBound : range.lowerBound...(index - 1)
         }
         if range.count < WordFixes.maximumPhraseWords {
-            if index == range.upperBound + 1, WordFixes.canJoin(words[range.upperBound], words[index]) { return range.lowerBound...index }
-            if index == range.lowerBound - 1, WordFixes.canJoin(words[index], words[range.lowerBound]) { return index...range.upperBound }
+            if index == range.upperBound + 1, WordFixes.canJoin(words[...range.upperBound].joined(separator: " "), words[index]) { return range.lowerBound...index }
+            if index == range.lowerBound - 1, WordFixes.canJoin(words[...index].joined(separator: " "), words[range.lowerBound]) { return index...range.upperBound }
         }
         return index...index
     }
