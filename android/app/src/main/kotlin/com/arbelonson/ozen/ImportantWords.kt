@@ -15,7 +15,7 @@ object ImportantWords {
 
     fun adding(phrase: String, alerts: List<KeywordAlert>): List<KeywordAlert> {
         val trimmed = phrase.trim()
-        if (trimmed.isEmpty()) return alerts
+        if (!AlertSuggestions.canBeFound(trimmed)) return alerts
         val listed = listed(trimmed, alerts) ?: return alerts + KeywordAlert(phrase = trimmed)
         return if (listed.isEnabled) alerts else switched(listed.id, true, alerts)
     }

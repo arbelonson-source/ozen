@@ -24,11 +24,12 @@ struct NameAlertForm: View {
                     .onSubmit { addName() }
                     .announcing(otherLettersNote, whenTurningTrue: HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode))
                     .announcing(severalWordsNote ?? "", whenTurningTrue: severalWordsNote != nil)
+                    .announcing(noLettersNote ?? "", whenTurningTrue: noLettersNote != nil)
                 Button(tr("הוספה", "Add")) { addName() }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
-                    .disabled(nameDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(!AlertSuggestions.canBeFound(nameDraft))
             }
             if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) || viewModel.settings.keywordAlerts.contains(where: { $0.isEnabled && HebrewText.isInOtherLetters($0.phrase, captionLanguage: viewModel.settings.languageCode) }) {
                 Text(otherLettersNote)
@@ -37,6 +38,11 @@ struct NameAlertForm: View {
             }
             if let severalWordsNote {
                 Text(severalWordsNote)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if let noLettersNote {
+                Text(noLettersNote)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -57,6 +63,10 @@ struct NameAlertForm: View {
 
     private var severalWordsNote: String? {
         AlertSuggestions.severalWordsNote(for: nameDraft, in: viewModel.uiLanguage)
+    }
+
+    private var noLettersNote: String? {
+        AlertSuggestions.noLettersNote(for: nameDraft, in: viewModel.uiLanguage)
     }
 
     private var otherLettersNote: String {
@@ -83,7 +93,7 @@ struct NameAlertForm: View {
     /// page, the next page is what VoiceOver should be reading.
     private func addName(announcing: Bool = true) {
         let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
+        guard AlertSuggestions.canBeFound(name) else { return }
         let wasOn = viewModel.listedKeywordAlert(matching: name)?.isEnabled == true
         viewModel.addKeywordAlert(phrase: name)
         // A name the engine has never heard is spelled some other way, and

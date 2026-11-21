@@ -34,6 +34,13 @@ object AlertSuggestions {
         return tr("כשהשם כולל כמה מילים, הטלפון ירטוט רק כשכולן נאמרות ברצף. כדאי לכתוב רק את השם שקוראים לכם בו, בלי שם משפחה.", "When the name has several words, the phone vibrates only when they are all said in a row. Best to write just the name people call you, without a surname.", language)
     }
 
+    fun canBeFound(phrase: String): Boolean = HebrewText.words(phrase).isNotEmpty()
+
+    fun noLettersNote(draft: String, language: UILanguage): String? {
+        if (draft.isBlank() || canBeFound(draft)) return null
+        return tr("סימני פיסוק וסמלים בלבד לא יימצאו אף פעם בכתוביות. כתבו לפחות אות או ספרה אחת.", "Punctuation and symbols alone are never found in the captions. Type at least one letter or number.", language)
+    }
+
     fun said(match: KeywordMatch, language: UILanguage): String {
         if (language == UILanguage.Hebrew || suggestion(match.phrase) == null) return match.matchedText
         return shown(match.phrase, language)

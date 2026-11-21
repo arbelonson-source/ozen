@@ -71,4 +71,18 @@ struct AlertSuggestionsTests {
         #expect(AlertSuggestions.severalWordsNote(for: "", in: .hebrew) == nil)
         #expect(KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "רחל לוי")]).matches(in: "רחל, בואי").isEmpty)
     }
+
+    @Test("a word of punctuation or symbols alone is refused with a note, since a caption never holds it")
+    func noLettersNote() {
+        #expect(!AlertSuggestions.canBeFound("!!"))
+        #expect(!AlertSuggestions.canBeFound(" ?! … "))
+        #expect(!AlertSuggestions.canBeFound("❤️"))
+        #expect(AlertSuggestions.canBeFound("Dana!"))
+        #expect(AlertSuggestions.canBeFound("911"))
+        #expect(AlertSuggestions.noLettersNote(for: "!!", in: .english)?.hasPrefix("Punctuation and symbols alone") == true)
+        #expect(AlertSuggestions.noLettersNote(for: "!!", in: .hebrew) != nil)
+        #expect(AlertSuggestions.noLettersNote(for: "Dana!", in: .english) == nil)
+        #expect(AlertSuggestions.noLettersNote(for: "  ", in: .english) == nil)
+        #expect(KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "!!")]).matches(in: "Wait!! Stop!!").isEmpty)
+    }
 }

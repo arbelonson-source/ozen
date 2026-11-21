@@ -39,6 +39,15 @@ public enum AlertSuggestions {
         return tr("כשהשם כולל כמה מילים, הטלפון ירטוט רק כשכולן נאמרות ברצף. כדאי לכתוב רק את השם שקוראים לכם בו, בלי שם משפחה.", "When the name has several words, the phone vibrates only when they are all said in a row. Best to write just the name people call you, without a surname.", in: language)
     }
 
+    public static func canBeFound(_ phrase: String) -> Bool {
+        !HebrewText.words(phrase).isEmpty
+    }
+
+    public static func noLettersNote(for draft: String, in language: UILanguage) -> String? {
+        guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !canBeFound(draft) else { return nil }
+        return tr("סימני פיסוק וסמלים בלבד לא יימצאו אף פעם בכתוביות. כתבו לפחות אות או ספרה אחת.", "Punctuation and symbols alone are never found in the captions. Type at least one letter or number.", in: language)
+    }
+
     public static func said(_ match: KeywordMatch, in language: UILanguage) -> String {
         guard language != .hebrew, suggestion(matching: match.phrase) != nil else { return match.matchedText }
         return shown(match.phrase, in: language)

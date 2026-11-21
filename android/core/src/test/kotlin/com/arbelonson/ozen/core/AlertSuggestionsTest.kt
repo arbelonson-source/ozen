@@ -74,4 +74,18 @@ class AlertSuggestionsTest {
         assertNull(AlertSuggestions.severalWordsNote("", UILanguage.Hebrew))
         assertTrue(KeywordAlertMatcher(listOf(KeywordAlert(phrase = "רחל לוי"))).matches("רחל, בואי").isEmpty())
     }
+
+    @Test
+    fun `a word of punctuation or symbols alone is refused with a note, since a caption never holds it`() {
+        assertFalse(AlertSuggestions.canBeFound("!!"))
+        assertFalse(AlertSuggestions.canBeFound(" ?! … "))
+        assertFalse(AlertSuggestions.canBeFound("❤️"))
+        assertTrue(AlertSuggestions.canBeFound("Dana!"))
+        assertTrue(AlertSuggestions.canBeFound("911"))
+        assertTrue(AlertSuggestions.noLettersNote("!!", UILanguage.English)!!.startsWith("Punctuation and symbols alone"))
+        assertNotNull(AlertSuggestions.noLettersNote("!!", UILanguage.Hebrew))
+        assertNull(AlertSuggestions.noLettersNote("Dana!", UILanguage.English))
+        assertNull(AlertSuggestions.noLettersNote("  ", UILanguage.English))
+        assertTrue(KeywordAlertMatcher(listOf(KeywordAlert(phrase = "!!"))).matches("Wait!! Stop!!").isEmpty())
+    }
 }

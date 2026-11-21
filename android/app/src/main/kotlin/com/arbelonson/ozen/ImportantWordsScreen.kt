@@ -76,8 +76,9 @@ internal fun ImportantWordsScreen(
     val listed = ImportantWords.listed(draft, alerts)
     val typedWordIsOn = listed?.isEnabled == true
     val context = LocalContext.current
+    val noLetters = AlertSuggestions.noLettersNote(draft, Localization.language)
     val add = {
-        if (!typedWordIsOn) {
+        if (!typedWordIsOn && AlertSuggestions.canBeFound(draft)) {
             val phrase = draft.trim()
             onChange(ImportantWords.adding(draft, alerts))
             draft = ""
@@ -97,7 +98,7 @@ internal fun ImportantWordsScreen(
                 modifier = Modifier.weight(1f),
             )
             val plus = if (listed == null) tr("הוספה", "Add") else tr("הפעלה", "Turn on")
-            FilledIconButton(onClick = add, enabled = draft.isNotBlank() && !typedWordIsOn, modifier = Modifier.semantics { contentDescription = plus }) {
+            FilledIconButton(onClick = add, enabled = AlertSuggestions.canBeFound(draft) && !typedWordIsOn, modifier = Modifier.semantics { contentDescription = plus }) {
                 Icon(Icons.Rounded.Add, contentDescription = null)
             }
         }
@@ -114,6 +115,13 @@ internal fun ImportantWordsScreen(
             )
         }
         if (HebrewText.isInOtherLetters(draft, captionLanguage)) Text(otherLetters, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+        noLetters?.let {
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
         Footnote(
             tr(
                 "כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו ״לסבתא״ או ״וסבתא״ נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: ״רופא״ ולא ״הרופא״, כדי שגם ״לרופא״ ייחשב.",
