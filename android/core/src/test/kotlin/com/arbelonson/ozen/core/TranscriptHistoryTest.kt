@@ -17,7 +17,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -106,6 +108,41 @@ class TranscriptHistoryTest {
             assertEquals("AirPods", loaded.inputName)
             assertTrue(loaded.segments.size == 2 && loaded.endedAt == 300.0)
             assertEquals(TranscriptionEngineKind.AppleSpeech, store.listSummaries().firstOrNull()?.engine)
+        }
+    }
+
+    @Test
+    fun `an autosave of a conversation that can't be read right now writes nothing, so its name and source stay, and goes through once it can be read`() {
+        withHistoryDirectory("ozen-history-unreadable") { dir ->
+            val id = UUID.randomUUID()
+            val hello = segment(text = "שלום")
+            val named = TranscriptSessionRecord(
+                id = id, startedAt = 100.0, engine = TranscriptionEngineKind.AppleSpeech, modelVariant = null,
+                inputName = "AirPods", segments = listOf(hello), title = "Dinner with Dana",
+            )
+            TranscriptHistoryStore(dir).save(named, updateSearchCaches = false)
+            val file = File(dir, "${uuidString(id)}.json")
+            val saved = file.readBytes()
+            Files.setPosixFilePermissions(file.toPath(), PosixFilePermissions.fromString("---------"))
+            try {
+                val store = TranscriptHistoryStore(dir)
+                val autosave = TranscriptSessionRecord(
+                    id = id, startedAt = 100.0, engine = TranscriptionEngineKind.WhisperKit, modelVariant = "small",
+                    inputName = "iPhone Microphone", segments = listOf(hello, segment(text = "מה נשמע")),
+                )
+                assertFails { store.save(autosave) }
+                Files.setPosixFilePermissions(file.toPath(), PosixFilePermissions.fromString("rw-------"))
+                assertContentEquals(saved, file.readBytes())
+
+                store.save(autosave)
+            } finally {
+                Files.setPosixFilePermissions(file.toPath(), PosixFilePermissions.fromString("rw-------"))
+            }
+            val loaded = assertNotNull(TranscriptHistoryStore(dir).load(id))
+            assertEquals("Dinner with Dana", loaded.title)
+            assertEquals(TranscriptionEngineKind.AppleSpeech, loaded.engine)
+            assertEquals("AirPods", loaded.inputName)
+            assertEquals(2, loaded.segments.size)
         }
     }
 

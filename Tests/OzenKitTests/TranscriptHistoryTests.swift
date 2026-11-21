@@ -76,6 +76,37 @@ struct TranscriptHistoryTests {
         #expect(store.listSummaries().first?.engine == .appleSpeech)
     }
 
+    @Test("an autosave of a conversation that can't be read right now writes nothing, so its name and source stay, and goes through once it can be read")
+    func autosaveOfUnreadableConversationKeepsNameAndSource() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let id = UUID()
+        let hello = segment(text: "שלום")
+        var named = TranscriptSessionRecord(id: id, startedAt: 100, endedAt: nil, engine: .appleSpeech, modelVariant: nil, inputName: "AirPods", segments: [hello])
+        named.title = "Dinner with Dana"
+        try TranscriptHistoryStore(directoryURL: dir).save(named, updateSearchCaches: false)
+        let url = dir.appendingPathComponent("\(id.uuidString).json")
+        let saved = try Data(contentsOf: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let autosave = TranscriptSessionRecord(
+            id: id, startedAt: 100, endedAt: nil, engine: .whisperKit, modelVariant: "small", inputName: "iPhone Microphone",
+            segments: [hello, segment(text: "מה נשמע")]
+        )
+        #expect(throws: (any Error).self) { try store.save(autosave) }
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        #expect(try Data(contentsOf: url) == saved)
+
+        try store.save(autosave)
+        let loaded = try #require(TranscriptHistoryStore(directoryURL: dir).load(id: id))
+        #expect(loaded.title == "Dinner with Dana")
+        #expect(loaded.engine == .appleSpeech)
+        #expect(loaded.inputName == "AirPods")
+        #expect(loaded.segments.count == 2)
+    }
+
     @Test("a line whose confidence is not a number is saved without it, instead of the whole conversation failing to save")
     func nonFiniteConfidenceStillSaves() throws {
         let dir = makeTempDirectory()
