@@ -319,6 +319,8 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Next").performClick()
 
         compose.onNodeWithText("✓ Microphone approved").assertExists()
+        // On a new phone the system's yes is what turns Ozen's notifications on.
+        AlertNotifier.allowed = { true }
         compose.onNodeWithText("Approve notifications").performScrollTo().performClick()
         compose.waitUntil(5_000) { shown("✓ Notifications approved") }
         compose.onNodeWithText("Next").performClick()
