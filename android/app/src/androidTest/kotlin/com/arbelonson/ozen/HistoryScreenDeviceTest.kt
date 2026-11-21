@@ -666,6 +666,7 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
+        File(app.cacheDir, CaptionSession.SHARED_FOLDER).deleteRecursively()
         val record = longConversation("Shared then deleted opening")
         val started = CopyOnWriteArrayList<Intent>()
         val sheet = startsHeldBack(started)
