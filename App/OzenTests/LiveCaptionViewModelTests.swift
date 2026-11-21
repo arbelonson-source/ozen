@@ -553,6 +553,34 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.isListening)
     }
 
+    @Test("until a caption size is chosen the captions and recordings follow the phone's text size; one moved to by hand stays exactly, and other display changes choose none")
+    func captionSizeFollowsThePhoneUntilChosen() {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        viewModel.phoneBodySize = 53
+        #expect(viewModel.display.fontSize == 64)
+        #expect(LiveRecordingHost(viewModel: viewModel).captionSize == 64)
+        viewModel.display.theme = .highContrast
+        viewModel.phoneBodySize = 28
+        #expect(viewModel.display.fontSize == 38)
+
+        viewModel.display.fontSize = 40
+        viewModel.phoneBodySize = 53
+        #expect(viewModel.display.fontSize == 40)
+        viewModel.phoneBodySize = 17
+        #expect(viewModel.display.fontSize == 40)
+        viewModel.flushPendingSettingsSave()
+        #expect(store.load().display.fontSize == 40)
+        #expect(store.load().display.fontSizeChosen)
+
+        viewModel.display.fontSizeChosen = false
+        viewModel.phoneBodySize = 53
+        #expect(viewModel.display.fontSize == 64)
+        viewModel.flushPendingSettingsSave()
+        #expect(!store.load().display.fontSizeChosen)
+        #expect(store.load().display.theme == .highContrast)
+    }
+
     @Test("selecting a microphone remembers it for next launch")
     func micSelectionPersists() async {
         let store = temporaryStore()
@@ -3812,6 +3840,22 @@ struct LiveCaptionViewModelLockScreenTests {
         viewModel.display.lockScreenCaptions = false
         #expect(lockScreen.ends == 2)
         #expect(!lockScreen.isShowing)
+    }
+
+    @Test("until a caption size is chosen, large phone text makes the lock screen's lines large; a size chosen by hand decides them again")
+    func lockScreenFollowsThePhonesTextSize() async {
+        let lockScreen = FakeLockScreen()
+        let (viewModel, engine) = makeViewModel(lockScreen: lockScreen)
+        viewModel.phoneBodySize = 28
+        await viewModel.start()
+        #expect(await eventually { lockScreen.isShowing })
+        viewModel.sceneActivityChanged(isActive: false)
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "the pills at eight", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { lockScreen.shown.last?.lines.last?.text == CaptionLayout.directed("the pills at eight", languageCode: "he") })
+        #expect(lockScreen.shown.last?.textSize == .large)
+
+        viewModel.display.fontSize = 30
+        #expect(await eventually { lockScreen.shown.last?.textSize == .regular })
     }
 
     @Test("the notice that captions left the lock screen is taken back once opening the app puts them there again")

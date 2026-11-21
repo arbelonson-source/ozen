@@ -60,6 +60,7 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
     }
 
     public var fontSize: Double
+    public var fontSizeChosen = false
     public var theme: Theme
     public var boldText: Bool
     public var showSpeakerNames: Bool
@@ -123,6 +124,10 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
     public static func savedLineSize(captionSize: Double, bodySize: Double) -> Double {
         max(bodySize, captionSize * 0.7)
     }
+
+    public func drawn(bodySize: Double) -> DisplayPreferences { self }
+
+    public func saving(_ edited: DisplayPreferences, drawnAt bodySize: Double) -> DisplayPreferences { edited }
 
     private enum CodingKeys: String, CodingKey {
         case fontSize, theme, boldText, showSpeakerNames, keepScreenAwake, markUncertainLines, announceNewLines, emphasizeNumbers

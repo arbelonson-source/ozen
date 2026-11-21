@@ -1742,6 +1742,8 @@ public final class LiveCaptionViewModel {
 
     // MARK: - Display & behaviour (no restart needed)
 
+    public var phoneBodySize: Double = 17
+
     public var display: DisplayPreferences {
         get { settings.display }
         set {
