@@ -136,11 +136,13 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
 
     /**
      * Lets go of the phone's speech engine for good. Android holds the
-     * connection to it, and through its listener this voice and whoever
-     * listens to it, until it is shut down.
+     * connection to it, and through its listener this voice, for a while
+     * even after it is shut down: whoever this voice calls back is let go
+     * of here, or a closed session stays in memory through it.
      */
     fun shutdown() {
         onSpeakingChanged = null
+        onReconnect = null
         pending.clear()
         waiting = null
         if (!resting) engine.shutdown()
