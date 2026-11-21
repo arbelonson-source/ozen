@@ -159,4 +159,32 @@ class NameSpeakerDialogDeviceTest {
         compose.waitForIdle()
         assertEquals(listOf("Noam" to false), saved.toList())
     }
+
+    @Test
+    fun aSavedNameIsAnnouncedAsOnTheIPhoneAndARefusedOneIsNot() {
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val announced = CopyOnWriteArrayList<String>()
+        ScreenReader.isOn = { true }
+        ScreenReader.announce = { _, text -> announced += text }
+        try {
+            val accept = AtomicReference(false)
+            compose.runOnUiThread {
+                compose.activity.setContent {
+                    NameSpeakerDialog(shown = "Good evening", hasVoice = true, savedNames = listOf("Dana"), onSave = { _, _ -> accept.get() }, onDismiss = {})
+                }
+            }
+            chip("Dana").performClick()
+            compose.onNodeWithText("Save").performClick()
+            compose.waitForIdle()
+            assertEquals(emptyList<String>(), announced.filter { it.startsWith("Voice saved") })
+            accept.set(true)
+            compose.onNodeWithText("Save").performClick()
+            compose.waitForIdle()
+            assertEquals(listOf("Voice saved: Dana"), announced.filter { it.startsWith("Voice saved") })
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+        }
+    }
 }

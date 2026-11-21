@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -50,10 +51,13 @@ internal fun NameSpeakerDialog(
     var tooOld by rememberSaveable { mutableStateOf(false) }
     var asking by rememberSaveable { mutableStateOf<String?>(null) }
     val typing = remember { FocusRequester() }
+    val context = LocalContext.current
     LaunchedEffect(Unit) { if (hasVoice && savedNames.isEmpty()) typing.requestFocus() }
     val commit = { onlyThisLine: Boolean ->
         asking = null
-        tooOld = !onSave(name.trim(), onlyThisLine)
+        val saved = onSave(name.trim(), onlyThisLine)
+        tooOld = !saved
+        if (saved) ScreenReader.said(context.applicationContext, tr("הקול נשמר: %1", "Voice saved: %1", listOf(name.trim())))
     }
     // A name one letter from the saved person's this voice carries (Noa and
     // Noam) would rename that person in every saved conversation. Only the

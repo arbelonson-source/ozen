@@ -276,7 +276,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLink(intent)
-        takeSharedRecording(intent)
+        // As at launch: the recording is what the person came for, so the
+        // caption screen's first appearance must not start captions after it.
+        val app = application as OzenApplication
+        if (takeSharedRecording(intent)) app.captions.takeFirstAppearance()
         startFromRequest(intent, newIntent = true, recreated = false)
     }
 

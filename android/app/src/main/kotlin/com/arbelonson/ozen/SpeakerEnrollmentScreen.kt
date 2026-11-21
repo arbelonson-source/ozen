@@ -101,10 +101,13 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
     val progress by SpeakerRecordings.progress.collectAsState()
     val outcome by SpeakerRecordings.outcome.collectAsState()
     val recording = progress != null
+    val context = LocalContext.current
+    AnnounceWhenShown(recording, tr("מקליטים, אפשר לדבר עכשיו", "Recording, speak now"))
     val mine = outcome?.takeIf { it.screen == screen }
     LaunchedEffect(mine) {
         if (mine?.saved == true) {
             SpeakerRecordings.outcome.value = null
+            ScreenReader.said(context.applicationContext, tr("הקול נשמר: %1", "Voice saved: %1", listOf(name.trim())))
             onClose()
         }
     }
@@ -118,7 +121,6 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
     // Without the microphone the half minute recorded nothing and ended as
     // "too short or too quiet". The phone is asked first, and a refusal
     // says what is missing and where to allow it.
-    val context = LocalContext.current
     var noMicrophone by rememberSaveable { mutableStateOf(false) }
     // A second tap while the phone's question is on its way would ask again
     // and start a second recording over the first once both are answered.
