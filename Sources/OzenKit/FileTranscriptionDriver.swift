@@ -66,7 +66,7 @@ public struct FileTranscriptionDriver: Sendable {
     private let engine: any TranscriptionEngine
     private let languageCode: String
     private let names: [String]
-    private let wordFixes: [WordFix]
+    private let fixesNow: @Sendable () async -> [WordFix]
     private let durationSeconds: Double?
     private let allowCellularDownload: Bool
     private let score: Score
@@ -78,6 +78,7 @@ public struct FileTranscriptionDriver: Sendable {
         languageCode: String,
         names: [String],
         wordFixes: [WordFix] = [],
+        currentWordFixes: (@Sendable () async -> [WordFix])? = nil,
         durationSeconds: Double?,
         allowCellularDownload: Bool,
         score: @escaping Score,
@@ -87,7 +88,7 @@ public struct FileTranscriptionDriver: Sendable {
         self.engine = engine
         self.languageCode = languageCode
         self.names = names
-        self.wordFixes = WordFixes.normalized(wordFixes)
+        fixesNow = currentWordFixes ?? { wordFixes }
         self.durationSeconds = durationSeconds
         self.allowCellularDownload = allowCellularDownload
         self.score = score
@@ -99,7 +100,7 @@ public struct FileTranscriptionDriver: Sendable {
         var state = State(planner: planner())
         var result = await work(source, report, &state)
         if case .failed(let problem) = result, !state.lines.isEmpty, !Task.isCancelled {
-            result = .stoppedPartway(lines: state.lines, problem: problem)
+            result = .stoppedPartway(lines: await finalLines(state), problem: problem)
         }
         return Outcome(result: result, streamsOpened: state.streams, peakBufferedSamples: state.peak)
     }
@@ -111,6 +112,9 @@ public struct FileTranscriptionDriver: Sendable {
         var pending: [Float] = []
         var received = 0
         var lines: [TranscribedLine] = []
+        var heard: [String] = []
+        var fixedWith: [WordFix] = []
+        var fixesChanged = false
         var streams = 0
         var peak = 0
         var startedAt: TimeInterval = 0
@@ -155,7 +159,8 @@ public struct FileTranscriptionDriver: Sendable {
         if let stop = await finishTail(&state, report) { return stop }
         if TranscriptionProgress.endsEarly(heardSeconds: seconds(state.received), totalSeconds: durationSeconds) { endMissing = true }
         report(progress(state, done: endMissing ? nil : max(seconds(state.received), durationSeconds ?? 0)))
-        return state.lines.isEmpty ? .failed(.noSpeech) : .finished(lines: state.lines, endMissing: endMissing)
+        if state.lines.isEmpty { return .failed(.noSpeech) }
+        return .finished(lines: await finalLines(state), endMissing: endMissing)
     }
 
     private func prepare(_ report: @escaping Report) async -> Outcome.Result? {
@@ -228,8 +233,11 @@ public struct FileTranscriptionDriver: Sendable {
         case .text(let text):
             if !text.isEmpty {
                 let end = min(stretch.endSeconds, seconds(state.received))
-                let fixed = WordFixes.apply(wordFixes, to: text)
-                state.lines.append(TranscribedLine(startSeconds: stretch.startSeconds, endSeconds: end, text: fixed))
+                let fixes = await WordFixes.normalized(fixesNow())
+                if !state.lines.isEmpty && fixes != state.fixedWith { state.fixesChanged = true }
+                state.fixedWith = fixes
+                state.heard.append(text)
+                state.lines.append(TranscribedLine(startSeconds: stretch.startSeconds, endSeconds: end, text: WordFixes.apply(fixes, to: text)))
             }
             report(progress(state))
             return nil
@@ -289,6 +297,16 @@ public struct FileTranscriptionDriver: Sendable {
             timeLeftSeconds: TranscriptionProgress.secondsLeft(elapsedSeconds: environment.now() - state.startedAt, doneSeconds: heard, totalSeconds: durationSeconds),
             lines: state.lines
         )
+    }
+
+    /// Lines are fixed with the list as it is when each is made; a fix
+    /// added or removed since is applied to every line here, once.
+    private func finalLines(_ state: State) async -> [TranscribedLine] {
+        let fixes = await WordFixes.normalized(fixesNow())
+        if !state.fixesChanged && fixes == state.fixedWith { return state.lines }
+        return zip(state.lines, state.heard).map {
+            TranscribedLine(startSeconds: $0.startSeconds, endSeconds: $0.endSeconds, text: WordFixes.apply(fixes, to: $1))
+        }
     }
 
     private func seconds(_ samples: Int) -> Double { Double(samples) / Double(Self.rate) }
