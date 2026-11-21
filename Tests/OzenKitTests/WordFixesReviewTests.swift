@@ -115,8 +115,8 @@ struct WordFixesReviewTests {
         pipeline.commitStaleSegments(now: 1_000_000)
         #expect(pipeline.correctWord(inSegment: id, with: fix("לנועה", "לדנה")) == "לדנה נועה")
         #expect(pipeline.correctWord(inSegment: id, with: fix("נועה", "נעמי")) == "לדנה נעמי")
-        engine.emit(TranscriptToken(utteranceID: id, text: "לנועה נועה", isFinal: true, timestamp: 1_002))
-        #expect(await eventually { pipeline.segments[0].text == "לדנה נעמי" })
+        engine.emit(TranscriptToken(utteranceID: id, text: "לנועה נועה היום", isFinal: true, timestamp: 1_002))
+        #expect(await eventually { pipeline.segments[0].text == "לדנה נעמי היום" })
     }
 
     @Test("a text fix the disk refused on an old conversation is written by the next save, and reported until then")
