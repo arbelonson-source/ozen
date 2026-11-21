@@ -29,4 +29,12 @@ class SavedPersonMergeTest {
     fun `a person saved with several voice prints is no other person`() {
         assertNull(SavedPersonMerge.target("Dana", "Daniela", listOf("Dana", "Dana", "Yossi")))
     }
+
+    @Test
+    fun `a merge lands on the saved name exactly as stored, even with spaces around it, so no person is left apart`() {
+        val padded = listOf("Dana", "Yossi ")
+        assertEquals("Yossi ", SavedPersonMerge.target("Dana", "yossi", padded))
+        assertEquals("Yossi ", SavedPersonMerge.destination("Dana", "yossi", padded))
+        assertEquals("Dani", SavedPersonMerge.destination("Dana", "  Dani ", padded))
+    }
 }

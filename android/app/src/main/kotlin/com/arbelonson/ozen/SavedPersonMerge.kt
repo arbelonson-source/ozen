@@ -6,4 +6,7 @@ internal object SavedPersonMerge {
         if (wanted.isEmpty()) return null
         return savedNames.firstOrNull { it != renaming && it.trim().lowercase() == wanted }
     }
+
+    fun destination(renaming: String, to: String, savedNames: List<String>): String =
+        target(renaming, to, savedNames) ?: to.trim()
 }

@@ -25,4 +25,12 @@ struct SavedPersonMergeTests {
     func severalPrints() {
         #expect(SavedPersonMerge.target(renaming: "Dana", to: "Daniela", savedNames: ["Dana", "Dana", "Yossi"]) == nil)
     }
+
+    @Test("a merge lands on the saved name exactly as stored, even with spaces around it, so no person is left apart")
+    func paddedSavedName() {
+        let saved = ["Dana", "Yossi "]
+        #expect(SavedPersonMerge.target(renaming: "Dana", to: "yossi", savedNames: saved) == "Yossi ")
+        #expect(SavedPersonMerge.destination(renaming: "Dana", to: "yossi", savedNames: saved) == "Yossi ")
+        #expect(SavedPersonMerge.destination(renaming: "Dana", to: "  Dani ", savedNames: saved) == "Dani")
+    }
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasScrollAction
@@ -337,6 +338,31 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
         compose.onNode(isDialog()).assertDoesNotExist()
         assertEquals(listOf("Savta", "Savta", "Yossi"), app.settings.current.value.speakerProfiles.map { it.name })
+    }
+
+    @Test
+    fun renamingOntoAnotherSavedPersonsNameAsksFirstAndAMergeJoinsThemEvenWithSpacesAroundTheSavedName() {
+        val print = FloatArray(512) { 0.1f }
+        app.settings.change { it.speakerProfiles = listOf(SpeakerProfile(name = "Dana", embedding = print), SpeakerProfile(name = "Yossi ", embedding = print)) }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Dana").performScrollTo().performClick()
+        val name = compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog()))
+        name.performTextClearance()
+        name.performTextInput("yossi")
+        val save = compose.onNode(hasText("Save") and hasAnyAncestor(isDialog()))
+        save.performClick()
+
+        val mergeQuestion = isDialog() and hasAnyDescendant(hasText("Merge"))
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(mergeQuestion)).performClick()
+        compose.onNode(mergeQuestion).assertDoesNotExist()
+        name.assert(hasText("yossi"))
+        assertEquals(listOf("Dana", "Yossi "), app.settings.current.value.speakerProfiles.map { it.name })
+
+        save.performClick()
+        compose.onNode(hasText("Merge") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Yossi ", "Yossi "), app.settings.current.value.speakerProfiles.map { it.name })
+        compose.onNode(isDialog()).assertDoesNotExist()
     }
 
     @Test
