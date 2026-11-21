@@ -343,6 +343,13 @@ class AppSettingsTest {
         assertEquals(53.0, DisplayPreferences.savedLineSize(captionSize = 30.0, bodySize = 53.0))
         assertEquals(64 * 0.7, DisplayPreferences.savedLineSize(captionSize = 64.0, bodySize = 23.0))
     }
+
+    @Test
+    fun `the room between caption lines is six tenths of the caption size but never under 12, as on the iPhone`() {
+        assertEquals(12.0, DisplayPreferences.captionLineSpacing(captionSize = 20.0))
+        assertEquals(18.0, DisplayPreferences.captionLineSpacing(captionSize = 30.0))
+        assertEquals(38.4, DisplayPreferences.captionLineSpacing(captionSize = 64.0))
+    }
 }
 
 class AppSettingsFreshInstallTest {

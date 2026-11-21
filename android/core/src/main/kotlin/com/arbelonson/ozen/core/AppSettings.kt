@@ -212,6 +212,13 @@ data class DisplayPreferences(
          */
         fun savedLineSize(captionSize: Double, bodySize: Double): Double = maxOf(bodySize, captionSize * 0.7)
 
+        /**
+         * The room between two caption lines, as on the iPhone: six tenths of
+         * the caption size, never under 12. A fixed 12 ran the lines together
+         * at the largest sizes, where one line's end met the next one's start.
+         */
+        fun captionLineSpacing(captionSize: Double): Double = maxOf(12.0, captionSize * 0.6)
+
         fun fromJson(json: String): DisplayPreferences = fromElement(Json.parseToJsonElement(json))
 
         internal fun fromElement(element: JsonElement): DisplayPreferences {
