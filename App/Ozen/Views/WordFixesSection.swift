@@ -6,13 +6,13 @@ struct WordFixesSection: View {
     @State private var heard = ""
     @State private var written = ""
 
-    private var canAdd: Bool {
-        WordFixes.canAdd(WordFix(heard: heard, written: written), to: viewModel.wordFixes)
+    private var refusal: WordFixes.Refusal? {
+        FixWordForm.refusal(WordFix(heard: heard, written: written), to: viewModel.wordFixes)
     }
 
-    private var refusalNote: String? {
-        WordFixes.refusalNote(WordFixes.refusal(WordFix(heard: heard, written: written), to: viewModel.wordFixes))
-    }
+    private var canAdd: Bool { refusal == nil }
+
+    private var refusalNote: String? { WordFixes.refusalNote(refusal) }
 
     var body: some View {
         Section {

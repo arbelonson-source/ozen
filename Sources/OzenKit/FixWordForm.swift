@@ -22,6 +22,16 @@ public enum FixWordForm {
         return WordFixes.apply([WordFix(heard: cleaned(heard), written: wanted)], to: line) != line
     }
 
+    public static func hasHeardWord(_ heard: String) -> Bool {
+        heard.unicodeScalars.contains(where: WordFixes.Token.isCore)
+    }
+
+    public static func refusal(_ fix: WordFix, to list: [WordFix]) -> WordFixes.Refusal? {
+        let refusal = WordFixes.refusal(fix, to: list)
+        guard refusal == nil || refusal == .full, !hasHeardWord(fix.heard) else { return refusal }
+        return .heardWords
+    }
+
     public static func tapped(_ picked: ClosedRange<Int>?, index: Int, words: [String]) -> ClosedRange<Int>? {
         guard let range = picked else { return index...index }
         if range.contains(index) {

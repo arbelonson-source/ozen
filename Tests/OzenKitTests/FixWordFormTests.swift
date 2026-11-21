@@ -65,4 +65,18 @@ struct FixWordFormTests {
         #expect(FixWordForm.changes(line: call, heard: heard, written: "050-123 4568"))
         #expect(FixWordForm.note(line: call, heard: heard, written: "") == .nowWrite)
     }
+
+    @Test("a heard side with no letter or digit is refused as on Android, since it can never match a word")
+    func heardWithNoLetterIsRefused() {
+        #expect(FixWordForm.refusal(WordFix(heard: "...", written: "Avi"), to: []) == .heardWords)
+        #expect(!FixWordForm.hasHeardWord("... !"))
+        #expect(FixWordForm.hasHeardWord("aval..."))
+        #expect(FixWordForm.refusal(WordFix(heard: "aval...", written: "Avi"), to: []) == nil)
+        #expect(FixWordForm.refusal(WordFix(heard: "...", written: "..."), to: []) == .sameWord)
+        #expect(FixWordForm.refusal(WordFix(heard: "", written: "Avi"), to: []) == .missing)
+        let full = (0..<WordFixes.maximumFixes).map { WordFix(heard: "word\($0)", written: "Word \($0)") }
+        #expect(FixWordForm.refusal(WordFix(heard: "...", written: "Avi"), to: full) == .heardWords)
+        #expect(FixWordForm.refusal(WordFix(heard: "aval", written: "Avi"), to: full) == .full)
+        #expect(WordFixes.apply([WordFix(heard: "...", written: "Avi")], to: "Wait ... ok") == "Wait ... ok")
+    }
 }

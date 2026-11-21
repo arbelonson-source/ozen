@@ -697,6 +697,20 @@ struct LiveCaptionViewModelAlertTests {
         #expect(store.load().keywordAlerts.isEmpty)
     }
 
+    @Test("an alert word of punctuation alone is refused, so it is never listed, twice or at all")
+    func punctuationAloneIsNotListed() {
+        let store = SettingsStore(fileURL: temporaryURL("vm").appendingPathExtension("json"))
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline)
+
+        viewModel.addKeywordAlert(phrase: "!!")
+        viewModel.addKeywordAlert(phrase: "!!")
+        viewModel.addKeywordAlert(phrase: " ?! ")
+        #expect(viewModel.keywordAlerts.isEmpty)
+        viewModel.addKeywordAlert(phrase: "Dana!")
+        #expect(viewModel.keywordAlerts.map(\.phrase) == ["Dana!"])
+    }
+
     @Test("a keyword hit resolves who said it, but only while speaker names are shown")
     func keywordHitSpeakerName() async throws {
         let store = SettingsStore(fileURL: temporaryURL("vm").appendingPathExtension("json"))
@@ -1011,6 +1025,15 @@ struct LiveCaptionViewModelVocabularyTests {
         viewModel.addVocabularyTerm("אבי")
         viewModel.addVocabularyTerm("רותי")
         #expect(viewModel.vocabulary == ["רותי", "אבי"])
+    }
+
+    @Test("a word fix whose heard side has no letter or digit is refused, as on Android: it could never match")
+    func wordFixWithNoHeardLetterIsRefused() throws {
+        let (viewModel, _, _) = try makeViewModel()
+        viewModel.addWordFix(WordFix(heard: "...", written: "Avi"))
+        #expect(viewModel.wordFixes.isEmpty)
+        viewModel.addWordFix(WordFix(heard: "aval", written: "Avi"))
+        #expect(viewModel.wordFixes == [WordFix(heard: "aval", written: "Avi")])
     }
 
     @Test("speaker profile names can be added in one go, without duplicating names already listed")

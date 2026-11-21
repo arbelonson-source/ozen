@@ -399,9 +399,11 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
     // below that says what the phone will vibrate for.
     val addTyped = {
         val name = draft.value.trim()
-        addDraft()
-        focusManager.clearFocus()
-        if (name.isNotEmpty()) sayAdded(name)
+        if (name.isEmpty() || AlertSuggestions.canBeFound(name)) {
+            addDraft()
+            focusManager.clearFocus()
+            if (name.isNotEmpty()) sayAdded(name)
+        }
     }
     val field = @Composable { modifier: Modifier ->
         OutlinedTextField(
@@ -417,7 +419,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         )
     }
     val add = @Composable { modifier: Modifier ->
-        TonalButton(tr("הוספה", "Add"), addTyped, modifier, enabled = draft.value.isNotBlank())
+        TonalButton(tr("הוספה", "Add"), addTyped, modifier, enabled = AlertSuggestions.canBeFound(draft.value))
     }
     val captionLanguage = settings.languageCode
     // A saved name keeps its warning once the field is cleared: the note
@@ -449,6 +451,16 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
             }
             Box(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
                 AlertSuggestions.severalWordsNote(draft.value, Localization.language)?.let { note ->
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+            }
+            Box(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                AlertSuggestions.noLettersNote(draft.value, Localization.language)?.let { note ->
                     Text(
                         note,
                         style = MaterialTheme.typography.bodyLarge,

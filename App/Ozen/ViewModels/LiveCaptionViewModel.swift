@@ -1951,7 +1951,7 @@ public final class LiveCaptionViewModel {
     /// switched back on instead of being listed twice.
     public func addKeywordAlert(phrase: String) {
         let trimmed = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard AlertSuggestions.canBeFound(trimmed) else { return }
         if let listed = listedKeywordAlert(matching: trimmed) {
             if !listed.isEnabled { setKeywordAlert(id: listed.id, enabled: true) }
             return
@@ -2168,6 +2168,7 @@ public final class LiveCaptionViewModel {
     public var wordFixes: [WordFix] { settings.wordFixes }
 
     public func addWordFix(_ fix: WordFix) {
+        guard FixWordForm.hasHeardWord(fix.heard) else { return }
         let cleaned = WordFixes.adding(fix, to: settings.wordFixes)
         guard cleaned != settings.wordFixes else { return }
         settings.wordFixes = cleaned

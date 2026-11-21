@@ -27,6 +27,13 @@ class ImportantWordsTest {
     }
 
     @Test
+    fun `a word of punctuation alone is refused, so it is never listed, twice or at all`() {
+        assertEquals(listOf(grandma), ImportantWords.adding("!!", listOf(grandma)))
+        assertEquals(listOf(grandma), ImportantWords.adding(" ?! ", ImportantWords.adding("!!", listOf(grandma))))
+        assertEquals(listOf("סבתא", "Dana!"), ImportantWords.adding("Dana!", listOf(grandma)).map { it.phrase })
+    }
+
+    @Test
     fun `suggestions are her own words first, then the usual ones, none listed or repeated, at most eight`() {
         val vocabulary = listOf("Shira", "אמא", "Dr. Levi", "shira", "Noa", "Avi", "Dana", "Yoni", "Tal")
         assertEquals(listOf("Shira", "אמא", "Dr. Levi", "Noa", "Avi", "Dana", "Yoni", "Tal"), ImportantWords.suggestions(vocabulary, emptyList(), UILanguage.Hebrew))

@@ -31,13 +31,14 @@ struct KeywordAlertsView: View {
                         .submitLabel(.done)
                         .onSubmit(add)
                         .announcing(otherLettersNote, whenTurningTrue: HebrewText.isInOtherLetters(newPhrase, captionLanguage: viewModel.settings.languageCode))
+                        .announcing(noLettersNote ?? "", whenTurningTrue: noLettersNote != nil)
                     Button(action: add) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                             .frame(minWidth: 44, minHeight: 44)
                             .contentShape(Rectangle())
                     }
-                    .disabled(newPhrase.trimmingCharacters(in: .whitespaces).isEmpty || typedWordIsOn)
+                    .disabled(!AlertSuggestions.canBeFound(newPhrase) || typedWordIsOn)
                     .accessibilityLabel(Text(listed == nil ? tr("הוספה", "Add") : tr("הפעלה", "Turn on")))
                 }
                 if let listed {
@@ -47,6 +48,11 @@ struct KeywordAlertsView: View {
                 }
                 if HebrewText.isInOtherLetters(newPhrase, captionLanguage: viewModel.settings.languageCode) {
                     Text(otherLettersNote)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                if let noLettersNote {
+                    Text(noLettersNote)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -143,6 +149,13 @@ struct KeywordAlertsView: View {
         listed?.isEnabled == true
     }
 
+    /// Punctuation or symbols alone ("!!") leave nothing to find in a
+    /// caption: such a word was listed, never buzzed, and could be listed
+    /// twice, since no word on the list matches it either.
+    private var noLettersNote: String? {
+        AlertSuggestions.noLettersNote(for: newPhrase, in: viewModel.uiLanguage)
+    }
+
     /// Her own Vocabulary words (see VocabularyView) first, since a name
     /// she already typed there to fix the captions is a stronger candidate
     /// than the generic list below it; then the generic list. Each set is
@@ -169,6 +182,10 @@ struct KeywordAlertsView: View {
 
     private func add() {
         guard !typedWordIsOn else { return }
+        guard AlertSuggestions.canBeFound(newPhrase) else {
+            isEditing = true
+            return
+        }
         let phrase = newPhrase.trimmingCharacters(in: .whitespacesAndNewlines)
         viewModel.addKeywordAlert(phrase: newPhrase)
         newPhrase = ""

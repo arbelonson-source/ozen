@@ -18,6 +18,7 @@ import android.os.SystemClock
 import android.provider.OpenableColumns
 import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
+import com.arbelonson.ozen.core.AlertSuggestions
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AwaySoundRecord
@@ -1506,6 +1507,7 @@ class CaptionSession(
 
     /** Her name, typed: it buzzes when said, and goes first on the names list so every engine expects it, as on the iPhone. */
     fun addNameAlert(name: String) {
+        if (!AlertSuggestions.canBeFound(name)) return
         addAlert(name)
         addWord(name)
     }
