@@ -23,6 +23,8 @@ import com.arbelonson.ozen.core.FileTranscriptionProblem
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.TranscriptFormats
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import java.io.File
 import java.util.UUID
 import org.junit.After
@@ -326,6 +328,35 @@ class TranscribeRecordingDeviceTest {
                 val heard = done.lines.filter { it.startSeconds < 52 }.joinToString(" ") { it.text }
                 Log.i("OzenTranscribe", "WER over the first 52 s: %.1f%%".format(DeviceClips.wordErrorRate(reference.readText(), heard) * 100))
             }
+        }
+    }
+
+    @Test
+    fun aWordFixAddedWhileARecordingIsBeingTranscribedIsInTheSavedText() {
+        val fixesBefore = app.settings.current.value.wordFixes
+        val uri = lecture(240, "Fix added midway.wav")
+        try {
+            app.captions.setWordFixes(emptyList())
+            share(uri, "audio/wav").use {
+                compose.waitUntil(30_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag(TRANSCRIBE_START).performClick()
+                var firstLine: String? = null
+                waitFor(600_000, "the first line") {
+                    firstLine = (transcriber.state.value as? FileTranscription.Working)?.lines?.firstOrNull()?.text
+                    firstLine != null
+                }
+                val heard = WordFixes.wordsOf(firstLine!!).maxBy { it.length }
+                app.captions.setWordFixes(listOf(WordFix(heard, "MIDWAYFIX")))
+                assertTrue("the run ended before the fix was added", transcriber.state.value is FileTranscription.Working)
+                waitFor(900_000, "the transcript") { transcriber.state.value is FileTranscription.Done }
+                val done = transcriber.state.value as FileTranscription.Done
+                saved += done.recordId!!
+                assertTrue("shown text lacks the fix for $heard: ${done.lines.first().text}", "MIDWAYFIX" in done.lines.first().text)
+                val record = app.captions.savedConversations.load(done.recordId!!)!!
+                assertEquals(done.lines.map { it.text }, record.segments.map { it.text })
+            }
+        } finally {
+            app.captions.setWordFixes(fixesBefore)
         }
     }
 }

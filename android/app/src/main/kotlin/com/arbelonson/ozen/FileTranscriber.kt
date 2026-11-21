@@ -252,7 +252,7 @@ class FileTranscriber(
             val terms = VocabularyHints.combining(current.vocabulary, current.keywordAlerts)
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
             val transcript = transcribe(uri, model, scorer, linePass)
-            val lines = transcript.lines.map { it.copy(text = WordFixes.apply(current.wordFixes, it.text)) }
+            val lines = withFixesNow(transcript.lines)
             val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, id = captions.fileKeeper.id, languageCode = ready.language.languageCode, cutShort = transcript.endMissing)
             val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
             kept = true
@@ -263,7 +263,7 @@ class FileTranscriber(
         } catch (failure: Exception) {
             val problem = (failure as? Problem)?.kind ?: FileTranscriptionProblem.Unexpected
             val shownPartway = withContext(NonCancellable + Dispatchers.IO) {
-                PartialFileRun.result(name, language, model, madeLines, problem) { lines ->
+                PartialFileRun.result(name, language, model, withFixesNow(madeLines), problem) { lines ->
                     val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant, id = captions.fileKeeper.id, languageCode = ready.language.languageCode, cutShort = true)
                     captions.saveRecording(record).also { history ->
                         kept = true
@@ -285,6 +285,12 @@ class FileTranscriber(
         }
     }
 
+    /** The lines as heard, with the word fixes the person has at this moment: a fix added mid-run reaches every line. */
+    private fun withFixesNow(lines: List<TranscribedLine>): List<TranscribedLine> {
+        val fixes = settings.current.value.wordFixes
+        return lines.map { it.copy(text = WordFixes.apply(fixes, it.text)) }
+    }
+
     private fun showPreparing(model: PhoneModel, progress: EnginePreparationProgress) {
         val stage = if (progress.stage == EnginePreparationProgress.Stage.DownloadingModel) Stage.Downloading else Stage.Loading
         shown.value = working(model, stage, progress.fraction?.toFloat())
@@ -304,9 +310,8 @@ class FileTranscriber(
             val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
             if (text.isNotEmpty()) {
                 lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
-                val fixes = settings.current.value.wordFixes
-                val soFar = lines.map { it.copy(text = WordFixes.apply(fixes, it.text)) }
-                madeLines = soFar
+                madeLines = lines.toList()
+                val soFar = withFixesNow(lines)
                 withContext(Dispatchers.IO) { captions.fileKeeper.linesSoFar(soFar) }
             }
         }

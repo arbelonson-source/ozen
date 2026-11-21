@@ -234,11 +234,15 @@ final class TranscribeRecordingModel {
         defer { letCaptionsGo() }
         await host.waitOutCaptionsLoad()
         let network = await settledNetwork()
+        let fixes = host.wordFixes
+        // Read as each line is made and once more at the end, so a fix the
+        // person adds meanwhile is in the text that is shown and saved.
         let request = FileTranscriber.Request(
             variant: model.variant,
             languageCode: ready.language.engineLanguageCode,
             names: VocabularyHints.normalized(host.vocabularyNames),
-            wordFixes: host.wordFixes,
+            wordFixes: fixes,
+            currentWordFixes: { @MainActor [weak self] in self?.host.wordFixes ?? fixes },
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
         )

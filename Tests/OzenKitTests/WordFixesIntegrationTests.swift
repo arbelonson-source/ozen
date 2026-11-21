@@ -58,4 +58,93 @@ struct WordFixesIntegrationTests {
         }
         #expect(lines.map(\.text) == ["I saw Avi today"])
     }
+
+    @Test("a fix added while a recording is being transcribed is in the finished lines")
+    func fixAddedMidRun() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { number, _ in
+            if number == 2 { fixes.value = [avi] }
+            return [FileRunEngine.final("I saw aval today")]
+        }
+        let outcome = await liveRun(engine, fixes)
+        guard case .finished(let lines, _) = outcome.result else {
+            Issue.record("did not finish")
+            return
+        }
+        #expect(lines.map(\.text) == ["I saw Avi today", "I saw Avi today"])
+    }
+
+    @Test("a fix added after the last line is made is still in the finished lines")
+    func fixAddedAfterTheLastLine() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { _, _ in [FileRunEngine.final("I saw aval today")] }
+        let outcome = await liveRun(engine, fixes) { progress in
+            if progress.lines.count == 2 { fixes.value = [avi] }
+        }
+        guard case .finished(let lines, _) = outcome.result else {
+            Issue.record("did not finish")
+            return
+        }
+        #expect(lines.map(\.text) == ["I saw Avi today", "I saw Avi today"])
+    }
+
+    @Test("a fix added before a run breaks off is in the lines it keeps")
+    func fixAddedBeforeTheRunStops() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { number, _ in
+            guard number == 1 else {
+                fixes.value = [avi]
+                throw FileRunFailure()
+            }
+            return [FileRunEngine.final("I saw aval today")]
+        }
+        let outcome = await liveRun(engine, fixes)
+        guard case .stoppedPartway(let lines, _) = outcome.result else {
+            Issue.record("did not stop partway: \(outcome.result)")
+            return
+        }
+        #expect(lines.map(\.text) == ["I saw Avi today"])
+    }
+
+    @Test("a fix whose written form contains its heard word, added mid-run, shows once and never grows")
+    func growingFixAddedMidRun() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { number, _ in
+            if number == 2 { fixes.value = [WordFix(heard: "Avi", written: "Avi Cohen")] }
+            return [FileRunEngine.final("I saw Avi today")]
+        }
+        let outcome = await liveRun(engine, fixes)
+        guard case .finished(let lines, _) = outcome.result else {
+            Issue.record("did not finish")
+            return
+        }
+        #expect(lines.map(\.text) == ["I saw Avi Cohen today", "I saw Avi Cohen today"])
+    }
+
+    private func liveRun(
+        _ engine: FileRunEngine,
+        _ fixes: FixesBox,
+        report: @escaping FileTranscriptionDriver.Report = { _ in }
+    ) async -> FileTranscriptionDriver.Outcome {
+        let timeline = FileRunAudio.timeline([(false, 1), (true, 3), (false, 2), (true, 2), (false, 4)])
+        let driver = FileTranscriptionDriver(
+            engine: engine, languageCode: "he", names: [], currentWordFixes: { fixes.value }, durationSeconds: nil,
+            allowCellularDownload: true, score: { FileRunAudio.score($0) },
+            environment: FileTranscriptionDriver.Environment(network: { .wifi }, freeBytes: { 50_000_000_000 }, now: { FileRunClock().now }),
+            retryDelay: .zero
+        )
+        return await driver.run(source: fileRunSource(timeline), report: report)
+    }
+}
+
+private final class FixesBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fixes: [WordFix]
+
+    init(_ fixes: [WordFix]) { self.fixes = fixes }
+
+    var value: [WordFix] {
+        get { lock.lock(); defer { lock.unlock() }; return fixes }
+        set { lock.lock(); defer { lock.unlock() }; fixes = newValue }
+    }
 }

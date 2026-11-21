@@ -10,6 +10,7 @@ public struct FileTranscriber: Sendable {
         public var languageCode: String
         public var names: [String]
         public var wordFixes: [WordFix]
+        public var currentWordFixes: (@Sendable () async -> [WordFix])?
         public var allowCellularDownload: Bool
         public var network: @Sendable () -> NetworkConditions?
 
@@ -18,6 +19,7 @@ public struct FileTranscriber: Sendable {
             languageCode: String,
             names: [String],
             wordFixes: [WordFix] = [],
+            currentWordFixes: (@Sendable () async -> [WordFix])? = nil,
             allowCellularDownload: Bool,
             network: @escaping @Sendable () -> NetworkConditions?
         ) {
@@ -25,6 +27,7 @@ public struct FileTranscriber: Sendable {
             self.languageCode = languageCode
             self.names = names
             self.wordFixes = wordFixes
+            self.currentWordFixes = currentWordFixes
             self.allowCellularDownload = allowCellularDownload
             self.network = network
         }
@@ -57,6 +60,7 @@ public struct FileTranscriber: Sendable {
             languageCode: request.languageCode,
             names: request.names,
             wordFixes: request.wordFixes,
+            currentWordFixes: request.currentWordFixes,
             durationSeconds: reader.durationSeconds,
             allowCellularDownload: request.allowCellularDownload,
             score: score,

@@ -161,6 +161,28 @@ struct TranscribeRecordingModelTests {
         await screen.close()
     }
 
+    @Test("a word fix the person adds while the recording is being turned into text reaches the run, and is shown and saved")
+    func requestFollowsAFixAddedMidRun() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let transcriber = RecordingTranscriberFake { request, _ in
+            await MainActor.run { host.wordFixes = [WordFix(heard: "aval", written: "Avi")] }
+            let now = await request.currentWordFixes?() ?? request.wordFixes
+            return .finished(lines: [TranscribedLine(startSeconds: 0, endSeconds: 2, text: WordFixes.apply(now, to: "I saw aval today"))], endMissing: false)
+        }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        screen.start()
+        await screen.runFinished()
+        guard case .done(let done) = screen.state else {
+            Issue.record("not done: \(screen.state)")
+            return
+        }
+        #expect(done.lines.map(\.text) == ["I saw Avi today"])
+        #expect(host.saved.first?.segments.map(\.text) == ["I saw Avi today"])
+        await screen.close()
+    }
+
     @Test("what the person chose reaches the engine: language, names tidied, cellular data, the connection, and captions are held for the whole run")
     func requestCarriesTheChoices() async throws {
         let host = RecordingHostFake()
