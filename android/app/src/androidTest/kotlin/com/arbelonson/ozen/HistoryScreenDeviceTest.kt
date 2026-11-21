@@ -1411,7 +1411,7 @@ class HistoryScreenDeviceTest {
 
             started.clear()
             val line = compose.onNodeWithContentDescription("050 123 4567", substring = true).fetchSemanticsNode()
-            val call = line.config[SemanticsActions.CustomActions].single { it.label == "Call 0501234567" }
+            val call = line.config[SemanticsActions.CustomActions].single { it.label == "Call 0 5 0, 1 2 3, 4 5 6 7" }
             compose.runOnUiThread { call.action() }
             compose.waitUntil(5_000) { started.isNotEmpty() }
             assertEquals(Uri.parse("tel:0501234567"), started.single().data)
