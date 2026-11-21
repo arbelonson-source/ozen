@@ -2426,7 +2426,7 @@ public final class CaptionPipeline {
         let current = segments[index].text
         let text = WordFixes.apply([fix], to: current)
         guard text != current else { return current }
-        handFixes[id, default: []].append(fix)
+        handFixes[id] = WordFixes.adding(fix, to: handFixes[id] ?? [])
         segments[index].text = text
         if keywordMatcher.matches(in: text).isEmpty {
             keywordHitSegmentIDs.remove(id)

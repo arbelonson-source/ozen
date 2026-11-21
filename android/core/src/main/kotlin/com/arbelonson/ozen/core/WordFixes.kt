@@ -373,9 +373,10 @@ object WordFixes {
             var best: Compiled? = null
             var keep = 0
             for (c in compiled) {
-                if (best != null && c.words.size <= best.words.size) continue
+                if (best != null && c.words.size < best.words.size) continue
                 if (index + c.words.size > all.size) continue
                 val first = prefixEnd(all[index], c.words[0], lone = c.words.size == 1) ?: continue
+                if (best != null && c.words.size == best.words.size && first >= keep) continue
                 var ok = true
                 for (k in 1 until c.words.size) {
                     if (all[index + k].key != c.words[k] || joint(text, all[index + k - 1], all[index + k]) != c.joints[k - 1]) { ok = false; break }
