@@ -35,6 +35,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -1381,6 +1382,40 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Done").performScrollTo().performClick()
             compose.onNodeWithText("New phrase").assertDoesNotExist()
             compose.onNodeWithText("Slower, please").performScrollTo()
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    // At the end of the page, Restore defaults sat right under the Undo bar a delete leaves,
+    // and the page could not scroll any further to bring it out.
+    @Test
+    fun restoreDefaultsAtTheEndOfTheSayScreenIsNotHiddenUnderTheUndoBar() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        val stored = { app.settings.current.value.quickPhrases }
+        app.settings.change { it.quickPhrases = english }
+        try {
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Edit").performScrollTo().performClick()
+            keyboardAway()
+            val thanks = compose.onNodeWithText("Thank you").fetchSemanticsNode()
+            val delete = thanks.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+            compose.runOnUiThread { delete.action() }
+            compose.waitUntil(5_000) { stored() == english - "Thank you" }
+
+            val page = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Restore defaults")))
+            val range = page.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+            page.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, range.maxValue() - range.value()) }
+            compose.waitForIdle()
+            assertTrue("the page did not reach its end", range.value() >= range.maxValue())
+            compose.onNodeWithText("Deleted: Thank you").assertExists()
+            compose.onNodeWithText("Restore defaults").performScrollTo().performClick()
+            compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
+            compose.onNode(hasText("Restore") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { stored() == english }
+            compose.onNodeWithText("Undo").assertDoesNotExist()
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
         }
