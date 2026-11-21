@@ -252,15 +252,20 @@ public enum WordFixes {
     /// Arabic vowel marks), except for a fix that only respells
     /// (`exactly`): those differences are what it is for.
     private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool) -> Bool {
-        let skips: (Unicode.Scalar) -> Bool = exactly ? Token.isHebrewNiqqud : Token.isMark
-        let same: (String) -> String = exactly ? WordFixes.caseFolded : WordFixes.folded
+        func skips(_ scalar: Unicode.Scalar) -> Bool {
+            exactly ? Token.isHebrewNiqqud(scalar) : Token.isMark(scalar)
+        }
+        func same(_ one: Unicode.Scalar, _ other: Unicode.Scalar) -> Bool {
+            if exactly { return WordFixes.caseFolded(String(one)) == WordFixes.caseFolded(String(other)) }
+            return WordFixes.folded(String(one)) == WordFixes.folded(String(other))
+        }
         var at = start
         func skipMarks() {
             while at < text.count, skips(text[at]) { at += 1 }
         }
         for scalar in written.unicodeScalars where !skips(scalar) {
             skipMarks()
-            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(String(scalar)) == same(String(text[at])) else { return false }
+            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) else { return false }
             at += 1
         }
         skipMarks()
