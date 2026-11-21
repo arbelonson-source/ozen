@@ -14,6 +14,7 @@ struct TranscribeRecordingView: View {
     /// moved to the progress that replaces it instead of being left on
     /// nothing.
     @AccessibilityFocusState private var progressFocused: Bool
+    @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
 
     var body: some View {
         content
@@ -265,6 +266,7 @@ struct TranscribeRecordingView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityLabel(ConversationStats.spokenDuration(line.startSeconds) + ".")
                 Text(CaptionLayout.directed(line.text, languageCode: code))
+                    .font(.system(size: model.lineSize(bodySize: bodySize)))
             }
             .accessibilityElement(children: .combine)
         }

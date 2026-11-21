@@ -99,6 +99,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
     }
     BackHandler(onBack = close)
     val context = LocalContext.current
+    val captionSize = transcriber.currentSettings.collectAsStateWithLifecycle().value.display.fontSize
     val last = remember { arrayOf(state) }
     LaunchedEffect(state) {
         state.announcement(last[0])?.let { ScreenReader.said(context, it) }
@@ -111,8 +112,8 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
-        is FileTranscription.Working -> WorkingPage(state, transcriber.busyNotice, onCancel = { confirmingStop = true })
-        is FileTranscription.Done -> DonePage(state, close)
+        is FileTranscription.Working -> WorkingPage(state, transcriber.busyNotice, captionSize, onCancel = { confirmingStop = true })
+        is FileTranscription.Done -> DonePage(state, captionSize, close)
         is FileTranscription.Failed -> OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
             Text(state.name, style = MaterialTheme.typography.titleMedium)
             Text(state.problem.message, modifier = Modifier.testTag("transcribe-problem"))
@@ -285,7 +286,7 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
 }
 
 @Composable
-private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNotice, onCancel: () -> Unit) {
+private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNotice, captionSize: Double, onCancel: () -> Unit) {
     val another by busyNotice.shown.collectAsStateWithLifecycle()
     val refusals by busyNotice.refusals.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -323,14 +324,15 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
             // progress alone fills the page (and squeezed Cancel), so there
             // the whole page scrolls as one list instead.
             val room = constraints.maxHeight
-            val twoLines = with(LocalDensity.current) { 2 * (MaterialTheme.typography.bodyLarge.lineHeight.toPx() + 10.dp.toPx()) }
+            val words = savedLineStyle(captionSize)
+            val twoLines = with(LocalDensity.current) { 2 * (words.lineHeight.toPx() + 10.dp.toPx()) }
             var oneList by remember(room) { mutableStateOf(false) }
             if (oneList) {
-                LinesList(working.lines, working.language.languageCode, follow = false, lead = header)
+                LinesList(working.lines, working.language.languageCode, captionSize, follow = false, lead = header)
             } else {
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
                     Box(Modifier.onSizeChanged { if (room - it.height < twoLines) oneList = true }) { header() }
-                    LinesList(working.lines, working.language.languageCode, follow = true, Modifier.weight(1f))
+                    LinesList(working.lines, working.language.languageCode, captionSize, follow = true, Modifier.weight(1f))
                 }
             }
         }
@@ -339,11 +341,11 @@ private fun WorkingPage(working: FileTranscription.Working, busyNotice: BusyNoti
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
+private fun DonePage(done: FileTranscription.Done, captionSize: Double, close: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     OzenScreen(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), onClose = close, closeLabel = tr("סיום", "Done"), scrolls = false) {
-        HeaderAndLines(lines = { LinesList(done.lines, done.language.languageCode, follow = false, Modifier.weight(1f)) }) {
+        HeaderAndLines(lines = { LinesList(done.lines, done.language.languageCode, captionSize, follow = false, Modifier.weight(1f)) }) {
         Text(done.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
@@ -404,6 +406,7 @@ private fun HeaderAndLines(lines: @Composable ColumnScope.() -> Unit, header: @C
 private fun LinesList(
     lines: List<TranscribedLine>,
     languageCode: String,
+    captionSize: Double,
     follow: Boolean,
     modifier: Modifier = Modifier,
     lead: (@Composable () -> Unit)? = null,
@@ -411,6 +414,9 @@ private fun LinesList(
     val list = rememberLazyListState()
     val before = if (lead != null) 1 else 0
     LaunchedEffect(lines.size) { if (follow && lines.isNotEmpty()) list.animateScrollToItem(before + lines.size - 1) }
+    // Sized as a saved line in History: captions turned up for weak eyes
+    // were read back here at the body size, a quarter of a 64-point caption.
+    val words = savedLineStyle(captionSize).copy(textDirection = TextDirection.Content)
     LazyColumn(modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (lead != null) item { lead() }
         items(lines) { line ->
@@ -420,7 +426,7 @@ private fun LinesList(
                 Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
                 Text(
                     captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null, languageCode = languageCode),
-                    style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
+                    style = words,
                     modifier = Modifier.weight(1f),
                 )
             }

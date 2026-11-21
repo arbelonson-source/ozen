@@ -16,7 +16,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.unit.sp
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.FileModelChoice
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.HistorySave
@@ -122,6 +124,42 @@ class TranscribeDoneDeviceTest {
         val done = FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(65.0, 67.0, "Good morning")), HistorySave.Off)
         compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, done, onClose = {}) } }
         compose.onNodeWithTag(TRANSCRIBE_LINE).assert(hasText("1:05") and hasText("Good morning", substring = true))
+    }
+
+    // Captions turned up to 64 for weak eyes, the lines of a recording turned
+    // into text stayed at the phone's body size, a quarter of that, as saved
+    // lines in History once did. They follow the same rule as saved lines.
+    @Test
+    fun theLinesOfAFinishedRecordingGrowWithTheCaptionSizeAsSavedLinesDo() {
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        assertLinesGrowWithTheCaptions(FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(0.0, 2.0, "Good morning")), HistorySave.Off))
+    }
+
+    @Test
+    fun theLinesOfARecordingStillBeingTurnedIntoTextGrowWithTheCaptionSize() {
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        val lines = listOf(TranscribedLine(0.0, 2.0, "Good morning"))
+        assertLinesGrowWithTheCaptions(FileTranscription.Working("Lecture.wav", UILanguage.English, model, FileTranscription.Working.Stage.Transcribing, 0.5f, 90.0, lines))
+    }
+
+    private fun assertLinesGrowWithTheCaptions(state: FileTranscription) {
+        val before = app.settings.current.value.display
+        try {
+            compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, state, onClose = {}) } }
+            val small = lineHeight(DisplayPreferences.minimumFontSize)
+            val large = lineHeight(DisplayPreferences.maximumFontSize)
+            val body = 16.0
+            val grown = with(compose.density) { (DisplayPreferences.savedLineSize(DisplayPreferences.maximumFontSize, body) - body).sp.toPx() }
+            assertTrue("the line is $small px tall with captions at 20 and $large px at 64; it should grow by at least $grown px", large - small >= grown)
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun lineHeight(captionSize: Double): Int {
+        app.settings.change { it.display = it.display.copy(fontSize = captionSize) }
+        compose.waitForIdle()
+        return compose.onNodeWithTag(TRANSCRIBE_LINE).fetchSemanticsNode().size.height
     }
 
     private fun shareOnAFullPhone(button: String, lines: List<TranscribedLine>) {
