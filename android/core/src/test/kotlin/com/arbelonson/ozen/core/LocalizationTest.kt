@@ -212,6 +212,34 @@ class LocalizationTest {
     }
 
     @Test
+    fun `text whose letters are in a script no voice reads gets no voice, while known scripts, digits and emoji are unchanged`() {
+        for (text in listOf("안녕하세요", "こんにちは", "สวัสดี", "Γειά σου", "Բարեւ", "გამარჯობა", "안녕 123", "안녕،", "안녕 ١٢٣")) {
+            for (language in UILanguage.entries) assertNull(UILanguage.forSpeaking(text, language), "$text $language")
+            assertTrue(UILanguage.isUnreadable(text, UILanguage.Hebrew), text)
+        }
+        val known = listOf(
+            "שלום" to UILanguage.Hebrew, "مرحبا" to UILanguage.Arabic, "Привет" to UILanguage.Russian,
+            "Hello" to UILanguage.English, "你好" to UILanguage.ChineseSimplified, "नमस्ते" to UILanguage.Hindi,
+            "ሰላም" to UILanguage.Amharic, "ﬡ" to UILanguage.Hebrew,
+        )
+        for ((text, expected) in known) {
+            assertEquals(expected, UILanguage.forSpeaking(text, UILanguage.English), text)
+        }
+        for (text in listOf("123", "😀", "10:30", "", "   ")) {
+            assertEquals(UILanguage.Hebrew, UILanguage.forSpeaking(text, UILanguage.Hebrew), text)
+            assertFalse(UILanguage.isUnreadable(text, UILanguage.Hebrew), text)
+        }
+        assertEquals(UILanguage.ChineseSimplified, UILanguage.forSpeaking("𠮷", UILanguage.Hebrew))
+        assertEquals(UILanguage.Hebrew, UILanguage.forSpeaking("🅰️", UILanguage.Hebrew))
+        assertEquals(UILanguage.English, UILanguage.forSpeaking("Ｈｅｌｌｏ", UILanguage.English))
+        assertEquals(UILanguage.Arabic, UILanguage.forSpeaking("١٢٣", UILanguage.Hebrew))
+        assertEquals(UILanguage.English, UILanguage.forSpeaking("OK 👍", UILanguage.Hebrew))
+        assertFalse(UILanguage.isUnreadable("OK 👍", UILanguage.Hebrew))
+        assertEquals(UILanguage.Hebrew, UILanguage.forSpeaking("שלום 안녕", UILanguage.English))
+        assertEquals(UILanguage.English, UILanguage.forSpeaking("Hello 안녕", UILanguage.Hebrew))
+    }
+
+    @Test
     fun `dates are written in the app's language, not the phone's, keeping the phone's region`() {
         val hebrew = UILanguage.Hebrew.locale(keepingRegionOf = Locale.forLanguageTag("en-GB"))
         assertEquals("he", hebrew.language)

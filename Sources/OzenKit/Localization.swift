@@ -22,19 +22,37 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
     /// app's language when that is written in Latin letters (a French
     /// phrase gets the French voice), and are English otherwise. Text with
     /// no letters at all (a time, a number) follows the app's language.
-    public static func forSpeaking(_ text: String, otherwise fallback: UILanguage) -> UILanguage {
-        let values = text.unicodeScalars.map(\.value)
-        func has(_ ranges: ClosedRange<UInt32>...) -> Bool {
-            values.contains { value in ranges.contains { $0.contains(value) } }
-        }
-        if has(0x0590...0x05FF) { return .hebrew }
+    /// Letters of a script none of these voices read (Korean, Greek, Thai)
+    /// give nil: any voice would read them as noise.
+    public static func forSpeaking(_ text: String, otherwise fallback: UILanguage) -> UILanguage? {
+        let hebrew = [0x0590...0x05FF, 0xFB1D...0xFB4F] as [ClosedRange<UInt32>]
         // Not U+FEFF at the end of that block: an invisible byte order
         // mark pasted along with a time is no Arabic letter.
-        if has(0x0600...0x06FF, 0x0750...0x077F, 0xFB50...0xFDFF, 0xFE70...0xFEFC) { return .arabic }
-        if has(0x1200...0x139F, 0x2D80...0x2DDF) { return .amharic }
-        if has(0x0900...0x097F) { return .hindi }
-        if has(0x3400...0x4DBF, 0x4E00...0x9FFF) { return .chineseSimplified }
-        if has(0x0400...0x04FF) {
+        let arabic = [0x0600...0x06FF, 0x0750...0x077F, 0x08A0...0x08FF, 0xFB50...0xFDFF, 0xFE70...0xFEFC] as [ClosedRange<UInt32>]
+        let amharic = [0x1200...0x139F, 0x2D80...0x2DDF] as [ClosedRange<UInt32>]
+        let hindi = [0x0900...0x097F] as [ClosedRange<UInt32>]
+        let chinese = [0x3400...0x4DBF, 0x4E00...0x9FFF, 0x20000...0x323AF] as [ClosedRange<UInt32>]
+        let cyrillic = [0x0400...0x04FF] as [ClosedRange<UInt32>]
+        let otherLatin = [0x1E00...0x1EFF, 0xFF21...0xFF3A, 0xFF41...0xFF5A] as [ClosedRange<UInt32>]
+        let known = hebrew + arabic + amharic + hindi + chinese + cyrillic + otherLatin
+        let letters: Set<Unicode.GeneralCategory> = [.uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter]
+        let scalars = text.unicodeScalars
+        let hasUnknownLetter = scalars.contains { scalar in
+            scalar.value >= 0x250 && letters.contains(scalar.properties.generalCategory)
+                && !known.contains { $0.contains(scalar.value) }
+        }
+        func has(_ ranges: [ClosedRange<UInt32>]) -> Bool {
+            scalars.contains { scalar in
+                ranges.contains { $0.contains(scalar.value) }
+                    && (!hasUnknownLetter || letters.contains(scalar.properties.generalCategory))
+            }
+        }
+        if has(hebrew) { return .hebrew }
+        if has(arabic) { return .arabic }
+        if has(amharic) { return .amharic }
+        if has(hindi) { return .hindi }
+        if has(chinese) { return .chineseSimplified }
+        if has(cyrillic) {
             if fallback == .ukrainian || text.contains(where: { "іїєґІЇЄҐ".contains($0) }) { return .ukrainian }
             return .russian
         }
@@ -47,7 +65,13 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
         }) {
             return fallback.writesInLatinLetters ? fallback : .english
         }
-        return fallback
+        return hasUnknownLetter ? nil : fallback
+    }
+
+    /// Text with something to say in a script no voice reads.
+    public static func isUnreadable(_ text: String, otherwise fallback: UILanguage) -> Bool {
+        forSpeaking(text, otherwise: fallback) == nil
+            && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var writesInLatinLetters: Bool {

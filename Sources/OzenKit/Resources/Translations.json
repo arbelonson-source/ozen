@@ -1216,7 +1216,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "ይህ ኮምፒዩተር በቤትዎ አውታረ መረብ ላይ አይደለም፤ የውይይቶችዎ ድምፅ በበይነመረብ ወደ %1 ይላካል። ይህን ኮምፒዩተር እርስዎ ራስዎ ካዘጋጁት ብቻ ይገናኙ።",
   "Merge with %1?": "ከ%1 ጋር ይዋሃድ?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ቀድሞ ተቀምጧል። ሁለቱም ድምፆች ባለፉ ንግግሮች ውስጥም ጭምር በዚያ አንድ ስም ይታያሉ።",
-  "Merge": "አዋህድ"
+  "Merge": "አዋህድ",
+  "No voice reads this writing, so the text can’t be played aloud.": "ይህን ጽሑፍ የሚያነብ ድምጽ ስለሌለ ጽሑፉን ጮኽ ብሎ ማጫወት አይቻልም።"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2435,7 +2436,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "هذا الكمبيوتر ليس على شبكتكم المنزلية: سيُرسَل صوت محادثاتكم عبر الإنترنت إلى %1. لا تتصلوا إلا إذا كنتم قد أعددتم هذا الكمبيوتر بأنفسكم.",
   "Merge with %1?": "الدمج مع %1؟",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 محفوظ بالفعل. سيظهر الصوتان باسم واحد هو هذا الاسم، بما في ذلك في المحادثات السابقة.",
-  "Merge": "دمج"
+  "Merge": "دمج",
+  "No voice reads this writing, so the text can’t be played aloud.": "لا يوجد صوت يقرأ هذه الكتابة، لذا لا يمكن تشغيل النص بصوت عالٍ."
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3654,7 +3656,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "这台电脑不在您的家庭网络中：您对话的声音将通过互联网发送到 %1。只有在这台电脑是您自己设置的情况下才连接。",
   "Merge with %1?": "要与 %1 合并吗？",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 已经保存过了。之后两个声音都会以这一个名字显示，包括以往的对话。",
-  "Merge": "合并"
+  "Merge": "合并",
+  "No voice reads this writing, so the text can’t be played aloud.": "没有可朗读这种文字的语音，因此无法朗读该文本。"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4873,7 +4876,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Cet ordinateur n’est pas sur votre réseau domestique : le son de vos conversations passerait par Internet jusqu’à %1. Ne vous connectez que si vous avez configuré cet ordinateur vous-même.",
   "Merge with %1?": "Fusionner avec %1 ?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 est déjà enregistré. Les deux voix seront alors affichées sous ce seul nom, y compris dans les conversations passées.",
-  "Merge": "Fusionner"
+  "Merge": "Fusionner",
+  "No voice reads this writing, so the text can’t be played aloud.": "Aucune voix ne lit cette écriture, le texte ne peut donc pas être lu à voix haute."
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6092,7 +6096,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Dieser Computer ist nicht in Ihrem Heimnetz: Der Ton Ihrer Gespräche würde über das Internet an %1 gehen. Verbinden Sie sich nur, wenn Sie diesen Computer selbst eingerichtet haben.",
   "Merge with %1?": "Mit %1 zusammenführen?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ist bereits gespeichert. Beide Stimmen werden dann unter diesem einen Namen angezeigt, auch in früheren Gesprächen.",
-  "Merge": "Zusammenführen"
+  "Merge": "Zusammenführen",
+  "No voice reads this writing, so the text can’t be played aloud.": "Keine Stimme liest diese Schrift, deshalb kann der Text nicht vorgelesen werden."
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7311,7 +7316,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "यह कंप्यूटर आपके घर के नेटवर्क पर नहीं है: आपकी बातचीत की आवाज़ इंटरनेट के ज़रिए %1 तक जाएगी। केवल तभी जुड़ें जब आपने इस कंप्यूटर को खुद सेट किया हो।",
   "Merge with %1?": "%1 के साथ मिलाएं?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 पहले से सहेजा हुआ है। इसके बाद दोनों आवाज़ें इसी एक नाम से दिखेंगी, पिछली बातचीत में भी।",
-  "Merge": "मिलाएं"
+  "Merge": "मिलाएं",
+  "No voice reads this writing, so the text can’t be played aloud.": "इस लिपि को पढ़ने वाली कोई आवाज़ नहीं है, इसलिए यह टेक्स्ट बोलकर नहीं सुनाया जा सकता।"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8530,7 +8536,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este computador não está na sua rede doméstica: o som das suas conversas iria pela internet até %1. Só ligue se este computador tiver sido configurado por si.",
   "Merge with %1?": "Unir com %1?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 já está guardado. As duas vozes passarão a aparecer com esse único nome, incluindo nas conversas anteriores.",
-  "Merge": "Unir"
+  "Merge": "Unir",
+  "No voice reads this writing, so the text can’t be played aloud.": "Nenhuma voz lê esta escrita, por isso o texto não pode ser lido em voz alta."
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9749,7 +9756,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Этот компьютер не в вашей домашней сети: звук ваших разговоров уйдёт через интернет на %1. Подключайтесь, только если вы сами настроили этот компьютер.",
   "Merge with %1?": "Объединить с «%1»?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже сохранён. Оба голоса будут показываться под одним этим именем, в том числе в прошлых разговорах.",
-  "Merge": "Объединить"
+  "Merge": "Объединить",
+  "No voice reads this writing, so the text can’t be played aloud.": "Нет голоса, который читает это письмо, поэтому текст нельзя озвучить."
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -10968,7 +10976,8 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Este ordenador no está en su red doméstica: el sonido de sus conversaciones iría por internet a %1. Conéctese solo si fue usted quien configuró este ordenador.",
   "Merge with %1?": "¿Combinar con %1?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ya está guardado. Las dos voces se mostrarán entonces con ese único nombre, también en conversaciones anteriores.",
-  "Merge": "Combinar"
+  "Merge": "Combinar",
+  "No voice reads this writing, so the text can’t be played aloud.": "Ninguna voz lee esta escritura, así que el texto no se puede leer en voz alta."
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12187,6 +12196,7 @@
   "This computer is not on your home network: the sound of your conversations would go over the internet to %1. Only connect if you set this computer up yourself.": "Цей комп’ютер не у вашій домашній мережі: звук ваших розмов піде через інтернет на %1. Підключайтеся, лише якщо ви самі налаштували цей комп’ютер.",
   "Merge with %1?": "Об’єднати з «%1»?",
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже збережено. Обидва голоси показуватимуться під цим одним іменем, зокрема в минулих розмовах.",
-  "Merge": "Об’єднати"
+  "Merge": "Об’єднати",
+  "No voice reads this writing, so the text can’t be played aloud.": "Немає голосу, який читає це письмо, тому текст не можна озвучити."
  }
 }

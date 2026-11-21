@@ -106,6 +106,8 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.OnboardingModelNote
 import com.arbelonson.ozen.core.OnboardingNotificationAdvice
+import com.arbelonson.ozen.core.OnboardingPage
+import com.arbelonson.ozen.core.OnboardingPlan
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -159,7 +161,10 @@ internal fun OnboardingScreen(
     onAddAlert: (String) -> Unit,
     onFinish: () -> Unit,
 ) {
-    val pager = rememberPagerState(pageCount = { PAGES })
+    val pages = OnboardingPlan.pages(settings.engine)
+    val languagePage = pages.indexOf(OnboardingPage.Language)
+    val namePage = pages.indexOf(OnboardingPage.Name)
+    val pager = rememberPagerState(pageCount = { pages.size })
     val turning = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     // The iPhone's pages swipe back to the one before; Back does the same
@@ -189,7 +194,7 @@ internal fun OnboardingScreen(
             finishing = true
             addDraft()
             turning.launch {
-                if (latestSettings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) {
+                if (OnboardingPlan.runsPhoneTest(latestSettings.engine) && latestSettings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) {
                     phoneModels.runCheck(thenChooseBest = true)
                     phoneModels.check.first { it !is PhoneCheckState.Running }
                 }
@@ -200,7 +205,7 @@ internal fun OnboardingScreen(
     // A name typed and then "Next" or a swipe instead of "Add" was dropped
     // on the iPhone, and the name alert never came.
     LaunchedEffect(pager) {
-        snapshotFlow { pager.currentPage }.collect { if (it != NAME_PAGE) addDraft() }
+        snapshotFlow { pager.currentPage }.collect { if (it != namePage) addDraft() }
     }
     // As on the iPhone, a screen reader hears which page a turn landed on:
     // the focus stays on Next, so nothing else says the page changed.
@@ -208,15 +213,15 @@ internal fun OnboardingScreen(
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.drop(1).collect { page ->
             if (ScreenReader.isOn(context)) {
-                ScreenReader.announce(context, tr("עמוד %1 מתוך %2: %3", "Page %1 of %2: %3", listOf("${page + 1}", "$PAGES", pageTitle(page))))
+                ScreenReader.announce(context, tr("עמוד %1 מתוך %2: %3", "Page %1 of %2: %3", listOf("${page + 1}", "${pages.size}", pageTitle(pages[page]))))
             }
         }
     }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
-                when (page) {
-                    0 -> Page(Icons.Rounded.Hearing, pageTitle(0)) {
+                when (pages[page]) {
+                    OnboardingPage.Welcome -> Page(Icons.Rounded.Hearing, pageTitle(OnboardingPage.Welcome)) {
                         Body(tr("כתוביות בזמן אמת לכל שיחה.", "Live captions for conversation."))
                         Body(tr("מה שאומרים לידכם מופיע על המסך באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
                         if (settings.engine == TranscriptionEngineKind.HomeServer) {
@@ -225,7 +230,7 @@ internal fun OnboardingScreen(
                             Body(tr("כברירת מחדל, הכול קורה בתוך הטלפון.", "By default it all happens on the phone."))
                         }
                     }
-                    1 -> Page(Icons.Rounded.Forum, pageTitle(1)) {
+                    OnboardingPage.HowItWorks -> Page(Icons.Rounded.Forum, pageTitle(OnboardingPage.HowItWorks)) {
                         SettingsGroup(dividerInset = 72.dp) {
                             item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own.")) }
                             item { Point(Icons.Rounded.Groups, tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names.")) }
@@ -233,16 +238,17 @@ internal fun OnboardingScreen(
                             item { Point(Icons.Rounded.Keyboard, tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
                         }
                     }
-                    LANGUAGE_PAGE -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
-                    MODEL_PAGE -> ModelPage(settings, phoneModels) {
+                    OnboardingPage.Language -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
+                    OnboardingPage.Model -> ModelPage(settings, phoneModels) {
                         focusManager.clearFocus()
                         turning.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                     }
-                    4 -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings, onOpenNotificationSettings)
-                    NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
-                    else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
-                        if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
-                            val model = settings.phoneModel
+                    OnboardingPage.Microphone -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings, onOpenNotificationSettings)
+                    OnboardingPage.Name -> NamePage(settings, nameDraft, addDraft, onAddAlert)
+                    OnboardingPage.Ready -> Page(Icons.Rounded.CheckCircle, pageTitle(OnboardingPage.Ready)) {
+                        val model = settings.phoneModel
+                        val installedFiles by phoneModels.installed.collectAsStateWithLifecycle()
+                        if (OnboardingPlan.showsDownloadNote(settings.engine, model.file, installedFiles)) {
                             Body(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור: %1, %2. זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
                         }
                         if (settings.engine.firstRunNote == FirstRunNote.HomeComputer) {
@@ -265,18 +271,19 @@ internal fun OnboardingScreen(
                     )
                 }
             }
-            Dots(pager)
+            Dots(pager, pages.size)
             Footer(
                 pager,
+                pages.size,
                 // On a phone in another language, Skip before the language
                 // page goes to it: the spoken language starts as Hebrew, and
                 // someone who skipped from the first page got their English
                 // or Arabic conversation as Hebrew-letter nonsense, after the
                 // Hebrew model downloaded. From that page on, Skip finishes.
                 onSkip = {
-                    if (pager.currentPage < LANGUAGE_PAGE && Localization.language != settings.spokenLanguage) {
+                    if (pager.currentPage < languagePage && Localization.language != settings.spokenLanguage) {
                         focusManager.clearFocus()
-                        turning.launch { pager.animateScrollToPage(LANGUAGE_PAGE) }
+                        turning.launch { pager.animateScrollToPage(languagePage) }
                     } else {
                         finish()
                     }
@@ -315,7 +322,7 @@ private fun MicrophonePage(
     }
     // And brought into view: at large text, or held sideways, the answer and
     // the notification button landed below the screen's edge.
-    Page(Icons.Rounded.Mic, pageTitle(4), scrollsDownOn = shown?.let { "$it-$notifications" }) {
+    Page(Icons.Rounded.Mic, pageTitle(OnboardingPage.Microphone), scrollsDownOn = shown?.let { "$it-$notifications" }) {
         Body(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
@@ -361,7 +368,7 @@ private fun MicrophonePage(
  */
 @Composable
 private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
-    Page(Icons.Rounded.NotificationsActive, pageTitle(NAME_PAGE)) {
+    Page(Icons.Rounded.NotificationsActive, pageTitle(OnboardingPage.Name)) {
         Body(tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
         NameAlertForm(settings, draft, addDraft, onAddAlert)
         Text(
@@ -495,7 +502,7 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
     val missing by produceState<Int?>(null, chosen, installed, partial, resumes) {
         value = withContext(Dispatchers.IO) { models.shortfallMegabytes(chosen) }
     }
-    Page(Icons.Rounded.Speed, pageTitle(MODEL_PAGE)) {
+    Page(Icons.Rounded.Speed, pageTitle(OnboardingPage.Model)) {
         Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
         if (OnboardingModelNote.showsWifiNote(chosen, installed, settings.allowCellularModelDownload)) {
@@ -524,7 +531,7 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
 /** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
 @Composable
 private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
-    Page(Icons.Rounded.Translate, pageTitle(2)) {
+    Page(Icons.Rounded.Translate, pageTitle(OnboardingPage.Language)) {
         SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (language in UILanguage.entries) {
                 item {
@@ -642,16 +649,16 @@ private fun Status(text: String, good: Boolean) {
 }
 
 @Composable
-private fun Dots(pager: PagerState) {
+private fun Dots(pager: PagerState, count: Int) {
     val still = ReducedMotion.isOn()
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clearAndSetSemantics {
-            contentDescription = tr("%1 מתוך %2", "%1 of %2", listOf("${pager.currentPage + 1}", "$PAGES"))
+            contentDescription = tr("%1 מתוך %2", "%1 of %2", listOf("${pager.currentPage + 1}", "$count"))
         },
     ) {
-        repeat(PAGES) { page ->
+        repeat(count) { page ->
             val current = page == pager.currentPage
             val colour = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
             val width by animateDpAsState(if (current) 24.dp else 8.dp, if (still) snap() else tween(200), label = "page dot")
@@ -661,14 +668,14 @@ private fun Dots(pager: PagerState) {
 }
 
 @Composable
-private fun Footer(pager: PagerState, onSkip: () -> Unit, onFinish: () -> Unit) {
+private fun Footer(pager: PagerState, count: Int, onSkip: () -> Unit, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = OzenSpacing.Page, vertical = 16.dp),
     ) {
-        if (pager.currentPage < PAGES - 1) {
+        if (pager.currentPage < count - 1) {
             SideBySideOrStacked(
                 gap = 16.dp,
                 start = {
@@ -730,17 +737,12 @@ private fun SideBySideOrStacked(gap: Dp, start: @Composable () -> Unit, end: @Co
     }
 }
 
-private fun pageTitle(page: Int): String = when (page) {
-    0 -> tr("אוזן", "Ozen")
-    1 -> tr("איך זה עובד", "How it works")
-    2 -> tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")
-    MODEL_PAGE -> tr("מודל הדיבור", "The speech model")
-    4 -> tr("המיקרופון", "The microphone")
-    NAME_PAGE -> tr("כשקוראים לכם", "When you’re called")
-    else -> tr("הכול מוכן", "Ready")
+private fun pageTitle(page: OnboardingPage): String = when (page) {
+    OnboardingPage.Welcome -> tr("אוזן", "Ozen")
+    OnboardingPage.HowItWorks -> tr("איך זה עובד", "How it works")
+    OnboardingPage.Language -> tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")
+    OnboardingPage.Model -> tr("מודל הדיבור", "The speech model")
+    OnboardingPage.Microphone -> tr("המיקרופון", "The microphone")
+    OnboardingPage.Name -> tr("כשקוראים לכם", "When you’re called")
+    OnboardingPage.Ready -> tr("הכול מוכן", "Ready")
 }
-
-private const val PAGES = 7
-private const val LANGUAGE_PAGE = 2
-private const val MODEL_PAGE = 3
-private const val NAME_PAGE = 5

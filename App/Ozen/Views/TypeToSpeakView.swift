@@ -211,6 +211,11 @@ struct TypeToSpeakView: View {
             .accessibilityHint(tr("כדי שמישהו יוכל לכתוב לכם, או כדי להראות למי שמולכם מה כתבתם", "Let someone write to you, or show the person you’re talking with what you wrote"))
             .accessibilityIdentifier("bigTextButton")
 
+            if UILanguage.isUnreadable(text, otherwise: Localization.language) {
+                Label(MissingVoiceHint.unreadableText, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.readable(.orange))
+            }
             if !viewModel.hasVoiceForAppLanguage {
                 Label(MissingVoiceHint.appLanguage(viewModel.uiLanguage.nativeName), systemImage: "exclamationmark.triangle")
                     .font(.footnote)
