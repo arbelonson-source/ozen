@@ -1624,9 +1624,10 @@ class CaptionSession(
     }
 
     override fun renameSpeaker(name: String, to: String) {
-        val trimmed = to.trim()
-        if (trimmed.isEmpty() || trimmed == name || settings.current.value.speakerProfiles.none { it.name == name }) return
-        renamePerson(name, trimmed)
+        val profiles = settings.current.value.speakerProfiles
+        val destination = SavedPersonMerge.destination(name, to, profiles.map { it.name })
+        if (destination.isEmpty() || destination == name || profiles.none { it.name == name }) return
+        renamePerson(name, destination)
     }
 
     override fun removeSpeaker(name: String) {

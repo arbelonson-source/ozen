@@ -26,8 +26,9 @@ public enum WordFixes {
             let heard = clip(collapsed(raw.heard))
             let written = clip(raw.written.trimmingCharacters(in: .whitespacesAndNewlines))
             let key = key(heard)
-            guard !heard.isEmpty, !written.isEmpty, key != Self.key(written) else { continue }
-            guard Token.split(Array(heard.unicodeScalars)).count <= maximumPhraseWords, hasCleanJoints(heard), seen.insert(key).inserted else { continue }
+            guard !heard.isEmpty, !written.isEmpty, caseKey(heard) != caseKey(written) else { continue }
+            let words = Token.split(Array(heard.unicodeScalars))
+            guard words.count <= maximumPhraseWords, !words.contains(where: \.isOnlyMarks), hasCleanJoints(heard), seen.insert(key).inserted else { continue }
             result.append(WordFix(heard: heard, written: written))
             if result.count == maximumFixes { break }
         }
@@ -54,7 +55,7 @@ public enum WordFixes {
         let written = fix.written.trimmingCharacters(in: .whitespacesAndNewlines)
         if heard.isEmpty || written.isEmpty { return .missing }
         if heard.count > maximumLength || written.count > maximumLength { return .tooLong }
-        if key(collapsed(heard)) == key(written) { return .sameWord }
+        if caseKey(collapsed(heard)) == caseKey(written) { return .sameWord }
         if normalized([fix]).isEmpty { return .heardWords }
         return .full
     }
@@ -119,7 +120,7 @@ public enum WordFixes {
         let prepared = normalized(fixes).compactMap { fix -> Prepared? in
             let words = Token.split(Array(fix.heard.unicodeScalars))
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
-            return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written)
+            return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written, exactly: key(fix.heard) == key(fix.written))
         }.sorted { $0.words.count > $1.words.count }
         let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
             .map { (heard: Array($0.words[0].unicodeScalars), written: $0.written) }
@@ -139,7 +140,7 @@ public enum WordFixes {
         var cursor = 0
         while index < tokens.count {
             if let hit = firstMatch(prepared, tokens, at: index) {
-                if readsAlready(all, from: starts[index] + hit.prefixEnd, hit.written) {
+                if readsAlready(all, from: starts[index] + hit.prefixEnd, hit.written, exactly: hit.exactly) {
                     index += hit.count
                     continue
                 }
@@ -234,24 +235,37 @@ public enum WordFixes {
         return !(0x0590...0x05FF).contains(start.value)
     }
 
+    /// `exactly` when the fix only respells its own words in ways matching
+    /// looks past: an alef given its hamza, "don’t" written "don't".
     private struct Prepared {
         let words: [String]
         let joints: [[Unicode.Scalar]]
         let written: String
+        let exactly: Bool
     }
 
     /// Whether `text` from `start` already reads `written`, case, niqqud and
     /// a maqaf against a hyphen aside, up to the end of a word: a fix that
     /// only adds words ("dana" written "Dana Cohen") would otherwise write
-    /// them twice on a line that has them.
-    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String) -> Bool {
+    /// them twice on a line that has them. The line may also differ from
+    /// `written` the ways heard words may (an apostrophe, an alef's hamza,
+    /// Arabic vowel marks), except for a fix that only respells
+    /// (`exactly`): those differences are what it is for.
+    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool) -> Bool {
+        func skips(_ scalar: Unicode.Scalar) -> Bool {
+            exactly ? Token.isHebrewNiqqud(scalar) : Token.isMark(scalar)
+        }
+        func same(_ one: Unicode.Scalar, _ other: Unicode.Scalar) -> Bool {
+            if exactly { return WordFixes.caseFolded(String(one)) == WordFixes.caseFolded(String(other)) }
+            return WordFixes.folded(String(one)) == WordFixes.folded(String(other))
+        }
         var at = start
         func skipMarks() {
-            while at < text.count, Token.isNiqqud(text[at]) { at += 1 }
+            while at < text.count, skips(text[at]) { at += 1 }
         }
-        for scalar in written.unicodeScalars where !Token.isNiqqud(scalar) {
+        for scalar in written.unicodeScalars where !skips(scalar) {
             skipMarks()
-            guard at < text.count, (isDash(scalar) && isDash(text[at])) || folded(String(scalar)) == folded(String(text[at])) else { return false }
+            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) else { return false }
             at += 1
         }
         skipMarks()
@@ -266,6 +280,7 @@ public enum WordFixes {
         let count: Int
         let prefixEnd: Int
         let written: String
+        let exactly: Bool
     }
 
     private static func isHan(_ word: String) -> Bool {
@@ -321,14 +336,18 @@ public enum WordFixes {
         }
         for offset in 1..<max(count, 1) where tokens[index + offset].key != fix.words[offset] { return nil }
         let first = tokens[index]
-        if first.key == fix.words[0] { return Hit(count: count, prefixEnd: first.coreStart, written: fix.written) }
+        if first.key == fix.words[0] { return Hit(count: count, prefixEnd: first.coreStart, written: fix.written, exactly: fix.exactly) }
         guard let heard = fix.words[0].unicodeScalars.first, (0x5D0...0x5EA).contains(heard.value) else { return nil }
         // A lone two-letter word takes no prefix: it ends too many other words.
         guard count > 1 || fix.words[0].unicodeScalars.count >= minimumPrefixedLetters else { return nil }
+        let everyday = HebrewText.everydayWordsNotNames[fix.words[0]] ?? []
         for length in 1...3 where first.key.count > length {
             let head = first.key.prefix(length)
             guard head.allSatisfy(prefixLetters.contains), String(first.key.dropFirst(length)) == fix.words[0] else { continue }
-            return Hit(count: count, prefixEnd: first.endOfLetters(length), written: fix.written)
+            // A short name hides in everyday words ("full" holds Lea), also
+            // behind a prefix of their own ("when full").
+            if (0..<length).contains(where: { everyday.contains(String(first.key.dropFirst($0))) }) { return nil }
+            return Hit(count: count, prefixEnd: first.endOfLetters(length), written: fix.written, exactly: fix.exactly)
         }
         return nil
     }
@@ -348,10 +367,38 @@ public enum WordFixes {
         return core.isEmpty ? folded(HebrewText.stripNiqqud(text)) : core
     }
 
-    /// Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix
-    /// typed in capitals finds the word ending in a final sigma.
-    static func folded(_ text: String) -> String {
+    /// Only capital letters and the Greek final sigma, no more: the old
+    /// comparison, which decides whether a fix changes anything at all.
+    static func caseKey(_ text: String) -> String {
+        let core = Token.split(Array(text.unicodeScalars), atMaqaf: false).map(\.caseKey).joined(separator: " ")
+        return core.isEmpty ? caseFolded(HebrewText.stripNiqqud(text)) : core
+    }
+
+    static func caseFolded(_ text: String) -> String {
         String(String.UnicodeScalarView(text.lowercased().unicodeScalars.map { $0.value == 0x03C2 ? sigma : $0 }))
+    }
+
+    /// Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix
+    /// typed in capitals finds the word ending in a final sigma, and a dotted
+    /// capital I a plain i, as on Android. A curly, modifier-letter or Hebrew
+    /// geresh apostrophe is a straight one, a curly quote or a gershayim a
+    /// straight quote (the phone's keyboard types one, the engine writes the
+    /// other), and an alef with hamza or madda is a plain alef. The alef
+    /// maqsura and ta marbuta stay as they are: a fix replaces text, and
+    /// folding them would let a name rewrite an everyday word.
+    static func folded(_ text: String) -> String {
+        let undotted = String(String.UnicodeScalarView(text.unicodeScalars.map { $0.value == 0x0130 ? "i" : $0 }))
+        return String(String.UnicodeScalarView(undotted.lowercased().unicodeScalars.map { foldedScalar($0) }))
+    }
+
+    private static func foldedScalar(_ scalar: Unicode.Scalar) -> Unicode.Scalar {
+        switch scalar.value {
+        case 0x03C2: return sigma
+        case 0x2018, 0x2019, 0x02BC, 0x05F3: return "'"
+        case 0x201C, 0x201D, 0x05F4: return "\""
+        case 0x0623, 0x0625, 0x0622: return "\u{0627}"
+        default: return scalar
+        }
     }
 
     private static let sigma = Unicode.Scalar(UInt32(0x03C3))!
@@ -363,15 +410,23 @@ public enum WordFixes {
         let coreEnd: Int
 
         var key: String {
-            let base = scalars[coreStart..<coreEnd].filter { !Token.isNiqqud($0) }
+            let base = scalars[coreStart..<coreEnd].filter { !Token.isMark($0) }
             return WordFixes.folded(String(String.UnicodeScalarView(base)))
+        }
+
+        /// A word of vowel marks or tatweel alone: no fix can be heard as it.
+        var isOnlyMarks: Bool { coreStart < coreEnd && key.isEmpty }
+
+        var caseKey: String {
+            let base = scalars[coreStart..<coreEnd].filter { !Token.isHebrewNiqqud($0) }
+            return WordFixes.caseFolded(String(String.UnicodeScalarView(base)))
         }
 
         func endOfLetters(_ count: Int) -> Int {
             var seen = 0
             var position = coreStart
             while position < coreEnd {
-                if !Token.isNiqqud(scalars[position]) {
+                if !Token.isMark(scalars[position]) {
                     if seen == count { break }
                     seen += 1
                 }
@@ -380,12 +435,17 @@ public enum WordFixes {
             return position
         }
 
-        static func isNiqqud(_ scalar: Unicode.Scalar) -> Bool {
+        static func isHebrewNiqqud(_ scalar: Unicode.Scalar) -> Bool {
             (0x0591...0x05C7).contains(scalar.value) && scalar.properties.generalCategory == .nonspacingMark
         }
 
+        static func isMark(_ scalar: Unicode.Scalar) -> Bool {
+            isHebrewNiqqud(scalar)
+                || (0x064B...0x065F).contains(scalar.value) || scalar.value == 0x0670 || scalar.value == 0x0640
+        }
+
         static func isCore(_ scalar: Unicode.Scalar) -> Bool {
-            scalar.properties.isAlphabetic || scalar.properties.numericType != nil || isNiqqud(scalar)
+            scalar.properties.isAlphabetic || scalar.properties.numericType != nil || isMark(scalar)
         }
 
         /// Words between spaces and, unless `atMaqaf` is false, a maqaf, as

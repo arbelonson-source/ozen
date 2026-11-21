@@ -11,12 +11,16 @@ object WordFixes {
     private const val MAQAF = 0x05BE
     private const val FINAL_SIGMA = 0x03C2
     private const val SIGMA = 0x03C3
+    private const val DOTTED_CAPITAL_I = 0x0130
 
     /** A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last. */
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
-    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String)
+    /** [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't". */
+    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean)
 
-    private fun isMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
+    private fun isHebrewMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
+
+    private fun isMark(c: Int) = isHebrewMark(c) || c in 0x064B..0x065F || c == 0x0670 || c == 0x0640
 
     private fun isLetter(c: Int) = Character.isLetterOrDigit(c)
 
@@ -25,15 +29,45 @@ object WordFixes {
         else -> false
     }
 
-    /** Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix typed in capitals finds the word ending in a final sigma. */
-    private fun folded(c: Int) = Character.toLowerCase(c).let { if (it == FINAL_SIGMA) SIGMA else it }
+    /** A dotted capital I keeps its dot, as the iPhone's lowercase keeps it, so a fix that only adds the dot is a fix on both phones. */
+    private fun caseFolded(c: Int) = if (c == DOTTED_CAPITAL_I) c else Character.toLowerCase(c).let { if (it == FINAL_SIGMA) SIGMA else it }
+
+    /** The old comparison, only capital letters and the Greek final sigma: it decides whether a fix changes anything at all. */
+    private fun caseKeyOf(text: String): String {
+        val core = words(text, bare = true, atMaqaf = false).joinToString(" ") { word ->
+            val out = StringBuilder()
+            var k = word.start
+            while (k < word.end) {
+                val c = text.codePointAt(k)
+                if (!isHebrewMark(c)) out.appendCodePoint(caseFolded(c))
+                k += Character.charCount(c)
+            }
+            out.toString()
+        }
+        return if (core.isBlank()) text.filterNot { isHebrewMark(it.code) }.trim().lowercase().replace(FINAL_SIGMA.toChar(), SIGMA.toChar()) else core
+    }
+
+    /**
+     * Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix typed in capitals finds the word ending in a final sigma,
+     * and a dotted capital I a plain i. A curly, modifier-letter or Hebrew geresh apostrophe is a straight one, a curly quote or a
+     * gershayim a straight quote (the phone's keyboard types one, the engine writes the other), and an alef with hamza or madda is a
+     * plain alef. The alef maqsura and ta marbuta stay as they are: a fix replaces text, and folding them would let a name rewrite an
+     * everyday word.
+     */
+    private fun folded(c: Int) = when (val lower = Character.toLowerCase(c)) {
+        FINAL_SIGMA -> SIGMA
+        0x2018, 0x2019, 0x02BC, 0x05F3 -> 0x27
+        0x201C, 0x201D, 0x05F4 -> 0x22
+        0x0623, 0x0625, 0x0622 -> 0x0627
+        else -> lower
+    }
 
     private fun isSpace(c: Int) = Character.isWhitespace(c) || Character.isSpaceChar(c)
 
     /** The iPhone's key: words split at spaces only, so two words and the same two joined by a maqaf stay different keys. */
     private fun keyOf(text: String): String {
         val core = words(text, bare = true, atMaqaf = false).joinToString(" ") { it.key }
-        return if (core.isBlank()) text.filterNot { isMark(it.code) }.trim().lowercase().replace(FINAL_SIGMA.toChar(), SIGMA.toChar()) else core
+        return if (core.isBlank()) text.filterNot { isHebrewMark(it.code) }.trim().map { folded(it.code).toChar() }.joinToString("") else core
     }
 
     /**
@@ -92,22 +126,27 @@ object WordFixes {
      * Whether [text] from [from] already reads [written], case, niqqud and a
      * maqaf against a hyphen aside, up to the end of a word: a fix that only
      * adds words ("dana" written "Dana Cohen") would otherwise write them
-     * twice on a line that has them.
+     * twice on a line that has them. The line may also differ from [written]
+     * the ways heard words may (an apostrophe, an alef's hamza, Arabic vowel
+     * marks), except for a fix that only respells ([exactly]): those
+     * differences are what it is for.
      */
-    private fun readsAlready(text: String, from: Int, written: String): Boolean {
+    private fun readsAlready(text: String, from: Int, written: String, exactly: Boolean): Boolean {
+        fun skips(c: Int) = if (exactly) isHebrewMark(c) else isMark(c)
+        fun same(a: Int, b: Int) = if (exactly) caseFolded(a) == caseFolded(b) else folded(a) == folded(b)
         var at = from
         fun skipMarks() {
-            while (at < text.length && isMark(text.codePointAt(at))) at += Character.charCount(text.codePointAt(at))
+            while (at < text.length && skips(text.codePointAt(at))) at += Character.charCount(text.codePointAt(at))
         }
         var next = 0
         while (next < written.length) {
             val c = written.codePointAt(next)
             next += Character.charCount(c)
-            if (isMark(c)) continue
+            if (skips(c)) continue
             skipMarks()
             if (at >= text.length) return false
             val shown = text.codePointAt(at)
-            if (!(isDash(c) && isDash(shown)) && folded(c) != folded(shown)) return false
+            if (!(isDash(c) && isDash(shown)) && !same(c, shown)) return false
             at += Character.charCount(shown)
         }
         skipMarks()
@@ -124,10 +163,13 @@ object WordFixes {
         if (word.key == heard) return word.start
         if (heard.isEmpty() || heard.codePointAt(0) !in 0x05D0..0x05EA) return null
         if (lone && heard.codePointCount(0, heard.length) < MINIMUM_PREFIXED_LETTERS) return null
+        val everyday = HebrewText.everydayWordsNotNames[heard].orEmpty()
         for (n in 1..3) {
             if (word.bases.size <= n) return null
             if (word.bases[n - 1].first.toChar() !in PREFIX_LETTERS) return null
-            if (word.key.substring(n) == heard) return word.bases[n].second
+            if (word.key.substring(n) != heard) continue
+            // A short name hides in everyday words ("full" holds Lea), also behind a prefix of their own ("when full").
+            return if ((0 until n).any { word.key.substring(it) in everyday }) null else word.bases[n].second
         }
         return null
     }
@@ -206,9 +248,9 @@ object WordFixes {
         for (fix in fixes) {
             val heard = fix.heard.trim().replace(Regex("\\s+"), " ").take(MAXIMUM_LENGTH).trim()
             val written = fix.written.trim().take(MAXIMUM_LENGTH).trim()
-            if (heard.isEmpty() || written.isEmpty() || keyOf(heard) == keyOf(written)) continue
+            if (heard.isEmpty() || written.isEmpty() || caseKeyOf(heard) == caseKeyOf(written)) continue
             val parts = words(heard)
-            if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) continue
+            if (parts.isEmpty() || parts.size > MAXIMUM_WORDS || parts.any { it.key.isEmpty() }) continue
             if (parts.zipWithNext().any { (a, b) -> joint(heard, a, b) == null }) continue
             if (!seen.add(keyOf(heard))) continue
             out.add(WordFix(heard, written))
@@ -235,7 +277,7 @@ object WordFixes {
         return when {
             heard.isEmpty() || written.isEmpty() -> Refusal.Missing
             heard.length > MAXIMUM_LENGTH || written.length > MAXIMUM_LENGTH -> Refusal.TooLong
-            keyOf(heard.replace(Regex("\\s+"), " ")) == keyOf(written) -> Refusal.SameWord
+            caseKeyOf(heard.replace(Regex("\\s+"), " ")) == caseKeyOf(written) -> Refusal.SameWord
             normalized(listOf(fix)).isEmpty() -> Refusal.HeardWords
             else -> Refusal.Full
         }
@@ -318,7 +360,7 @@ object WordFixes {
         val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
-            else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written)
+            else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written, keyOf(fix.heard) == keyOf(fix.written))
         }
         if (compiled.isEmpty()) return Rewrite(text, words(text), emptyList())
         val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
@@ -351,7 +393,7 @@ object WordFixes {
                 index++
                 continue
             }
-            if (readsAlready(text, keep, best.written)) {
+            if (readsAlready(text, keep, best.written, best.exactly)) {
                 index += best.words.size
                 continue
             }
