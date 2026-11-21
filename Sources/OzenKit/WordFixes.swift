@@ -304,7 +304,8 @@ public enum WordFixes {
         for fix in list {
             if let best, best.count > fix.words.count { break }
             guard let hit = match(fix, tokens, at: index) else { continue }
-            if best == nil { best = hit }
+            if let best, best.prefixEnd <= hit.prefixEnd { continue }
+            best = hit
         }
         return best
     }

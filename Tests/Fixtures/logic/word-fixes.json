@@ -162,6 +162,9 @@
   {"fixes": [["תל אביב", "Tel Aviv"]], "text": "תל\u05BEאביב", "expected": "תל\u05BEאביב"},
   {"fixes": [["תל אביב", "TLV"], ["תל\u05BEאביב", "Tel Aviv"]], "text": "תל אביב ותל\u05BEאביב", "expected": "TLV ו\u05BETel Aviv"},
   {"fixes": [["תל אביב", "תל\u05BEאביב"]], "text": "תל\u05BEאביב", "expected": "תל\u05BEאביב"},
-  {"fixes": [["תל\u05BE\u05BEאביב", "Tel Aviv"]], "text": "תל\u05BE\u05BEאביב", "expected": "תל\u05BE\u05BEאביב"}
+  {"fixes": [["תל\u05BE\u05BEאביב", "Tel Aviv"]], "text": "תל\u05BE\u05BEאביב", "expected": "תל\u05BE\u05BEאביב"},
+  {"fixes": [["נועה", "נעמי"], ["לנועה", "לדנה"]], "text": "לנועה נועה", "expected": "לדנה נעמי"},
+  {"fixes": [["לנועה", "לדנה"], ["נועה", "נעמי"]], "text": "לנועה נועה", "expected": "לדנה נעמי"},
+  {"fixes": [["נועה", "נעמי"], ["לנועה", "לדנה"]], "text": "ונועה ולנועה", "expected": "ונעמי ולדנה"}
  ]
 }

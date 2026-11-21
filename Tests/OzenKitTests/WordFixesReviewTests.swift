@@ -104,6 +104,21 @@ struct WordFixesReviewTests {
         #expect(await eventually { pipeline.segments[0].text == "I saw Avy today" })
     }
 
+    @Test("a later fix for a word doesn't take over an earlier fix of the same word with a prefix letter")
+    func laterFixKeepsEarlierPrefixedFix() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled, now: { 1_001 })
+        await pipeline.start(settings: AppSettings.default)
+        let id = UUID()
+        engine.emit(TranscriptToken(utteranceID: id, text: "לנועה נועה", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        pipeline.commitStaleSegments(now: 1_000_000)
+        #expect(pipeline.correctWord(inSegment: id, with: fix("לנועה", "לדנה")) == "לדנה נועה")
+        #expect(pipeline.correctWord(inSegment: id, with: fix("נועה", "נעמי")) == "לדנה נעמי")
+        engine.emit(TranscriptToken(utteranceID: id, text: "לנועה נועה", isFinal: true, timestamp: 1_002))
+        #expect(await eventually { pipeline.segments[0].text == "לדנה נעמי" })
+    }
+
     @Test("a text fix the disk refused on an old conversation is written by the next save, and reported until then")
     func refusedTextFixCatchesUp() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-wf-\(UUID())", isDirectory: true)
