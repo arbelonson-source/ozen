@@ -45,6 +45,7 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CaptionLayout
@@ -983,6 +984,53 @@ class HistoryScreenDeviceTest {
         compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
         compose.waitUntil(5_000) { shownLine(digits) }
         assertSides(english, hebrew, digits)
+    }
+
+    // Captions turned up to 64 for weak eyes, a saved line was read back at
+    // the phone's body size, a quarter of that. The iPhone draws it at seven
+    // tenths of the caption size, never below the body size.
+    @Test
+    fun aSavedLineGrowsWithTheCaptionSizeInItsConversationAndInStarredLines() {
+        val said = "Size test please bring the blue folder"
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), said, null, null, startedAt, true, isStarred = true)),
+        )
+        store.save(record)
+        seeded += record.id
+        app.settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.minimumFontSize) }
+        compose.onNodeWithText("History").performClick()
+        waitFor(said)
+        compose.onNodeWithText(said, substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine(said) }
+        assertGrowsWithTheCaptions(said)
+
+        app.settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.minimumFontSize) }
+        compose.onNodeWithText("Back").performClick()
+        waitFor(said)
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine(said) }
+        assertGrowsWithTheCaptions(said)
+    }
+
+    private fun assertGrowsWithTheCaptions(said: String) {
+        val small = savedLineHeight(said, DisplayPreferences.minimumFontSize)
+        val large = savedLineHeight(said, DisplayPreferences.maximumFontSize)
+        val body = 16.0
+        val grown = with(compose.density) { (DisplayPreferences.savedLineSize(DisplayPreferences.maximumFontSize, body) - body).sp.toPx() }
+        assertTrue("the line is $small px tall with captions at 20 and $large px at 64; it should grow by at least $grown px", large - small >= grown)
+    }
+
+    private fun savedLineHeight(said: String, captionSize: Double): Int {
+        app.settings.change { it.display = it.display.copy(fontSize = captionSize) }
+        compose.waitForIdle()
+        return compose.onNodeWithContentDescription(said, substring = true).fetchSemanticsNode().size.height
     }
 
     @Test

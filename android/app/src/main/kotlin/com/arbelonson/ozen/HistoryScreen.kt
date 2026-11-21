@@ -96,16 +96,19 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
@@ -197,6 +200,7 @@ fun HistoryScreen(
     retention: HistoryRetention,
     marksUncertain: Boolean,
     emphasizeNumbers: Boolean,
+    captionSize: Double,
     onClose: () -> Unit,
     languageCode: String,
     onTranscribe: ((Uri) -> Unit)? = null,
@@ -210,12 +214,12 @@ fun HistoryScreen(
     val place = rememberLazyListState()
     val open = openID
     if (open != null) {
-        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null }, languageCode = languageCode)
+        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, captionSize, onClose = { openID = null }, languageCode = languageCode)
         return
     }
     var showingStarred by rememberSaveable { mutableStateOf(false) }
     if (showingStarred) {
-        StarredLinesScreen(conversations, marksUncertain, emphasizeNumbers, onClose = { showingStarred = false }, languageCode = languageCode)
+        StarredLinesScreen(conversations, marksUncertain, emphasizeNumbers, captionSize, onClose = { showingStarred = false }, languageCode = languageCode)
         return
     }
     BackHandler(onBack = onClose)
@@ -647,6 +651,7 @@ internal fun ConversationScreen(
     query: String,
     marksUncertain: Boolean,
     emphasizeNumbers: Boolean,
+    captionSize: Double,
     onClose: () -> Unit,
     line: UUID? = null,
     languageCode: String,
@@ -856,7 +861,7 @@ internal fun ConversationScreen(
                                 }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
                                         show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
@@ -1090,7 +1095,7 @@ private fun NumbersSection(numbers: NumbersMentioned, languageCode: String, isUn
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, arrived: Boolean = false, onFix: () -> Unit = {}, onStar: () -> Unit) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, captionSize: Double, arrived: Boolean = false, onFix: () -> Unit = {}, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשתם", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
@@ -1132,10 +1137,11 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
             Column(modifier = Modifier.fillMaxWidth()) {
                 line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen(), line.slot)) }
+                val words = savedLineStyle(captionSize)
                 Row {
-                    if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
-                    if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = usesDecimalComma(line.languageCode), languageCode = line.languageCode), style = MaterialTheme.typography.bodyLarge)
+                    if (line.starred) Text("★", color = starColour(), style = words, modifier = Modifier.padding(end = 6.dp))
+                    if (line.unsure) UnsureMark(words.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = usesDecimalComma(line.languageCode), languageCode = line.languageCode), style = words)
                 }
             }
         }
@@ -1170,6 +1176,18 @@ internal fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
             } while (event.changes.any { it.pressed })
         }
     }
+}
+
+/**
+ * A saved line at seven tenths of the captions, as on the iPhone, but never
+ * below the body text: with captions turned up for weak eyes, lines read back
+ * here stayed at the body size, a quarter of a 64-point caption.
+ */
+@Composable
+internal fun savedLineStyle(captionSize: Double): TextStyle {
+    val body = MaterialTheme.typography.bodyLarge
+    val size = DisplayPreferences.savedLineSize(captionSize, body.fontSize.value.toDouble())
+    return body.copy(fontSize = size.sp, lineHeight = (size * 1.5).sp)
 }
 
 @Composable

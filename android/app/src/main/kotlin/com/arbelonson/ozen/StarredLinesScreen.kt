@@ -85,7 +85,7 @@ internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
  * conversation deleted there takes its lines off this list too.
  */
 @Composable
-internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit, languageCode: String) {
+internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, captionSize: Double, onClose: () -> Unit, languageCode: String) {
     var opened by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     // Kept while a line's conversation is open, so Back finds the list where
     // it was; the lines are still read again behind it.
@@ -93,7 +93,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
     val place = rememberLazyListState()
     val open = opened
     if (open != null) {
-        ConversationScreen(conversations, open.first, query = "", marksUncertain = marksUncertain, emphasizeNumbers = emphasizeNumbers, onClose = { opened = null }, line = open.second, languageCode = languageCode)
+        ConversationScreen(conversations, open.first, query = "", marksUncertain = marksUncertain, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onClose = { opened = null }, line = open.second, languageCode = languageCode)
         return
     }
     BackHandler(onBack = onClose)
@@ -151,6 +151,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                             StarredLineView(
                                 SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode, slots = slots),
                                 emphasizeNumbers,
+                                captionSize,
                                 onOpen = { opened = line.sessionID to line.id },
                                 onUnstar = {
                                     if (removing.add(line.id)) {
@@ -193,7 +194,7 @@ private fun StarredHeading(title: String?, day: String) {
 
 /** The star can come off from here too, as on the iPhone: only Copy was offered, and taking a star away meant finding the line inside its conversation. */
 @Composable
-private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: () -> Unit, onUnstar: () -> Unit) {
+private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, captionSize: Double, onOpen: () -> Unit, onUnstar: () -> Unit) {
     val copy = tr("העתקה", "Copy")
     val unstar = tr("הסרת הסימון", "Remove the star")
     val context = LocalContext.current
@@ -224,9 +225,10 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
                         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen(), line.slot)) }
                     }
+                    val words = savedLineStyle(captionSize)
                     Row {
-                        if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = usesDecimalComma(line.languageCode), languageCode = line.languageCode), style = MaterialTheme.typography.bodyLarge)
+                        if (line.unsure) UnsureMark(words.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = usesDecimalComma(line.languageCode), languageCode = line.languageCode), style = words)
                     }
                 }
             }

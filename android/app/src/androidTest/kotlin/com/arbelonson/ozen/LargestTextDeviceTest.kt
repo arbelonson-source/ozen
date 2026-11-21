@@ -116,7 +116,7 @@ class LargestTextDeviceTest {
         try {
             val settings = app.settings.current.value
             onASmallPhoneAtTheLargestText {
-                HistoryScreen(app.captions.savedConversations, true, settings.historyRetention, false, false, onClose = {}, languageCode = "en")
+                HistoryScreen(app.captions.savedConversations, true, settings.historyRetention, false, false, captionSize = settings.display.fontSize, onClose = {}, languageCode = "en")
             }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Search what was said").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Search what was said").performTextInput("dentist")
