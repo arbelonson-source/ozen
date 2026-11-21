@@ -18,8 +18,16 @@ class SharedRecordingLinkTest {
     }
 
     @Test
+    fun aUserNumberBeforeOzensOwnFilesDoesNotHideThem() {
+        assertFalse(ok("content://0@com.arbelonson.ozen.share/x"))
+        assertFalse(ok("content://10@COM.ARBELONSON.OZEN.share/x"))
+        assertFalse(ok("content://0%40com.arbelonson.ozen.share/x"))
+    }
+
+    @Test
     fun aVoiceNoteFromAnotherAppIsAccepted() {
         assertTrue(ok("content://com.whatsapp.provider.media/item/123"))
+        assertTrue(ok("content://10@com.whatsapp.provider.media/item/123"))
     }
 
     @Test
