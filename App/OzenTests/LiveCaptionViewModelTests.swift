@@ -648,7 +648,9 @@ struct LiveCaptionViewModelTests {
         #expect(await eventually { heard == 1 && embedder.callsStarted == 1 })
 
         recording.cancel()
-        for _ in 0..<4 { embedder.release() }
+        // Four speech windows, then the length check that saving the print
+        // makes on the main actor: held at the gate, it would hang the test.
+        for _ in 0..<5 { embedder.release() }
         #expect(await recording.value)
         #expect(viewModel.settings.speakerProfiles.map(\.name) == ["סבתא"])
         #expect(store.load().speakerProfiles.map(\.name) == ["סבתא"])
