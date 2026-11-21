@@ -193,6 +193,19 @@ struct WordFixesTests {
         #expect(!WordFixes.canJoin("׳", "בוש"))
     }
 
+    @Test("the closing quote of a quoted Hebrew word keeps a heard phrase from going on, a quoted name's geresh does not")
+    func closingQuoteIsNoGeresh() {
+        #expect(!WordFixes.canJoin("‘שלום’", "בא"))
+        #expect(!WordFixes.canJoin("'שלום'", "בא"))
+        #expect(!WordFixes.canJoin("(‘שלום’", "בא"))
+        #expect(!WordFixes.canJoin("‘ג׳ורג׳’", "בוש"))
+        #expect(WordFixes.canJoin("‘ג׳ורג׳", "בוש’"))
+        #expect(WordFixes.canJoin("‘שלום ג'ורג'", "בא"))
+        #expect(WordFixes.refusal(fix("‘שלום’ בא", "Shalom ba"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix("'שלום' בא", "Shalom ba"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix("‘ג׳ורג׳ בוש’", "George Bush"), to: []) == nil)
+    }
+
     @Test("VoiceOver hears a fix as what was heard and what is written, not as an arrow")
     func spokenLabel() {
         let one = fix("aval", "Avi")

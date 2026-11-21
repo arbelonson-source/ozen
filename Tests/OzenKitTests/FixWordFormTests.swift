@@ -59,6 +59,22 @@ struct FixWordFormTests {
         #expect(FixWordForm.tapped(2...2, index: 3, words: ["ראיתי", "את", "ג׳ורג׳,", "בוש"]) == 3...3)
     }
 
+    @Test("a run stops at the closing quote of a quoted Hebrew word, and a quoted name keeps its closing quote when fixed")
+    func runAndQuotes() {
+        let quoted = "אמרתי ‘שלום’ לכולם"
+        let words = quoted.split(separator: " ").map(String.init)
+        #expect(FixWordForm.tapped(1...1, index: 2, words: words) == 2...2)
+        #expect(FixWordForm.tapped(2...2, index: 1, words: words) == 1...1)
+        #expect(WordFixes.apply([WordFix(heard: "שלום", written: "Shalom")], to: quoted) == "אמרתי ‘Shalom’ לכולם")
+        let name = "ראיתי את ‘ג׳ורג׳ בוש’ אתמול"
+        let tiles = name.split(separator: " ").map(String.init)
+        #expect(FixWordForm.tapped(2...2, index: 3, words: tiles) == 2...3)
+        #expect(FixWordForm.tapped(3...3, index: 4, words: tiles) == 4...4)
+        #expect(FixWordForm.tapped(4...4, index: 3, words: tiles) == 3...3)
+        #expect(FixWordForm.changes(line: name, heard: "ג׳ורג׳ בוש", written: "George Bush"))
+        #expect(WordFixes.apply([WordFix(heard: "ג׳ורג׳ בוש", written: "George Bush")], to: name) == "ראיתי את ‘George Bush’ אתמול")
+    }
+
     @Test("a word picked or typed with nothing written yet asks for how it should be written")
     func nowWrite() {
         #expect(FixWordForm.note(line: line, heard: "Shera", written: "") == .nowWrite)

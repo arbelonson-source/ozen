@@ -17,6 +17,7 @@ object WordFixes {
      * A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last.
      * [replacedEnd] is [end], or one past a geresh (or an apostrophe standing in for one) right after the last Hebrew letter:
      * it belongs to the word, as at the end of George spelt in Hebrew, so a fix replaces it too, while [key] still looks past it.
+     * The closing quote of a quoted word (‘שלום’) is no geresh, and stays.
      */
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>, val replacedEnd: Int)
     /** [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't". */
@@ -74,14 +75,23 @@ object WordFixes {
         return if (core.isBlank()) text.filterNot { isHebrewMark(it.code) }.trim().map { folded(it.code).toChar() }.joinToString("") else core
     }
 
+    /** The closing mark each opening single quote waits for. */
+    private val closingQuote = mapOf(0x2018 to 0x2019, 0x27 to 0x27)
+
     /**
      * The words of [text], split only at spaces and, when [atMaqaf], at a
      * maqaf: "3.5", "e-mail" and "10:30" are one word each, as on the iPhone.
      * A run with no letter or digit is a word only when [bare] asks for it.
+     * A single quote before a word's first letter stays open until the
+     * matching mark after the last letter of that word or a later one. That
+     * mark right after a Hebrew letter is the closing quote (‘שלום’), not a
+     * geresh, unless another apostrophe-like mark follows it to close the
+     * quote ('ג'ורג''); the Hebrew geresh is never a quote.
      */
     private fun words(text: String, bare: Boolean = false, atMaqaf: Boolean = true): List<Word> {
         fun isBreak(c: Int) = isSpace(c) || (atMaqaf && c == MAQAF)
         val out = ArrayList<Word>()
+        val open = HashSet<Int>()
         var i = 0
         while (i < text.length) {
             val head = text.codePointAt(i)
@@ -99,7 +109,8 @@ object WordFixes {
                 }
                 j = next
             }
-            if (start < 0) { start = j; end = j }
+            val marksOnly = start < 0
+            if (marksOnly) { start = j; end = j }
             val bases = ArrayList<Pair<Int, Int>>()
             var k = start
             while (k < end) {
@@ -109,9 +120,23 @@ object WordFixes {
             }
             val key = StringBuilder()
             for ((c, _) in bases) key.appendCodePoint(c)
+            var at = i
+            while (at < start) {
+                val c = text.codePointAt(at)
+                if (marksOnly) open.remove(c) else closingQuote[c]?.let { open.add(it) }
+                at += Character.charCount(c)
+            }
             val after = if (end < j) text.codePointAt(end) else -1
             val geresh = after >= 0 && folded(after) == 0x27 && bases.lastOrNull()?.first in 0x05D0..0x05EA
-            val replacedEnd = if (geresh) end + Character.charCount(after) else end
+            val past = if (after >= 0) end + Character.charCount(after) else end
+            val doubled = past < j && folded(text.codePointAt(past)) == 0x27
+            val replacedEnd = if (geresh && (after !in open || doubled)) past else end
+            at = replacedEnd
+            while (at < j) {
+                val c = text.codePointAt(at)
+                open.remove(c)
+                at += Character.charCount(c)
+            }
             if (bare || start < end) out.add(Word(i, j, start, end, key.toString(), bases, replacedEnd))
             i = j
         }

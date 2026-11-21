@@ -188,4 +188,34 @@ class WordFixesTest {
         assertEquals(false, WordFixes.joinedBySpace("ראיתי את ג׳ורג׳, בוש אתמול", 2))
         assertEquals(false, WordFixes.joinedBySpace("james' car", 0))
     }
+
+    @Test fun aWordToTapLeavesOutTheClosingQuoteOfAQuotedHebrewWordAndKeepsANamesGereshBeforeIt() {
+        assertEquals(listOf("שלום", "בא"), WordFixes.wordsOf("‘שלום’ בא"))
+        assertEquals(listOf("שלום", "בא"), WordFixes.wordsOf("'שלום' בא"))
+        assertEquals(listOf("אמרתי", "שלום", "לכולם"), WordFixes.wordsOf("אמרתי ‘שלום’ לכולם"))
+        assertEquals(listOf("ג׳ורג׳", "בוש"), WordFixes.wordsOf("‘ג׳ורג׳ בוש’"))
+        assertEquals(listOf("ג׳ורג׳", "בא"), WordFixes.wordsOf("‘ג׳ורג׳’ בא"))
+        assertEquals(listOf("ג'ורג'", "בא"), WordFixes.wordsOf("'ג'ורג'' בא"))
+        assertEquals(listOf("שלום", "ג’ורג’", "בא"), WordFixes.wordsOf("‘שלום’ ג’ורג’ בא"))
+        assertEquals(listOf("hello", "ג’ורג’", "בא"), WordFixes.wordsOf("‘hello’ ג’ורג’ בא"))
+        assertEquals(listOf("שלום", "ג'ורג'", "בא"), WordFixes.wordsOf("‘שלום ג'ורג' בא"))
+        val shown = "אמרתי ‘שלום’ לכולם"
+        val heard = WordFixes.wordsOf(shown)[1]
+        assertEquals("אמרתי ‘Shalom’ לכולם", WordFixes.apply(listOf(fix(heard, "Shalom")), shown))
+    }
+
+    @Test fun aClosingQuoteKeepsAHeardPhraseFromGoingOnAndAQuotedPhraseStillJoins() {
+        assertEquals(false, WordFixes.joinedBySpace("‘שלום’ בא", 0))
+        assertEquals(false, WordFixes.joinedBySpace("'שלום' בא", 0))
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("‘שלום’ בא", "Shalom ba"), emptyList()))
+        val line = "ראיתי את ‘ג׳ורג׳ בוש’ אתמול"
+        val connected = { first: Int -> WordFixes.joinedBySpace(line, first) }
+        assertEquals(true, connected(2))
+        assertEquals(false, connected(3))
+        assertEquals(2..3, WordFixes.tapped(2..2, 3, connected))
+        assertNull(WordFixes.refusal(fix("‘ג׳ורג׳ בוש’", "George Bush"), emptyList()))
+        val picked = WordFixes.wordsOf(line).subList(2, 4).joinToString(" ")
+        assertEquals("ג׳ורג׳ בוש", picked)
+        assertEquals("ראיתי את ‘George Bush’ אתמול", WordFixes.apply(listOf(fix(picked, "George Bush")), line))
+    }
 }
