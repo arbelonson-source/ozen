@@ -9,6 +9,7 @@ import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.FileLinePass
 import com.arbelonson.ozen.core.FileModelChoice
+import com.arbelonson.ozen.core.FixedLinesSoFar
 import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.FileTranscriptRecord
 import com.arbelonson.ozen.core.FileTranscription
@@ -309,13 +310,18 @@ class FileTranscriber(
         val clock = TimeSource.Monotonic.markNow()
         val cutter = FileSpeechCutter(linePass.longestStretchSeconds) { chunk -> scorer.frames(chunk) ?: throw Problem(FileTranscriptionProblem.ModelFailed) }
         val lines = ArrayList<TranscribedLine>()
+        // The lines with the person's word fixes as they are now, for the
+        // screen and the copy kept in case the app is ended. Worked out again
+        // only when a line is added (just that line) or the list changes
+        // (every line, from the words heard), not on every progress report.
+        val shownLines = FixedLinesSoFar()
         var heard = 0L
         val take: suspend (SpeechStretch, FloatArray) -> Unit = { stretch, window ->
             val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
             if (text.isNotEmpty()) {
                 lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
                 madeLines = lines.toList()
-                val soFar = withFixesNow(lines)
+                val soFar = shownLines.of(lines, settings.current.value.wordFixes)
                 withContext(Dispatchers.IO) { captions.fileKeeper.linesSoFar(soFar) }
             }
         }
@@ -323,7 +329,7 @@ class FileTranscriber(
             val done = heard.toDouble() / SAMPLE_RATE
             val fraction = TranscriptionProgress.fraction(done, duration)
             val left = TranscriptionProgress.secondsLeft(clock.elapsedNow().inWholeMilliseconds / 1_000.0, done, duration)
-            shown.value = working(model, Stage.Transcribing, fraction ?: 0f, left, lines.toList())
+            shown.value = working(model, Stage.Transcribing, fraction ?: 0f, left, shownLines.of(lines, settings.current.value.wordFixes))
         }
         report()
         coroutineScope {
