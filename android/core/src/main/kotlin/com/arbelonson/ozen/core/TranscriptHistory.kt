@@ -5,6 +5,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.attribute.FileTime
 import java.text.BreakIterator
 import java.util.Locale
@@ -698,6 +699,8 @@ class TranscriptHistoryStore(
      * the history screen. A save without a title therefore keeps the one
      * already on disk (read from the small summary file, not the whole
      * conversation); [rename] is how a title is changed or removed.
+     * A conversation file that is there but can't be read right now makes
+     * the save throw and write nothing (see [readConversation]).
      *
      * [updateSearchCaches] skips the summary and search-text files: real
      * work over every segment, worth skipping when a caller is waiting
@@ -740,8 +743,6 @@ class TranscriptHistoryStore(
                 if (source != null) {
                     toSave = toSave.copy(engine = source.engine ?: toSave.engine, modelVariant = source.modelVariant, inputName = source.inputName, languageCode = source.languageCode, utcOffsetSeconds = source.utcOffsetSeconds, timeZoneId = source.timeZoneId)
                 }
-            } else if (toSave.title == null) {
-                toSave = toSave.copy(title = cachedSummary(file)?.title)
             }
         }
         forget(record.id)
@@ -759,9 +760,21 @@ class TranscriptHistoryStore(
         return true
     }
 
+    /**
+     * Null only when there is no such file yet. A file that is there but
+     * can't be read right now (a read error) throws, and [save] writes
+     * nothing: it would replace the name and source the file holds with
+     * none and this save's. [TranscriptHistoryWriter] keeps the
+     * conversation waiting and tries it again after the next save. The
+     * iPhone's store does the same.
+     */
     private fun readConversation(file: File): ByteArray? {
         conversationReads.incrementAndGet()
-        return readBytes(file)
+        return try {
+            Files.readAllBytes(file.toPath())
+        } catch (_: NoSuchFileException) {
+            null
+        }
     }
 
     private class Remembered(

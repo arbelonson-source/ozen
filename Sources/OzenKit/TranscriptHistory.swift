@@ -665,6 +665,8 @@ public struct TranscriptHistoryStore: Sendable {
     /// the history screen. A save without a title therefore keeps the one
     /// already on disk (read from the small summary file, not the whole
     /// conversation); `rename` is how a title is changed or removed.
+    /// A conversation file that is there but can't be read right now makes
+    /// the save throw and write nothing (see `readConversation`).
     ///
     /// `updateSearchCaches` skips the summary and search-text files: real
     /// work over every segment, worth skipping when a caller is waiting
@@ -697,7 +699,7 @@ public struct TranscriptHistoryStore: Sendable {
             record.languageCode = remembered.languageCode
             record.utcOffsetSeconds = remembered.utcOffsetSeconds
             record.timeZoneIdentifier = remembered.timeZoneIdentifier
-        } else if let data = readConversation(at: url) {
+        } else if let data = try readConversation(at: url) {
             if record.title == nil {
                 // A save that skipped the caches leaves the summary older than
                 // the conversation, so the next save can't trust it: the name
@@ -735,9 +737,19 @@ public struct TranscriptHistoryStore: Sendable {
         return true
     }
 
-    private func readConversation(at url: URL) -> Data? {
+    /// Nil only when there is no such file yet. A file that is there but
+    /// can't be read right now (a read error, or iOS keeping it locked
+    /// until the first unlock after a restart) throws, and `save` writes
+    /// nothing: it would replace the name and source the file holds with
+    /// none and this save's. `TranscriptHistoryWriter` keeps the
+    /// conversation waiting and tries it again after the next save.
+    private func readConversation(at url: URL) throws -> Data? {
         memory.countRead()
-        return try? Data(contentsOf: url)
+        do {
+            return try Data(contentsOf: url)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return nil
+        }
     }
 
     private struct SavedTitle: Decodable {
