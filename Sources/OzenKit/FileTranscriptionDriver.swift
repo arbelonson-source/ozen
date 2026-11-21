@@ -114,7 +114,6 @@ public struct FileTranscriptionDriver: Sendable {
         var lines: [TranscribedLine] = []
         var heard: [String] = []
         var fixedWith: [WordFix] = []
-        var fixesChanged = false
         var streams = 0
         var peak = 0
         var startedAt: TimeInterval = 0
@@ -234,8 +233,10 @@ public struct FileTranscriptionDriver: Sendable {
             if !text.isEmpty {
                 let end = min(stretch.endSeconds, seconds(state.received))
                 let fixes = await WordFixes.normalized(fixesNow())
-                if !state.lines.isEmpty && fixes != state.fixedWith { state.fixesChanged = true }
-                state.fixedWith = fixes
+                if fixes != state.fixedWith {
+                    state.lines = Self.refixed(state, with: fixes)
+                    state.fixedWith = fixes
+                }
                 state.heard.append(text)
                 state.lines.append(TranscribedLine(startSeconds: stretch.startSeconds, endSeconds: end, text: WordFixes.apply(fixes, to: text)))
             }
@@ -299,12 +300,19 @@ public struct FileTranscriptionDriver: Sendable {
         )
     }
 
-    /// Lines are fixed with the list as it is when each is made; a fix
-    /// added or removed since is applied to every line here, once.
+    /// A fix added or removed after the newest line is applied to every
+    /// line here, once.
     private func finalLines(_ state: State) async -> [TranscribedLine] {
         let fixes = await WordFixes.normalized(fixesNow())
-        if !state.fixesChanged && fixes == state.fixedWith { return state.lines }
-        return zip(state.lines, state.heard).map {
+        return fixes == state.fixedWith ? state.lines : Self.refixed(state, with: fixes)
+    }
+
+    /// Every line, fixed once from the words heard with the list as it is
+    /// now. The lines a run reports, and so the copy kept in case the app
+    /// is ended, always share one list: a fix added or removed mid-run
+    /// reaches the earlier lines as soon as the next line is made.
+    private static func refixed(_ state: State, with fixes: [WordFix]) -> [TranscribedLine] {
+        zip(state.lines, state.heard).map {
             TranscribedLine(startSeconds: $0.startSeconds, endSeconds: $0.endSeconds, text: WordFixes.apply(fixes, to: $1))
         }
     }
