@@ -252,7 +252,7 @@ struct SettingsView: View {
                 Text(tr("השם החדש יופיע גם בשורות שכבר מוצגות.", "The new name will also appear on lines already in the captions."))
             }
             .alert(
-                tr("למזג עם %1?", "Merge with %1?", args: [mergeQuestion?.target ?? ""]),
+                SavedPersonMerge.question(mergingInto: mergeQuestion?.target ?? "").title,
                 isPresented: Binding(get: { mergeQuestion != nil }, set: { if !$0 { mergeQuestion = nil } })
             ) {
                 Button(tr("מיזוג", "Merge")) {
@@ -266,7 +266,7 @@ struct SettingsView: View {
                     mergeQuestion = nil
                 }
             } message: {
-                Text(tr("%1 כבר שמור. שני הקולות יוצגו תחת השם הזה, גם בשיחות קודמות.", "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.", args: [mergeQuestion?.target ?? ""]))
+                Text(SavedPersonMerge.question(mergingInto: mergeQuestion?.target ?? "").message)
             }
             .confirmationDialog(
                 tr("למחוק את %1 מהדוברים השמורים?", "Delete %1 from saved speakers?", args: ["\(pendingSpeakerRemoval ?? "")"]),

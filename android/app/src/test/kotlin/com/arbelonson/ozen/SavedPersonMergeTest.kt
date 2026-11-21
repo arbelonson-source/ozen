@@ -1,5 +1,7 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -36,5 +38,26 @@ class SavedPersonMergeTest {
         assertEquals("Yossi ", SavedPersonMerge.target("Dana", "yossi", padded))
         assertEquals("Yossi ", SavedPersonMerge.destination("Dana", "yossi", padded))
         assertEquals("Dani", SavedPersonMerge.destination("Dana", "  Dani ", padded))
+    }
+
+    @Test
+    fun `a voice with no name yet, named after a saved person, lands on that person as saved`() {
+        val padded = listOf("Dana", "Yossi ")
+        assertEquals("Yossi ", SavedPersonMerge.destination(null, "yossi", padded))
+        assertEquals("Dani", SavedPersonMerge.destination(null, " Dani ", padded))
+    }
+
+    @Test
+    fun `the merge question names the saved person without the spaces around the saved name`() = Localization.withLanguage(UILanguage.English) {
+        val (question, explanation) = SavedPersonMerge.question("Yossi ")
+        assertEquals("Merge with Yossi?", question)
+        assertEquals("Yossi is already saved. Both voices will then be shown under that one name, including in past conversations.", explanation)
+    }
+
+    @Test
+    fun `with two people saved as Yossi, one with a space after the name, the exact saved name is the one meant, whichever was saved first`() {
+        assertEquals("Yossi", SavedPersonMerge.target("Dana", "Yossi", listOf("Dana", "Yossi ", "Yossi")))
+        assertEquals("Yossi", SavedPersonMerge.destination(null, "Yossi", listOf("Yossi ", "Yossi")))
+        assertEquals("Yossi ", SavedPersonMerge.target("Dana", "Yossi ", listOf("Dana", "Yossi", "Yossi ")))
     }
 }

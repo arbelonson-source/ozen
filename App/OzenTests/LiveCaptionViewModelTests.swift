@@ -2986,6 +2986,62 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Noa", "Noam", "Noam"])
     }
 
+    @Test("naming a line after a saved person typed in another case, saved with a space after the name, is that person: nothing is asked and only the line moves")
+    func namingAsAPaddedSavedPersonMovesOnlyTheLine() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-vm-test-\(UUID()).json"))
+        var saved = AppSettings.default
+        saved.speakerProfiles = [SpeakerProfile(name: "Noam ", embedding: [1, 0])]
+        try store.save(saved)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Noa")
+        let named = try #require(viewModel.segments.first)
+
+        #expect(viewModel.savedPersonRenamed(byNaming: named, as: "noam") == nil)
+        #expect(viewModel.nameSpeaker(of: named, name: "noam"))
+
+        #expect(pipeline.speakerClusters.contains { $0.name == "Noa" })
+        #expect(pipeline.speakerClusters.contains { $0.name == "Noam " })
+        #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Noa", "Noam ", "Noam "])
+    }
+
+    @Test("naming a voice with no name yet after a saved person typed in another case, saved with a space after the name, adds to that person")
+    func namingANewVoiceAsAPaddedSavedPersonJoinsThem() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-vm-test-\(UUID()).json"))
+        var saved = AppSettings.default
+        saved.speakerProfiles = [SpeakerProfile(name: "Yossi ", embedding: [1, 0])]
+        try store.save(saved)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+
+        #expect(viewModel.nameSpeaker(of: viewModel.segments[0], name: "yossi"))
+
+        #expect(viewModel.displayName(for: viewModel.segments[0]) == "Yossi ")
+        #expect(viewModel.settings.speakerProfiles.map(\.name) == ["Yossi ", "Yossi "])
+    }
+
     @Test("naming one line as a new person leaves the saved person's voice and name on screen alone")
     func namingOneLineAsSomeoneNewKeepsTheOtherVoice() async throws {
         let engine = FakeEngine()

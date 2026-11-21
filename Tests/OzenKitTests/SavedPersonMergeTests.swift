@@ -33,4 +33,27 @@ struct SavedPersonMergeTests {
         #expect(SavedPersonMerge.destination(renaming: "Dana", to: "yossi", savedNames: saved) == "Yossi ")
         #expect(SavedPersonMerge.destination(renaming: "Dana", to: "  Dani ", savedNames: saved) == "Dani")
     }
+
+    @Test("a voice with no name yet, named after a saved person, lands on that person as saved")
+    func noOldName() {
+        let saved = ["Dana", "Yossi "]
+        #expect(SavedPersonMerge.destination(renaming: nil, to: "yossi", savedNames: saved) == "Yossi ")
+        #expect(SavedPersonMerge.destination(renaming: nil, to: " Dani ", savedNames: saved) == "Dani")
+    }
+
+    @Test("the merge question names the saved person without the spaces around the saved name")
+    func questionTrimsTheName() {
+        Localization.$override.withValue(.english) {
+            let question = SavedPersonMerge.question(mergingInto: "Yossi ")
+            #expect(question.title == "Merge with Yossi?")
+            #expect(question.message == "Yossi is already saved. Both voices will then be shown under that one name, including in past conversations.")
+        }
+    }
+
+    @Test("with two people saved as Yossi, one with a space after the name, the exact saved name is the one meant, whichever was saved first")
+    func exactSavedNameFirst() {
+        #expect(SavedPersonMerge.target(renaming: "Dana", to: "Yossi", savedNames: ["Dana", "Yossi ", "Yossi"]) == "Yossi")
+        #expect(SavedPersonMerge.destination(renaming: nil, to: "Yossi", savedNames: ["Yossi ", "Yossi"]) == "Yossi")
+        #expect(SavedPersonMerge.target(renaming: "Dana", to: "Yossi ", savedNames: ["Dana", "Yossi", "Yossi "]) == "Yossi ")
+    }
 }

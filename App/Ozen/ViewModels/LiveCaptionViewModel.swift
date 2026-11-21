@@ -2482,6 +2482,10 @@ public final class LiveCaptionViewModel {
         let oldName = segment.speakerClusterID.flatMap { id in
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
+        // Another saved person typed in another case, or saved with spaces
+        // around the name, is that person under the name as saved, as a
+        // rename in Settings is.
+        let name = SavedPersonMerge.destination(renaming: oldName, to: name, savedNames: settings.speakerProfiles.map(\.name))
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
@@ -2512,8 +2516,9 @@ public final class LiveCaptionViewModel {
     /// apart is also Noa and Noam, Dana and Dani, Tal and Gal, so the sheet
     /// asks which was meant. Nil when Save only names this voice.
     public func savedPersonRenamed(byNaming segment: TranscriptSegment, as name: String) -> String? {
-        guard let oldName = segment.speakerClusterID.flatMap({ id in pipeline.speakerClusters.first(where: { $0.id == id })?.name }),
-              oldName != name,
+        guard let oldName = segment.speakerClusterID.flatMap({ id in pipeline.speakerClusters.first(where: { $0.id == id })?.name }) else { return nil }
+        let name = SavedPersonMerge.destination(renaming: oldName, to: name, savedNames: settings.speakerProfiles.map(\.name))
+        guard oldName != name,
               pipeline.isRespelling(name, ofLine: segment),
               !settings.speakerProfiles.contains(where: { $0.name == name }),
               settings.speakerProfiles.contains(where: { $0.name == oldName })
