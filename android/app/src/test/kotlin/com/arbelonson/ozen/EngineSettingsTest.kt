@@ -18,7 +18,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
@@ -292,6 +294,58 @@ class EngineSettingsTest {
         assertTrue(settingsFile.delete())
         assertTrue(engineSettings.saveHomeComputerAddress("wss://other.example.net"))
         assertEquals("wss://other.example.net", saved().homeServerAddress)
+    }
+
+    @Test
+    fun `an address that reached the disk is reported saved even when another change fails to save before Settings looks`() {
+        breakTheDisk()
+        settings.change {}
+        assertTrue(settings.saveFailed.value)
+        mendTheDisk()
+        var onDisk: String? = null
+        val other = CoroutineScope(Dispatchers.Unconfined).launch {
+            settings.saveFailed.first { !it }
+            onDisk = saved().homeServerAddress
+            breakTheDisk()
+            settings.change { it.flashCameraLight = true }
+        }
+
+        val written = engineSettings.saveHomeComputerAddress("wss://pc.example.net")
+        other.cancel()
+
+        assertEquals("wss://pc.example.net", onDisk, "the address reached the disk")
+        assertTrue(settings.saveFailed.value, "the other change could not be saved")
+        assertTrue(written, "Settings says the address was saved")
+    }
+
+    @Test
+    fun `an address whose own save failed counts as saved once the next change carries it to the disk before Settings looks`() {
+        var onDisk: String? = null
+        val other = CoroutineScope(Dispatchers.Unconfined).launch {
+            settings.saveFailed.first { it }
+            mendTheDisk()
+            settings.change { it.flashCameraLight = true }
+            onDisk = saved().homeServerAddress
+        }
+        breakTheDisk()
+
+        val written = engineSettings.saveHomeComputerAddress("wss://pc.example.net")
+        other.cancel()
+
+        assertEquals("wss://pc.example.net", onDisk, "the next change carried the address to the disk")
+        assertFalse(settings.saveFailed.value)
+        assertTrue(written, "Settings says the address was saved")
+    }
+
+    private fun breakTheDisk() {
+        settingsFile.delete()
+        assertTrue(settingsFile.mkdirs())
+        File(settingsFile, "blocker").writeText("x")
+    }
+
+    private fun mendTheDisk() {
+        assertTrue(File(settingsFile, "blocker").delete())
+        assertTrue(settingsFile.delete())
     }
 
     @Test

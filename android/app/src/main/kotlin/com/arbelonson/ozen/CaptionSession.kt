@@ -83,9 +83,7 @@ import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
-import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.WordFix
-import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.core.PrivatePath
 import com.arbelonson.ozen.core.PrivateRoute
@@ -162,6 +160,7 @@ class CaptionSession(
         }
     }
 
+    private val lists = SettingsLists(settings)
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
     private var interruptedBySystem = false
 
@@ -1514,7 +1513,9 @@ class CaptionSession(
         addWord(name)
     }
 
-    fun addAlert(phrase: String) = setImportantWords(ImportantWords.adding(phrase, settings.current.value.keywordAlerts))
+    fun addAlert(phrase: String) {
+        pipeline.setKeywordAlerts(lists.addAlert(phrase))
+    }
 
     fun dismissNameAlertOffer() = settings.change { it.nameAlertOfferDismissed = true }
 
@@ -1530,12 +1531,11 @@ class CaptionSession(
     fun dismissModelFitOffer(model: PhoneModel) = settings.change { it.dismissModelFitOffer(model.variant, Build.MODEL.orEmpty()) }
 
     /** A word the captions got wrong goes first in the word list. */
-    fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
+    fun addWord(word: String) = useWords(lists.addWord(word))
 
     /** The words that buzz when said; a running engine listens for them from the next line. */
     fun setImportantWords(alerts: List<KeywordAlert>) {
-        settings.change { it.keywordAlerts = alerts }
-        pipeline.setKeywordAlerts(alerts)
+        pipeline.setKeywordAlerts(lists.setAlerts(alerts))
     }
 
     /** Which sounds alert, and from how faint; a running pipeline judges the next sound by them. */
@@ -1699,15 +1699,15 @@ class CaptionSession(
     }
 
     /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
-    fun setWords(words: List<String>) {
-        settings.change { it.vocabulary = VocabularyHints.normalized(words) }
-        val terms = settings.current.value.vocabulary
+    fun setWords(words: List<String>) = useWords(lists.setWords(words))
+
+    fun setWordFixes(fixes: List<WordFix>) = useWordFixes(lists.setWordFixes(fixes))
+
+    private fun useWords(terms: List<String>) {
         scope.launch { pipeline.setVocabulary(terms) }
     }
 
-    fun setWordFixes(fixes: List<WordFix>) {
-        settings.change { it.wordFixes = WordFixes.normalized(fixes) }
-        val kept = settings.current.value.wordFixes
+    private fun useWordFixes(kept: List<WordFix>) {
         scope.launch { pipeline.setWordFixes(kept) }
     }
 
@@ -1836,11 +1836,9 @@ class CaptionSession(
     }
 
     fun saveWordFix(heard: String, written: String, everyTime: Boolean) {
-        val fix = WordFix(heard, written)
-        val known = settings.current.value.vocabulary.any { it.equals(fix.written.trim(), ignoreCase = true) }
-        if (fix.written.isNotBlank() && !known) addWord(fix.written.trim())
-        val fixes = settings.current.value.wordFixes
-        if (everyTime && WordFixes.canAdd(fix, fixes)) setWordFixes(WordFixes.adding(fix, fixes))
+        val saved = lists.saveWordFix(WordFix(heard, written), everyTime)
+        saved.words?.let(::useWords)
+        saved.fixes?.let(::useWordFixes)
     }
 
     /**

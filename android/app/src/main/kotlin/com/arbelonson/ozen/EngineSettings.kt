@@ -180,15 +180,19 @@ class EngineSettings(
         val address = draft.trim()
         if (settings.current.value.homeServerAddress == address) {
             if (!settings.saveFailed.value) return AddressStored(written = true, changed = false)
-            settings.change {}
-            return AddressStored(written = !settings.saveFailed.value, changed = false)
+            return AddressStored(written = reachedDisk(settings.changeAndSave {}), changed = false)
         }
-        settings.change {
+        val saved = settings.changeAndSave {
             it.homeServerAddress = address
             it.homeServerCertificatePin = null
         }
-        return AddressStored(written = !settings.saveFailed.value, changed = true)
+        return AddressStored(written = reachedDisk(saved), changed = true)
     }
+
+    // Its own save, or one another change made right after it: that one
+    // wrote all the settings, this address with them. The shared flag alone
+    // could be another change's failure after this save went through.
+    private fun reachedDisk(saved: Boolean) = saved || !settings.saveFailed.value
 
     fun hasPairingCode(): Boolean = pairingCodeHeld.value
 
