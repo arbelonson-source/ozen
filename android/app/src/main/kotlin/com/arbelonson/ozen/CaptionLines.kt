@@ -117,7 +117,10 @@ internal fun CaptionLines(
                 if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks)
             }
     }
-    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(DisplayPreferences.captionLineSpacing(display.fontSize).dp)) {
+    // In sp, as the words are: a larger text size set on the phone grows the
+    // room between lines along with the words. In dp it stayed the same.
+    val room = with(LocalDensity.current) { DisplayPreferences.captionLineSpacing(display.fontSize).sp.toDp() }
+    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(room)) {
         items(lines, key = { it.id }) { line ->
             val row = @Composable {
                 CaptionLineRow(

@@ -4,6 +4,7 @@ import android.os.ParcelFileDescriptor
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -27,10 +28,12 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.FileModelChoice
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.HistorySave
@@ -135,6 +138,25 @@ class LargestTextDeviceTest {
         } finally {
             store.delete(record.id)
         }
+    }
+
+    @Test
+    fun theRoomBetweenCaptionLinesGrowsWithTheTextAtTheLargestText() {
+        val display = DisplayPreferences(fontSize = 30.0, showSpeakerNames = false)
+        val said = listOf("On time?", "It just left.")
+        val captions = said.map { CaptionLine(UUID.randomUUID(), it, isFinal = true, rightToLeft = false) }
+        var scaled: Density? = null
+        onASmallPhoneAtTheLargestText {
+            scaled = LocalDensity.current
+            CaptionLines(
+                captions, null, null, display, CaptionTheme.of(display.theme, systemDark = true), rememberLazyListState(), false, FollowMarks(), Modifier, null,
+                onStar = {}, onOpen = { _, _ -> }, onFix = {}, onName = {}, onAskToRepeat = null, onMarkProblem = {},
+            )
+        }
+        val first = compose.onNodeWithText(said[0]).fetchSemanticsNode().boundsInRoot
+        val second = compose.onNodeWithText(said[1]).fetchSemanticsNode().boundsInRoot
+        val room = with(checkNotNull(scaled)) { DisplayPreferences.captionLineSpacing(display.fontSize).sp.toPx() }
+        assertEquals("the room between the lines does not grow with the words", room, second.top - first.bottom, 1f)
     }
 
     @Test
