@@ -108,4 +108,33 @@ class SpeakerEnrollmentAnnouncementsDeviceTest {
         compose.waitForIdle()
         assertEquals(listOf("Recording, speak now", "Voice saved: Dana"), voiceScreenSaid())
     }
+
+    @Test
+    fun cancelWhileTheVoiceprintIsBeingSavedKeepsTheVoiceAndStillSaysItWasSaved() {
+        val closed = AtomicBoolean(false)
+        var showing by mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (showing) {
+                    SpeakerEnrollmentScreen(book, onClose = {
+                        closed.set(true)
+                        showing = false
+                    })
+                }
+            }
+        }
+        compose.onNode(hasSetTextAction()).performTextInput("Dana")
+        keyboardAway()
+        compose.onNodeWithText("Record and save (30 seconds)").performClick()
+        compose.waitUntil(5_000) { "Recording, speak now" in announced && reportProgress != null }
+        compose.runOnUiThread { reportProgress?.invoke(1.0) }
+        compose.onNodeWithText("Saving the voiceprint…").assertExists()
+        compose.onNodeWithText("Stop without saving").assertDoesNotExist()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { closed.get() }
+        compose.waitForIdle()
+        finish.complete(true)
+        compose.waitUntil(5_000) { announced.any { it.startsWith("Voice saved") } }
+        assertEquals(listOf("Recording, speak now", "Voice saved: Dana"), voiceScreenSaid())
+    }
 }

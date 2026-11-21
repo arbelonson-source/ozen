@@ -2406,11 +2406,18 @@ public final class LiveCaptionViewModel {
     }
 
     public func enroll(name: String, seconds: Double, onProgress: @MainActor (Double) -> Void) async -> Bool {
-        let samples = await pipeline.captureEnrollmentSamples(seconds: seconds, onProgress: onProgress)
-        // Stopped midway: the part recorded isn't kept as her voice.
-        guard !Task.isCancelled else { return false }
+        var heardItAll = false
+        let samples = await pipeline.captureEnrollmentSamples(seconds: seconds) { fraction in
+            heardItAll = fraction >= 1
+            onProgress(fraction)
+        }
+        // Stopped midway: the part recorded isn't kept as the voice. Once
+        // the whole of it is in, closing the screen keeps it, as on
+        // Android: Cancel while the voiceprint was being made threw away
+        // a finished recording.
+        guard heardItAll || !Task.isCancelled else { return false }
         guard let embedding = await pipeline.embeddingInBackground(forEnrollmentSamples: samples),
-              !Task.isCancelled
+              heardItAll || !Task.isCancelled
         else { return false }
         return save(name: name, embedding: embedding)
     }

@@ -632,6 +632,30 @@ struct LiveCaptionViewModelTests {
         #expect(store.load().speakerProfiles.isEmpty)
     }
 
+    @Test("a voice recording closed while its voiceprint is being made, all of it heard, is still saved", .timeLimit(.minutes(1)))
+    func enrollClosedWhileSaving() async {
+        let store = temporaryStore()
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { settings in FakeEngine(kind: settings.engine) }, embedder: embedder)
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline)
+        var heard = 0.0
+        let recording = Task { @MainActor in
+            await viewModel.enroll(name: "סבתא", seconds: 6) { heard = $0 }
+        }
+        #expect(await eventually { audio.calls.contains("startCapture") })
+        audio.push([Float](repeating: 0.5, count: 96_000))
+        #expect(await eventually { heard == 1 && embedder.callsStarted == 1 })
+
+        recording.cancel()
+        // Four speech windows, then the length check that saving the print
+        // makes on the main actor: held at the gate, it would hang the test.
+        for _ in 0..<5 { embedder.release() }
+        #expect(await recording.value)
+        #expect(viewModel.settings.speakerProfiles.map(\.name) == ["סבתא"])
+        #expect(store.load().speakerProfiles.map(\.name) == ["סבתא"])
+    }
+
     @Test("pause and resume round-trip through the pipeline")
     func pauseResume() async {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
