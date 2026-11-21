@@ -60,7 +60,12 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
     }
 
     public var fontSize: Double
-    public var fontSizeChosen = false
+    /// Whether `fontSize` is a size the person picked, with the slider or a
+    /// pinch. Until then the captions follow the phone's own text size (see
+    /// `fontSize(followingBodySize:)`) and `fontSize` keeps the usual 30:
+    /// at iOS's largest text sizes a fixed 30 points came out smaller than
+    /// the body text on every other screen.
+    public var fontSizeChosen: Bool
     public var theme: Theme
     public var boldText: Bool
     public var showSpeakerNames: Bool
@@ -82,9 +87,13 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
 
     public static let minimumFontSize: Double = 20
     public static let maximumFontSize: Double = 64
+    /// The size captions start at, and keep while the phone's text is at
+    /// its usual size or a little larger.
+    public static let usualFontSize: Double = 30
 
+    /// A size other than the usual one counts as chosen.
     public init(
-        fontSize: Double = 30,
+        fontSize: Double = DisplayPreferences.usualFontSize,
         theme: Theme = .dark,
         boldText: Bool = false,
         showSpeakerNames: Bool = true,
@@ -96,6 +105,7 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
         autoHideControls: Bool = true
     ) {
         self.fontSize = fontSize
+        self.fontSizeChosen = fontSize != Self.usualFontSize
         self.theme = theme
         self.boldText = boldText
         self.showSpeakerNames = showSpeakerNames
@@ -125,12 +135,51 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
         max(bodySize, captionSize * 0.7)
     }
 
-    public func drawn(bodySize: Double) -> DisplayPreferences { self }
+    /// The caption size, while none is chosen, on a phone whose body text
+    /// is `bodySize` points: 1.35 times the body text in whole points, never
+    /// below the usual 30 nor past the slider's end.
+    ///
+    /// The usual 30 lasts up to iOS's xxLarge text (body 21); xxxLarge (23)
+    /// gives 31, and the five accessibility sizes (28, 33, 40, 47 and 53)
+    /// give 38, 45, 54, 63 and 64, so the captions stay larger than the
+    /// rest of Ozen's words. The 1.35 is what Android shows: Compose scales
+    /// large text less than small text, so its 30 sp captions stay at 30 dp
+    /// up to a font scale of 150% and reach 38 dp at the largest, 200%,
+    /// where the 16 sp body text is 28 dp. At the same body size the two
+    /// phones' captions are within a point of each other. Scaling 30 by the
+    /// body text instead (UIFontMetrics) gave 41 at xxxLarge and 49 at the
+    /// first accessibility size, against Android's 30 and 38.
+    public static func fontSize(followingBodySize bodySize: Double) -> Double {
+        guard bodySize.isFinite else { return usualFontSize }
+        return min(max((bodySize * 1.35).rounded(), usualFontSize), maximumFontSize)
+    }
 
-    public func saving(_ edited: DisplayPreferences, drawnAt bodySize: Double) -> DisplayPreferences { edited }
+    /// These settings as the screens draw them on a phone whose body text
+    /// is `bodySize` points: `fontSize` is the size chosen, or else the one
+    /// following the phone. Captions, the lock screen, History, Starred
+    /// lines, recordings and the Settings slider all use this one number.
+    public func drawn(bodySize: Double) -> DisplayPreferences {
+        var drawn = self
+        if !fontSizeChosen { drawn.fontSize = Self.fontSize(followingBodySize: bodySize) }
+        return drawn
+    }
+
+    /// `edited`, a copy of `drawn(bodySize:)` with a change made to it, as
+    /// these settings should be saved. A size other than the one drawn was
+    /// moved to by hand (the slider, a pinch) and is kept exactly from then
+    /// on, whatever the phone's text size; any other change (the theme,
+    /// bold text) leaves a size that follows the phone following it; and
+    /// `fontSizeChosen` turned off ("Back to the usual size") lets it
+    /// follow again.
+    public func saving(_ edited: DisplayPreferences, drawnAt bodySize: Double) -> DisplayPreferences {
+        var saved = edited
+        if edited.fontSize != drawn(bodySize: bodySize).fontSize { saved.fontSizeChosen = true }
+        if !saved.fontSizeChosen { saved.fontSize = Self.usualFontSize }
+        return saved
+    }
 
     private enum CodingKeys: String, CodingKey {
-        case fontSize, theme, boldText, showSpeakerNames, keepScreenAwake, markUncertainLines, announceNewLines, emphasizeNumbers
+        case fontSize, fontSizeChosen, theme, boldText, showSpeakerNames, keepScreenAwake, markUncertainLines, announceNewLines, emphasizeNumbers
         case lockScreenCaptions, autoHideControls
     }
 
@@ -148,6 +197,30 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
         lockScreenCaptions = container.lenient(Bool.self, forKey: .lockScreenCaptions) ?? defaults.lockScreenCaptions
         autoHideControls = container.lenient(Bool.self, forKey: .autoHideControls) ?? defaults.autoHideControls
         fontSize = min(max(fontSize, Self.minimumFontSize), Self.maximumFontSize)
+        // Files from before the size could follow the phone saved 30 even
+        // when nobody touched the slider, and "Back to the usual size" saved
+        // 30 too; any other number was a choice.
+        fontSizeChosen = container.lenient(Bool.self, forKey: .fontSizeChosen) ?? (fontSize != Self.usualFontSize)
+    }
+
+    /// `fontSizeChosen` is written only when the number alone doesn't say it
+    /// (a chosen 30), so every other file is exactly what an older build
+    /// wrote and reads the same there.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(fontSize, forKey: .fontSize)
+        if fontSizeChosen != (fontSize != Self.usualFontSize) {
+            try container.encode(fontSizeChosen, forKey: .fontSizeChosen)
+        }
+        try container.encode(theme, forKey: .theme)
+        try container.encode(boldText, forKey: .boldText)
+        try container.encode(showSpeakerNames, forKey: .showSpeakerNames)
+        try container.encode(keepScreenAwake, forKey: .keepScreenAwake)
+        try container.encode(markUncertainLines, forKey: .markUncertainLines)
+        try container.encode(announceNewLines, forKey: .announceNewLines)
+        try container.encode(emphasizeNumbers, forKey: .emphasizeNumbers)
+        try container.encode(lockScreenCaptions, forKey: .lockScreenCaptions)
+        try container.encode(autoHideControls, forKey: .autoHideControls)
     }
 }
 

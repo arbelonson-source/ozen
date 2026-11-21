@@ -1127,10 +1127,11 @@ struct SettingsView: View {
                 .accessibilityValue(SliderSpeech.textSize(viewModel.display.fontSize, in: Localization.language))
                 .accessibilityHint(SliderSpeech.textSizeHint(in: Localization.language))
                 // A pinch on the caption screen changes this too, and one
-                // made by accident had no quick way back.
-                if Int(viewModel.display.fontSize) != Int(DisplayPreferences.default.fontSize) {
+                // made by accident had no quick way back. The usual size is
+                // the one that follows the phone's own text size.
+                if Int(viewModel.display.fontSize) != Int(DisplayPreferences.fontSize(followingBodySize: viewModel.phoneBodySize)) {
                     Button(tr("חזרה לגודל הרגיל", "Back to the usual size")) {
-                        viewModel.display.fontSize = DisplayPreferences.default.fontSize
+                        viewModel.display.fontSizeChosen = false
                     }
                     .accessibilityIdentifier("resetFontSizeButton")
                 }

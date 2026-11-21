@@ -436,7 +436,7 @@ public final class LiveCaptionViewModel {
                         phase: self.pipeline.phase,
                         interruptedByCall: self.isInterruptedBySystem,
                         pausedForSpeech: self.captionsHeldForSpeech,
-                        captionSize: self.settings.display.fontSize,
+                        captionSize: self.display.fontSize,
                         recoveringByItself: self.pipeline.isRecoveringByItself,
                         largePhoneText: UIApplication.shared.preferredContentSizeCategory.isAccessibilityCategory
                     )
@@ -1742,12 +1742,27 @@ public final class LiveCaptionViewModel {
 
     // MARK: - Display & behaviour (no restart needed)
 
-    public var phoneBodySize: Double = 17
-
-    public var display: DisplayPreferences {
-        get { settings.display }
+    /// The phone's body text size in points (iOS Settings → Accessibility →
+    /// Display & Text Size → Larger Text), which the caption size follows
+    /// until one is chosen. The caption screen keeps it up to date.
+    public var phoneBodySize: Double {
+        get { bodySize }
         set {
-            settings.display = newValue
+            guard newValue != bodySize else { return }
+            bodySize = newValue
+            refreshLockScreen()
+        }
+    }
+    private var bodySize = Double(UIFont.preferredFont(forTextStyle: .body).pointSize)
+
+    /// The display settings as drawn: `fontSize` is the size on screen, the
+    /// one chosen or the one following the phone's text size. A different
+    /// size written here is the person's choice from then on (see
+    /// `DisplayPreferences.saving(_:drawnAt:)`).
+    public var display: DisplayPreferences {
+        get { settings.display.drawn(bodySize: phoneBodySize) }
+        set {
+            settings.display = settings.display.saving(newValue, drawnAt: phoneBodySize)
             refreshPreviewDemand()
             schedulePersist()
             refreshLockScreen()

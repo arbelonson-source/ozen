@@ -177,6 +177,11 @@ to make it smaller. A small label shows the size while you do it. Settings
 also has **Text size** (godel text), with a preview sentence and a button to
 go back to the usual size.
 
+Until you change it, the text grows with the iPhone's own text size (Settings →
+Accessibility → Display & Text Size → Larger Text), so at the largest sizes the
+captions stay bigger than the rest of Ozen's words. Once you pick a size with
+a pinch or the slider, Ozen keeps exactly that size.
+
 ### Numbers stand out
 
 Numbers (a time, how many pills, a phone number) are shown in a heavier

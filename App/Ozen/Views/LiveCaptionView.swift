@@ -77,6 +77,9 @@ struct LiveCaptionView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The phone's body text size, which the captions follow until a size
+    /// is chosen (see `LiveCaptionViewModel.phoneBodySize`).
+    @ScaledMetric(relativeTo: .body) private var phoneBodySize: Double = 17
 
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -575,6 +578,9 @@ struct LiveCaptionView: View {
         // something new gone wrong.
         .sensoryFeedback(.warning, trigger: battery.notice?.id) { _, id in id != nil }
         .sensoryFeedback(.selection, trigger: fontSizeTrigger)
+        .onChange(of: phoneBodySize, initial: true) { _, size in
+            viewModel.phoneBodySize = size
+        }
         .animation(.default, value: battery.notice)
         .onChange(of: scenePhase, initial: true) { _, phase in
             // Inactive is Control Center pulled down, a call banner, or the
