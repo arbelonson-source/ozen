@@ -47,6 +47,18 @@ struct FixWordFormTests {
         #expect(FixWordForm.tapped(1...1, index: 2, words: words) == 1...2)
     }
 
+    @Test("a run reaches past a name's ending geresh, and the picked phrase can be saved")
+    func runAfterAnEndingGeresh() {
+        for geresh in ["\u{05F3}", "'", "\u{2019}"] {
+            let shown = "ראיתי את ג\(geresh)ורג\(geresh) בוש אתמול"
+            let words = shown.split(separator: " ").map(String.init)
+            #expect(FixWordForm.tapped(2...2, index: 3, words: words) == 2...3, "\(shown)")
+            #expect(FixWordForm.tapped(3...3, index: 2, words: words) == 2...3, "\(shown)")
+            #expect(FixWordForm.changes(line: shown, heard: "ג\(geresh)ורג\(geresh) בוש", written: "George Bush"), "\(shown)")
+        }
+        #expect(FixWordForm.tapped(2...2, index: 3, words: ["ראיתי", "את", "ג׳ורג׳,", "בוש"]) == 3...3)
+    }
+
     @Test("a word picked or typed with nothing written yet asks for how it should be written")
     func nowWrite() {
         #expect(FixWordForm.note(line: line, heard: "Shera", written: "") == .nowWrite)

@@ -155,4 +155,25 @@ class WordFixesTest {
         assertEquals(1..1, WordFixes.tapped(0..0, 1, connected))
         assertEquals(1..2, WordFixes.tapped(1..1, 2, connected))
     }
+
+    @Test fun aNamesEndingGereshIsNoPunctuationBeforeTheNextHeardWordACommaAfterItIs() {
+        for (geresh in listOf("׳", "'", "’")) {
+            val name = "ג${geresh}ורג$geresh"
+            assertNull(WordFixes.refusal(fix("$name בוש", "George Bush"), emptyList()), name)
+        }
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("ג׳ורג׳, בוש", "George Bush"), emptyList()))
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("james' car", "the car"), emptyList()))
+    }
+
+    @Test fun aSelectionReachesPastANamesEndingGereshNotPastACommaAfterIt() {
+        for (geresh in listOf("׳", "'", "’")) {
+            val line = "ראיתי את ג${geresh}ורג$geresh בוש אתמול"
+            val connected = { first: Int -> WordFixes.joinedBySpace(line, first) }
+            assertEquals(true, connected(2), line)
+            assertEquals(2..3, WordFixes.tapped(2..2, 3, connected), line)
+            assertEquals(2..3, WordFixes.tapped(3..3, 2, connected), line)
+        }
+        assertEquals(false, WordFixes.joinedBySpace("ראיתי את ג׳ורג׳, בוש אתמול", 2))
+        assertEquals(false, WordFixes.joinedBySpace("james' car", 0))
+    }
 }

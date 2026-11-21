@@ -118,9 +118,12 @@ object WordFixes {
         return out
     }
 
-    /** The one space or maqaf between [word] and [next], with no punctuation on either side of it, or null. */
+    /**
+     * The one space or maqaf between [word] and [next], with no punctuation on either side of it, or null. A name's ending geresh
+     * is part of [word] (its [Word.replacedEnd]), so "George Bush" spelt in Hebrew is two joined words.
+     */
     private fun joint(text: String, word: Word, next: Word): Int? {
-        if (word.end != word.tokenEnd || next.start != next.tokenStart || next.tokenStart != word.tokenEnd + 1) return null
+        if (word.replacedEnd != word.tokenEnd || next.start != next.tokenStart || next.tokenStart != word.tokenEnd + 1) return null
         return text[word.tokenEnd].code.takeIf { it == ' '.code || it == MAQAF }
     }
 

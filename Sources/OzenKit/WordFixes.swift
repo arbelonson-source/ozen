@@ -86,21 +86,26 @@ public enum WordFixes {
     }
 
     /// Heard words are joined by one space or one maqaf, with no
-    /// punctuation on either side of it.
+    /// punctuation on either side of it; a name's ending geresh is part of
+    /// its word, so "George Bush" spelt in Hebrew is two joined words.
     private static func hasCleanJoints(_ heard: String) -> Bool {
         let words = Token.split(Array(heard.unicodeScalars))
         for (index, word) in words.enumerated() {
             if index > 0, word.coreStart != 0 { return false }
-            if index < words.count - 1, word.coreEnd != word.scalars.count || !plainJoints.contains(word.gap) { return false }
+            if index < words.count - 1, word.replacedEnd != word.scalars.count || !plainJoints.contains(word.gap) { return false }
         }
         return true
     }
 
     private static let plainJoints: [[Unicode.Scalar]] = [[" "], ["\u{05BE}"]]
 
+    /// Whether two words tapped side by side can be one heard phrase: no
+    /// punctuation between them, a name's ending geresh aside, as
+    /// `hasCleanJoints` takes them.
     public static func canJoin(_ left: String, _ right: String) -> Bool {
-        guard let end = left.unicodeScalars.last, let start = right.unicodeScalars.first else { return false }
-        return Token.isCore(end) && Token.isCore(start)
+        guard let start = right.unicodeScalars.first, Token.isCore(start),
+              let end = Token.split(Array(left.unicodeScalars)).last, end.gap.isEmpty else { return false }
+        return end.coreStart < end.replacedEnd && end.replacedEnd == end.scalars.count
     }
 
     public static func apply(_ fixes: [WordFix], to text: String) -> String {
@@ -332,7 +337,7 @@ public enum WordFixes {
             let token = tokens[index + offset]
             if offset > 0, tokens[index + offset - 1].gap != fix.joints[offset - 1] { return nil }
             if offset > 0, token.coreStart != 0 { return nil }
-            if offset < count - 1, token.coreEnd != token.scalars.count { return nil }
+            if offset < count - 1, token.replacedEnd != token.scalars.count { return nil }
         }
         for offset in 1..<max(count, 1) where tokens[index + offset].key != fix.words[offset] { return nil }
         let first = tokens[index]
