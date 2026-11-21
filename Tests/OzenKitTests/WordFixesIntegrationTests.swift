@@ -121,6 +121,58 @@ struct WordFixesIntegrationTests {
         #expect(lines.map(\.text) == ["I saw Avi Cohen today", "I saw Avi Cohen today"])
     }
 
+    @Test("a fix added mid-run reaches the earlier lines of the copy kept in case the app is ended")
+    func fixAddedMidRunReachesTheKeptCopy() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { number, _ in
+            if number == 2 { fixes.value = [avi] }
+            return [FileRunEngine.final("I saw aval today")]
+        }
+        let copy = await keptCopy(engine, fixes)
+        #expect(copy == ["I saw Avi today", "I saw Avi today"])
+    }
+
+    @Test("a fix removed mid-run leaves the earlier lines of the copy kept in case the app is ended")
+    func fixRemovedMidRunLeavesTheKeptCopy() async {
+        let fixes = FixesBox([avi])
+        let engine = FileRunEngine { number, _ in
+            if number == 2 { fixes.value = [] }
+            return [FileRunEngine.final("I saw aval today")]
+        }
+        let copy = await keptCopy(engine, fixes)
+        #expect(copy == ["I saw aval today", "I saw aval today"])
+    }
+
+    @Test("a fix whose written form contains its heard word, added mid-run, shows once in the kept copy")
+    func growingFixAddedMidRunInTheKeptCopy() async {
+        let fixes = FixesBox([])
+        let engine = FileRunEngine { number, _ in
+            if number == 2 { fixes.value = [WordFix(heard: "Avi", written: "Avi Cohen")] }
+            return [FileRunEngine.final("I saw Avi today")]
+        }
+        let copy = await keptCopy(engine, fixes)
+        #expect(copy == ["I saw Avi Cohen today", "I saw Avi Cohen today"])
+    }
+
+    /// The lines the run reports go to the keeper as the screen hands them
+    /// on; what it last saved is what the next launch finds if the app is
+    /// ended there.
+    private func keptCopy(_ engine: FileRunEngine, _ fixes: FixesBox) async -> [String] {
+        let reports = ReportsBox()
+        _ = await liveRun(engine, fixes) { reports.add($0.lines) }
+        var saved: [TranscriptSessionRecord] = []
+        let keeper = FileTranscriptKeeper(
+            historyOn: { true },
+            save: { saved.append($0); return true },
+            delete: { _ in },
+            now: { 1_000 },
+            everyLines: 2
+        )
+        keeper.begin(.init(fileName: "Talk.m4a", recordingSeconds: nil, modelVariant: "small", languageCode: "he"))
+        for lines in reports.value { keeper.linesSoFar(lines, run: keeper.id) }
+        return saved.last?.segments.map(\.text) ?? []
+    }
+
     private func liveRun(
         _ engine: FileRunEngine,
         _ fixes: FixesBox,
@@ -146,5 +198,22 @@ private final class FixesBox: @unchecked Sendable {
     var value: [WordFix] {
         get { lock.lock(); defer { lock.unlock() }; return fixes }
         set { lock.lock(); defer { lock.unlock() }; fixes = newValue }
+    }
+}
+
+private final class ReportsBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reports: [[TranscribedLine]] = []
+
+    func add(_ lines: [TranscribedLine]) {
+        lock.lock()
+        defer { lock.unlock() }
+        reports.append(lines)
+    }
+
+    var value: [[TranscribedLine]] {
+        lock.lock()
+        defer { lock.unlock() }
+        return reports
     }
 }
