@@ -945,7 +945,14 @@ class HistoryScreenDeviceTest {
     @Test
     fun aSavedLineSitsOnTheSideItsOwnWordsReadFromWhateverTheAppsLanguage() {
         val spokenBefore = app.settings.current.value.languageCode
-        app.settings.change { it.languageCode = "en" }
+        // Saved lines grow with the captions. At the smallest caption size
+        // they are at the body size and fill only part of the row, so the
+        // middle of the ink shows which side a line starts from; a line that
+        // fills more of the row has its middle nearer the centre.
+        app.settings.change {
+            it.languageCode = "en"
+            it.display = it.display.copy(fontSize = DisplayPreferences.minimumFontSize)
+        }
         try {
             linesOnTheirOwnSides()
         } finally {

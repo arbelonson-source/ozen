@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
@@ -1181,13 +1182,17 @@ internal fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
 /**
  * A saved line at seven tenths of the captions, as on the iPhone, but never
  * below the body text: with captions turned up for weak eyes, lines read back
- * here stayed at the body size, a quarter of a 64-point caption.
+ * here stayed at the body size, a quarter of a 64-point caption. Both are
+ * compared as drawn, after the phone's own text size, which grows small text
+ * more than large text.
  */
 @Composable
 internal fun savedLineStyle(captionSize: Double): TextStyle {
     val body = MaterialTheme.typography.bodyLarge
-    val size = DisplayPreferences.savedLineSize(captionSize, body.fontSize.value.toDouble())
-    return body.copy(fontSize = size.sp, lineHeight = (size * 1.5).sp)
+    val size = with(LocalDensity.current) {
+        DisplayPreferences.savedLineSize(captionSize.sp.toDp().value.toDouble(), body.fontSize.toDp().value.toDouble()).dp.toSp()
+    }
+    return body.copy(fontSize = size, lineHeight = size * 1.5)
 }
 
 @Composable
