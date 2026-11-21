@@ -154,7 +154,7 @@ public enum WordFixes {
                 replacement.append(contentsOf: hit.written.unicodeScalars)
                 out.append(contentsOf: replacement)
                 spans.append((index, index + hit.count - 1, String(replacement)))
-                out.append(contentsOf: last.scalars[last.coreEnd...])
+                out.append(contentsOf: last.scalars[last.replacedEnd...])
                 out.append(contentsOf: last.gap)
                 index += hit.count
                 cursor = index
@@ -408,6 +408,11 @@ public enum WordFixes {
         let gap: [Unicode.Scalar]
         let coreStart: Int
         let coreEnd: Int
+        /// `coreEnd`, or one past a geresh (or an apostrophe standing in for
+        /// one) right after the last Hebrew letter: it belongs to the word, as
+        /// at the end of George spelt in Hebrew, so a fix replaces it too,
+        /// while the key still looks past it.
+        let replacedEnd: Int
 
         var key: String {
             let base = scalars[coreStart..<coreEnd].filter { !Token.isMark($0) }
@@ -448,6 +453,12 @@ public enum WordFixes {
             scalar.properties.isAlphabetic || scalar.properties.numericType != nil || isMark(scalar)
         }
 
+        private static func endOfGeresh(_ word: [Unicode.Scalar], _ start: Int, _ stop: Int) -> Int {
+            guard stop < word.count, WordFixes.foldedScalar(word[stop]) == "'",
+                  let letter = word[start..<stop].last(where: { !isMark($0) }), (0x05D0...0x05EA).contains(letter.value) else { return stop }
+            return stop + 1
+        }
+
         /// Words between spaces and, unless `atMaqaf` is false, a maqaf, as
         /// on Android: two words joined by a maqaf each take their own fixes.
         static func split(_ all: [Unicode.Scalar], atMaqaf: Bool = true) -> [Token] {
@@ -463,8 +474,8 @@ public enum WordFixes {
                 while gapEnd < all.count, isBreak(all[gapEnd]) { gapEnd += 1 }
                 let word = Array(all[position..<end])
                 let start = word.firstIndex(where: isCore) ?? word.count
-                let stop = (word.lastIndex(where: isCore).map { $0 + 1 }) ?? word.count
-                tokens.append(Token(scalars: word, gap: Array(all[end..<gapEnd]), coreStart: start, coreEnd: max(start, stop)))
+                let stop = max(start, (word.lastIndex(where: isCore).map { $0 + 1 }) ?? word.count)
+                tokens.append(Token(scalars: word, gap: Array(all[end..<gapEnd]), coreStart: start, coreEnd: stop, replacedEnd: endOfGeresh(word, start, stop)))
                 position = gapEnd
             }
             return tokens
