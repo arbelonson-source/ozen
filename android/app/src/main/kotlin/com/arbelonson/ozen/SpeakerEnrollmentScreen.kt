@@ -54,6 +54,9 @@ private const val RECORDING_SECONDS = 30
  * iPhone's recording task: turning the phone partway through used to stop
  * it, nothing saved and nothing said. Its outcome names the screen that
  * started it, so a later "New speaker" isn't closed by an earlier save.
+ * It says a saved voice itself, as the iPhone's task does: Cancel while the
+ * voiceprint was being made closed the screen first, and the save that
+ * followed was never told to TalkBack.
  */
 internal object SpeakerRecordings {
     class Outcome(val screen: String, val saved: Boolean)
@@ -65,7 +68,7 @@ internal object SpeakerRecordings {
     val progress = MutableStateFlow<Double?>(null)
     val outcome = MutableStateFlow<Outcome?>(null)
 
-    fun start(screen: String, speakers: SpeakerBook, name: String) {
+    fun start(context: Context, screen: String, speakers: SpeakerBook, name: String) {
         job?.cancel()
         outcome.value = null
         progress.value = 0.0
@@ -73,6 +76,7 @@ internal object SpeakerRecordings {
             val mine = coroutineContext.job
             try {
                 val saved = speakers.recordSpeaker(name, RECORDING_SECONDS.toDouble()) { if (job === mine) progress.value = it }
+                if (saved) ScreenReader.said(context, tr("הקול נשמר: %1", "Voice saved: %1", listOf(name)))
                 if (saved || isActive) outcome.value = Outcome(screen, saved)
             } finally {
                 if (job === mine) {
@@ -107,7 +111,6 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
     LaunchedEffect(mine) {
         if (mine?.saved == true) {
             SpeakerRecordings.outcome.value = null
-            ScreenReader.said(context.applicationContext, tr("הקול נשמר: %1", "Voice saved: %1", listOf(name.trim())))
             onClose()
         }
     }
@@ -117,7 +120,7 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
         if ((SpeakerRecordings.progress.value ?: 0.0) < 1.0) SpeakerRecordings.stop()
         onClose()
     }
-    val start = { SpeakerRecordings.start(screen, speakers, name.trim()) }
+    val start = { SpeakerRecordings.start(context.applicationContext, screen, speakers, name.trim()) }
     // Without the microphone the half minute recorded nothing and ended as
     // "too short or too quiet". The phone is asked first, and a refusal
     // says what is missing and where to allow it.

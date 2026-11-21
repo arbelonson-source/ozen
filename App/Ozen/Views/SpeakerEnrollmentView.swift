@@ -32,13 +32,22 @@ struct SpeakerEnrollmentView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if isRecording {
+                        let saving = progress >= 1
                         ProgressView(value: progress) {
-                            Text(tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", args: ["\(Int(progress * targetSeconds))", "\(Int(targetSeconds))"]))
+                            if saving {
+                                Text(tr("שומרים את טביעת הקול…", "Saving the voiceprint…"))
+                            } else {
+                                Text(tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", args: ["\(Int(progress * targetSeconds))", "\(Int(targetSeconds))"]))
+                            }
                         }
                         .accessibilityValue(ConversationStats.secondsText(Int(progress * targetSeconds)))
-                        LevelMeter(level: viewModel.inputLevel, isActive: true)
-                        Button(tr("עצירה בלי לשמור", "Stop without saving"), role: .destructive) {
-                            recording?.cancel()
+                        // At 30/30 the microphone is done and the voiceprint
+                        // is being made: nothing is left to stop, as on Android.
+                        if !saving {
+                            LevelMeter(level: viewModel.inputLevel, isActive: true)
+                            Button(tr("עצירה בלי לשמור", "Stop without saving"), role: .destructive) {
+                                recording?.cancel()
+                            }
                         }
                     } else {
                         Button {
