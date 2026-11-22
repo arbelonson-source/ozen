@@ -2216,7 +2216,12 @@ public final class LiveCaptionViewModel {
     /// fix goes to the line as it is now: on the caption screen, where a
     /// line being heard again is left alone, or else in its saved
     /// conversation. Only a fix that changed the line is kept, as on
-    /// Android: otherwise the sheet says the fix was not saved.
+    /// Android: otherwise the sheet says the fix was not saved. So is a fix
+    /// of a line of the conversation being captioned that is no longer on
+    /// screen (a replay heard that speech again and took the line off):
+    /// every save of that conversation is written from the lines on screen,
+    /// and the next one dropped a fix written to its file alone, with the
+    /// line.
     @discardableResult
     public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, sessionID: UUID?) -> Bool {
         guard let fixed = WordFixes.normalized([fix]).first else { return false }
@@ -2228,7 +2233,8 @@ public final class LiveCaptionViewModel {
                 historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
             }
         } else {
-            guard let sessionID, historyWriter.fixTextNow(sessionID: sessionID, segmentID: lineID, with: fixed) else { return false }
+            guard let sessionID, sessionID != historySessionID,
+                  historyWriter.fixTextNow(sessionID: sessionID, segmentID: lineID, with: fixed) else { return false }
         }
         addVocabularyTerm(fixed.written)
         if always { addWordFix(fixed) }
@@ -2736,11 +2742,16 @@ public final class LiveCaptionViewModel {
     /// Stars or unstars a line of a saved conversation. A line still on
     /// the caption screen goes through `toggleStar`, whose starred set the
     /// next autosave writes; one gone from the screen is changed on disk.
-    /// False when the star could not be saved and stayed as it was.
+    /// False when the star could not be saved and stayed as it was, and for
+    /// a line of the conversation being captioned that is no longer on
+    /// screen (a replay heard that speech again and took the line off):
+    /// the next autosave, written from the lines on screen, dropped a star
+    /// written to its file alone, with the line.
     @discardableResult
     public func toggleStarInHistory(sessionID: UUID, segmentID: UUID) -> Bool {
         defer { refreshSavingTrouble() }
         guard let segment = pipeline.segments.first(where: { $0.id == segmentID }) else {
+            guard sessionID != historySessionID else { return false }
             return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID, keepingRefused: false) != nil
         }
         toggleStar(segment)

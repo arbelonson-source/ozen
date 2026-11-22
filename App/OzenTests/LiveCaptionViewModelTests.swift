@@ -3268,6 +3268,95 @@ struct LiveCaptionViewModelDeleteConversationTests {
     }
 }
 
+// A replay hears the same speech again and takes the lines it rewrites off
+// the screen, while History still shows them from the file. Every save of
+// the conversation being captioned is written from the lines on screen, so
+// a star or a fix History wrote to the file alone was dropped, with the
+// line, by the next save.
+@Suite("LiveCaptionViewModel History changes to a line a replay took off the screen")
+@MainActor
+struct LiveCaptionViewModelReplayedLineTests {
+    private struct Replayed {
+        let viewModel: LiveCaptionViewModel
+        let history: TranscriptHistoryStore
+        let conversation: UUID
+        let gone: SavedSegment
+    }
+
+    private func said(_ pipeline: CaptionPipeline, _ audio: FakeAudioCapturer, seconds: Double, level: Float) async {
+        let before = pipeline.stats.audioSecondsReceived
+        for _ in 0..<Int(seconds * 10) {
+            audio.push((0..<1_600).map { $0 % 2 == 0 ? level : -level })
+        }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= before + seconds - 0.01 })
+    }
+
+    /// The cloud stops halfway through a saved line and the phone's model
+    /// hears that speech again, as in `ReplayHalfLineTests`: the line leaves
+    /// the screen and stays in the file until the next save.
+    private func lineAReplayTookOff() async throws -> Replayed {
+        let cloud = FakeEngine(kind: .cloud)
+        let phone = FakeEngine(kind: .whisperKit)
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(
+            audio: audio,
+            engineFactory: { $0.engine == .cloud ? cloud : phone },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-replayed-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: directory.appendingPathComponent("settings.json"))
+        var settings = AppSettings.default
+        settings.engine = .cloud
+        try store.save(settings)
+        let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, historyStore: history)
+        await viewModel.start()
+        let now = Date().timeIntervalSince1970
+        await said(pipeline, audio, seconds: 3, level: 0.1)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "Take two pills", isFinal: true, timestamp: now))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await said(pipeline, audio, seconds: 6, level: 0.2)
+        cloud.emit(TranscriptToken(utteranceID: UUID(), text: "I saw aval", isFinal: false, timestamp: now + 1))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "gone"))
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase.isListening })
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.contains(0.5) })
+        viewModel.persistHistory(ended: false)
+        let conversation = try #require(history.listSummaries().first)
+        let gone = try #require(history.load(id: conversation.id)?.segments.last)
+        #expect(gone.text.hasPrefix("I saw aval"))
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "I saw aval at the market", isFinal: true, timestamp: now + 2))
+        #expect(await eventually { pipeline.segments.last?.text == "I saw aval at the market" })
+        #expect(!pipeline.segments.contains { $0.id == gone.id })
+        #expect(history.load(id: conversation.id)?.segments.contains { $0.id == gone.id } == true)
+        return Replayed(viewModel: viewModel, history: history, conversation: conversation.id, gone: gone)
+    }
+
+    @Test("a star given in History to a line a replay took off the screen is refused: it went to the file alone and the next save dropped it")
+    func starOnALineAReplayTookOff() async throws {
+        let replayed = try await lineAReplayTookOff()
+
+        #expect(!replayed.viewModel.toggleStarInHistory(sessionID: replayed.conversation, segmentID: replayed.gone.id))
+        #expect(!replayed.viewModel.starredSegmentIDs.contains(replayed.gone.id))
+        #expect(replayed.history.load(id: replayed.conversation)?.segments.contains { $0.isStarred } == false)
+        replayed.viewModel.persistHistory(ended: false)
+        #expect(replayed.history.load(id: replayed.conversation)?.segments.map(\.text) == ["Take two pills", "I saw aval at the market"])
+    }
+
+    @Test("a word fixed in History on a line a replay took off the screen is not saved or kept: it went to the file alone and the next save dropped it")
+    func wordFixOnALineAReplayTookOff() async throws {
+        let replayed = try await lineAReplayTookOff()
+
+        #expect(!replayed.viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: replayed.gone.id, sessionID: replayed.conversation))
+        #expect(replayed.history.load(id: replayed.conversation)?.segments.last?.text == replayed.gone.text)
+        #expect(!replayed.viewModel.settings.wordFixes.contains { $0.written == "Avi" })
+        #expect(!replayed.viewModel.settings.vocabulary.contains("Avi"))
+    }
+}
+
 @Suite("LiveCaptionViewModel history retention")
 @MainActor
 struct LiveCaptionViewModelHistoryRetentionTests {

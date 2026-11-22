@@ -269,12 +269,17 @@ class ConversationSaver(
      * once so it reads back starred. When that save fails the star goes back
      * to what History shows, and is saved that way, so the waiting save and
      * a second tap don't bring back a star the person was told was not
-     * changed.
+     * changed. A line of that conversation that is no longer on screen (a
+     * replay heard that speech again and took the line off) is refused, as
+     * [fixLine] refuses a fix of it: every save of that conversation is
+     * written from the lines on screen, and the next one dropped a star
+     * written to its file alone, with the line.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
-        if (sessionID != id || currentLines.none { it.id == segmentID }) {
+        if (sessionID != id) {
             return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false)?.also { mark(segmentID, it) }
         }
+        if (currentLines.none { it.id == segmentID }) return null
         val (starring, written) = starCurrentLine(segmentID)
         if (!written) {
             starCurrentLine(segmentID)

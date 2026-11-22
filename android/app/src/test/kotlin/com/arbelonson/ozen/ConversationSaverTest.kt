@@ -716,6 +716,27 @@ class ConversationSaverTest {
         assertEquals(listOf("I saw aval today"), store.load(conversation)!!.segments.map { it.text })
     }
 
+    // The same with a star: History wrote it to the file alone and said it
+    // was starred, and the next save, written from the lines on screen,
+    // dropped the star with the line.
+    @Test
+    fun `a star given in History to a line a replay took off the screen is refused, as the next save drops that line`() {
+        start()
+        say("Take two pills after dinner")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val gone = lines[0].id
+        lines.clear()
+        say("Take two pills after dinner tonight")
+
+        assertNull(saver.toggleStar(conversation, gone))
+        assertFalse(saver.isStarred(gone))
+        assertEquals(listOf(false), store.load(conversation)!!.segments.map { it.isStarred })
+        saver.save(ended = false)
+        assertEquals(listOf("Take two pills after dinner tonight"), store.load(conversation)!!.segments.map { it.text })
+        assertEquals(0, saved().single().starredCount)
+    }
+
     @Test
     fun `a word fixed in History that a line of an earlier conversation no longer has is refused`() {
         val earlier = oldConversation(clock - 3_600)
