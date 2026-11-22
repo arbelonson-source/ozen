@@ -146,7 +146,7 @@ public enum WordFixes {
         var cursor = 0
         while index < tokens.count {
             if let hit = firstMatch(prepared, tokens, at: index) {
-                if readsAlready(all, from: starts[index] + hit.prefixEnd, hit.written, exactly: hit.exactly) {
+                if writtenAlready(all, tokens, starts, at: index, hit) {
                     index += hit.count
                     continue
                 }
@@ -250,14 +250,33 @@ public enum WordFixes {
         let exactly: Bool
     }
 
-    /// Whether `text` from `start` already reads `written`, case, niqqud and
-    /// a maqaf against a hyphen aside, up to the end of a word: a fix that
-    /// only adds words ("dana" written "Dana Cohen") would otherwise write
-    /// them twice on a line that has them. The line may also differ from
-    /// `written` the ways heard words may (an apostrophe, an alef's hamza,
-    /// Arabic vowel marks), except for a fix that only respells
+    /// Whether the line already reads `hit`'s written form around the heard
+    /// words at `index`: from where their letters start, or from a word
+    /// before them, through the end of the last heard word. A fix that adds
+    /// words after the heard one ("dana" written "Dana Cohen") or before it
+    /// ("cohen" written "Avi Cohen", "Dr. Cohen") would otherwise write them
+    /// twice on a line that has them. Each space or maqaf the reading
+    /// crosses takes a character of the written form, so it starts no more
+    /// words back than that.
+    private static func writtenAlready(_ text: [Unicode.Scalar], _ tokens: [Token], _ starts: [Int], at index: Int, _ hit: Hit) -> Bool {
+        let keep = starts[index] + hit.prefixEnd
+        let last = index + hit.count - 1
+        let end = starts[last] + tokens[last].coreEnd
+        for word in max(0, index - hit.written.unicodeScalars.count)...index where tokens[word].coreStart < tokens[word].coreEnd {
+            for from in tokens[word].readingStarts.map({ starts[word] + $0 }) where from <= keep {
+                if let stop = readsAlready(text, from: from, hit.written, exactly: hit.exactly), stop >= end { return true }
+            }
+        }
+        return false
+    }
+
+    /// Where `text` from `start` stops reading `written`, when it reads all
+    /// of it there, case, niqqud and a maqaf against a hyphen aside, up to
+    /// the end of a word; nil when it does not. The line may also differ
+    /// from `written` the ways heard words may (an apostrophe, an alef's
+    /// hamza, Arabic vowel marks), except for a fix that only respells
     /// (`exactly`): those differences are what it is for.
-    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool) -> Bool {
+    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool) -> Int? {
         func skips(_ scalar: Unicode.Scalar) -> Bool {
             exactly ? Token.isHebrewNiqqud(scalar) : Token.isMark(scalar)
         }
@@ -271,11 +290,11 @@ public enum WordFixes {
         }
         for scalar in written.unicodeScalars where !skips(scalar) {
             skipMarks()
-            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) else { return false }
+            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) else { return nil }
             at += 1
         }
         skipMarks()
-        return at == text.count || !Token.isCore(text[at])
+        return (at == text.count || !Token.isCore(text[at])) ? at : nil
     }
 
     private static func isDash(_ scalar: Unicode.Scalar) -> Bool {
@@ -432,6 +451,17 @@ public enum WordFixes {
         var caseKey: String {
             let base = scalars[coreStart..<coreEnd].filter { !Token.isHebrewNiqqud($0) }
             return WordFixes.caseFolded(String(String.UnicodeScalarView(base)))
+        }
+
+        /// Where a written form may start in this word: at its first letter,
+        /// or past Hebrew prefix letters, as a heard word may take them.
+        var readingStarts: [Int] {
+            let letters = key
+            var out = [coreStart]
+            for length in 1...3 where letters.count > length && letters.prefix(length).allSatisfy(WordFixes.prefixLetters.contains) {
+                out.append(endOfLetters(length))
+            }
+            return out
         }
 
         func endOfLetters(_ count: Int) -> Int {
