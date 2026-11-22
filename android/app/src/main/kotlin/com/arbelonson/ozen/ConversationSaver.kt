@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WordFixes
+import java.io.IOException
 import java.util.TreeMap
 import java.util.UUID
 import kotlin.coroutines.CoroutineContext
@@ -295,7 +296,8 @@ class ConversationSaver(
      */
     fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
-    /** A saved conversation as History shows it: as it will be saved, with what still waits for room (see [TranscriptHistoryWriter.loadNow]). */
+    /** A saved conversation as History shows it: as it will be saved, with what still waits for room (see [TranscriptHistoryWriter.loadNow]). Throws when its file is there but can't be read just now. */
+    @Throws(IOException::class)
     fun load(id: UUID): TranscriptSessionRecord? = writer.loadNow(id)
 
     /**

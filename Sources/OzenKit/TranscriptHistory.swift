@@ -801,8 +801,8 @@ public struct TranscriptHistoryStore: Sendable {
     /// As `load(id:)`, but a file that is there and can't be read right now
     /// (a read error, or iOS keeping it locked) throws instead of reading as
     /// no conversation: History's fix of a word then says to try again, not
-    /// that the line is gone. Nil when there is no such file, or it is
-    /// damaged for good.
+    /// that the line is gone, and the conversation open there stays on
+    /// screen. Nil when there is no such file, or it is damaged for good.
     public func loadThrowing(id: UUID) throws -> TranscriptSessionRecord? {
         let data: Data
         do {
@@ -1258,9 +1258,14 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     /// Names a saved conversation, or removes its name with an empty one.
-    public func rename(id: UUID, title: String) throws {
+    /// `read` runs once the file is read, before the name is written. A file
+    /// that is there but can't be read just now throws, as in `replaceText`:
+    /// taken for gone, it was named with nothing written, and History said
+    /// the name was saved.
+    public func rename(id: UUID, title: String, onRead read: () -> Void = {}) throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+        _ = try patchRecordFile(at: fileURL(for: id), throwIfUnreadable: true) { object in
+            read()
             if trimmed.isEmpty {
                 object.removeValue(forKey: "title")
             } else {

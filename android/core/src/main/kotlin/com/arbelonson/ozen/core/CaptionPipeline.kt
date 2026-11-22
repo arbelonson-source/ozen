@@ -1625,12 +1625,14 @@ class CaptionPipeline(
         if (matches.isEmpty()) {
             // The finished text can take back a word a live guess had: the
             // line's bell and highlight follow what the line says now.
-            keywordHitSegmentIDs = keywordHitSegmentIDs - segment.id
+            // Copied only when that changes: the set holds every line that
+            // said a saved word, and each word of each line comes here.
+            if (segment.id in keywordHitSegmentIDs) keywordHitSegmentIDs = keywordHitSegmentIDs - segment.id
             return
         }
         // Marked whenever it says the word, even when that isn't news: a
         // live guess can drop the word and the finished text bring it back.
-        keywordHitSegmentIDs = keywordHitSegmentIDs + segment.id
+        if (segment.id !in keywordHitSegmentIDs) keywordHitSegmentIDs = keywordHitSegmentIDs + segment.id
         val fresh = keywordDeduplicator.newMatches(segment.id, matches)
         if (fresh.isEmpty()) return
         val timestamp = now()

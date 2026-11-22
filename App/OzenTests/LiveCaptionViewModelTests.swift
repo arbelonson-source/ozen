@@ -3091,6 +3091,75 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.wordFixes.contains { $0.written == "Avi" })
     }
 
+    // Read again after that refused fix, the conversation came back as none,
+    // and the screen put "Conversation not found" in its place right after
+    // the sheet said to try again in a moment, with nothing left to try on.
+    @Test("History reads a conversation it can't read just now as unreadable, so its screen keeps showing it, and a deleted one as gone")
+    func historyReadWhileTheConversationCantBeRead() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let (viewModel, engine, pipeline, history) = makeFixingViewModel(in: directory)
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        viewModel.clearTranscript()
+        let conversation = try #require(history.listSummaries().first)
+        let shown = try #require(history.load(id: conversation.id)?.segments.first)
+        let file = directory.appendingPathComponent("history", isDirectory: true).appendingPathComponent("\(conversation.id.uuidString).json")
+        let read = viewModel.savedConversation
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id) == .unreadable)
+        #expect(throws: (any Error).self) { try read(conversation.id) }
+        #expect(try read(UUID()) == nil, "no file at all is a conversation that is gone")
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        #expect(try read(conversation.id)?.segments.first?.text == "I saw aval today")
+        try viewModel.deleteConversation(id: conversation.id)
+        #expect(try read(conversation.id) == nil)
+    }
+
+    // Opened while its file couldn't be read just now, a conversation showed
+    // "Conversation not found", as if it had been deleted, and one no longer
+    // being captioned was never read again: the person had to go back and
+    // open it once more.
+    @Test("History opening a conversation it can't read just now reads it again a few seconds later until it can, and finds a deleted one gone at once")
+    func historyOpensAConversationOnceItCanBeRead() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-openlater-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let (viewModel, _, _, history) = makeFixingViewModel(in: directory)
+        let saved = TranscriptSessionRecord(
+            id: UUID(), startedAt: 100, endedAt: 200, engine: .whisperKit, modelVariant: nil, inputName: nil,
+            segments: [SavedSegment(id: UUID(), text: "The bus leaves at six", speakerName: nil, speakerClusterID: nil, startTimestamp: 100, isCommitted: true)]
+        )
+        _ = try history.save(saved)
+        let file = directory.appendingPathComponent("history", isDirectory: true).appendingPathComponent("\(saved.id.uuidString).json")
+        let read = viewModel.savedConversation
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+
+        var unreadable = 0
+        var waits: [Duration] = []
+        let opened = try await HistoryReadRetry.untilRead(sleep: { wait in
+            waits.append(wait)
+            if waits.count == 2 { try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+        }, unreadable: { unreadable += 1 }) {
+            try read(saved.id)
+        }
+        #expect(opened?.segments.map(\.text) == ["The bus leaves at six"])
+        #expect(unreadable == 2)
+        #expect(waits == [.seconds(3), .seconds(3)])
+
+        try viewModel.deleteConversation(id: saved.id)
+        let gone = try await HistoryReadRetry.untilRead(sleep: { waits.append($0) }, unreadable: { unreadable += 1 }) {
+            try read(saved.id)
+        }
+        #expect(gone == nil)
+        #expect(unreadable == 2)
+        #expect(waits.count == 2)
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()

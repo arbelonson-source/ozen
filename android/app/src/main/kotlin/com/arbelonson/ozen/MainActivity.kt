@@ -1068,6 +1068,10 @@ private fun CaptionScreen(
                 if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {
                     fixing = null
                     fixRefused = false
+                    // As on the iPhone, said on a fix that went through, as
+                    // the dialog closes; a refused one keeps it open with
+                    // the reason instead.
+                    ScreenReader.said(context, tr("השורה תוקנה", "Line fixed"))
                 } else {
                     fixRefused = true
                 }

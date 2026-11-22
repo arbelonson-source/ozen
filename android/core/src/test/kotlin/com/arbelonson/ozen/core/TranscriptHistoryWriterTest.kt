@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
@@ -8,6 +9,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -543,6 +545,150 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // The read was kept as the last save's error, so the caption screen said
+    // the phone was probably full, though nothing had failed to save. The
+    // iPhone keeps a read out of it.
+    @Test
+    fun `a word fixed in History while its conversation cannot be read just now is not a save that failed`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unreadable-not-full"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+        assertNull(writer.lastFailure, "nothing failed to save")
+        permissions(file, "rw-------")
+    }
+
+    // A fix that only read the file put its own outcome in place of a save
+    // that had really failed: a read error, or none at all for a line that
+    // was gone, and the warning went while the phone was still full.
+    @Test
+    fun `a word fixed in History that only reads its conversation leaves a save that failed before reported`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-read-keeps-failure"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(other)
+        val fix = { text: String -> WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), text) }
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+        permissions(file, "rw-------")
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(other.id, UUID.randomUUID(), fix))
+        assertEquals(full, writer.lastFailure, "a line that is gone says nothing about room either")
+        permissions(dir, "rwx------")
+    }
+
+    // The iPhone fixes the words a fix still waiting for room left. Android
+    // worked them out from the file again, so a second fix of the line while
+    // the file couldn't be read just now said to try again, though it could
+    // be saved like the first.
+    @Test
+    fun `a word fixed in History on a line whose earlier fix waits for room fixes those words, even while the file cannot be read`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-after-waiting-fix"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval and Dan", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(dir, "r-x------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("aval", "Avi") })
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("Dan", "Dana") })
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line) { it.replace("aval", "Avital") }, "the waiting words no longer have it")
+
+        permissions(dir, "rwx------")
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi and Dana", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
+    // Once there was room, a History fix of a line only the version waiting
+    // for room has wrote that version, and the caption screen still said
+    // the phone was probably full, until the next save.
+    @Test
+    fun `a word fixed in History that writes what waited for room takes the saving warning away`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-writes-waiting-save"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(UUID.randomUUID(), "I saw Avi", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        assertFalse(writer.saveNow(old.copy(segments = old.segments + SavedSegment(line, "and Cohen", null, null, 101.0, true))))
+        assertNotNull(writer.lastFailure)
+
+        permissions(dir, "rwx------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("Cohen", "Dana Cohen") })
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+        assertEquals(listOf("I saw Avi", "and Dana Cohen"), store.load(old.id)?.segments?.map { it.text })
+    }
+
+    // A fix of a word the saved line no longer has wrote the file again
+    // unchanged, as the iPhone doesn't: that write going through took away
+    // the warning of a write that had really been refused, and refused on a
+    // full phone it put up a warning of its own for a fix that changed
+    // nothing.
+    @Test
+    fun `a word fixed in History that the saved line no longer has writes nothing and leaves the saving warning as it was`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unchanged"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Avi", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(other)
+        val fix = { text: String -> text.replace("aval", "Avi") }
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "nothing was written, so nothing new was refused")
+        permissions(dir, "rwx------")
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "nothing was written, so it says nothing about room")
+        assertEquals("I saw Avi", store.load(old.id)?.segments?.single()?.text)
+    }
+
+    // Read as no conversation, the conversation open in History turned into
+    // "Conversation not found" after a star or a name it refused there, and
+    // there was nothing left to try again from.
+    @Test
+    fun `History reads a conversation whose file cannot be read just now as unreadable, not as gone, and still shows its version waiting for room`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.load-unreadable"))
+        val early = record(UUID.randomUUID(), 1, false)
+        writer.saveNow(early)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(file, "---------")
+        assertFailsWith<IOException> { writer.loadNow(early.id) }
+        assertNull(writer.loadNow(UUID.randomUUID()), "no file at all is a conversation that is gone")
+
+        val later = early.copy(segments = early.segments + record(early.id, 1, true).segments, endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        assertNotNull(writer.lastFailure)
+        assertEquals(later.segments, writer.loadNow(early.id)?.segments, "the version waiting for room is shown as before")
+
+        permissions(dir, "rwx------")
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, false))
+        assertEquals(later.segments, writer.loadNow(early.id)?.segments)
+        writer.deleteNow(early.id)
+        assertNull(writer.loadNow(early.id), "a deleted conversation is gone")
+    }
+
     // History's dialog says a fix that waits for room is done. Read from the
     // file, History kept showing the old words, and the person fixed the
     // same word again.
@@ -743,6 +889,40 @@ class TranscriptHistoryWriterTest {
         assertEquals("ערב", store.load(evening.id)?.title)
     }
 
+    // Taken for gone, a file that couldn't be read just now was named with
+    // nothing written, and History said the name was saved. Its outcome,
+    // none at all, also took the place of a save that had really failed,
+    // and the warning went while the phone was still full.
+    @Test
+    fun `a name given in History while its conversation cannot be read just now is not saved, and is not a save that failed`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.rename-unreadable"))
+        val evening = record(UUID.randomUUID(), 1, true)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(evening)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        writer.saveNow(other)
+        permissions(file, "---------")
+        assertFalse(writer.renameNow(evening.id, "Dinner"), "History says the name wasn't saved")
+        assertNull(writer.lastFailure, "nothing failed to save")
+
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure, "a name the disk refuses is still reported")
+        assertFalse(writer.renameNow(evening.id, "Dinner"))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+
+        assertFalse(writer.saveNow(record(UUID.randomUUID(), 1, true)))
+        permissions(dir, "rwx------")
+        assertFalse(writer.renameNow(evening.id, "Dinner"))
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+
+        permissions(file, "rw-------")
+        assertTrue(writer.renameNow(evening.id, "Dinner"))
+        assertEquals("Dinner", store.load(evening.id)?.title)
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `deleting everything also drops a conversation still waiting for room, and its warning`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
@@ -804,6 +984,45 @@ class TranscriptHistoryWriterTest {
         assertEquals(true, writer.toggleStarNow(early.id, added, keepingRefused = false))
         assertEquals(listOf(false, true), store.load(early.id)?.segments?.map { it.isStarred })
         assertNull(writer.lastFailure)
+    }
+
+    // A star that wrote nothing put its outcome, none at all, in place of a
+    // save that had really failed, and the warning went while the phone was
+    // still full. A word fix that writes nothing leaves it.
+    @Test
+    fun `a star from History that writes nothing leaves a save that failed before reported, and goes once what waited is written`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.history-star-writes-nothing"))
+        val evening = record(UUID.randomUUID(), 1, true)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(evening)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        writer.saveNow(other)
+        val line = evening.segments[0].id
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        permissions(file, "---------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+        permissions(file, "rw-------")
+        assertNull(writer.toggleStarNow(other.id, UUID.randomUUID(), keepingRefused = false))
+        assertEquals(full, writer.lastFailure, "a line that is gone says nothing about room either")
+
+        permissions(dir, "rwx------")
+        assertEquals(true, writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNull(writer.lastFailure)
+        permissions(dir, "r-x------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNotNull(writer.lastFailure, "a star the disk refuses is still reported")
+
+        assertFalse(writer.saveNow(record(UUID.randomUUID(), 1, true)))
+        permissions(dir, "rwx------")
+        permissions(file, "---------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+        permissions(file, "rw-------")
     }
 
     @Test

@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Share
@@ -111,6 +112,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HistoryDays
+import com.arbelonson.ozen.core.HistoryReadRetry
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
@@ -133,6 +135,7 @@ import com.arbelonson.ozen.ui.SectionHeader
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
 import java.io.IOException
@@ -153,6 +156,13 @@ interface SavedConversations {
     /** The conversations where every word of [query] was said, each previewed by the line that matched. */
     fun search(query: String): List<TranscriptSessionSummary>
 
+    /**
+     * The conversation as History shows it, or null when it is gone. Throws
+     * when its file is there but can't be read just now: the conversation
+     * open in History then stays as it is shown, and one being opened says
+     * it can't be read just now and is read again.
+     */
+    @Throws(IOException::class)
     fun load(id: UUID): TranscriptSessionRecord?
 
     /** Every starred line of every saved conversation, newest conversation first. */
@@ -692,38 +702,67 @@ internal fun ConversationScreen(
         if (star == null) jumpedToStar = false
         loaded = now
     }
+    // Null when the file is there but can't be read just now, and the screen
+    // keeps what it shows. Read as no conversation, the open one turned into
+    // "Conversation not found" after a star or a name it refused, and there
+    // was nothing left to try again from without leaving it.
+    fun readAgain(): OpenConversation? = try {
+        opened(conversations.load(id), query, marksUncertain, languageCode)
+    } catch (_: IOException) {
+        null
+    }
+    // Opened while its file is there but can't be read just now, the screen
+    // says so and reads it again every few seconds until it reads, as shown
+    // or as gone; Try again reads it at once. Taken for no conversation, it
+    // said "Conversation not found", as if it had been deleted, and one no
+    // longer being captioned is never read again.
+    var cantRead by remember { mutableStateOf(false) }
+    var readTries by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
-    LaunchedEffect(id, marksUncertain) {
+    LaunchedEffect(id, marksUncertain, readTries) {
         var jumped = false
         while (true) {
-            val now = withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
-            show(now)
-            if (!jumped && now.matches.isNotEmpty()) {
-                jumped = true
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
+            // Read again and not read just now, the screen keeps what it
+            // shows. It went back to what it showed as the reading began,
+            // and a name, star or fix shown meanwhile went away until the
+            // next reading, twenty seconds later.
+            val now = if (loaded != null) {
+                withContext(Dispatchers.IO) { readAgain() }
+            } else {
+                HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
+                    withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+                }
             }
-            val held = now.lines.indexOfFirst { it.id == line }
-            if (!jumped && held >= 0) {
-                jumped = true
-                // As on the iPhone: "next starred" goes on from the line she
-                // came for, which is marked for a moment so she sees it.
-                now.starred.indexOf(line).takeIf { it >= 0 }?.let {
-                    starAt = it
-                    jumpedToStar = true
+            if (now != null) {
+                cantRead = false
+                show(now)
+                if (!jumped && now.matches.isNotEmpty()) {
+                    jumped = true
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
                 }
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + held)
-                arrival?.cancel()
-                arrival = marking.launch {
-                    arrived = line
-                    delay(2_000)
-                    arrived = null
+                val held = now.lines.indexOfFirst { it.id == line }
+                if (!jumped && held >= 0) {
+                    jumped = true
+                    // As on the iPhone: "next starred" goes on from the line she
+                    // came for, which is marked for a moment so she sees it.
+                    now.starred.indexOf(line).takeIf { it >= 0 }?.let {
+                        starAt = it
+                        jumpedToStar = true
+                    }
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + held)
+                    arrival?.cancel()
+                    arrival = marking.launch {
+                        arrived = line
+                        delay(2_000)
+                        arrived = null
+                    }
+                    // A screen reader hears which line it was, as after a jump:
+                    // the mark alone told a blind or deaf-blind person nothing.
+                    AnnouncementHold.waitOut()
+                    ScreenReader.announce(context, now.lines[held].spoken)
                 }
-                // A screen reader hears which line it was, as after a jump:
-                // the mark alone told a blind or deaf-blind person nothing.
-                AnnouncementHold.waitOut()
-                ScreenReader.announce(context, now.lines[held].spoken)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
@@ -764,7 +803,13 @@ internal fun ConversationScreen(
     // is still being said, can come back with fewer words.
     var fixingText by rememberSaveable { mutableStateOf("") }
     var fixRefusal by rememberSaveable { mutableStateOf<WordFixResult?>(null) }
-    var fixSaving by remember { mutableStateOf(false) }
+    // Each opening of the dialog is its own, and a fix answers only the one
+    // it was saved from. A fix still being saved when its dialog closed
+    // answered whatever dialog was open when it was done: another line's
+    // showed its "try again", the same line's opened again was closed, and
+    // Save did nothing in either until it was done.
+    var fixOpening by remember { mutableIntStateOf(0) }
+    var fixSaving by remember { mutableStateOf<Int?>(null) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
     var nameRefused by rememberSaveable { mutableStateOf(false) }
     val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
@@ -775,20 +820,35 @@ internal fun ConversationScreen(
             fixes = conversations.wordFixes(),
             refusal = fixRefusal,
             onSave = { heard, written, everyTime ->
-                if (!fixSaving) {
-                    fixSaving = true
+                val opening = fixOpening
+                if (fixSaving != opening) {
+                    fixSaving = opening
                     fixRefusal = null
                     marking.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            conversations.fixLine(id, line.id, heard, written).also { result ->
-                                if (result == WordFixResult.Saved) {
-                                    conversations.saveWordFix(heard, written, everyTime)
-                                    loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
-                                }
-                            }
+                        val (result, now) = withContext(Dispatchers.IO) {
+                            val result = conversations.fixLine(id, line.id, heard, written)
+                            if (result != WordFixResult.Saved) return@withContext result to null
+                            conversations.saveWordFix(heard, written, everyTime)
+                            result to readAgain()
                         }
-                        fixSaving = false
-                        if (result != WordFixResult.Saved) fixRefusal = result else if (fixingID == line.id.toString()) fixingID = null
+                        // Read again through show(), here on the main thread:
+                        // set straight from the reading, a fix of the word
+                        // searched for left the button on a match that was
+                        // gone, "Next match (3 of 2)".
+                        now?.let { show(it) }
+                        if (fixSaving == opening) fixSaving = null
+                        if (fixOpening != opening || fixingID == null) return@launch
+                        if (result == WordFixResult.Saved) {
+                            fixingID = null
+                            // Said once the fix is known to have gone through,
+                            // as the dialog closes. Said as it closed, the
+                            // dialog going away while the fix was still being
+                            // saved, as when the phone turns, said "Line
+                            // fixed" before anything was known.
+                            ScreenReader.said(context, tr("השורה תוקנה", "Line fixed"))
+                        } else {
+                            fixRefusal = result
+                        }
                     }
                 }
             },
@@ -798,6 +858,13 @@ internal fun ConversationScreen(
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
+            shown == null && cantRead -> EmptyState(
+                Icons.Rounded.History,
+                tr("אי אפשר לקרוא את השיחה כרגע", "The conversation can’t be read just now"),
+                tr("השיחה עדיין שמורה בטלפון. מנסים שוב בעוד כמה שניות.", "It’s still saved on the phone. Trying again in a few seconds."),
+            ) {
+                TonalButton(tr("נסו שוב", "Try again"), onClick = { readTries++ }, icon = Icons.Rounded.Refresh)
+            }
             shown == null -> LoadingNote()
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
             else -> {
@@ -878,10 +945,10 @@ internal fun ConversationScreen(
                                 }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
-                                        show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
+                                        withContext(Dispatchers.IO) { readAgain() }?.let { show(it) }
                                     }
                                 }
                             }
@@ -915,12 +982,10 @@ internal fun ConversationScreen(
                         naming = null
                         scope.launch {
                             var kept = true
-                            show(
-                                withContext(Dispatchers.IO) {
-                                    kept = conversations.rename(id, draft)
-                                    opened(conversations.load(id), query, marksUncertain, languageCode)
-                                },
-                            )
+                            withContext(Dispatchers.IO) {
+                                kept = conversations.rename(id, draft)
+                                readAgain()
+                            }?.let { show(it) }
                             if (!kept) nameRefused = true
                         }
                     },
@@ -1264,7 +1329,13 @@ private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksU
 
 /** Writes every saved conversation, oldest first, loading each one only when its turn comes. False when none could be written. */
 internal fun writeAllConversations(conversations: SavedConversations, marksUncertain: Boolean, languageCode: String, out: Appendable): Boolean {
-    val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull { conversations.load(it.id) }
+    val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull {
+        try {
+            conversations.load(it.id)
+        } catch (_: IOException) {
+            null
+        }
+    }
     return TranscriptHistoryStore.exportAll(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode), out, languageCode)
 }
 

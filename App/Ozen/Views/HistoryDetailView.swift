@@ -22,6 +22,11 @@ struct HistoryDetailView: View {
     @State private var hasJumped = false
     @State private var scrollRequest = 0
     @State private var hasLoaded = false
+    /// The first read found the file there but unreadable just now; it is
+    /// read again every few seconds until it reads, and Try again (a new
+    /// value here) reads it at once.
+    @State private var cantRead = false
+    @State private var readTries = 0
     /// The line this was opened at, lit up for a moment once scrolled to.
     @State private var arrivedLineID: UUID?
     /// VoiceOver is moved onto a line jumped to; the flash alone left it
@@ -273,7 +278,15 @@ struct HistoryDetailView: View {
 
     var body: some View {
         Group {
-            if !hasLoaded {
+            if cantRead {
+                ContentUnavailableView {
+                    Label(tr("אי אפשר לקרוא את השיחה כרגע", "The conversation can’t be read just now"), systemImage: "clock.arrow.circlepath")
+                } description: {
+                    Text(tr("השיחה עדיין שמורה בטלפון. מנסים שוב בעוד כמה שניות.", "It’s still saved on the phone. Trying again in a few seconds."))
+                } actions: {
+                    Button(tr("נסו שוב", "Try again")) { readTries += 1 }
+                }
+            } else if !hasLoaded {
                 ProgressView()
             } else if let record {
                 transcriptList(record)
@@ -345,13 +358,13 @@ struct HistoryDetailView: View {
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         }
-        .task {
+        .task(id: readTries) {
             await load()
             // The conversation still being captioned keeps growing on disk
             // (the autosave loop writes it roughly every 20s) while this
             // screen stays open; every other, closed conversation's saved
             // copy never changes again, so there's nothing to re-read.
-            guard viewModel.isCurrentConversation(sessionID) else { return }
+            guard hasLoaded, viewModel.isCurrentConversation(sessionID) else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(20))
                 guard !Task.isCancelled else { return }
@@ -363,14 +376,25 @@ struct HistoryDetailView: View {
     /// Re-reads this conversation's saved state, leaving scroll position,
     /// the current search-match index, and any in-progress rename alone --
     /// only `load()` (once, at open) sets those.
+    ///
+    /// A file that is there but can't be read just now (a read error, or
+    /// iOS keeping it locked) leaves everything as shown. Read as no
+    /// conversation, the open one turned into "Conversation not found" right
+    /// after the fix sheet said to try again in a moment, and there was
+    /// nothing left to try again from without leaving the screen.
     private func refresh() async {
         let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
-        let loaded = await Task.detached(priority: .utility) {
-            Loaded(record: read(id), query: query, languageCode: language)
+        let reread = await Task.detached(priority: .utility) { () -> Loaded? in
+            do {
+                return try Loaded(record: read(id), query: query, languageCode: language)
+            } catch {
+                return nil
+            }
         }.value
+        guard let loaded = reread else { return }
         record = loaded.record
         stats = loaded.stats
         if let index = Self.position(of: currentMatch, from: matches, in: loaded.matches) {
@@ -428,15 +452,29 @@ struct HistoryDetailView: View {
     /// Loaded and summarised once, off the main thread: a long
     /// conversation's words shouldn't be counted on every redraw, or hold
     /// up the screen sliding in.
+    ///
+    /// A file that is there but can't be read just now says so and is read
+    /// again every few seconds, until it reads, as a conversation or as one
+    /// that is gone, or the screen closes. Taken for no conversation, it said
+    /// "Conversation not found", as if it had been deleted, and one no longer
+    /// being captioned is never read again.
     private func load() async {
         guard !hasLoaded else { return }
         let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
-        let loaded = await Task.detached(priority: .userInitiated) {
-            Loaded(record: read(id), query: query, languageCode: language)
-        }.value
+        let loaded: Loaded
+        do {
+            loaded = try await HistoryReadRetry.untilRead(unreadable: { cantRead = true }) {
+                try await Task.detached(priority: .userInitiated) {
+                    try Loaded(record: read(id), query: query, languageCode: language)
+                }.value
+            }
+        } catch {
+            return
+        }
+        cantRead = false
         record = loaded.record
         stats = loaded.stats
         matches = loaded.matches

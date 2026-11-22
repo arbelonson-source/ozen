@@ -84,19 +84,30 @@ public final class TranscriptHistoryWriter: Sendable {
     /// A version still waiting for room takes the name too: never written
     /// before, it had no file for the name to go into, and it was written
     /// later without one. False when the name was lost: the disk refused
-    /// it and no waiting version keeps it, so the screen must say so.
+    /// it, or the file is there but couldn't be read just now, and no
+    /// waiting version keeps it, so the screen must say so.
+    ///
+    /// A name that wrote nothing (the file couldn't be read just now, or
+    /// there is no such conversation) leaves `lastFailure` as it was: kept
+    /// as the last save's outcome, it took away the warning of a save that
+    /// really had failed.
     @discardableResult
     public func renameNow(id: UUID, title: String) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            var kept = failure.capture { try store.rename(id: id, title: title) }
+            var read = false
+            var kept = failure.capture(counts: { _ in read }) { try store.rename(id: id, title: title) { read = true } }
             if var waiting = pendingSaves.records[id] {
                 let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 waiting.title = trimmed.isEmpty ? nil : trimmed
                 pendingSaves.records[id] = waiting
                 kept = true
             }
-            Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            if read {
+                Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            } else {
+                Self.catchUpAfterNothingWritten(pendingSaves, pendingRenames, store: store, failure: failure)
+            }
             return kept
         }
     }
@@ -108,10 +119,17 @@ public final class TranscriptHistoryWriter: Sendable {
     /// file, with the line texts still waiting put in. History shows this: read from the file alone, a word fixed
     /// while the phone was full kept its old words there though the fix
     /// was called done, and the person fixed the same word again.
-    public func loadNow(id: UUID) -> TranscriptSessionRecord? {
-        queue.sync { [store, pendingRenames, pendingSaves] in
+    ///
+    /// Throws when there is no waiting version and the file is there but
+    /// can't be read just now (see `TranscriptHistoryStore.loadThrowing(id:)`);
+    /// nil when there is no such conversation, or its file is damaged for
+    /// good. Read as gone, the conversation open in History turned into
+    /// "Conversation not found" right after its fix sheet said to try again
+    /// in a moment.
+    public func loadNow(id: UUID) throws -> TranscriptSessionRecord? {
+        try queue.sync { [store, pendingRenames, pendingSaves] in
             let waiting = pendingSaves.records[id].map { (try? store.keepingSavedDetails(of: $0)) ?? $0 }
-            guard var record = waiting ?? store.load(id: id) else { return nil }
+            guard var record = try waiting ?? store.loadThrowing(id: id) else { return nil }
             for waiting in pendingRenames.texts where waiting.sessionID == id {
                 if let index = record.segments.firstIndex(where: { $0.id == waiting.segmentID }) {
                     record.segments[index].text = waiting.text
@@ -252,6 +270,18 @@ public final class TranscriptHistoryWriter: Sendable {
         return saves.records.isEmpty && renames.list.isEmpty && renames.texts.isEmpty
     }
 
+    /// `catchUp` after a star or a name that wrote nothing. When something
+    /// waited for room and all of it is written now, there is room again,
+    /// and the error of the write that left it waiting is gone: kept, the
+    /// caption screen still said the phone was probably full until the next
+    /// save. With nothing waiting, an earlier error stays as it was.
+    private static func catchUpAfterNothingWritten(_ saves: PendingSaves, _ renames: PendingRenames, store: TranscriptHistoryStore, failure: FailureBox) {
+        let waited = !saves.records.isEmpty || !renames.list.isEmpty || !renames.texts.isEmpty
+        if catchUp(saves, other: nil, renames, store: store, failure: failure), waited {
+            failure.clear()
+        }
+    }
+
     /// The waiting renames, oldest first; one refused stops the rest.
     private static func runRenames(_ pending: PendingRenames, store: TranscriptHistoryStore) throws {
         while let next = pending.list.first {
@@ -283,26 +313,41 @@ public final class TranscriptHistoryWriter: Sendable {
     /// History's star was called saved while it only waited. Without
     /// `keepingRefused` the waiting version is written first, and the star
     /// is refused while that version still can't be.
+    ///
+    /// A star that wrote nothing (the file couldn't be read just now, or has
+    /// no such line) leaves `lastFailure` as it was: kept as the last save's
+    /// outcome, it took away the warning of a save that really had failed,
+    /// while the phone was still full.
     @discardableResult
     public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true, to wanted: Bool? = nil) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
             let starring = wanted ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
             var result: Bool?
-            var reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
+            let star = {
+                failure.capture(counts: { succeeded in !succeeded || result != nil }) {
+                    result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring)
+                }
+            }
+            var reached = star()
             if reached, result == nil, !keepingRefused,
                pendingSaves.records[sessionID]?.segments.contains(where: { $0.id == segmentID }) == true {
                 Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
                 guard pendingSaves.records[sessionID] == nil else { return nil }
-                reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
+                reached = star()
             }
+            let counted = !reached || result != nil
             if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].isStarred = result ?? wanted ?? !waiting.segments[index].isStarred
                 pendingSaves.records[sessionID] = waiting
                 result = waiting.segments[index].isStarred
             }
-            Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            if counted {
+                Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            } else {
+                Self.catchUpAfterNothingWritten(pendingSaves, pendingRenames, store: store, failure: failure)
+            }
             return result
         }
     }
@@ -377,9 +422,11 @@ private final class FailureBox: @unchecked Sendable {
     }
 
     /// Runs `work`, keeps its error (or that there was none), and returns
-    /// whether it succeeded.
+    /// whether it succeeded. When `counts`, asked once `work` is done with
+    /// whether it succeeded, says it only read, the error kept before stays
+    /// as it was.
     @discardableResult
-    func capture(_ work: () throws -> Any) -> Bool {
+    func capture(counts: (Bool) -> Bool = { _ in true }, _ work: () throws -> Any) -> Bool {
         let outcome: String?
         do {
             _ = try work()
@@ -387,9 +434,11 @@ private final class FailureBox: @unchecked Sendable {
         } catch {
             outcome = String(describing: error)
         }
-        lock.lock()
-        stored = outcome
-        lock.unlock()
+        if counts(outcome == nil) {
+            lock.lock()
+            stored = outcome
+            lock.unlock()
+        }
         return outcome == nil
     }
 }

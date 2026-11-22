@@ -856,6 +856,23 @@ class TranscriptHistoryStore(
 
     fun load(id: UUID): TranscriptSessionRecord? = decodeRecord(fileFor(id))
 
+    /**
+     * As [load], but a file that is there and can't be read right now (a
+     * read error) throws instead of reading as no conversation: the
+     * conversation open in History then stays on screen. Null when there is
+     * no such file, or it is damaged for good. The iPhone's store does the
+     * same.
+     */
+    @Throws(IOException::class)
+    fun loadThrowing(id: UUID): TranscriptSessionRecord? {
+        val data = try {
+            Files.readAllBytes(fileFor(id).toPath())
+        } catch (_: NoSuchFileException) {
+            return null
+        }
+        return lenientHistory { TranscriptSessionRecord.fromJson(strictUtf8(data)) }
+    }
+
     /** The conversation files in the directory, without reading them. */
     private fun recordFiles(): List<File> =
         directory.listFiles()?.filter { it.extension == "json" } ?: emptyList()
@@ -1072,11 +1089,18 @@ class TranscriptHistoryStore(
         return changed
     }
 
-    /** Names a saved conversation, or removes its name with an empty one. */
-    fun rename(id: UUID, title: String) {
+    /**
+     * Names a saved conversation, or removes its name with an empty one.
+     * [read] runs once the file is read, before the name is written. A file
+     * that is there but can't be read just now throws, as in [fixText]:
+     * taken for gone, it was named with nothing written, and History said
+     * the name was saved.
+     */
+    fun rename(id: UUID, title: String, read: () -> Unit = {}) {
         val file = fileFor(id)
         val trimmed = historyTrimmed(title)
-        patchRecordFile(file, writeSearchText = true) { object_ ->
+        patchRecordFile(file, writeSearchText = true, throwIfUnreadable = true) { object_ ->
+            read()
             if (trimmed.isEmpty()) JsonObject(object_ - "title") else JsonObject(object_ + ("title" to JsonPrimitive(trimmed)))
         }
     }
@@ -1138,8 +1162,10 @@ class TranscriptHistoryStore(
     fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean = fixText(segmentID, inSession) { text }
 
     /**
-     * Changes the text of one line as the file has it now. False when the
-     * conversation or line is not there (or the file is damaged for good); a
+     * Changes the text of one line as the file has it now, and writes
+     * nothing when that leaves it as it was. False when the conversation or
+     * line is not there, the text stays the same, or the file is damaged for
+     * good; a
      * file that exists but cannot be read now throws, so the caller keeps the
      * change waiting instead of taking it for gone.
      */
@@ -1151,7 +1177,9 @@ class TranscriptHistoryStore(
             if (index < 0) return@patchRecordFile null
             val line = lines[index] as JsonObject
             val old = (line["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return@patchRecordFile null
-            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(change(old)))) })))
+            val text = change(old)
+            if (text == old) return@patchRecordFile null
+            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(text))) })))
         }
     }
 
