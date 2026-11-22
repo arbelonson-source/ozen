@@ -264,6 +264,9 @@ class ConversationSaver(
      */
     fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
+    /** A saved conversation as History shows it: as it will be saved, with what still waits for room (see [TranscriptHistoryWriter.loadNow]). */
+    fun load(id: UUID): TranscriptSessionRecord? = writer.loadNow(id)
+
     /**
      * Stars a saved line from History, or takes its star away; the line's
      * new state, or null when it is gone or could not be saved. A line of

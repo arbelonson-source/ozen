@@ -101,6 +101,24 @@ public final class TranscriptHistoryWriter: Sendable {
         }
     }
 
+    /// A saved conversation as it will be saved, in order with the saves
+    /// already queued: its newer version still waiting for room (a phone
+    /// too full) or else its file, with the line texts still waiting put
+    /// in. History shows this: read from the file alone, a word fixed
+    /// while the phone was full kept its old words there though the fix
+    /// was called done, and the person fixed the same word again.
+    public func loadNow(id: UUID) -> TranscriptSessionRecord? {
+        queue.sync { [store, pendingRenames, pendingSaves] in
+            guard var record = pendingSaves.records[id] ?? store.load(id: id) else { return nil }
+            for waiting in pendingRenames.texts where waiting.sessionID == id {
+                if let index = record.segments.firstIndex(where: { $0.id == waiting.segmentID }) {
+                    record.segments[index].text = waiting.text
+                }
+            }
+            return record
+        }
+    }
+
     public func replaceTextNow(sessionID: UUID, segmentID: UUID, text: String) {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
@@ -115,10 +133,15 @@ public final class TranscriptHistoryWriter: Sendable {
     /// back with the fix replaced newer ones. A waiting text is always the
     /// newest: any later save of its conversation takes its place (see
     /// `PendingRenames.dropTexts(of:)`). False, with nothing written, when
-    /// the line is gone or no longer has the word.
+    /// the line is gone or no longer has the word, and when the version of
+    /// its conversation waiting for room no longer has the line (a replay
+    /// took it off the screen before the conversation closed): the fix was
+    /// written to the file and called saved, then that version was written
+    /// over it without the line.
     @discardableResult
     public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
+            if let version = pendingSaves.records[sessionID], !version.segments.contains(where: { $0.id == segmentID }) { return false }
             let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
                 ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
             guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return false }

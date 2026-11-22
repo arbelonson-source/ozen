@@ -159,6 +159,20 @@ class TranscriptHistoryWriter(
     }
 
     /**
+     * A saved conversation as it will be saved, in order with the saves
+     * already queued: its newer version still waiting for room (a phone too
+     * full) or else its file, with the line changes still waiting put in.
+     * History shows this: read from the file alone, a word fixed while the
+     * phone was full kept its old words there though the fix was called
+     * done, and the person fixed the same word again.
+     */
+    fun loadNow(id: UUID): TranscriptSessionRecord? = queue.sync {
+        val record = pendingSaves.records[id] ?: store.load(id) ?: return@sync null
+        val texts = pendingRenames.texts.filter { it.sessionID == id }
+        record.copy(segments = record.segments.map { line -> texts.filter { it.segmentID == line.id }.fold(line) { shown, next -> shown.copy(text = next.change(shown.text)) } })
+    }
+
+    /**
      * Renames a voice across every saved conversation, queued behind the
      * saves already waiting so none of them lands the old name back.
      */
@@ -262,12 +276,19 @@ class TranscriptHistoryWriter(
      * kept, when the line is gone, can't be read now or keeps its words:
      * History then says the fix was not saved, and one kept waiting all the
      * same was written once there was room, and again by the tap that tried
-     * once more.
+     * once more. False with nothing written, too, when the version of its
+     * conversation waiting for room no longer has the line (a replay took it
+     * off the screen before the conversation closed): the fix was written to
+     * the file and called saved, then that version was written over it
+     * without the line.
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean =
         queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
 
     private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): Boolean {
+        val waiting = pendingSaves.records[sessionID]
+        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
+        if (fromHistory && waiting != null && index < 0) return false
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
         var changed = false
@@ -277,8 +298,6 @@ class TranscriptHistoryWriter(
         }
         var done = false
         val written = failure.capture { done = store.fixText(segmentID, sessionID, combined) }
-        val waiting = pendingSaves.records[sessionID]
-        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (waiting != null && index >= 0) {
             val segments = waiting.segments.toMutableList()
             segments[index] = segments[index].copy(text = combined(segments[index].text))

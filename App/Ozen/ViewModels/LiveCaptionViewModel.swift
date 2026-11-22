@@ -2739,6 +2739,14 @@ public final class LiveCaptionViewModel {
     /// did. Read when a screen draws; it isn't observed.
     public var historySaveFailure: String? { historyWriter.lastFailure }
 
+    /// Reads a saved conversation as History shows it, from any thread: as
+    /// it will be saved, with what still waits for room on a full phone
+    /// (see `TranscriptHistoryWriter.loadNow(id:)`).
+    public var savedConversation: @Sendable (UUID) -> TranscriptSessionRecord? {
+        let writer = historyWriter
+        return { writer.loadNow(id: $0) }
+    }
+
     /// Stars or unstars a line of a saved conversation. A line still on
     /// the caption screen goes through `toggleStar`, whose starred set the
     /// next autosave writes; one gone from the screen is changed on disk.

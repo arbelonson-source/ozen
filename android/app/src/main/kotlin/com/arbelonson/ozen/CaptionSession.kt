@@ -567,7 +567,7 @@ class CaptionSession(
 
         override fun search(query: String) = historyStore.search(query)
 
-        override fun load(id: UUID) = historyStore.load(id)
+        override fun load(id: UUID) = conversations.load(id)
 
         override fun starredLines() = historyStore.starredLines()
 

@@ -522,6 +522,67 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // History's dialog says a fix that waits for room is done. Read from the
+    // file, History kept showing the old words, and the person fixed the
+    // same word again.
+    @Test
+    fun `History shows a word fixed while the phone is full with the fix, not the older file`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.load-waiting-text"))
+        val line = UUID.randomUUID()
+        val evening = record(UUID.randomUUID(), 1, true).let { it.copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)) + it.segments) }
+        writer.saveNow(evening)
+        permissions(dir, "r-x------")
+        assertTrue(writer.fixTextNow(evening.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+        assertNotNull(writer.lastFailure)
+
+        assertEquals(listOf("I saw Avi Cohen today", "שורה 0"), writer.loadNow(evening.id)?.segments?.map { it.text })
+        assertNull(writer.loadNow(UUID.randomUUID()))
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals(listOf("I saw Avi Cohen today", "שורה 0"), store.load(evening.id)?.segments?.map { it.text })
+        assertEquals(store.load(evening.id), writer.loadNow(evening.id))
+    }
+
+    @Test
+    fun `History shows the newer version of a conversation still waiting for room, with a word fixed in it`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.load-waiting-conversation"))
+        val early = record(UUID.randomUUID(), 1, false)
+        writer.saveNow(early)
+        val later = early.copy(segments = listOf(early.segments[0].copy(text = "I saw aval today")) + record(early.id, 1, true).segments, endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        assertTrue(writer.fixTextNow(early.id, early.segments[0].id) { it.replace("aval", "Avi") })
+
+        val shown = writer.loadNow(early.id)
+        assertEquals(200.0, shown?.endedAt)
+        assertEquals(listOf("I saw Avi today", "שורה 0"), shown?.segments?.map { it.text })
+    }
+
+    // A replay took the line off the screen before the conversation closed,
+    // so the version waiting for room no longer has it. The fix was written
+    // to the file and called saved, then the waiting version was written
+    // over it without the line.
+    @Test
+    fun `a word fixed in History on a line the conversation's version waiting for room no longer has is not saved`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-line-not-waiting"))
+        val gone = UUID.randomUUID()
+        val early = record(UUID.randomUUID(), 1, false).let { it.copy(segments = it.segments + SavedSegment(gone, "I saw aval today", null, null, 100.0, true)) }
+        writer.saveNow(early)
+        val later = early.copy(segments = listOf(early.segments[0], SavedSegment(UUID.randomUUID(), "I saw Avi today", null, null, 100.0, true)), endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        permissions(dir, "rwx------")
+
+        assertFalse(writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
+        assertEquals(false, writer.loadNow(early.id)?.segments?.any { it.id == gone }, "History doesn't show the line")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals(listOf("שורה 0", "I saw Avi today"), store.load(early.id)?.segments?.map { it.text })
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a word fixed in History on a line whose conversation was saved again after its text queued for room fixes the newer words`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
