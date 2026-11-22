@@ -176,6 +176,10 @@ class WordFixesWholeWordTest {
             fix("john", "John son of John") to "john spoke",
             fix("כהן", "אבי כהן") to "סיפרתי לכהן",
             fix("שירותי בריאות", "מכבי שירותי בריאות") to "התקשרתי לשירותי בריאות",
+            fix("京", "北京") to "我在京",
+            fix("京", "北京市") to "我在京工作",
+            fix("王", "王医生") to "王来了",
+            fix("寿司", "お寿司") to "寿司を食べた",
         )
         for ((one, line) in cases) {
             val once = run(line, one)

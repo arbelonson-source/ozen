@@ -1884,7 +1884,7 @@ class CaptionScreenDeviceTest {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val vocabularyBefore = app.settings.current.value.vocabulary
         val fixesBefore = app.settings.current.value.wordFixes
-        val notSaved = "The line is no longer on the screen, so the fix was not saved."
+        val notSaved = "The line changed or is gone, so the fix was not saved."
         try {
             app.settings.change {
                 it.vocabulary = emptyList()

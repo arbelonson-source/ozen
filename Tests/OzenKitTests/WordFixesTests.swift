@@ -206,6 +206,61 @@ struct WordFixesTests {
         #expect(WordFixes.refusal(fix("‘ג׳ורג׳ בוש’", "George Bush"), to: []) == nil)
     }
 
+    @Test("a word to tap keeps the geresh that ends a name but not the punctuation around it, as on Android")
+    func wordsToTap() {
+        #expect(WordFixes.wordsOf("Hello, wor'ld!") == ["Hello", "wor'ld"])
+        #expect(WordFixes.wordsOf("שלום ג׳ורג׳, מה נשמע?") == ["שלום", "ג׳ורג׳", "מה", "נשמע"])
+        #expect(WordFixes.wordsOf("ג'ורג' בא") == ["ג'ורג'", "בא"])
+        #expect(WordFixes.wordsOf("ג’ורג’ בא") == ["ג’ורג’", "בא"])
+        #expect(WordFixes.wordsOf("ג׳וֹרְגְ׳ בא") == ["ג׳וֹרְגְ׳", "בא"])
+        #expect(WordFixes.wordsOf("\"ג׳ורג׳\".") == ["ג׳ורג׳"])
+        #expect(WordFixes.wordsOf("פרופ׳ כהן") == ["פרופ׳", "כהן"])
+        #expect(WordFixes.wordsOf("ג׳ורג בא") == ["ג׳ורג", "בא"])
+        #expect(WordFixes.wordsOf("‘james’ said") == ["james", "said"])
+        #expect(WordFixes.wordsOf("James' car") == ["James", "car"])
+        #expect(WordFixes.wordsOf("שירתתי בצה״ל. ואתה?") == ["שירתתי", "בצה״ל", "ואתה"])
+        #expect(WordFixes.wordsOf("Wait - Dana Cohen.") == ["Wait", "Dana", "Cohen"])
+        #expect(WordFixes.wordsOf("שלחתי ב־WhatsApp") == ["שלחתי", "ב", "WhatsApp"])
+    }
+
+    @Test("a word to tap leaves out the closing quote of a quoted Hebrew word and keeps a name's geresh before it, as on Android")
+    func wordsToTapAndQuotes() {
+        #expect(WordFixes.wordsOf("‘שלום’ בא") == ["שלום", "בא"])
+        #expect(WordFixes.wordsOf("'שלום' בא") == ["שלום", "בא"])
+        #expect(WordFixes.wordsOf("אמרתי ‘שלום’ לכולם") == ["אמרתי", "שלום", "לכולם"])
+        #expect(WordFixes.wordsOf("‘ג׳ורג׳ בוש’") == ["ג׳ורג׳", "בוש"])
+        #expect(WordFixes.wordsOf("‘ג׳ורג׳’ בא") == ["ג׳ורג׳", "בא"])
+        #expect(WordFixes.wordsOf("'ג'ורג'' בא") == ["ג'ורג'", "בא"])
+        #expect(WordFixes.wordsOf("‘שלום’ ג’ורג’ בא") == ["שלום", "ג’ורג’", "בא"])
+        #expect(WordFixes.wordsOf("‘hello’ ג’ורג’ בא") == ["hello", "ג’ורג’", "בא"])
+        #expect(WordFixes.wordsOf("‘שלום ג'ורג' בא") == ["שלום", "ג'ורג'", "בא"])
+        let shown = "אמרתי ‘שלום’ לכולם"
+        #expect(WordFixes.apply([fix(WordFixes.wordsOf(shown)[1], "Shalom")], to: shown) == "אמרתי ‘Shalom’ לכולם")
+    }
+
+    @Test("two words to tap make one heard phrase only across one plain space with no punctuation, as on Android")
+    func joinedBySpace() {
+        #expect(!WordFixes.joinedBySpace("bat, sheva ok", 0))
+        #expect(WordFixes.joinedBySpace("bat, sheva ok", 1))
+        #expect(!WordFixes.joinedBySpace("bat, sheva ok", 2))
+        for geresh in ["\u{05F3}", "'", "\u{2019}"] {
+            #expect(WordFixes.joinedBySpace("ראיתי את ג\(geresh)ורג\(geresh) בוש אתמול", 2), "\(geresh)")
+        }
+        #expect(!WordFixes.joinedBySpace("ראיתי את ג׳ורג׳, בוש אתמול", 2))
+        #expect(!WordFixes.joinedBySpace("james' car", 0))
+        #expect(!WordFixes.joinedBySpace("‘שלום’ בא", 0))
+        #expect(!WordFixes.joinedBySpace("'שלום' בא", 0))
+        #expect(WordFixes.joinedBySpace("ראיתי את ‘ג׳ורג׳ בוש’ אתמול", 2))
+        #expect(!WordFixes.joinedBySpace("ראיתי את ‘ג׳ורג׳ בוש’ אתמול", 3))
+        #expect(!WordFixes.joinedBySpace("Wait - Dana", 0))
+        #expect(!WordFixes.joinedBySpace("Dana Cohen, Wait", 1))
+        #expect(!WordFixes.joinedBySpace("שלחתי ב־WhatsApp", 1))
+        let line = "ראיתי את ‘ג׳ורג׳ בוש’ אתמול"
+        let picked = WordFixes.wordsOf(line)[2...3].joined(separator: " ")
+        #expect(picked == "ג׳ורג׳ בוש")
+        #expect(WordFixes.apply([fix(picked, "George Bush")], to: line) == "ראיתי את ‘George Bush’ אתמול")
+    }
+
     @Test("VoiceOver hears a fix as what was heard and what is written, not as an arrow")
     func spokenLabel() {
         let one = fix("aval", "Avi")
@@ -317,6 +372,10 @@ struct WordFixesTests {
             (fix("john", "John son of John"), "john spoke"),
             (fix("כהן", "אבי כהן"), "סיפרתי לכהן"),
             (fix("שירותי בריאות", "מכבי שירותי בריאות"), "התקשרתי לשירותי בריאות"),
+            (fix("京", "北京"), "我在京"),
+            (fix("京", "北京市"), "我在京工作"),
+            (fix("王", "王医生"), "王来了"),
+            (fix("寿司", "お寿司"), "寿司を食べた"),
         ]
         for (one, line) in cases {
             let once = WordFixes.apply([one], to: line)

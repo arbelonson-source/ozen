@@ -1062,7 +1062,7 @@ private fun CaptionScreen(
             text,
             languageCode = languageCode,
             fixes = wordFixes,
-            error = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.").takeIf { fixRefused },
+            refused = fixRefused,
             onSave = { heard, written, everyTime ->
                 if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {
                     fixing = null
