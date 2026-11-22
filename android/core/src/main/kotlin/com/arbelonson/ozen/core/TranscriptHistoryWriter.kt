@@ -149,19 +149,26 @@ class TranscriptHistoryWriter(
      *
      * A version still waiting for room takes the name too: never written
      * before, it had no file for the name to go into, and it was written
-     * later without one. False when the name was lost: the disk refused it
-     * and no waiting version keeps it, so the screen must say so.
+     * later without one. False when the name was lost: the disk refused it,
+     * or the file is there but couldn't be read just now, and no waiting
+     * version keeps it, so the screen must say so.
+     *
+     * A name that wrote nothing (the file couldn't be read just now, or
+     * there is no such conversation) leaves [lastFailure] as it was, as a
+     * fix does: kept as the last save's outcome, it took away the warning
+     * of a save that really had failed.
      */
     fun renameNow(id: UUID, title: String): Boolean = queue.sync {
         lastWritten.record = null
-        var kept = failure.capture { store.rename(id, title) }
+        var read = false
+        var kept = failure.capture(counts = { read }) { store.rename(id, title) { read = true } }
         val waiting = pendingSaves.records[id]
         if (waiting != null) {
             val trimmed = historyTrimmed(title)
             pendingSaves.records[id] = waiting.copy(title = trimmed.ifEmpty { null })
             kept = true
         }
-        catchUp(null)
+        if (read) catchUp(null) else catchUpAfterFix()
         kept
     }
 
@@ -385,11 +392,11 @@ class TranscriptHistoryWriter(
     }
 
     /**
-     * [catchUp] after a fix. When something waited for room and all of it
-     * is written now, there is room again, and the error of the write that
-     * left it waiting is gone: kept, the caption screen still said the phone
-     * was probably full until the next save. With nothing waiting, an
-     * earlier error stays as it was.
+     * [catchUp] after a fix, or after a star or a name that wrote nothing.
+     * When something waited for room and all of it is written now, there is
+     * room again, and the error of the write that left it waiting is gone:
+     * kept, the caption screen still said the phone was probably full until
+     * the next save. With nothing waiting, an earlier error stays as it was.
      */
     private fun catchUpAfterFix() {
         val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty()
@@ -420,17 +427,24 @@ class TranscriptHistoryWriter(
      * called saved while it only waited. Without [keepingRefused] the
      * waiting version is written first, and the star is refused while that
      * version still can't be.
+     *
+     * A star that wrote nothing (the file couldn't be read just now, or has
+     * no such line) leaves [lastFailure] as it was, as a fix does: kept as
+     * the last save's outcome, it took away the warning of a save that
+     * really had failed, while the phone was still full.
      */
     fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
         lastWritten.record = null
         val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
-        var reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
+        val star = { failure.capture(counts = { succeeded -> !succeeded || result != null }) { result = store.toggleStar(segmentID, sessionID, starring) } }
+        var reached = star()
         if (reached && result == null && !keepingRefused && pendingSaves.records[sessionID]?.segments?.any { it.id == segmentID } == true) {
             catchUp(null)
             if (pendingSaves.records.containsKey(sessionID)) return@sync null
-            reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
+            reached = star()
         }
+        val counted = !reached || result != null
         val waiting = pendingSaves.records[sessionID]
         if ((reached || keepingRefused) && waiting != null) {
             val index = waiting.segments.indexOfFirst { it.id == segmentID }
@@ -443,7 +457,7 @@ class TranscriptHistoryWriter(
                 result = starred
             }
         }
-        catchUp(null)
+        if (counted) catchUp(null) else catchUpAfterFix()
         result
     }
 
@@ -515,17 +529,18 @@ class TranscriptHistoryWriter(
 
         /**
          * Runs [work], keeps its error (or that there was none), and returns
-         * whether it succeeded. When [counts], asked once [work] is done,
-         * says it only read, the error kept before stays as it was.
+         * whether it succeeded. When [counts], asked once [work] is done with
+         * whether it succeeded, says it only read, the error kept before
+         * stays as it was.
          */
-        fun capture(counts: () -> Boolean = { true }, work: () -> Any?): Boolean {
+        fun capture(counts: (Boolean) -> Boolean = { true }, work: () -> Any?): Boolean {
             val outcome: String? = try {
                 work()
                 null
             } catch (error: Exception) {
                 error.toString()
             }
-            if (counts()) synchronized(lock) { stored = outcome }
+            if (counts(outcome == null)) synchronized(lock) { stored = outcome }
             return outcome == null
         }
     }

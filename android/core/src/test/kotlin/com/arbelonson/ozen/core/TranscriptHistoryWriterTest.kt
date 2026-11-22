@@ -862,6 +862,40 @@ class TranscriptHistoryWriterTest {
         assertEquals("ערב", store.load(evening.id)?.title)
     }
 
+    // Taken for gone, a file that couldn't be read just now was named with
+    // nothing written, and History said the name was saved. Its outcome,
+    // none at all, also took the place of a save that had really failed,
+    // and the warning went while the phone was still full.
+    @Test
+    fun `a name given in History while its conversation cannot be read just now is not saved, and is not a save that failed`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.rename-unreadable"))
+        val evening = record(UUID.randomUUID(), 1, true)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(evening)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        writer.saveNow(other)
+        permissions(file, "---------")
+        assertFalse(writer.renameNow(evening.id, "Dinner"), "History says the name wasn't saved")
+        assertNull(writer.lastFailure, "nothing failed to save")
+
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure, "a name the disk refuses is still reported")
+        assertFalse(writer.renameNow(evening.id, "Dinner"))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+
+        assertFalse(writer.saveNow(record(UUID.randomUUID(), 1, true)))
+        permissions(dir, "rwx------")
+        assertFalse(writer.renameNow(evening.id, "Dinner"))
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+
+        permissions(file, "rw-------")
+        assertTrue(writer.renameNow(evening.id, "Dinner"))
+        assertEquals("Dinner", store.load(evening.id)?.title)
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `deleting everything also drops a conversation still waiting for room, and its warning`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
@@ -923,6 +957,45 @@ class TranscriptHistoryWriterTest {
         assertEquals(true, writer.toggleStarNow(early.id, added, keepingRefused = false))
         assertEquals(listOf(false, true), store.load(early.id)?.segments?.map { it.isStarred })
         assertNull(writer.lastFailure)
+    }
+
+    // A star that wrote nothing put its outcome, none at all, in place of a
+    // save that had really failed, and the warning went while the phone was
+    // still full. A word fix that writes nothing leaves it.
+    @Test
+    fun `a star from History that writes nothing leaves a save that failed before reported, and goes once what waited is written`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.history-star-writes-nothing"))
+        val evening = record(UUID.randomUUID(), 1, true)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(evening)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        writer.saveNow(other)
+        val line = evening.segments[0].id
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        permissions(file, "---------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+        permissions(file, "rw-------")
+        assertNull(writer.toggleStarNow(other.id, UUID.randomUUID(), keepingRefused = false))
+        assertEquals(full, writer.lastFailure, "a line that is gone says nothing about room either")
+
+        permissions(dir, "rwx------")
+        assertEquals(true, writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNull(writer.lastFailure)
+        permissions(dir, "r-x------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNotNull(writer.lastFailure, "a star the disk refuses is still reported")
+
+        assertFalse(writer.saveNow(record(UUID.randomUUID(), 1, true)))
+        permissions(dir, "rwx------")
+        permissions(file, "---------")
+        assertNull(writer.toggleStarNow(evening.id, line, keepingRefused = false))
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+        permissions(file, "rw-------")
     }
 
     @Test

@@ -1089,11 +1089,18 @@ class TranscriptHistoryStore(
         return changed
     }
 
-    /** Names a saved conversation, or removes its name with an empty one. */
-    fun rename(id: UUID, title: String) {
+    /**
+     * Names a saved conversation, or removes its name with an empty one.
+     * [read] runs once the file is read, before the name is written. A file
+     * that is there but can't be read just now throws, as in [fixText]:
+     * taken for gone, it was named with nothing written, and History said
+     * the name was saved.
+     */
+    fun rename(id: UUID, title: String, read: () -> Unit = {}) {
         val file = fileFor(id)
         val trimmed = historyTrimmed(title)
-        patchRecordFile(file, writeSearchText = true) { object_ ->
+        patchRecordFile(file, writeSearchText = true, throwIfUnreadable = true) { object_ ->
+            read()
             if (trimmed.isEmpty()) JsonObject(object_ - "title") else JsonObject(object_ + ("title" to JsonPrimitive(trimmed)))
         }
     }
