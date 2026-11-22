@@ -102,17 +102,43 @@ public final class TranscriptHistoryWriter: Sendable {
     public func replaceTextNow(sessionID: UUID, segmentID: UUID, text: String) {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            let patched = failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
-            if var waiting = pendingSaves.records[sessionID],
-               let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
-                waiting.segments[index].text = text
-                pendingSaves.records[sessionID] = waiting
-            } else if !patched {
-                pendingRenames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
-                pendingRenames.texts.append((sessionID, segmentID, text))
-            }
-            Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            Self.write(text, sessionID: sessionID, segmentID: segmentID, store: store, failure: failure, renames: pendingRenames, saves: pendingSaves)
         }
+    }
+
+    /// Fixes a word of a saved line in the words the line has when the
+    /// write happens, newest first: a text of it still waiting for room,
+    /// the waiting version of its conversation, then the file. History's
+    /// sheet keeps the words the line had when it opened, and writing those
+    /// back with the fix replaced newer ones. False, with nothing written,
+    /// when the line is gone or no longer has the word.
+    @discardableResult
+    public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
+        queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
+            let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
+                ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
+            guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return false }
+            let text = WordFixes.apply([fix], to: now)
+            guard text != now else { return false }
+            lastWritten.record = nil
+            Self.write(text, sessionID: sessionID, segmentID: segmentID, store: store, failure: failure, renames: pendingRenames, saves: pendingSaves)
+            return true
+        }
+    }
+
+    /// A line's new text, on the file and on a waiting version of its
+    /// conversation; refused with neither, it waits for room by itself.
+    private static func write(_ text: String, sessionID: UUID, segmentID: UUID, store: TranscriptHistoryStore, failure: FailureBox, renames: PendingRenames, saves: PendingSaves) {
+        let patched = failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
+        if var waiting = saves.records[sessionID],
+           let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
+            waiting.segments[index].text = text
+            saves.records[sessionID] = waiting
+        } else if !patched {
+            renames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
+            renames.texts.append((sessionID, segmentID, text))
+        }
+        catchUp(saves, other: nil, renames, store: store, failure: failure)
     }
 
     /// Renames a voice across every saved conversation, queued behind the

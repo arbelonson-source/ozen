@@ -3016,7 +3016,7 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, toLine: viewModel.segments[0]))
         let fixed = viewModel.segments[0].text
 
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id))
         #expect(viewModel.segments[0].text == fixed)
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
         #expect(!viewModel.settings.vocabulary.contains("Avital"))
@@ -3039,7 +3039,7 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(await eventually { pipeline.segments.first?.isCommitted == false })
         viewModel.persistHistory(ended: false)
 
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id))
         #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw aval at the market")
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avi" })
     }
@@ -3056,9 +3056,9 @@ struct LiveCaptionViewModelDeleteConversationTests {
         let shown = try #require(history.load(id: conversation.id)?.segments.first)
         #expect(shown.text == "I saw aval today")
 
-        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, lineID: shown.id, text: shown.text, sessionID: conversation.id))
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
-        #expect(viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, lineID: shown.id, sessionID: conversation.id))
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, lineID: shown.id, sessionID: conversation.id))
         #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw Avi now")
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
         #expect(!viewModel.settings.vocabulary.contains("Avital"))

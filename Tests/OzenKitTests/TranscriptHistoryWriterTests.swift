@@ -588,6 +588,79 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure != nil)
     }
 
+    @Test("a word fixed in History is fixed in the words the saved line has now, and one the line no longer has writes nothing")
+    func wordFixReadsTheSavedLineAsItIsNow() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.word-fix"))
+        var evening = record(id: UUID(), lines: 1, ended: true)
+        evening.segments[0].text = "I saw aval today"
+        writer.saveNow(evening)
+        let line = evening.segments[0].id
+        writer.replaceTextNow(sessionID: evening.id, segmentID: line, text: "I saw aval at the market")
+
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi at the market")
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: UUID(), with: WordFix(heard: "Avi", written: "Avital")))
+        #expect(!writer.fixTextNow(sessionID: UUID(), segmentID: line, with: WordFix(heard: "Avi", written: "Avital")))
+        #expect(writer.lastFailure == nil, "nothing was written, so the read-only folder refused nothing")
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi at the market")
+    }
+
+    @Test("a word fixed in History while the line's newer text waits for room fixes that text, not the older file")
+    func wordFixReadsTheWaitingText() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.word-fix-waiting-text"))
+        var evening = record(id: UUID(), lines: 1, ended: true)
+        evening.segments[0].text = "I saw aval today"
+        writer.saveNow(evening)
+        let line = evening.segments[0].id
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.replaceTextNow(sessionID: evening.id, segmentID: line, text: "I saw Dan today")
+        #expect(writer.lastFailure != nil)
+
+        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Dana today")
+        #expect(writer.lastFailure == nil)
+    }
+
+    @Test("a word fixed in History in a conversation still waiting for room is fixed in the waiting version, not the older file")
+    func wordFixReadsTheWaitingConversation() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.word-fix-waiting-conversation"))
+        let early = record(id: UUID(), lines: 1, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.segments[0].text = "I saw aval today"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")))
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: early.id)?.segments.first?.text == "I saw Avi today")
+        #expect(writer.lastFailure == nil)
+    }
+
     @Test("once a waiting conversation is written, the warning goes even if the one on screen hasn't changed")
     func warningClearsWhenRefusedWritten() throws {
         let (store, dir) = makeStore()

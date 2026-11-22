@@ -302,7 +302,7 @@ struct HistoryDetailView: View {
         }
         .sheet(item: $fixingLine) { line in
             FixWordSheet(text: line.text, languageCode: record?.languageCode(orCurrent: viewModel.settings.languageCode) ?? viewModel.settings.languageCode, fixes: viewModel.wordFixes, notSaved: tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.")) { fix, always in
-                let changed = viewModel.applyWordFix(fix, always: always, lineID: line.id, text: line.text, sessionID: sessionID)
+                let changed = viewModel.applyWordFix(fix, always: always, lineID: line.id, sessionID: sessionID)
                 onHistoryChanged()
                 Task { await refresh() }
                 return changed

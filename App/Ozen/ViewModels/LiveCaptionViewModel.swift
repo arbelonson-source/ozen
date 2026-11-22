@@ -2209,28 +2209,30 @@ public final class LiveCaptionViewModel {
     /// tell VoiceOver it was.
     @discardableResult
     public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) -> Bool {
-        applyWordFix(fix, always: always, lineID: segment.id, text: segment.text, sessionID: nil)
+        applyWordFix(fix, always: always, lineID: segment.id, sessionID: nil)
     }
 
+    /// History's sheet keeps the words the line had when it opened, so the
+    /// fix goes to the line as it is now: on the caption screen, where a
+    /// line being heard again is left alone, or else in its saved
+    /// conversation. Only a fix that changed the line is kept, as on
+    /// Android: otherwise the sheet says the fix was not saved.
     @discardableResult
-    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) -> Bool {
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, sessionID: UUID?) -> Bool {
         guard let fixed = WordFixes.normalized([fix]).first else { return false }
-        let before = pipeline.segments.last { $0.id == lineID }?.text
-        let live = pipeline.correctWord(inSegment: lineID, with: fixed)
-        let text = live ?? WordFixes.apply([fixed], to: current)
-        if let live, live != before { correctedLine(lineID, text: live) }
-        if let sessionID, text != current {
-            historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
+        defer { refreshSavingTrouble() }
+        if pipeline.segments.contains(where: { $0.id == lineID }) {
+            guard let text = pipeline.correctWord(inSegment: lineID, with: fixed) else { return false }
+            correctedLine(lineID, text: text)
+            if let sessionID {
+                historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
+            }
+        } else {
+            guard let sessionID, historyWriter.fixTextNow(sessionID: sessionID, segmentID: lineID, with: fixed) else { return false }
         }
-        refreshSavingTrouble()
-        let changed = (live.map { $0 != before } ?? false) || (sessionID != nil && text != current)
-        // Kept only with the line it fixed, as on Android: the sheet now
-        // says the fix was not saved, and it must not be kept for next time.
-        if changed {
-            addVocabularyTerm(fixed.written)
-            if always { addWordFix(fixed) }
-        }
-        return changed
+        addVocabularyTerm(fixed.written)
+        if always { addWordFix(fixed) }
+        return true
     }
 
     private func correctedLine(_ id: UUID, text: String) {

@@ -2419,13 +2419,15 @@ public final class CaptionPipeline {
     /// Fixes one word of a finished line by hand. The line is read as it is
     /// now, the fix is kept for it when the engine rewrites the line later,
     /// and the keyword highlight follows the new text. Nil when the line is
-    /// gone or still being heard.
+    /// gone, still being heard, or no longer has the word: History's sheet
+    /// keeps the words the line had when it opened, and a fix that changed
+    /// nothing was taken as done and kept for next time.
     @discardableResult
     public func correctWord(inSegment id: UUID, with fix: WordFix) -> String? {
         guard let index = segments.lastIndex(where: { $0.id == id }), segments[index].isCommitted else { return nil }
         let current = segments[index].text
         let text = WordFixes.apply([fix], to: current)
-        guard text != current else { return current }
+        guard text != current else { return nil }
         handFixes[id] = WordFixes.adding(fix, to: handFixes[id] ?? [])
         segments[index].text = text
         if keywordMatcher.matches(in: text).isEmpty {
