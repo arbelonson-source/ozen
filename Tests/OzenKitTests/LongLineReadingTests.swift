@@ -56,11 +56,16 @@ enum LineCorpus {
     }
 }
 
+/// The checks over every line make thousands of comparisons in a row, so
+/// each lets other tests run between lines. Straight through, they held
+/// the few threads all tests share (four on CI) for seconds just as every
+/// test starts, and tests waiting on a clock ran out of time.
 @Suite("Reading only what a word changes")
 struct LongLineReadingTests {
     @Test("the quiet-room check reads the same words, one at a time, as normalizing the whole line")
-    func normalizedWordsOneAtATime() {
+    func normalizedWordsOneAtATime() async {
         for text in LineCorpus.all {
+            await Task.yield()
             let whole = WhisperResultFilter.normalize(text).split(separator: " ").map(String.init)
             var lazy = WhisperResultFilter.NormalizedWords(text)
             var read: [String] = []
@@ -73,7 +78,7 @@ struct LongLineReadingTests {
     }
 
     @Test("a word fix the line can't take gives the line back exactly as reading every word does")
-    func wordFixesOnEveryPass() throws {
+    func wordFixesOnEveryPass() async throws {
         let table = try JSONSerialization.jsonObject(with: Data(contentsOf: LineCorpus.fixture("word-fixes.json"))) as! [String: Any]
         let cases = table["cases"] as! [[String: Any]]
         let lists = cases.map { ($0["fixes"] as! [[String]]).map { WordFix(heard: $0[0], written: $0[1]) } }
@@ -86,6 +91,7 @@ struct LongLineReadingTests {
         for (index, fixes) in lists.enumerated() {
             let own = cases.indices.contains(index) ? LineCorpus.passes(of: cases[index]["text"] as! String) : []
             for line in own + lines {
+                await Task.yield()
                 let quick = WordFixes.apply(fixes, to: line)
                 let slow = WordFixes.applyReadingEveryWord(fixes, to: line)
                 #expect(quick.utf8.elementsEqual(slow.utf8), "\(fixes) on \(line.debugDescription): \(quick.debugDescription) against \(slow.debugDescription)")
@@ -96,11 +102,12 @@ struct LongLineReadingTests {
     }
 
     @Test("the stabilizer's held words come out exactly as when every pass was split anew")
-    func liveAgreementOnEveryPass() {
+    func liveAgreementOnEveryPass() async {
         var sequences = LineCorpus.all.map(LineCorpus.passes)
         var generator = SeededWords(seed: 7)
         for _ in 0..<300 { sequences.append(generator.flickeringLine()) }
         for passes in sequences {
+            await Task.yield()
             var agreement = LiveAgreement()
             var reference = ReferenceAgreement()
             for pass in passes {
@@ -141,13 +148,14 @@ struct LongLineReadingTests {
     }
 
     @Test("the keyword check that keeps the words it read finds exactly what reading every word again finds")
-    func keywordReaderOnEveryPass() throws {
+    func keywordReaderOnEveryPass() async throws {
         let table = try JSONDecoder().decode(KeywordTable.self, from: Data(contentsOf: LineCorpus.fixture("keyword-matching.json")))
         let reader = KeywordAlertReader()
         var compared = 0
         for item in table.cases {
             let matcher = KeywordAlertMatcher(alerts: item.alerts.map { KeywordAlert(phrase: $0.phrase, isEnabled: $0.isEnabled ?? true) }, captionLanguage: item.language ?? "")
             for line in Self.keywordPasses(of: item.text) {
+                await Task.yield()
                 #expect(Self.same(reader.matches(inLiveText: line, with: matcher), matcher.matches(inLiveText: line)), "live \(item.alerts.map(\.phrase)) on \(line.debugDescription)")
                 #expect(Self.same(reader.matches(in: line, with: matcher), matcher.matches(in: line)), "\(item.alerts.map(\.phrase)) on \(line.debugDescription)")
                 compared += 2
@@ -156,6 +164,7 @@ struct LongLineReadingTests {
         let saved = ["סבתא", "דנה", "בן ציון", "שירלי", "Anne", "Ali", "老师", "Sofia", "José"].map { KeywordAlert(phrase: $0) }
         let matchers = ["he", "en", "fr", "zh", "ar", ""].map { KeywordAlertMatcher(alerts: saved, captionLanguage: $0) }
         for line in LineCorpus.tricky + LineCorpus.shared.enumerated().filter({ $0.offset % 80 == 0 }).map(\.element) {
+            await Task.yield()
             for matcher in matchers {
                 #expect(Self.same(reader.matches(inLiveText: line, with: matcher), matcher.matches(inLiveText: line)), "live on \(line.debugDescription)")
                 #expect(Self.same(reader.matches(in: line, with: matcher), matcher.matches(in: line)), "on \(line.debugDescription)")

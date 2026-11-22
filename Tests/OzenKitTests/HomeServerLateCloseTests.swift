@@ -88,7 +88,11 @@ private final class Sockets: HomeServerConnecting, @unchecked Sendable {
     }
 }
 
-private func until(_ timeout: Double = 5, _ condition: @escaping () async -> Bool) async -> Bool {
+/// Each condition holds within milliseconds, and the wait returns as soon
+/// as it does. The ceiling is generous because every test starts at once:
+/// on CI's four threads the engine got its first turn after 5 to 7.5 s,
+/// and a 5 s wait failed there with nothing wrong.
+private func until(_ timeout: Double = 30, _ condition: @escaping () async -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + .seconds(timeout)
     while ContinuousClock.now < deadline {
         if await condition() { return true }
