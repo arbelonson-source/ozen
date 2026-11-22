@@ -801,8 +801,8 @@ public struct TranscriptHistoryStore: Sendable {
     /// As `load(id:)`, but a file that is there and can't be read right now
     /// (a read error, or iOS keeping it locked) throws instead of reading as
     /// no conversation: History's fix of a word then says to try again, not
-    /// that the line is gone. Nil when there is no such file, or it is
-    /// damaged for good.
+    /// that the line is gone, and the conversation open there stays on
+    /// screen. Nil when there is no such file, or it is damaged for good.
     public func loadThrowing(id: UUID) throws -> TranscriptSessionRecord? {
         let data: Data
         do {

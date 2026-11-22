@@ -856,6 +856,23 @@ class TranscriptHistoryStore(
 
     fun load(id: UUID): TranscriptSessionRecord? = decodeRecord(fileFor(id))
 
+    /**
+     * As [load], but a file that is there and can't be read right now (a
+     * read error) throws instead of reading as no conversation: the
+     * conversation open in History then stays on screen. Null when there is
+     * no such file, or it is damaged for good. The iPhone's store does the
+     * same.
+     */
+    @Throws(IOException::class)
+    fun loadThrowing(id: UUID): TranscriptSessionRecord? {
+        val data = try {
+            Files.readAllBytes(fileFor(id).toPath())
+        } catch (_: NoSuchFileException) {
+            return null
+        }
+        return lenientHistory { TranscriptSessionRecord.fromJson(strictUtf8(data)) }
+    }
+
     /** The conversation files in the directory, without reading them. */
     private fun recordFiles(): List<File> =
         directory.listFiles()?.filter { it.extension == "json" } ?: emptyList()

@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
@@ -167,7 +168,15 @@ class TranscriptHistoryWriter(
      * History shows this: read from the file alone, a word fixed while the
      * phone was full kept its old words there though the fix was called
      * done, and the person fixed the same word again.
+     *
+     * Throws when there is no waiting version and the file is there but
+     * can't be read just now (see [TranscriptHistoryStore.loadThrowing]);
+     * null when there is no such conversation, or its file is damaged for
+     * good. Read as gone, the conversation open in History turned into
+     * "Conversation not found" after a star or a name it refused there, as
+     * on the iPhone.
      */
+    @Throws(IOException::class)
     fun loadNow(id: UUID): TranscriptSessionRecord? = queue.sync {
         val waiting = pendingSaves.records[id]?.let {
             try {
@@ -176,7 +185,7 @@ class TranscriptHistoryWriter(
                 it
             }
         }
-        val record = waiting ?: store.load(id) ?: return@sync null
+        val record = waiting ?: store.loadThrowing(id) ?: return@sync null
         val texts = pendingRenames.texts.filter { it.sessionID == id }
         record.copy(segments = record.segments.map { line -> texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line })
     }

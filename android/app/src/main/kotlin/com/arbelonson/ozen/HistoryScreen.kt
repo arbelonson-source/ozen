@@ -153,6 +153,12 @@ interface SavedConversations {
     /** The conversations where every word of [query] was said, each previewed by the line that matched. */
     fun search(query: String): List<TranscriptSessionSummary>
 
+    /**
+     * The conversation as History shows it, or null when it is gone. Throws
+     * when its file is there but can't be read just now: the conversation
+     * open in History then stays as it is shown.
+     */
+    @Throws(IOException::class)
     fun load(id: UUID): TranscriptSessionRecord?
 
     /** Every starred line of every saved conversation, newest conversation first. */
@@ -692,11 +698,20 @@ internal fun ConversationScreen(
         if (star == null) jumpedToStar = false
         loaded = now
     }
+    // Null when the file is there but can't be read just now, and the screen
+    // keeps what it shows. Read as no conversation, the open one turned into
+    // "Conversation not found" after a star or a name it refused, and there
+    // was nothing left to try again from without leaving it.
+    fun readAgain(): OpenConversation? = try {
+        opened(conversations.load(id), query, marksUncertain, languageCode)
+    } catch (_: IOException) {
+        null
+    }
     val context = LocalContext.current
     LaunchedEffect(id, marksUncertain) {
         var jumped = false
         while (true) {
-            val now = withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+            val now = withContext(Dispatchers.IO) { readAgain() } ?: loaded ?: opened(null, query, marksUncertain, languageCode)
             show(now)
             if (!jumped && now.matches.isNotEmpty()) {
                 jumped = true
@@ -783,7 +798,7 @@ internal fun ConversationScreen(
                             conversations.fixLine(id, line.id, heard, written).also { result ->
                                 if (result == WordFixResult.Saved) {
                                     conversations.saveWordFix(heard, written, everyTime)
-                                    loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
+                                    readAgain()?.let { loaded = it }
                                 }
                             }
                         }
@@ -881,7 +896,7 @@ internal fun ConversationScreen(
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
-                                        show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
+                                        withContext(Dispatchers.IO) { readAgain() }?.let { show(it) }
                                     }
                                 }
                             }
@@ -915,12 +930,10 @@ internal fun ConversationScreen(
                         naming = null
                         scope.launch {
                             var kept = true
-                            show(
-                                withContext(Dispatchers.IO) {
-                                    kept = conversations.rename(id, draft)
-                                    opened(conversations.load(id), query, marksUncertain, languageCode)
-                                },
-                            )
+                            withContext(Dispatchers.IO) {
+                                kept = conversations.rename(id, draft)
+                                readAgain()
+                            }?.let { show(it) }
                             if (!kept) nameRefused = true
                         }
                     },
@@ -1264,7 +1277,13 @@ private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksU
 
 /** Writes every saved conversation, oldest first, loading each one only when its turn comes. False when none could be written. */
 internal fun writeAllConversations(conversations: SavedConversations, marksUncertain: Boolean, languageCode: String, out: Appendable): Boolean {
-    val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull { conversations.load(it.id) }
+    val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull {
+        try {
+            conversations.load(it.id)
+        } catch (_: IOException) {
+            null
+        }
+    }
     return TranscriptHistoryStore.exportAll(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode), out, languageCode)
 }
 

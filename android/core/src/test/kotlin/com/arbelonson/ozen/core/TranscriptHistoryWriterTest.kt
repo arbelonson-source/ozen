@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
@@ -8,6 +9,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -630,6 +632,34 @@ class TranscriptHistoryWriterTest {
         assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("Cohen", "Dana Cohen") })
         assertNull(writer.lastFailure, "what waited is written, so there is room")
         assertEquals(listOf("I saw Avi", "and Dana Cohen"), store.load(old.id)?.segments?.map { it.text })
+    }
+
+    // Read as no conversation, the conversation open in History turned into
+    // "Conversation not found" after a star or a name it refused there, and
+    // there was nothing left to try again from.
+    @Test
+    fun `History reads a conversation whose file cannot be read just now as unreadable, not as gone, and still shows its version waiting for room`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.load-unreadable"))
+        val early = record(UUID.randomUUID(), 1, false)
+        writer.saveNow(early)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(file, "---------")
+        assertFailsWith<IOException> { writer.loadNow(early.id) }
+        assertNull(writer.loadNow(UUID.randomUUID()), "no file at all is a conversation that is gone")
+
+        val later = early.copy(segments = early.segments + record(early.id, 1, true).segments, endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        assertNotNull(writer.lastFailure)
+        assertEquals(later.segments, writer.loadNow(early.id)?.segments, "the version waiting for room is shown as before")
+
+        permissions(dir, "rwx------")
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, false))
+        assertEquals(later.segments, writer.loadNow(early.id)?.segments)
+        writer.deleteNow(early.id)
+        assertNull(writer.loadNow(early.id), "a deleted conversation is gone")
     }
 
     // History's dialog says a fix that waits for room is done. Read from the

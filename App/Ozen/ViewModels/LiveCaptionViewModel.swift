@@ -2760,10 +2760,12 @@ public final class LiveCaptionViewModel {
 
     /// Reads a saved conversation as History shows it, from any thread: as
     /// it will be saved, with what still waits for room on a full phone
-    /// (see `TranscriptHistoryWriter.loadNow(id:)`).
-    public var savedConversation: @Sendable (UUID) -> TranscriptSessionRecord? {
+    /// (see `TranscriptHistoryWriter.loadNow(id:)`). Throws when its file is
+    /// there but can't be read just now, so History keeps what it shows;
+    /// nil when the conversation is gone.
+    public var savedConversation: @Sendable (UUID) throws -> TranscriptSessionRecord? {
         let writer = historyWriter
-        return { writer.loadNow(id: $0) }
+        return { try writer.loadNow(id: $0) }
     }
 
     /// Stars or unstars a line of a saved conversation. A line still on

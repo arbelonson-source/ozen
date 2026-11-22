@@ -1405,6 +1405,36 @@ class HistoryScreenDeviceTest {
         assertTrue(compose.onAllNodesWithContentDescription("Marked as important", substring = true).fetchSemanticsNodes().isEmpty())
     }
 
+    // Read again after the refused star, a conversation whose file couldn't
+    // be read just now came back as none: "Conversation not found" took the
+    // place of the open conversation, and the star couldn't be tried again
+    // without leaving it.
+    @Test
+    fun aConversationThatCannotBeReadJustNowStaysOnScreenAndItsStarCanBeTriedAgain() {
+        val id = seed("Unreadable star test opening line" to null, "Unreadable star test the pharmacy closes at nine" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Unreadable star test opening line")
+        compose.onNodeWithText("Unreadable star test opening line", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("Unreadable star test the pharmacy closes at nine") }
+        val file = File(app.filesDir, CaptionSession.HISTORY_FOLDER).listFiles()!!.single { it.name.equals("$id.json", ignoreCase = true) }
+        assertTrue(file.setReadable(false, false))
+        try {
+            compose.onNodeWithContentDescription("Unreadable star test the pharmacy closes at nine", substring = true).performTouchInput { longClick() }
+            compose.onNodeWithText("Mark as important").performClick()
+            waitFor("The star wasn’t changed")
+            compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithText("Conversation not found").assertDoesNotExist()
+            assertTrue(shownLine("Unreadable star test the pharmacy closes at nine"))
+        } finally {
+            file.setReadable(true)
+        }
+        compose.onNodeWithContentDescription("Unreadable star test the pharmacy closes at nine", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Mark as important").performClick()
+        compose.waitUntil(5_000) { store.load(id)!!.segments.map { it.isStarred } == listOf(false, true) }
+        compose.waitUntil(5_000) { shownLine("Marked as important. Unreadable star test the pharmacy closes at nine") }
+    }
+
     @Test
     fun aStarStarredLinesCannotTakeOffSaysSoAndTheLineComesBack() {
         val id = starredConversation("Starred list test the dentist at four", System.currentTimeMillis() / 1_000.0 - 60)

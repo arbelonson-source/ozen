@@ -363,14 +363,25 @@ struct HistoryDetailView: View {
     /// Re-reads this conversation's saved state, leaving scroll position,
     /// the current search-match index, and any in-progress rename alone --
     /// only `load()` (once, at open) sets those.
+    ///
+    /// A file that is there but can't be read just now (a read error, or
+    /// iOS keeping it locked) leaves everything as shown. Read as no
+    /// conversation, the open one turned into "Conversation not found" right
+    /// after the fix sheet said to try again in a moment, and there was
+    /// nothing left to try again from without leaving the screen.
     private func refresh() async {
         let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
-        let loaded = await Task.detached(priority: .utility) {
-            Loaded(record: read(id), query: query, languageCode: language)
+        let reread = await Task.detached(priority: .utility) { () -> Loaded? in
+            do {
+                return try Loaded(record: read(id), query: query, languageCode: language)
+            } catch {
+                return nil
+            }
         }.value
+        guard let loaded = reread else { return }
         record = loaded.record
         stats = loaded.stats
         if let index = Self.position(of: currentMatch, from: matches, in: loaded.matches) {
@@ -435,7 +446,7 @@ struct HistoryDetailView: View {
         let query = searchQuery
         let language = viewModel.settings.languageCode
         let loaded = await Task.detached(priority: .userInitiated) {
-            Loaded(record: read(id), query: query, languageCode: language)
+            Loaded(record: try? read(id), query: query, languageCode: language)
         }.value
         record = loaded.record
         stats = loaded.stats
