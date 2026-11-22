@@ -88,8 +88,17 @@ class CaptionPipeline(
             onPhaseChange?.invoke(value)
         }
 
-    var segments: List<TranscriptSegment> = emptyList()
-        private set
+    /**
+     * The lines on screen, oldest first. Each change makes a new list, so
+     * one already handed out (to the screen, a save, the screen reader)
+     * never changes under its reader, and the screen sees a new value at
+     * every word. The new list shares all but one block of 64 lines with
+     * the old one: copying every line at every word left about 40 KB of
+     * garbage per word at 10,000 lines, several times over, and the
+     * garbage collector of a cheap phone kept running while people talked.
+     */
+    val segments: List<TranscriptSegment> get() = shownLines
+    private var shownLines = ChunkedList.empty<TranscriptSegment>()
     var availableInputs: List<AudioInputDescriptor> = emptyList()
         private set
     var selectedInputUID: String? = null
@@ -1426,7 +1435,7 @@ class CaptionPipeline(
     }
 
     fun clearTranscript() {
-        segments = emptyList()
+        shownLines = ChunkedList.empty()
         try {
             // The engine keeps sending the sentence being said, each time with
             // all of its words so far; to a fresh stabilizer it looked new, and
@@ -2453,7 +2462,7 @@ class CaptionPipeline(
                 // after the tap, so the next speaker's line leaves it out too.
                 var carried = cleared.drop(clearedWordsUsed)
                 if (rest == null) {
-                    val shown = stabilizer.segments.lastOrNull { it.id == incoming.utteranceID }
+                    val shown = stabilizer.line(incoming.utteranceID)
                     if (shown != null) carried = carried + comparableWords(shown.text)
                 }
                 if (carried.isNotEmpty()) clearedTurnCarry = ClearedTurnCarry(incoming.timestamp, carried)
@@ -2489,7 +2498,7 @@ class CaptionPipeline(
         // (empty) row on screen; wait for text before creating it.
         // Searched from the end, where the line being written is: a phone
         // left listening for days holds thousands of lines.
-        val isKnown = stabilizer.segments.indexOfLast { it.id == token.utteranceID } >= 0
+        val isKnown = stabilizer.line(token.utteranceID) != null
         if (!isKnown && isBlank(token.text)) {
             return
         }
@@ -2517,7 +2526,7 @@ class CaptionPipeline(
             }
         }
         enriched = enriched.copy(scoredBy = settingsInUse?.let { CaptionConfidence.Scorer(it.engine, it.whisperModelVariant) })
-        val previously = stabilizer.segments.lastOrNull { it.id == token.utteranceID }
+        val previously = stabilizer.line(token.utteranceID)
         val segment = stabilizer.ingest(enriched)
         noteFinished(segment, previously)
         upsert(segment)
@@ -2567,10 +2576,10 @@ class CaptionPipeline(
                 // the first embedding loads the model and can take many seconds,
                 // and asking afterwards gave the voice to whichever line had
                 // started meanwhile, leaving the speaker's own line unnamed.
-                val heardDuring = stabilizer.segments.lastOrNull { !it.isCommitted }?.id
+                val heardDuring = stabilizer.lastOpenLine?.id
                 // With no line open, the newest line that exists now: lines after
                 // it began after this audio was heard.
-                val lastBefore = stabilizer.segments.lastOrNull()?.id
+                val lastBefore = stabilizer.lastLine?.id
                 val computed = withContext(embedderContext) {
                     embedder.embed(window, SAMPLE_RATE)
                 }
@@ -2676,9 +2685,7 @@ class CaptionPipeline(
     }
 
     private fun setSegment(index: Int, segment: TranscriptSegment) {
-        val updated = segments.toMutableList()
-        updated[index] = segment
-        segments = updated
+        shownLines = shownLines.replacing(index, segment)
     }
 
     private fun withHandFixes(segment: TranscriptSegment): TranscriptSegment {
@@ -2698,7 +2705,7 @@ class CaptionPipeline(
             }
             setSegment(index, merged)
         } else {
-            segments = segments + segment
+            shownLines = shownLines.adding(segment)
         }
         onCaptionsChanged?.invoke()
     }
@@ -2739,7 +2746,7 @@ class CaptionPipeline(
      * caller already shows stays.
      */
     fun seedLinesForScreenshots(lines: List<TranscriptSegment>) {
-        segments = lines
+        shownLines = ChunkedList.of(lines)
         committedLineCount = lines.count { it.isCommitted }
     }
 
@@ -3238,7 +3245,7 @@ class CaptionPipeline(
     private fun canSwitchBack(answeredChecks: Int): Boolean {
         if (isBetweenSentences) return true
         if (answeredChecks < switchBackAfterAnsweredChecks) return false
-        val lineOpen = stabilizer.segments.lastOrNull()?.let { !it.isCommitted } ?: false
+        val lineOpen = stabilizer.lastLine?.let { !it.isCommitted } ?: false
         val breathing = lastSpeechAt?.let { now() - it >= switchBackBreathSeconds } ?: true
         return !lineOpen && breathing
     }
@@ -3261,7 +3268,7 @@ class CaptionPipeline(
 
     private val isBetweenSentences: Boolean
         get() {
-            if (stabilizer.segments.lastOrNull()?.let { !it.isCommitted } == true) return false
+            if (stabilizer.lastLine?.let { !it.isCommitted } == true) return false
             val speechAt = lastSpeechAt
             if (speechAt != null && now() - speechAt < homeServerSwitchBackQuietSeconds) return false
             val lastTokenAt = statsData.lastTokenAt ?: return true
@@ -4301,7 +4308,7 @@ class CaptionPipeline(
         if (replayedLines.isEmpty()) return
         val gone = replayedLines
         replayedLines = emptySet()
-        segments = segments.filter { it.id !in gone }
+        shownLines = ChunkedList.of(segments.filter { it.id !in gone })
         onCaptionsChanged?.invoke()
     }
 

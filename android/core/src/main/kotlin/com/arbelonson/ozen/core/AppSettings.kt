@@ -856,8 +856,8 @@ class SettingsStore(private val file: File) {
      * words, which take real effort to make again.
      *
      * A file that is there but can't be read right now (a read error) isn't
-     * damaged and stays where it is: the defaults only stand in for it, and
-     * [save] never writes them over it.
+     * damaged and stays where it is: [unreadableStandIn] only stands in for
+     * it, and [save] never writes that over it.
      */
     @Synchronized
     fun load(): AppSettings {
@@ -865,14 +865,28 @@ class SettingsStore(private val file: File) {
         val data = when (val read = read()) {
             FileRead.Missing -> return AppSettings.default
             is FileRead.Unreadable -> {
-                standIn = settingsJson(AppSettings.default)
-                return AppSettings.default
+                standIn = settingsJson(unreadableStandIn())
+                return unreadableStandIn()
             }
             is FileRead.Bytes -> read.data
         }
         decoded(data)?.let { return it }
         setAside()
         return AppSettings.default
+    }
+
+    /**
+     * What stands in for a file that is there but can't be read: the
+     * defaults, as for someone who has used the app (the file being there
+     * says so). The first-run guide doesn't take the place of the captions,
+     * and the caption screen makes no offer that rests on the defaults, such
+     * as the alert for a name the saved settings may well have. Saves
+     * compare against this stand-in, so neither answer reaches the file
+     * unless the person changes it. The iPhone's store does the same.
+     */
+    private fun unreadableStandIn(): AppSettings = AppSettings.default.apply {
+        hasCompletedOnboarding = true
+        nameAlertOfferDismissed = true
     }
 
     /**
@@ -889,11 +903,11 @@ class SettingsStore(private val file: File) {
      * walkthrough, say) fail and are forgotten on relaunch.
      *
      * After a [load] that couldn't read the file, [settings] began as the
-     * defaults, not as what the file holds, so the file is read again
+     * stand-in, not as what the file holds, so the file is read again
      * first. Still unreadable: nothing is written and this throws
      * [SettingsFileUnreadableException]; the caller keeps its settings in
      * memory and the next save tries again. Readable again: what changed
-     * in [settings] since the defaults (or since the last such save) is
+     * in [settings] since the stand-in (or since the last such save) is
      * added to the file's own settings, so neither the saved voices, names
      * and alerts nor this session's changes are lost (see
      * [mergedSettingsJson]). The caller still holds only its own settings

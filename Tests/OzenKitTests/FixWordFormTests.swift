@@ -17,62 +17,86 @@ struct FixWordFormTests {
 
     @Test("tapped words build a run of up to four neighbours, as on Android")
     func tappingBuildsARun() {
-        let words = ["one", "two", "three", "four", "five", "six"]
+        let words = "one two three four five six"
         var at: ClosedRange<Int>? = nil
-        at = FixWordForm.tapped(at, index: 2, words: words)
+        at = FixWordForm.tapped(at, index: 2, line: words)
         #expect(at == 2...2)
-        at = FixWordForm.tapped(at, index: 3, words: words)
+        at = FixWordForm.tapped(at, index: 3, line: words)
         #expect(at == 2...3)
-        at = FixWordForm.tapped(at, index: 1, words: words)
+        at = FixWordForm.tapped(at, index: 1, line: words)
         #expect(at == 1...3)
-        at = FixWordForm.tapped(at, index: 0, words: words)
+        at = FixWordForm.tapped(at, index: 0, line: words)
         #expect(at == 0...3)
-        #expect(FixWordForm.tapped(at, index: 4, words: words) == 4...4)
-        #expect(FixWordForm.tapped(2...2, index: 5, words: words) == 5...5)
+        #expect(FixWordForm.tapped(at, index: 4, line: words) == 4...4)
+        #expect(FixWordForm.tapped(2...2, index: 5, line: words) == 5...5)
     }
 
     @Test("a picked word tapped again is let go: the only one, or the end of a run joined by a near-miss")
     func tappingAgainLetsGo() {
-        let words = ["one", "two", "three", "four"]
-        #expect(FixWordForm.tapped(2...2, index: 2, words: words) == nil)
-        #expect(FixWordForm.tapped(1...3, index: 1, words: words) == 2...3)
-        #expect(FixWordForm.tapped(1...3, index: 3, words: words) == 1...2)
-        #expect(FixWordForm.tapped(0...3, index: 2, words: words) == 0...1)
+        let words = "one two three four"
+        #expect(FixWordForm.tapped(2...2, index: 2, line: words) == nil)
+        #expect(FixWordForm.tapped(1...3, index: 1, line: words) == 2...3)
+        #expect(FixWordForm.tapped(1...3, index: 3, line: words) == 1...2)
+        #expect(FixWordForm.tapped(0...3, index: 2, line: words) == 0...1)
     }
 
     @Test("a run never reaches across punctuation")
     func notAcrossPunctuation() {
-        let words = ["bat,", "sheva", "ok"]
-        #expect(FixWordForm.tapped(0...0, index: 1, words: words) == 1...1)
-        #expect(FixWordForm.tapped(1...1, index: 2, words: words) == 1...2)
+        let words = "bat, sheva ok"
+        #expect(FixWordForm.tapped(0...0, index: 1, line: words) == 1...1)
+        #expect(FixWordForm.tapped(1...1, index: 2, line: words) == 1...2)
     }
 
     @Test("a run reaches past a name's ending geresh, and the picked phrase can be saved")
     func runAfterAnEndingGeresh() {
         for geresh in ["\u{05F3}", "'", "\u{2019}"] {
             let shown = "ראיתי את ג\(geresh)ורג\(geresh) בוש אתמול"
-            let words = shown.split(separator: " ").map(String.init)
-            #expect(FixWordForm.tapped(2...2, index: 3, words: words) == 2...3, "\(shown)")
-            #expect(FixWordForm.tapped(3...3, index: 2, words: words) == 2...3, "\(shown)")
+            #expect(FixWordForm.tapped(2...2, index: 3, line: shown) == 2...3, "\(shown)")
+            #expect(FixWordForm.tapped(3...3, index: 2, line: shown) == 2...3, "\(shown)")
             #expect(FixWordForm.changes(line: shown, heard: "ג\(geresh)ורג\(geresh) בוש", written: "George Bush"), "\(shown)")
         }
-        #expect(FixWordForm.tapped(2...2, index: 3, words: ["ראיתי", "את", "ג׳ורג׳,", "בוש"]) == 3...3)
+        #expect(FixWordForm.tapped(2...2, index: 3, line: "ראיתי את ג׳ורג׳, בוש") == 3...3)
     }
 
     @Test("a run stops at the closing quote of a quoted Hebrew word, and a quoted name keeps its closing quote when fixed")
     func runAndQuotes() {
         let quoted = "אמרתי ‘שלום’ לכולם"
-        let words = quoted.split(separator: " ").map(String.init)
-        #expect(FixWordForm.tapped(1...1, index: 2, words: words) == 2...2)
-        #expect(FixWordForm.tapped(2...2, index: 1, words: words) == 1...1)
+        #expect(FixWordForm.tapped(1...1, index: 2, line: quoted) == 2...2)
+        #expect(FixWordForm.tapped(2...2, index: 1, line: quoted) == 1...1)
         #expect(WordFixes.apply([WordFix(heard: "שלום", written: "Shalom")], to: quoted) == "אמרתי ‘Shalom’ לכולם")
         let name = "ראיתי את ‘ג׳ורג׳ בוש’ אתמול"
-        let tiles = name.split(separator: " ").map(String.init)
-        #expect(FixWordForm.tapped(2...2, index: 3, words: tiles) == 2...3)
-        #expect(FixWordForm.tapped(3...3, index: 4, words: tiles) == 4...4)
-        #expect(FixWordForm.tapped(4...4, index: 3, words: tiles) == 3...3)
+        #expect(FixWordForm.tapped(2...2, index: 3, line: name) == 2...3)
+        #expect(FixWordForm.tapped(3...3, index: 4, line: name) == 4...4)
+        #expect(FixWordForm.tapped(4...4, index: 3, line: name) == 3...3)
         #expect(FixWordForm.changes(line: name, heard: "ג׳ורג׳ בוש", written: "George Bush"))
         #expect(WordFixes.apply([WordFix(heard: "ג׳ורג׳ בוש", written: "George Bush")], to: name) == "ראיתי את ‘George Bush’ אתמול")
+    }
+
+    @Test("a picked name keeps its ending geresh, and saving it fixes the whole name, as on Android")
+    func pickedNameKeepsItsGeresh() {
+        let shown = "שלום ג׳ורג׳, מה נשמע?"
+        let heard = FixWordForm.pickedText(1...1, words: WordFixes.wordsOf(shown))
+        #expect(heard == "ג׳ורג׳")
+        #expect(FixWordForm.changes(line: shown, heard: heard, written: "George"))
+        #expect(FixWordForm.note(line: shown, heard: heard, written: "") == .nowWrite)
+        #expect(WordFixes.apply([WordFix(heard: heard, written: "George")], to: shown) == "שלום George, מה נשמע?")
+        #expect(WordFixes.apply([WordFix(heard: heard, written: "George")], to: "ג'ורג' בא") == "George בא")
+        #expect(FixWordForm.pickedText(0...0, words: WordFixes.wordsOf("ג'ורג'. בא")) == "ג'ורג'")
+        #expect(FixWordForm.pickedText(1...1, words: WordFixes.wordsOf("שירתתי בצה״ל.")) == "בצה״ל")
+        #expect(FixWordForm.pickedText(2...3, words: WordFixes.wordsOf("ראיתי את ג׳ורג׳ בוש")) == "ג׳ורג׳ בוש")
+    }
+
+    @Test("a word followed by a comma or a full stop is picked without it, and a run still stops there")
+    func pickedWordLeavesOutPunctuation() {
+        let shown = "I met Dana Cohen, then Cohen."
+        let words = WordFixes.wordsOf(shown)
+        #expect(words == ["I", "met", "Dana", "Cohen", "then", "Cohen"])
+        let picked = FixWordForm.tapped(nil, index: 3, line: shown)
+        #expect(picked == 3...3)
+        #expect(FixWordForm.tapped(picked, index: 4, line: shown) == 4...4)
+        #expect(FixWordForm.tapped(picked, index: 2, line: shown) == 2...3)
+        #expect(FixWordForm.pickedText(2...3, words: words) == "Dana Cohen")
+        #expect(FixWordForm.changes(line: shown, heard: FixWordForm.pickedText(5...5, words: words), written: "Kohen"))
     }
 
     @Test("a word picked or typed with nothing written yet asks for how it should be written")
