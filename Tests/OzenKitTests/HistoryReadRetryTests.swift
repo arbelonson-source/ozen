@@ -66,4 +66,41 @@ struct HistoryReadRetryTests {
         #expect(stopped)
         #expect(reads == 1)
     }
+
+    @Test("a read that fails after Try again has started another says nothing", .timeLimit(.minutes(1)))
+    func failsAfterReadAgain() async {
+        let outcome = await Task { () -> String in
+            var unreadable = 0
+            do {
+                _ = try await HistoryReadRetry.untilRead(sleep: { _ in try Task.checkCancellation() }, unreadable: { unreadable += 1 }) { () -> String? in
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    throw Unreadable()
+                }
+                return "read"
+            } catch is CancellationError {
+                return "stopped, said can't be read \(unreadable) times"
+            } catch {
+                return "failed: \(error)"
+            }
+        }.value
+        #expect(outcome == "stopped, said can't be read 0 times")
+    }
+
+    @Test("a conversation read after Try again has started another read is not taken", .timeLimit(.minutes(1)))
+    func readAfterReadAgain() async {
+        let outcome = await Task { () -> String in
+            do {
+                let record: String? = try await HistoryReadRetry.untilRead(sleep: { _ in }, unreadable: {}) {
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    return "the pharmacy closes at nine"
+                }
+                return "took \(record ?? "nothing")"
+            } catch is CancellationError {
+                return "stopped"
+            } catch {
+                return "failed: \(error)"
+            }
+        }.value
+        #expect(outcome == "stopped")
+    }
 }

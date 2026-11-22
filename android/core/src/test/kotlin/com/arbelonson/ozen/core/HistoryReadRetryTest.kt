@@ -1,12 +1,20 @@
 package com.arbelonson.ozen.core
 
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class HistoryReadRetryTest {
     @Test
@@ -64,5 +72,38 @@ class HistoryReadRetryTest {
             }
         }
         assertEquals(1, reads)
+    }
+
+    @Test
+    fun `a read still under way when Try again reads again says nothing once it fails`() = runBlocking {
+        var unreadable = 0
+        val reading = CompletableDeferred<Unit>()
+        val gate = CountDownLatch(1)
+        val first = launch {
+            HistoryReadRetry.untilRead<String?>(unreadable = { unreadable++ }) {
+                withContext(Dispatchers.IO) {
+                    reading.complete(Unit)
+                    gate.await(5, TimeUnit.SECONDS)
+                    throw IOException("Permission denied")
+                }
+            }
+        }
+        reading.await()
+        first.cancel()
+        gate.countDown()
+        first.join()
+        assertEquals(0, unreadable)
+    }
+
+    @Test
+    fun `a conversation read after Try again has started another read is not taken`() = runBlocking {
+        var took: String? = null
+        launch {
+            took = HistoryReadRetry.untilRead<String?>(unreadable = {}, sleep = {}) {
+                currentCoroutineContext().cancel()
+                "the pharmacy closes at nine"
+            }
+        }.join()
+        assertNull(took)
     }
 }

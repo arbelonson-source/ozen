@@ -10,12 +10,17 @@ public enum HistoryReadRetry {
         read: () async throws -> Value
     ) async throws -> Value {
         while true {
+            let value: Value
             do {
-                return try await read()
+                value = try await read()
             } catch {
+                try Task.checkCancellation()
                 unreadable()
+                try await sleep(wait)
+                continue
             }
-            try await sleep(wait)
+            try Task.checkCancellation()
+            return value
         }
     }
 }
