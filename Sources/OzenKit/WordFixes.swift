@@ -152,7 +152,7 @@ public enum WordFixes {
             return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written, exactly: key(fix.heard) == key(fix.written))
         }.sorted { $0.words.count > $1.words.count }
         let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
-            .map { (heard: Array($0.words[0].unicodeScalars), written: $0.written) }
+            .map { HanFix(heard: Array($0.words[0].unicodeScalars), written: $0.written, exactly: $0.exactly) }
             .sorted { $0.heard.count > $1.heard.count }
         guard !prepared.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
         let all = Array(text.unicodeScalars)
@@ -187,7 +187,7 @@ public enum WordFixes {
                 out.append(contentsOf: last.gap)
                 index += hit.count
                 cursor = index
-            } else if let inside = replacingHan(han, in: tokens[index]) {
+            } else if let inside = replacingHan(han, in: tokens[index], of: all, at: starts[index]) {
                 out.append(contentsOf: slice(tokens, cursor, index))
                 out.append(contentsOf: inside)
                 spans.append((index, index, String(String.UnicodeScalarView(inside))))
@@ -287,7 +287,7 @@ public enum WordFixes {
         let end = starts[last] + tokens[last].coreEnd
         for word in max(0, index - hit.written.unicodeScalars.count)...index where tokens[word].coreStart < tokens[word].coreEnd {
             for from in tokens[word].readingStarts.map({ starts[word] + $0 }) where from <= keep {
-                if let stop = readsAlready(text, from: from, hit.written, exactly: hit.exactly), stop >= end { return true }
+                if let stop = readsAlready(text, from: from, hit.written, exactly: hit.exactly, heard: keep..<end), stop >= end { return true }
             }
         }
         return false
@@ -295,11 +295,15 @@ public enum WordFixes {
 
     /// Where `text` from `start` stops reading `written`, when it reads all
     /// of it there, case, niqqud and a maqaf against a hyphen aside, up to
-    /// the end of a word; nil when it does not. The line may also differ
-    /// from `written` the ways heard words may (an apostrophe, an alef's
-    /// hamza, Arabic vowel marks), except for a fix that only respells
-    /// (`exactly`): those differences are what it is for.
-    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool) -> Int? {
+    /// the end of a word (anywhere, unless `toWordEnd`); nil when it does
+    /// not. The line may also differ from `written` the ways heard words
+    /// may (an apostrophe, an alef's hamza, Arabic vowel marks), and may
+    /// lack a punctuation mark of `written` ("Dr Cohen" for "Dr. Cohen")
+    /// anywhere but between the letters of the `heard` words: there the
+    /// mark is a change the fix makes ("dont" written "don't"). A fix that
+    /// only respells (`exactly`) takes none of these differences: they are
+    /// what it is for.
+    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String, exactly: Bool, heard: Range<Int>, toWordEnd: Bool = true) -> Int? {
         func skips(_ scalar: Unicode.Scalar) -> Bool {
             exactly ? Token.isHebrewNiqqud(scalar) : Token.isMark(scalar)
         }
@@ -313,15 +317,27 @@ public enum WordFixes {
         }
         for scalar in written.unicodeScalars where !skips(scalar) {
             skipMarks()
-            guard at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) else { return nil }
-            at += 1
+            if at < text.count, (isDash(scalar) && isDash(text[at])) || same(scalar, text[at]) {
+                at += 1
+            } else if exactly || !isPunctuation(scalar) || (at > heard.lowerBound && at < heard.upperBound) {
+                return nil
+            }
         }
         skipMarks()
-        return (at == text.count || !Token.isCore(text[at])) ? at : nil
+        return (!toWordEnd || at == text.count || !Token.isCore(text[at])) ? at : nil
     }
 
     private static func isDash(_ scalar: Unicode.Scalar) -> Bool {
         [0x2D, 0x05BE, 0x2010, 0x2011].contains(scalar.value)
+    }
+
+    private static func isPunctuation(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.properties.generalCategory {
+        case .connectorPunctuation, .dashPunctuation, .openPunctuation, .closePunctuation, .initialPunctuation, .finalPunctuation, .otherPunctuation:
+            return true
+        default:
+            return false
+        }
     }
 
     private struct Hit {
@@ -339,7 +355,29 @@ public enum WordFixes {
         scalar.properties.isIdeographic && !(0x3000...0x303F).contains(scalar.value)
     }
 
-    private static func replacingHan(_ fixes: [(heard: [Unicode.Scalar], written: String)], in token: Token) -> [Unicode.Scalar]? {
+    private struct HanFix {
+        let heard: [Unicode.Scalar]
+        let written: String
+        let exactly: Bool
+    }
+
+    /// Whether `line` already reads `fix`'s written form around its heard
+    /// characters at `start` inside a Chinese or Japanese word: from there
+    /// or from a character before them, through their end. Those words run
+    /// on without spaces, so the reading may start and stop inside one
+    /// ("京" written "北京" on "北京市"), and a fix that adds characters
+    /// before or after the heard ones would otherwise write them twice.
+    private static func hanWrittenAlready(_ line: [Unicode.Scalar], at start: Int, _ fix: HanFix) -> Bool {
+        let end = start + fix.heard.count
+        return (max(0, start - fix.written.unicodeScalars.count)...start).contains { from in
+            (readsAlready(line, from: from, fix.written, exactly: fix.exactly, heard: start..<end, toWordEnd: false) ?? -1) >= end
+        }
+    }
+
+    /// `token` with the heard characters of `fixes` replaced wherever it
+    /// holds them, or nil when none is; `start` is where the token starts
+    /// in `line`.
+    private static func replacingHan(_ fixes: [HanFix], in token: Token, of line: [Unicode.Scalar], at start: Int) -> [Unicode.Scalar]? {
         guard !fixes.isEmpty, token.scalars.contains(where: isHan) else { return nil }
         var result: [Unicode.Scalar] = []
         var changed = false
@@ -347,9 +385,10 @@ public enum WordFixes {
         let all = token.scalars
         while position < all.count {
             if let fix = fixes.first(where: { position + $0.heard.count <= all.count && Array(all[position..<position + $0.heard.count]) == $0.heard }) {
-                result.append(contentsOf: fix.written.unicodeScalars)
+                let kept = hanWrittenAlready(line, at: start + position, fix)
+                result.append(contentsOf: kept ? fix.heard : Array(fix.written.unicodeScalars))
                 position += fix.heard.count
-                changed = true
+                changed = changed || !kept
             } else {
                 result.append(all[position])
                 position += 1
