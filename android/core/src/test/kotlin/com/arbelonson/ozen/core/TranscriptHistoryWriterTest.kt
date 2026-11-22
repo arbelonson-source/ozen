@@ -661,6 +661,44 @@ class TranscriptHistoryWriterTest {
         assertEquals("I saw Avi", store.load(old.id)?.segments?.single()?.text)
     }
 
+    // The caption screen's fix of a line a long quiet closed tries each
+    // closed conversation in turn. A line's words that wrote nothing (no
+    // such conversation, no such line, or the line had those words already)
+    // counted as a save that worked: each conversation without the line
+    // took away the warning of a write that had really been refused, while
+    // the phone was still full.
+    @Test
+    fun `a line's words that write nothing leave a save that failed before reported, and go once what waited is written`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.line-words-write-nothing"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Avi", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(other)
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        assertFalse(writer.fixTextNow(UUID.randomUUID(), line, "I saw Avital"))
+        assertEquals(full, writer.lastFailure, "there is no such conversation, so nothing was written")
+        assertFalse(writer.fixTextNow(other.id, line, "I saw Avital"))
+        assertEquals(full, writer.lastFailure, "a conversation without the line says nothing about room either")
+        assertTrue(writer.fixTextNow(old.id, line, "I saw Avi"), "the line is there")
+        assertEquals(full, writer.lastFailure, "the line has those words already, so nothing was written")
+
+        permissions(dir, "rwx------")
+        assertTrue(writer.fixTextNow(old.id, line, "I saw Avital"))
+        assertNull(writer.lastFailure)
+        permissions(dir, "r-x------")
+        assertTrue(writer.fixTextNow(old.id, line, "I saw Avi Cohen"), "the line is there, though its words wait for room")
+        assertNotNull(writer.lastFailure, "words the disk refuses are still reported")
+        permissions(dir, "rwx------")
+        assertFalse(writer.fixTextNow(other.id, line, "I saw Dana"))
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+        assertEquals("I saw Avi Cohen", store.load(old.id)?.segments?.single()?.text)
+    }
+
     // Read as no conversation, the conversation open in History turned into
     // "Conversation not found" after a star or a name it refused there, and
     // there was nothing left to try again from.

@@ -998,6 +998,43 @@ class ConversationSaverTest {
         assertNull(saver.lastSaveFailure)
     }
 
+    // The caption screen's fix of a line a long quiet closed tries each
+    // closed conversation in turn, and each one without the line counted as
+    // a save that worked: after History refused a name on a full phone, a
+    // fix of a line whose conversation History had deleted took the warning
+    // away, and the caption lines opened their conversations again, while
+    // the phone was still full.
+    @Test
+    fun `a word fixed on the caption screen that no closed conversation has leaves a save that failed before reported`() {
+        start()
+        say("Good morning", at = clock - 60 * 60)
+        val morning = saver.currentId
+        assertTrue(saver.checkForConversationBreak())
+        say("Good afternoon", at = clock - 30 * 60)
+        val afternoon = saver.currentId
+        assertTrue(saver.checkForConversationBreak())
+        say("Good evening")
+        saver.save(ended = false)
+        saver.delete(morning)
+
+        assertTrue(folder.setWritable(false))
+        try {
+            assertFalse(saver.rename(afternoon, "Lunch"))
+            val full = assertNotNull(saver.lastSaveFailure)
+            lines[0] = lines[0].copy(text = "Good morning, Avi")
+            saver.fixLiveLine(lines[0].id, lines[0].text)
+            assertEquals(full, saver.lastSaveFailure, "nothing was written, so the phone is still full")
+            assertNull(saver.savedConversation(1))
+        } finally {
+            folder.setWritable(true)
+        }
+        lines[1] = lines[1].copy(text = "Good afternoon, Dana")
+        saver.fixLiveLine(lines[1].id, lines[1].text)
+        assertNull(saver.lastSaveFailure, "the line's words were written, so there is room")
+        assertEquals(afternoon, saver.savedConversation(1))
+        assertEquals(listOf("Good afternoon, Dana"), store.load(afternoon)!!.segments.map { it.text })
+    }
+
     @Test
     fun `a word fixed in History that a line of an earlier conversation no longer has is refused`() {
         val earlier = oldConversation(clock - 3_600)

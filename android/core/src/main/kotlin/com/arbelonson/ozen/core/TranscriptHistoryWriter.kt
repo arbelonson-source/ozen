@@ -288,7 +288,8 @@ class TranscriptHistoryWriter(
     /**
      * Writes a hand-fixed line of a saved conversation. A write the disk
      * refused stays waiting, is tried again after every later write, and
-     * until it goes through its error is the one reported.
+     * until it goes through its error is the one reported. Whether the line
+     * was found (see [write]).
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
         lastWritten.record = null
@@ -373,10 +374,19 @@ class TranscriptHistoryWriter(
      * still waiting goes either way: once there was room it was written
      * after this one and brought the old words back. Whether the line was
      * found, in the file or in the waiting version.
+     *
+     * Words that wrote nothing (no such conversation or line, or the line
+     * has them already) leave [lastFailure] as it was, as a History fix
+     * does. The caption screen tries each closed conversation in turn, and
+     * each one without the line took away the warning of a write that had
+     * really been refused, while the phone was still full.
      */
     private fun write(text: String, sessionID: UUID, segmentID: UUID): Boolean {
         var found = false
-        val written = failure.capture { found = store.fixText(segmentID, sessionID, text) }
+        var changed = false
+        val written = failure.capture(counts = { changed }) {
+            store.fixText(segmentID, sessionID) { now -> text.also { found = true; changed = it != now } }
+        }
         pendingRenames.texts.removeAll { it.sessionID == sessionID && it.segmentID == segmentID }
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
