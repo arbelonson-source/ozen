@@ -903,6 +903,28 @@ class ConversationSaverTest {
         assertNull(saver.toggleStar(earlier, UUID.randomUUID()))
     }
 
+    // The starred lines list shows the files' stars. Its Remove the star,
+    // as a tap following the waiting version (no star), put the star back.
+    @Test
+    fun `Remove the star from the starred lines list takes the star off a line whose version waiting for room has none`() {
+        start()
+        say("Good morning", at = clock - 30 * 60)
+        assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        val morning = saver.currentId
+        assertTrue(folder.setWritable(false))
+        try {
+            assertEquals(false, saver.toggleLiveStar(lines[0].id))
+            assertTrue(saver.checkForConversationBreak())
+        } finally {
+            folder.setWritable(true)
+        }
+        assertEquals(listOf(true), store.load(morning)!!.segments.map { it.isStarred })
+
+        assertEquals(false, saver.toggleStar(morning, lines[0].id, to = false))
+        assertEquals(listOf(false), store.load(morning)!!.segments.map { it.isStarred })
+        assertEquals(listOf(false), saver.load(morning)!!.segments.map { it.isStarred })
+    }
+
     @Test
     fun `a star History cannot save leaves the line as it was, still being captioned or not`() {
         val earlier = oldConversation(clock - 3_600)

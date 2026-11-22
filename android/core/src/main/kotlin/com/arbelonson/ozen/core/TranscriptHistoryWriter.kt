@@ -335,11 +335,14 @@ class TranscriptHistoryWriter(
      * [keepingRefused] (the caption screen, whose star shows from memory and
      * is saved once there is room). History passes false: the person is told
      * the star didn't change, so it mustn't turn up once there is room, or
-     * be undone by the tap that tries again.
+     * be undone by the tap that tries again. With [to], the line takes that
+     * state instead: the starred lines list shows the files' stars, and its
+     * Remove the star, followed as a tap, put the star back on a line the
+     * waiting version had none on.
      */
-    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true): Boolean? = queue.sync {
+    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
         lastWritten.record = null
-        val starring = pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
+        val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
         val reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
         val waiting = pendingSaves.records[sessionID]
@@ -347,7 +350,7 @@ class TranscriptHistoryWriter(
             val index = waiting.segments.indexOfFirst { it.id == segmentID }
             if (index >= 0) {
                 val line = waiting.segments[index]
-                val starred = result ?: !line.isStarred
+                val starred = result ?: to ?: !line.isStarred
                 val segments = waiting.segments.toMutableList()
                 segments[index] = line.copy(isStarred = starred)
                 pendingSaves.records[sessionID] = waiting.copy(segments = segments)

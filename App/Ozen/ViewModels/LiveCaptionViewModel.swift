@@ -2754,13 +2754,16 @@ public final class LiveCaptionViewModel {
     /// a line of the conversation being captioned that is no longer on
     /// screen (a replay heard that speech again and took the line off):
     /// the next autosave, written from the lines on screen, dropped a star
-    /// written to its file alone, with the line.
+    /// written to its file alone, with the line. A line gone from the screen
+    /// takes `wanted` when given: the starred lines list shows the stars of
+    /// the files, which a version waiting for room can differ from, and its
+    /// Remove the star put the star back on such a line.
     @discardableResult
-    public func toggleStarInHistory(sessionID: UUID, segmentID: UUID) -> Bool {
+    public func toggleStarInHistory(sessionID: UUID, segmentID: UUID, to wanted: Bool? = nil) -> Bool {
         defer { refreshSavingTrouble() }
         guard let segment = pipeline.segments.first(where: { $0.id == segmentID }) else {
             guard sessionID != historySessionID else { return false }
-            return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID, keepingRefused: false) != nil
+            return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID, keepingRefused: false, to: wanted) != nil
         }
         toggleStar(segment)
         // The opened conversation reads its file straight back: before

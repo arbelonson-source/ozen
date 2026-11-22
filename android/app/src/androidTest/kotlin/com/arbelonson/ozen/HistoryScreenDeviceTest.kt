@@ -438,7 +438,7 @@ class HistoryScreenDeviceTest {
         override fun delete(id: UUID) {}
         override fun deleteAll() {}
         override fun rename(id: UUID, title: String) = false
-        override fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? = null
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean? = null
         override fun switchSaving(on: Boolean) {}
         override suspend fun keepFor(retention: HistoryRetention) {}
     }

@@ -172,8 +172,13 @@ interface SavedConversations {
     /** Names a conversation, or takes its name away with a blank one: false when the name was lost. */
     fun rename(id: UUID, title: String): Boolean
 
-    /** Stars a saved line or takes its star away: its new state, or null when it is gone or could not be saved. */
-    fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
+    /**
+     * Stars a saved line or takes its star away: [to] when given (the
+     * starred lines list's Remove the star asks for no star), else the other
+     * state of what History shows. Its new state, or null when it is gone or
+     * could not be saved.
+     */
+    fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean?
 
     /** Fixes a word of a saved line, in the text it has now: false when the line could not be fixed (still being heard, gone, or without that word now). */
     fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean

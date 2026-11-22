@@ -664,6 +664,27 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // The starred lines list shows the files' stars. Its Remove the star,
+    // as a tap following the waiting version (no star), put the star back.
+    @Test
+    fun `Remove the star from the starred lines list takes the star off, though the version waiting for room has none`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.unstar-from-list"))
+        val plain = record(UUID.randomUUID(), 2, false)
+        val early = plain.copy(segments = plain.segments.toMutableList().also { it[0] = it[0].copy(isStarred = true) })
+        writer.saveNow(early)
+        val later = plain.copy(endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        permissions(dir, "rwx------")
+
+        assertEquals(false, writer.toggleStarNow(early.id, early.segments[0].id, keepingRefused = false, to = false))
+        assertEquals(false, store.load(early.id)?.segments?.get(0)?.isStarred)
+        assertEquals(200.0, store.load(early.id)?.endedAt)
+        assertEquals(false, writer.loadNow(early.id)?.segments?.get(0)?.isStarred)
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a star History cannot save stays out of the waiting version, while one from the caption screen waits with it`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)

@@ -438,6 +438,33 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    // The starred lines list shows the files' stars. Its Remove the star,
+    // as a tap following the waiting version (no star), put the star back.
+    @Test("Remove the star from the starred lines list takes the star off, though the version waiting for room has none")
+    func unstarFromStarredLinesWhileWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.unstar-from-list"))
+        var early = record(id: UUID(), lines: 2, ended: false)
+        early.segments[0].isStarred = true
+        writer.saveNow(early)
+        var later = early
+        later.segments[0].isStarred = false
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id, keepingRefused: false, to: false) == false)
+        #expect(store.load(id: early.id)?.segments[0].isStarred == false)
+        #expect(store.load(id: early.id)?.endedAt == 200)
+        #expect(writer.loadNow(id: early.id)?.segments[0].isStarred == false)
+        #expect(writer.lastFailure == nil)
+    }
+
     @Test("a star History can't save stays out of the waiting version, while one from the caption screen waits with it")
     func refusedStarLeavesTheWaitingVersion() throws {
         let (store, dir) = makeStore()

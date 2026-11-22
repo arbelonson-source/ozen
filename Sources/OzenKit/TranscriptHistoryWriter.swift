@@ -263,17 +263,20 @@ public final class TranscriptHistoryWriter: Sendable {
     /// `keepingRefused` (the caption screen, whose star shows from memory and
     /// is saved once there is room). History passes false: the person is
     /// told the star didn't change, so it mustn't turn up once there is room,
-    /// or be undone by the tap that tries again.
+    /// or be undone by the tap that tries again. With `wanted`, the line
+    /// takes that state instead: the starred lines list shows the files'
+    /// stars, and its Remove the star, followed as a tap, put the star back
+    /// on a line the waiting version had none on.
     @discardableResult
-    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true) -> Bool? {
+    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true, to wanted: Bool? = nil) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            let starring = pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
+            let starring = wanted ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
             var result: Bool?
             let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
             if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
-                waiting.segments[index].isStarred = result ?? !waiting.segments[index].isStarred
+                waiting.segments[index].isStarred = result ?? wanted ?? !waiting.segments[index].isStarred
                 pendingSaves.records[sessionID] = waiting
                 result = waiting.segments[index].isStarred
             }
