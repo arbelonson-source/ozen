@@ -61,17 +61,28 @@ private fun show(world: World, lines: List<TranscriptSegment>, now: Double) = Ca
 
 private fun lockScreen(): List<LockScreenCaptionLine> = CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true, languageCode = "he")
 
-/** Words said after the lines there: ten lines of ten words, each line growing a word at a time as the engine sends it, as the pipeline's lists come. */
-private fun wordsAfter(world: World, count: Int): List<ChunkedList<TranscriptSegment>> {
+/**
+ * Words said after the lines there: lines of [lineWords] words, each line
+ * growing a word at a time as the engine sends it, as the pipeline's lists
+ * come; [word] gives a line's words in order.
+ */
+private fun wordsAfter(world: World, count: Int, lineWords: Int = 10, word: (Int) -> String = { "word${it + 1}" }): List<ChunkedList<TranscriptSegment>> {
     var lines = world.lines
-    return (0 until count).map { word ->
-        val number = world.next + word / 10
-        val words = word % 10 + 1
-        val line = said(number, text = (1..words).joinToString(" ") { "word$it" }, final = words == 10)
+    return (0 until count).map { at ->
+        val number = world.next + at / lineWords
+        val words = at % lineWords + 1
+        val line = said(number, text = (0 until words).joinToString(" ") { word(it) }, final = words == lineWords)
         lines = if (words == 1) lines.adding(line) else lines.replacing(lines.size - 1, line)
         lines
     }
 }
+
+/** A long line as people say it, in Hebrew: sentences, a time, pills to take, a phone number and a word in English. */
+private val talk = (
+    "אז אמרתי לו שנפגש מחר בשעה 10:30 ליד הבית של סבתא. הוא אמר שזה בסדר, ושאני אתקשר אליו ל־052-1234567 אם משהו משתנה. " +
+        "צריך לקחת 3 כדורים פעמיים ביום אחרי האוכל, וחצי כוס מים. OK, נתראה ביום שלישי! אני לא בטוח שזה יעבוד אבל ננסה בכל זאת. " +
+        "הרופא אמר שאפשר להגיע עד השעה ארבע וחצי, ושהתור הבא הוא רק בעוד שבועיים, אז כדאי לבקש תור מוקדם יותר."
+    ).split(" ")
 
 /**
  * The bytes the caption screen's state and the lock screen's lines
@@ -79,25 +90,30 @@ private fun wordsAfter(world: World, count: Int): List<ChunkedList<TranscriptSeg
  * timed, after words that warm the same path up. The lists of lines are
  * made before counting starts, as the pipeline makes them.
  */
-private fun bytesPerWord(lines: Int): Long {
+private fun bytesPerWord(
+    lines: Int,
+    lineWords: Int = 10,
+    word: (Int) -> String = { "word${it + 1}" },
+    warmUp: Int = 200,
+    counted: Int = 100,
+): Long {
     CaptionState.clear()
     val world = World(lines)
     show(world, world.lines, now = 1.0)
     CaptionState.screenLeft(1_000.0 + lines * 2)
     CaptionState.screenReturned(1_000.0 + lines * 2 + 600)
-    val warmUp = 200
-    val words = wordsAfter(world, warmUp + 100)
+    val words = wordsAfter(world, warmUp + counted, lineWords, word)
     words.take(warmUp).forEach {
         show(world, it, now = 2.0)
         lockScreen()
     }
-    val counted = words.drop(warmUp)
+    val measured = words.drop(warmUp)
     val before = threadMemory.currentThreadAllocatedBytes
-    counted.forEach {
+    measured.forEach {
         show(world, it, now = 2.0)
         lockScreen()
     }
-    return (threadMemory.currentThreadAllocatedBytes - before) / counted.size
+    return (threadMemory.currentThreadAllocatedBytes - before) / measured.size
 }
 
 class CaptionStateLongConversationTest {
@@ -114,6 +130,33 @@ class CaptionStateLongConversationTest {
             long - short < EXTRA_BYTES_ALLOWED,
             "each word at 10,000 lines allocated $long bytes, against $short at 10 lines: ${long - short} more, " +
                 "so lines that did not change are still being made again",
+        )
+    }
+
+    @Test
+    fun `asking which saved conversation each drawn line is in makes nothing new, however far into the conversation`() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        bytesPerWord(10_000)
+        val short = bytesPerWord(10)
+        val long = bytesPerWord(10_000)
+        assertTrue(
+            long - short < LINE_NUMBER_BYTES_ALLOWED,
+            "each word at 10,000 lines allocated $long bytes, against $short at 10 lines: ${long - short} more, " +
+                "so each drawn line's number is still wrapped in an object to ask for its saved conversation",
+        )
+    }
+
+    @Test
+    fun `a word at the end of a long line costs about what it costs at the end of a short one`() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val spoken = { at: Int -> talk[at % talk.size] }
+        bytesPerWord(200, lineWords = 80, word = spoken, warmUp = 160, counted = 160)
+        val short = bytesPerWord(200, lineWords = 10, word = spoken, warmUp = 160, counted = 160)
+        val long = bytesPerWord(200, lineWords = 80, word = spoken, warmUp = 160, counted = 160)
+        assertTrue(
+            long - short < LONG_LINE_EXTRA_BYTES_ALLOWED,
+            "each word on lines of 80 words allocated $long bytes, against $short on lines of 10: ${long - short} more, " +
+                "so the line being written costs more at every word the longer it gets",
         )
     }
 
@@ -187,5 +230,7 @@ class CaptionStateLongConversationTest {
 
     private companion object {
         const val EXTRA_BYTES_ALLOWED = 8 * 1_024L
+        const val LINE_NUMBER_BYTES_ALLOWED = 2 * 1_024L
+        const val LONG_LINE_EXTRA_BYTES_ALLOWED = 32 * 1_024L
     }
 }

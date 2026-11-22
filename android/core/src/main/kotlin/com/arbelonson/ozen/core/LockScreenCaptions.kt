@@ -1,8 +1,5 @@
 package com.arbelonson.ozen.core
 
-import java.text.BreakIterator
-import java.util.Locale
-
 /** One caption line as the lock screen shows it. */
 data class LockScreenCaptionLine(
     /** Set on the first line of a run by one named speaker. */
@@ -105,19 +102,7 @@ object LockScreenCaptions {
     // emoji is one. Counting the code points under them cut a Hindi,
     // pointed Hebrew or Arabic line on the lock screen well short of what
     // the iPhone shows, and could start it in the middle of a syllable.
-    private fun characters(text: String) = letterStarts(text).size
-
-    private fun letterStarts(text: String): List<Int> {
-        val letters = BreakIterator.getCharacterInstance(Locale.ROOT)
-        letters.setText(text)
-        val starts = ArrayList<Int>(text.length)
-        var boundary = letters.first()
-        while (boundary != BreakIterator.DONE && boundary < text.length) {
-            starts += boundary
-            boundary = letters.next()
-        }
-        return starts
-    }
+    private fun characters(text: String) = Graphemes.of(text).count
 
     /**
      * The end of [text], at most [maximumCharacters] long, starting at a
@@ -126,9 +111,9 @@ object LockScreenCaptions {
      */
     fun tail(text: String, maximumCharacters: Int): String {
         val trimmed = text.trim()
-        val starts = letterStarts(trimmed)
-        if (starts.size <= maximumCharacters || maximumCharacters <= 1) return trimmed
-        val cutPoint = starts[starts.size - (maximumCharacters - 1)]
+        val letters = Graphemes.of(trimmed)
+        if (letters.count <= maximumCharacters || maximumCharacters <= 1) return trimmed
+        val cutPoint = letters.start(letters.count - (maximumCharacters - 1))
         var kept = trimmed.substring(cutPoint)
         // Whether the cut landed inside a word is what matters: a cut right
         // after a space already starts at a real word, however short, and a

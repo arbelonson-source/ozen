@@ -3465,7 +3465,7 @@ class CaptionScreenDeviceTest {
         showLines(lines)
     }
 
-    private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {
+    private fun showLines(lines: List<TranscriptSegment>, conversation: LineConversation = LineConversation { null }) {
         compose.runOnUiThread {
             CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, conversation = conversation)
         }

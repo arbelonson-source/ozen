@@ -102,11 +102,24 @@ object PhoneNumbers {
      * said in Arabic is found whatever its first digits look like. Each such
      * digit is one UTF-16 unit either way, so a match's place is the same in [text].
      */
-    internal fun asciiDigits(text: String): String = buildString(text.length) {
-        for (c in text) append(if (Character.getType(c) == Character.DECIMAL_DIGIT_NUMBER.toInt()) '0' + Character.digit(c, 10) else c)
+    internal fun asciiDigits(text: String): String {
+        if (text.none { it > '9' && Character.getType(it) == Character.DECIMAL_DIGIT_NUMBER.toInt() }) return text
+        return buildString(text.length) {
+            for (c in text) append(if (Character.getType(c) == Character.DECIMAL_DIGIT_NUMBER.toInt()) '0' + Character.digit(c, 10) else c)
+        }
     }
 
-    private fun digitsOf(written: String): String = written.codePoints().map { Character.digit(it, 10) }.filter { it >= 0 }.toArray().joinToString("")
+    private fun digitsOf(written: String): String {
+        val digits = StringBuilder(written.length)
+        var index = 0
+        while (index < written.length) {
+            val scalar = written.codePointAt(index)
+            val digit = Character.digit(scalar, 10)
+            if (digit >= 0) digits.append('0' + digit)
+            index += Character.charCount(scalar)
+        }
+        return digits.toString()
+    }
 
     private val pattern: Pattern = unicodePattern(
         """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- \u00A0\u202F\u2011]?|0)(?:[2-489](?:[- \u00A0\u202F\u2011]?\d){7}|[57](?:[- \u00A0\u202F\u2011]?\d){8})(?![-\u2011\u00A0\u202F]?\d)""",

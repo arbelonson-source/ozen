@@ -137,8 +137,11 @@ object HebrewText {
      * joined by a Maqaf is left for [separatingJoiners] to turn into a space
      * rather than silently vanishing and fusing the two halves together.
      */
-    fun stripNiqqud(text: String): String = text.filteringScalars {
-        !(it in 0x0591..0x05C7 && Character.getType(it) == Character.NON_SPACING_MARK.toInt())
+    fun stripNiqqud(text: String): String {
+        // Most words have no vowel points, and each word of a line is
+        // looked at again at every word said: those are kept as they are.
+        if (text.none { it in '\u0591'..'\u05C7' }) return text
+        return text.filteringScalars { !(it in 0x0591..0x05C7 && Character.getType(it) == Character.NON_SPACING_MARK.toInt()) }
     }
 
     /**
