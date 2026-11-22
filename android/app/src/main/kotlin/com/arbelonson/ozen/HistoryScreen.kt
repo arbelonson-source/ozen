@@ -722,42 +722,47 @@ internal fun ConversationScreen(
     LaunchedEffect(id, marksUncertain, readTries) {
         var jumped = false
         while (true) {
-            val before = loaded
-            val now = if (before != null) {
-                withContext(Dispatchers.IO) { readAgain() } ?: before
+            // Read again and not read just now, the screen keeps what it
+            // shows. It went back to what it showed as the reading began,
+            // and a name, star or fix shown meanwhile went away until the
+            // next reading, twenty seconds later.
+            val now = if (loaded != null) {
+                withContext(Dispatchers.IO) { readAgain() }
             } else {
                 HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
                     withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
                 }
             }
-            cantRead = false
-            show(now)
-            if (!jumped && now.matches.isNotEmpty()) {
-                jumped = true
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
-            }
-            val held = now.lines.indexOfFirst { it.id == line }
-            if (!jumped && held >= 0) {
-                jumped = true
-                // As on the iPhone: "next starred" goes on from the line she
-                // came for, which is marked for a moment so she sees it.
-                now.starred.indexOf(line).takeIf { it >= 0 }?.let {
-                    starAt = it
-                    jumpedToStar = true
+            if (now != null) {
+                cantRead = false
+                show(now)
+                if (!jumped && now.matches.isNotEmpty()) {
+                    jumped = true
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
                 }
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + held)
-                arrival?.cancel()
-                arrival = marking.launch {
-                    arrived = line
-                    delay(2_000)
-                    arrived = null
+                val held = now.lines.indexOfFirst { it.id == line }
+                if (!jumped && held >= 0) {
+                    jumped = true
+                    // As on the iPhone: "next starred" goes on from the line she
+                    // came for, which is marked for a moment so she sees it.
+                    now.starred.indexOf(line).takeIf { it >= 0 }?.let {
+                        starAt = it
+                        jumpedToStar = true
+                    }
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + held)
+                    arrival?.cancel()
+                    arrival = marking.launch {
+                        arrived = line
+                        delay(2_000)
+                        arrived = null
+                    }
+                    // A screen reader hears which line it was, as after a jump:
+                    // the mark alone told a blind or deaf-blind person nothing.
+                    AnnouncementHold.waitOut()
+                    ScreenReader.announce(context, now.lines[held].spoken)
                 }
-                // A screen reader hears which line it was, as after a jump:
-                // the mark alone told a blind or deaf-blind person nothing.
-                AnnouncementHold.waitOut()
-                ScreenReader.announce(context, now.lines[held].spoken)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)

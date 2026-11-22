@@ -76,6 +76,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -1823,6 +1824,101 @@ class HistoryScreenDeviceTest {
         val found = conversation.loads.get()
         letTimePass(10_000)
         assertEquals(found, conversation.loads.get())
+    }
+
+    // The conversation still being captioned, read again every twenty
+    // seconds. A read held here stays under way until the test lets it go,
+    // then finds the file can't be read just now; a name given meanwhile is
+    // saved and read back at once. Each check of whether it is still being
+    // captioned, made after each reading, is counted.
+    private class HeldReadConversation(private val said: String) : SavedConversations {
+        val id: UUID = UUID.randomUUID()
+        private val line = UUID.randomUUID()
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        private val held = AtomicReference<CountDownLatch?>()
+        val holding = CountDownLatch(1)
+        val checks = AtomicInteger()
+
+        @Volatile private var title: String? = null
+
+        fun holdNextRead(): CountDownLatch = CountDownLatch(1).also { held.set(it) }
+
+        override fun load(id: UUID): TranscriptSessionRecord {
+            held.getAndSet(null)?.let { gate ->
+                holding.countDown()
+                gate.await(20, TimeUnit.SECONDS)
+                throw IOException("Permission denied")
+            }
+            return TranscriptSessionRecord(
+                id = this.id,
+                startedAt = startedAt,
+                engine = TranscriptionEngineKind.HomeServer,
+                modelVariant = "home server",
+                inputName = null,
+                segments = listOf(SavedSegment(line, said, null, null, startedAt, true)),
+                title = title,
+            )
+        }
+
+        override fun isCurrent(id: UUID): Boolean {
+            checks.incrementAndGet()
+            return true
+        }
+
+        override fun rename(id: UUID, title: String): Boolean {
+            this.title = title.trim().ifEmpty { null }
+            return true
+        }
+
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String) = WordFixResult.Unreadable
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {}
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun starredLines() = emptyList<StarredLine>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean? = null
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    // A name given while the conversation still being captioned was being
+    // read again showed at once, then went away when that read found the
+    // file couldn't be read just now: the screen went back to what it showed
+    // before the name until the next read, twenty seconds later.
+    @Test
+    fun aNameGivenWhileTheConversationIsReadAgainStaysWhenThatReadCannotReadIt() {
+        val conversation = HeldReadConversation("Held read test the bus leaves at six")
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Held read test the bus leaves at six") }
+        val gate = conversation.holdNextRead()
+        try {
+            compose.mainClock.advanceTimeBy(21_000)
+            compose.waitUntil(10_000) { conversation.holding.count == 0L }
+            compose.onNodeWithText("Name this conversation").performClick()
+            compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Bus times")
+            compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+            waitFor("Bus times")
+
+            val checked = conversation.checks.get()
+            gate.countDown()
+            compose.waitUntil(5_000) { conversation.checks.get() > checked }
+            compose.waitForIdle()
+            assertTrue("the name went away", compose.onAllNodesWithText("Bus times").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(shownLine("Held read test the bus leaves at six"))
+        } finally {
+            gate.countDown()
+        }
     }
 
     @Test
