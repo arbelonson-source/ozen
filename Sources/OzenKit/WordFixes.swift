@@ -673,3 +673,24 @@ public enum WordFixes {
         }
     }
 }
+
+/// What became of a word fixed in History, so the sheet can say why a fix
+/// was not saved. A fix that waits for room on a full phone is saved: it is
+/// written once there is room.
+public enum WordFixResult: Sendable, Equatable {
+    case saved
+    /// The line is gone, is being heard again, or no longer has the word.
+    case lineChanged
+    /// The conversation's file is there but couldn't be read just now.
+    case unreadable
+
+    /// Said in the sheet and to VoiceOver when the fix was not saved; nil
+    /// when it was.
+    public var note: String? {
+        switch self {
+        case .saved: return nil
+        case .lineChanged: return tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.")
+        case .unreadable: return tr("לא היה אפשר לקרוא את השיחה כרגע, ולכן התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The conversation couldn’t be read just now, so the fix was not saved. Try again in a moment.")
+        }
+    }
+}

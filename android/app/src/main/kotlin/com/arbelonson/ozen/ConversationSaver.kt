@@ -9,6 +9,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WordFixes
 import java.util.TreeMap
 import java.util.UUID
@@ -371,12 +372,12 @@ class ConversationSaver(
      * with the wrong conversation or the wrong lines. A line a long quiet
      * closed before that step is an earlier conversation's.
      */
-    fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
+    fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): WordFixResult {
         var took: Boolean? = null
         onMainThread { took = fixOnScreen(sessionID, segmentID, fix, onScreen) }
         val saved = took ?: return writer.fixTextNow(sessionID, segmentID) { WordFixes.apply(listOf(fix), it) }
         writer.waitUntilIdle()
-        return saved
+        return if (saved) WordFixResult.Saved else WordFixResult.LineChanged
     }
 
     /**
@@ -403,14 +404,14 @@ class ConversationSaver(
      * one being captioned can change right after the screen's step (a long
      * quiet), and asking again then fixed its words a second time.
      */
-    fun fixLineEverywhere(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
+    fun fixLineEverywhere(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): WordFixResult {
         var asked = false
-        val saved = fixLine(sessionID, segmentID, fix) { line, change ->
+        val result = fixLine(sessionID, segmentID, fix) { line, change ->
             asked = true
             onScreen(line, change)
         }
-        if (saved && !asked) onMainThread { onScreen(segmentID, fix) }
-        return saved
+        if (result == WordFixResult.Saved && !asked) onMainThread { onScreen(segmentID, fix) }
+        return result
     }
 
     /**

@@ -630,16 +630,41 @@ struct TranscriptHistoryWriterTests {
         let line = evening.segments[0].id
         writer.replaceTextNow(sessionID: evening.id, segmentID: line, text: "I saw aval at the market")
 
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .saved)
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi at the market")
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
-        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avital")))
-        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: UUID(), with: WordFix(heard: "Avi", written: "Avital")))
-        #expect(!writer.fixTextNow(sessionID: UUID(), segmentID: line, with: WordFix(heard: "Avi", written: "Avital")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avital")) == .lineChanged)
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: UUID(), with: WordFix(heard: "Avi", written: "Avital")) == .lineChanged)
+        #expect(writer.fixTextNow(sessionID: UUID(), segmentID: line, with: WordFix(heard: "Avi", written: "Avital")) == .lineChanged)
         #expect(writer.lastFailure == nil, "nothing was written, so the read-only folder refused nothing")
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi at the market")
+    }
+
+    // The file was read as no conversation at all, and History said the
+    // line changed or was gone, though the line was fine and the same fix
+    // went through once the file could be read.
+    @Test("a word fixed in History while its conversation can't be read just now says so and writes nothing, and goes through once it can be read")
+    func wordFixOfAConversationThatCantBeReadSaysSo() throws {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.word-fix-unreadable"))
+        var evening = record(id: UUID(), lines: 1, ended: true)
+        evening.segments[0].text = "I saw aval today"
+        writer.saveNow(evening)
+        let line = evening.segments[0].id
+        let file = dir.appendingPathComponent("\(evening.id.uuidString).json")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .unreadable)
+        #expect(writer.fixTextNow(sessionID: UUID(), segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .lineChanged, "no file at all is a conversation that is gone")
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        #expect(store.load(id: evening.id)?.segments.first?.text == "I saw aval today")
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .saved)
+        #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi today")
+        #expect(writer.lastFailure == nil)
     }
 
     @Test("a word fixed in History while the line's newer text waits for room fixes that text, not the older file")
@@ -658,8 +683,8 @@ struct TranscriptHistoryWriterTests {
         writer.replaceTextNow(sessionID: evening.id, segmentID: line, text: "I saw Dan today")
         #expect(writer.lastFailure != nil)
 
-        #expect(!writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")))
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .lineChanged)
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")) == .saved)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Dana today")
@@ -683,7 +708,7 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(later)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
 
-        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")) == .saved)
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: early.id)?.segments.first?.text == "I saw Avi today")
         #expect(writer.lastFailure == nil)
@@ -708,7 +733,7 @@ struct TranscriptHistoryWriterTests {
         later.endedAt = 200
         writer.saveNow(later)
 
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")) == .saved)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Dana at the market")
@@ -759,11 +784,11 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(evening)
         let line = evening.segments[0].id
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "aval", written: "Avi")) == .saved)
         #expect(writer.lastFailure != nil)
 
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: line, with: WordFix(heard: "Dan", written: "Dana")) == .saved)
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi and Dana")
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi and Dana")
@@ -785,7 +810,7 @@ struct TranscriptHistoryWriterTests {
         evening.segments[0].text = "I saw Cohen today"
         writer.saveNow(evening)
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
-        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: evening.segments[0].id, with: WordFix(heard: "Cohen", written: "Avi Cohen")))
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: evening.segments[0].id, with: WordFix(heard: "Cohen", written: "Avi Cohen")) == .saved)
         #expect(writer.lastFailure != nil)
 
         #expect(writer.loadNow(id: evening.id)?.segments.map(\.text) == ["I saw Avi Cohen today", "שורה 1"])
@@ -812,7 +837,7 @@ struct TranscriptHistoryWriterTests {
         later.endedAt = 200
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
         writer.saveNow(later)
-        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")))
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")) == .saved)
 
         let shown = try #require(writer.loadNow(id: early.id))
         #expect(shown.endedAt == 200)
@@ -842,7 +867,7 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(later)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
 
-        #expect(!writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")) == .lineChanged)
         #expect(store.load(id: early.id)?.segments.map(\.text) == ["שורה 0", "I saw Avi today"])
         #expect(writer.lastFailure == nil, "nothing is left waiting, so the warning goes")
     }
@@ -871,7 +896,7 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(later)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
 
-        #expect(!writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")) == .lineChanged)
         #expect(writer.loadNow(id: early.id)?.segments.contains { $0.id == gone } == false, "History doesn't show the line")
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: early.id)?.segments.map(\.text) == ["שורה 0", "I saw Avi today"])

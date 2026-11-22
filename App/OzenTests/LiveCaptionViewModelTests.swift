@@ -2990,10 +2990,9 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(store.load().wordFixes == full)
     }
 
-    private func makeFixingViewModel() -> (LiveCaptionViewModel, FakeEngine, CaptionPipeline, TranscriptHistoryStore) {
+    private func makeFixingViewModel(in directory: URL = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)) -> (LiveCaptionViewModel, FakeEngine, CaptionPipeline, TranscriptHistoryStore) {
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
         let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
         let viewModel = LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
@@ -3016,7 +3015,7 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, toLine: viewModel.segments[0]))
         let fixed = viewModel.segments[0].text
 
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id) == .lineChanged)
         #expect(viewModel.segments[0].text == fixed)
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
         #expect(!viewModel.settings.vocabulary.contains("Avital"))
@@ -3039,7 +3038,7 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(await eventually { pipeline.segments.first?.isCommitted == false })
         viewModel.persistHistory(ended: false)
 
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id) == .lineChanged)
         #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw aval at the market")
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avi" })
     }
@@ -3056,12 +3055,40 @@ struct LiveCaptionViewModelDeleteConversationTests {
         let shown = try #require(history.load(id: conversation.id)?.segments.first)
         #expect(shown.text == "I saw aval today")
 
-        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, lineID: shown.id, sessionID: conversation.id))
-        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id))
-        #expect(viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, lineID: shown.id, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, lineID: shown.id, sessionID: conversation.id) == .saved)
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, sessionID: conversation.id) == .lineChanged)
+        #expect(viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, lineID: shown.id, sessionID: conversation.id) == .saved)
         #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw Avi now")
         #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
         #expect(!viewModel.settings.vocabulary.contains("Avital"))
+    }
+
+    // The sheet said the line changed or was gone, though the line was fine
+    // and the same fix went through once the file could be read.
+    @Test("a word fixed in History while its conversation can't be read just now is not saved or kept, says so, and goes through when tried again")
+    func historyFixWhileTheConversationCantBeRead() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let (viewModel, engine, pipeline, history) = makeFixingViewModel(in: directory)
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        viewModel.clearTranscript()
+        let conversation = try #require(history.listSummaries().first)
+        let shown = try #require(history.load(id: conversation.id)?.segments.first)
+        let file = directory.appendingPathComponent("history", isDirectory: true).appendingPathComponent("\(conversation.id.uuidString).json")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+
+        let refused = viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id)
+        #expect(refused == .unreadable)
+        #expect(refused.note != WordFixResult.lineChanged.note)
+        #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avi" })
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, sessionID: conversation.id) == .saved)
+        #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw Avi today")
+        #expect(viewModel.settings.wordFixes.contains { $0.written == "Avi" })
     }
 
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
@@ -3350,7 +3377,7 @@ struct LiveCaptionViewModelReplayedLineTests {
     func wordFixOnALineAReplayTookOff() async throws {
         let replayed = try await lineAReplayTookOff()
 
-        #expect(!replayed.viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: replayed.gone.id, sessionID: replayed.conversation))
+        #expect(replayed.viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: replayed.gone.id, sessionID: replayed.conversation) == .lineChanged)
         #expect(replayed.history.load(id: replayed.conversation)?.segments.last?.text == replayed.gone.text)
         #expect(!replayed.viewModel.settings.wordFixes.contains { $0.written == "Avi" })
         #expect(!replayed.viewModel.settings.vocabulary.contains("Avi"))

@@ -7,22 +7,22 @@ struct FixWordSheet: View {
     /// The saved word fixes, so Fix it every time can tell when the list
     /// has no room left, as the Words screen does.
     let fixes: [WordFix]
-    /// What Save says when the line didn't take the fix, on the caption
-    /// screen and in History alike, as on Android: the line is gone from the
-    /// captions, is being heard again, or no longer has the word because its
-    /// words changed since the sheet opened. Before, the caption screen said
-    /// the line had left the screen while it was still there, and History
-    /// said to try again when trying again could not help.
-    private var notSaved: String { tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.") }
-    /// Returns whether the line changed.
-    let onSave: (WordFix, Bool) -> Bool
+    /// Returns what became of the fix.
+    let onSave: (WordFix, Bool) -> WordFixResult
     @State private var picked: ClosedRange<Int>?
     @State private var heard = ""
     @State private var written = ""
     @State private var always = false
     /// Save closed the sheet whether or not the line changed, so a fix that
-    /// never landed looked done.
-    @State private var rejected = false
+    /// never landed looked done. The sheet now stays open and says why
+    /// (`WordFixResult.note`), on the caption screen and in History alike,
+    /// as on Android: the line is gone from the captions, is being heard
+    /// again, or no longer has the word because its words changed since the
+    /// sheet opened. Before, the caption screen said the line had left the
+    /// screen while it was still there, and History said to try again when
+    /// trying again could not help. Trying again helps only when History
+    /// couldn't read the conversation just now, and that note says so.
+    @State private var refused: WordFixResult?
     /// After a word is picked the keyboard opens on how it should be
     /// written: at large text the fields sat below the edge, and a grey
     /// Save was all she had to go on.
@@ -47,9 +47,9 @@ struct FixWordSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if rejected {
+                if let note = refused?.note {
                     Section {
-                        Text(notSaved)
+                        Text(note)
                             .foregroundStyle(ReadableColor(color: .red))
                             .accessibilityIdentifier("fixWordNotSaved")
                     }
@@ -98,12 +98,13 @@ struct FixWordSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(tr("שמירה", "Save")) {
-                        if onSave(fix, keeps) {
+                        let result = onSave(fix, keeps)
+                        if let note = result.note {
+                            refused = result
+                            Announcement.post(note)
+                        } else {
                             Announcement.post(tr("השורה תוקנה", "Line fixed"))
                             dismiss()
-                        } else {
-                            rejected = true
-                            Announcement.post(notSaved)
                         }
                     }
                     .disabled(!canSave)

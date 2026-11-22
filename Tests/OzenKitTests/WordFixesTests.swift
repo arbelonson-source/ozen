@@ -35,6 +35,20 @@ struct WordFixesTests {
         }
     }
 
+    // A conversation that couldn't be read just now said the line changed
+    // or was gone, though the line was fine and trying again could help.
+    @Test("a fix that was not saved says why: the line changed, or the conversation couldn't be read just now and trying again can help")
+    func wordFixResultNotes() {
+        Localization.$override.withValue(.english) {
+            #expect(WordFixResult.saved.note == nil)
+            #expect(WordFixResult.lineChanged.note == "The line changed or is gone, so the fix was not saved.")
+            #expect(WordFixResult.unreadable.note == "The conversation couldn’t be read just now, so the fix was not saved. Try again in a moment.")
+        }
+        Localization.$override.withValue(.hebrew) {
+            #expect(WordFixResult.unreadable.note == "לא היה אפשר לקרוא את השיחה כרגע, ולכן התיקון לא נשמר. אפשר לנסות שוב עוד רגע.")
+        }
+    }
+
     @Test("rule 1: whole words only, ignoring case")
     func wholeWords() {
         #expect(WordFixes.apply(avi, to: "I saw aval today") == "I saw Avi today")

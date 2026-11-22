@@ -121,6 +121,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.EmptyState
@@ -180,8 +181,8 @@ interface SavedConversations {
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean?
 
-    /** Fixes a word of a saved line, in the text it has now: false when the line could not be fixed (still being heard, gone, or without that word now). */
-    fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean
+    /** Fixes a word of a saved line, in the text it has now, and says whether it was saved, or why not (still being heard, gone, without that word now, or not readable just now). */
+    fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult
 
     fun saveWordFix(heard: String, written: String, everyTime: Boolean)
 
@@ -762,7 +763,7 @@ internal fun ConversationScreen(
     // read again every twenty seconds, and its newest line, saved while it
     // is still being said, can come back with fewer words.
     var fixingText by rememberSaveable { mutableStateOf("") }
-    var fixRejected by rememberSaveable { mutableStateOf(false) }
+    var fixRefusal by rememberSaveable { mutableStateOf<WordFixResult?>(null) }
     var fixSaving by remember { mutableStateOf(false) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
     var nameRefused by rememberSaveable { mutableStateOf(false) }
@@ -772,26 +773,26 @@ internal fun ConversationScreen(
             fixingText,
             languageCode = line.languageCode,
             fixes = conversations.wordFixes(),
-            refused = fixRejected,
+            refusal = fixRefusal,
             onSave = { heard, written, everyTime ->
                 if (!fixSaving) {
                     fixSaving = true
-                    fixRejected = false
+                    fixRefusal = null
                     marking.launch {
-                        val saved = withContext(Dispatchers.IO) {
-                            conversations.fixLine(id, line.id, heard, written).also { accepted ->
-                                if (accepted) {
+                        val result = withContext(Dispatchers.IO) {
+                            conversations.fixLine(id, line.id, heard, written).also { result ->
+                                if (result == WordFixResult.Saved) {
                                     conversations.saveWordFix(heard, written, everyTime)
                                     loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
                                 }
                             }
                         }
                         fixSaving = false
-                        if (!saved) fixRejected = true else if (fixingID == line.id.toString()) fixingID = null
+                        if (result != WordFixResult.Saved) fixRefusal = result else if (fixingID == line.id.toString()) fixingID = null
                     }
                 }
             },
-            onDismiss = { fixingID = null; fixRejected = false },
+            onDismiss = { fixingID = null; fixRefusal = null },
         )
     }
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
@@ -877,7 +878,7 @@ internal fun ConversationScreen(
                                 }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRejected = false }) {
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
                                         show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
