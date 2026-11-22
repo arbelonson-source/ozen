@@ -319,8 +319,9 @@ class TranscriptHistoryWriter(
      * History said the line changed or was gone, though the same fix went
      * through once the file could be read.
      *
-     * A fix that wrote nothing (the file couldn't be read just now, or has
-     * no such line) leaves [lastFailure] as it was, as on the iPhone. Kept
+     * A fix that wrote nothing (the file couldn't be read just now, has no
+     * such line, or its line doesn't have the word) leaves [lastFailure] as
+     * it was, as on the iPhone. Kept
      * as the last save's error, that read made the caption screen say the
      * phone was probably full though nothing had failed to save, and a line
      * that was gone took away the warning of a save that really had failed.
@@ -347,7 +348,7 @@ class TranscriptHistoryWriter(
         var changed: Boolean? = null
         val fix = { now: String -> change(now).also { fixed = it; changed = it != now } }
         var done = false
-        val written = failure.capture(counts = { changed != null }) { done = store.fixText(segmentID, sessionID, fix) }
+        val written = failure.capture(counts = { changed == true }) { done = store.fixText(segmentID, sessionID, fix) }
         if (waiting != null) {
             val segments = waiting.segments.toMutableList()
             segments[index] = segments[index].copy(text = fix(segments[index].text))

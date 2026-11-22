@@ -1162,8 +1162,10 @@ class TranscriptHistoryStore(
     fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean = fixText(segmentID, inSession) { text }
 
     /**
-     * Changes the text of one line as the file has it now. False when the
-     * conversation or line is not there (or the file is damaged for good); a
+     * Changes the text of one line as the file has it now, and writes
+     * nothing when that leaves it as it was. False when the conversation or
+     * line is not there, the text stays the same, or the file is damaged for
+     * good; a
      * file that exists but cannot be read now throws, so the caller keeps the
      * change waiting instead of taking it for gone.
      */
@@ -1175,7 +1177,9 @@ class TranscriptHistoryStore(
             if (index < 0) return@patchRecordFile null
             val line = lines[index] as JsonObject
             val old = (line["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return@patchRecordFile null
-            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(change(old)))) })))
+            val text = change(old)
+            if (text == old) return@patchRecordFile null
+            JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("text" to JsonPrimitive(text))) })))
         }
     }
 
