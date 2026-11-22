@@ -2750,9 +2750,7 @@ class CaptionPipeline(
      * gone or still being heard, or when the fix changed nothing in it: the
      * engine can rewrite the line under an open Fix a word, and History asks
      * from another thread, so only this step can tell whether the fix took.
-     * (The iPhone's gives back the unchanged text there, which its History
-     * fix uses to tell a line on screen without the word from one gone; here
-     * `ConversationSaver.fixLine` tells them apart by the lines on screen.)
+     * The iPhone's `correctWord` answers the same way.
      */
     fun correctWord(id: UUID, fix: WordFix): String? {
         val index = segments.indexOfLast { it.id == id }
