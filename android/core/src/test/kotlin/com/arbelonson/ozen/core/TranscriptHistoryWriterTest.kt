@@ -482,6 +482,46 @@ class TranscriptHistoryWriterTest {
         assertEquals("second", store.load(old.id)?.segments?.first()?.text)
     }
 
+    // History's dialog says a fix it was told was not saved can be tried
+    // again. One the disk refused was kept waiting anyway, and the tap that
+    // tried again fixed the words a second time.
+    @Test
+    fun `a word fixed in History that waits for room counts as saved and is written once there is room`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-waits-for-room"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val fix = { text: String -> WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), text) }
+        permissions(dir, "r-x------")
+        val kept = writer.fixTextNow(old.id, line, fix)
+        assertNotNull(writer.lastFailure)
+
+        permissions(dir, "rwx------")
+        if (!kept) writer.fixTextNow(old.id, line, fix)
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi Cohen today", store.load(old.id)?.segments?.first()?.text)
+        assertTrue(kept, "kept waiting for room, so History calls it saved")
+        assertNull(writer.lastFailure)
+    }
+
+    @Test
+    fun `a word fixed in History while its conversation cannot be read is not saved, and does not turn up once it can`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unreadable"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(file, "---------")
+        assertFalse(writer.fixTextNow(old.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Cohen today", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a word fixed in History on a line whose conversation was saved again after its text queued for room fixes the newer words`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)

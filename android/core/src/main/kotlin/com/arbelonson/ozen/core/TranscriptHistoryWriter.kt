@@ -245,23 +245,38 @@ class TranscriptHistoryWriter(
      * refused stays waiting, is tried again after every later write, and
      * until it goes through its error is the one reported.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = fixTextNow(sessionID, segmentID) { text }
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean =
+        queue.sync { fixText(sessionID, segmentID, { text }, fromHistory = false) }
 
     /**
-     * The same, changing the line's text as it is when the write happens.
-     * An older change of that line still waiting goes first and is dropped
-     * from the queue, so it is neither written after this one nor lost. A
-     * change still waiting is always newer than the waiting version of its
-     * conversation: any later save of the conversation takes its place (see
-     * [PendingRenames.dropTexts]).
+     * History's fix of a word, changing the line's text as it is when the
+     * write happens. An older change of that line still waiting goes first
+     * and is dropped from the queue, so it is neither written after this one
+     * nor lost. A change still waiting is always newer than the waiting
+     * version of its conversation: any later save of the conversation takes
+     * its place (see [PendingRenames.dropTexts]).
+     *
+     * True when it changed the line's newest words and they are kept: in
+     * the file, in the waiting version, or waiting for room by themselves,
+     * which History calls saved, as the iPhone does. False, with nothing new
+     * kept, when the line is gone, can't be read now or keeps its words:
+     * History then says the fix was not saved, and one kept waiting all the
+     * same was written once there was room, and again by the tap that tried
+     * once more.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean = queue.sync {
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean =
+        queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
+
+    private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): Boolean {
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
-        val combined = { text: String -> change(earlier.fold(text) { shown, older -> older.change(shown) }) }
+        var changed = false
+        val combined = { text: String ->
+            val now = earlier.fold(text) { shown, older -> older.change(shown) }
+            change(now).also { changed = it != now }
+        }
         var done = false
         val written = failure.capture { done = store.fixText(segmentID, sessionID, combined) }
-        pendingRenames.texts.removeAll(earlier)
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (waiting != null && index >= 0) {
@@ -270,10 +285,16 @@ class TranscriptHistoryWriter(
             pendingSaves.records[sessionID] = waiting.copy(segments = segments)
             done = true
         } else if (!written) {
+            if (fromHistory && !changed) {
+                catchUp(null)
+                return false
+            }
             pendingRenames.texts.add(PendingText(sessionID, segmentID, combined))
+            done = fromHistory
         }
+        pendingRenames.texts.removeAll(earlier)
         catchUp(null)
-        done
+        return done && (changed || !fromHistory)
     }
 
     /**

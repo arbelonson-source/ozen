@@ -560,6 +560,7 @@ class CaptionSession(
         scope = scope,
         problemAudio = problemAudio,
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
+        onMainThread = { step -> runBlocking { withContext(Dispatchers.Main.immediate) { step() } } },
     )
     val savedConversations = object : SavedConversations {
         override fun list() = historyStore.listSummaries()
@@ -620,15 +621,8 @@ class CaptionSession(
         // Whether the line on screen changed, decided in the one main-thread
         // step that reads and fixes it: History asks from its own thread,
         // and the engine can rewrite the line before the fix gets there.
-        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
-            val fix = WordFix(heard, written)
-            val onScreen = { line: UUID, change: WordFix ->
-                runBlocking { withContext(Dispatchers.Main.immediate) { pipeline.correctWord(line, change) } } != null
-            }
-            val saved = conversations.fixLine(sessionID, segmentID, fix, onScreen)
-            if (saved && !conversations.isCurrent(sessionID)) onScreen(segmentID, fix)
-            return saved
-        }
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean =
+            conversations.fixLineEverywhere(sessionID, segmentID, WordFix(heard, written)) { line, change -> pipeline.correctWord(line, change) != null }
 
         override fun switchSaving(on: Boolean) {
             conversations.switchSaving(on)
