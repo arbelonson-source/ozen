@@ -2747,14 +2747,19 @@ class CaptionPipeline(
      * Fixes one word of a finished line by hand. The line is read as it is
      * now, the fix is kept for it when the engine rewrites the line later,
      * and the keyword highlight follows the new text. Null when the line is
-     * gone or still being heard.
+     * gone or still being heard, or when the fix changed nothing in it: the
+     * engine can rewrite the line under an open Fix a word, and History asks
+     * from another thread, so only this step can tell whether the fix took.
+     * (The iPhone's gives back the unchanged text there, which its History
+     * fix uses to tell a line on screen without the word from one gone; here
+     * `ConversationSaver.fixLine` tells them apart by the lines on screen.)
      */
     fun correctWord(id: UUID, fix: WordFix): String? {
         val index = segments.indexOfLast { it.id == id }
         if (index < 0 || !segments[index].isCommitted) return null
         val current = segments[index].text
         val text = WordFixes.apply(listOf(fix), current)
-        if (text == current) return current
+        if (text == current) return null
         handFixes[id] = WordFixes.adding(fix, handFixes[id].orEmpty())
         setSegment(index, segments[index].copy(text = text))
         keywordHitSegmentIDs = if (keywordMatcher.matches(text).isEmpty()) keywordHitSegmentIDs - id else keywordHitSegmentIDs + id

@@ -300,18 +300,24 @@ class ConversationSaver(
 
     /**
      * Fixes a word of a saved line, in the text the line has now. A line of
-     * the conversation being captioned is first fixed on screen by
-     * [onScreen], and a screen that refuses (the line is still being heard)
-     * leaves the line as it was. A line of an earlier conversation is
-     * changed in its file, whether or not its lines are still on screen.
-     * A line that no longer has the word is refused too: History's dialog
-     * keeps the words the line had when it opened, and such a fix changed
-     * nothing yet closed the dialog as done and was kept for next time.
+     * the conversation being captioned is fixed on screen by [onScreen],
+     * which says whether the line changed, and only then saved. The screen
+     * decides in its own step, as it fixes the line: the engine can rewrite
+     * the line before the fix gets there, so a copy read here first could
+     * call a fix that changed nothing done, or one that did refused. A line
+     * of an earlier conversation is changed in its file, whether or not its
+     * lines are still on screen. A line that no longer has the word is
+     * refused: History's dialog keeps the words the line had when it
+     * opened, and such a fix changed nothing yet closed the dialog as done
+     * and was kept for next time. So is a line of the conversation being
+     * captioned that is no longer on screen (a replay heard that speech
+     * again and took the line off): every save of that conversation is
+     * written from the lines on screen, and the next one dropped a fix
+     * written to its file alone, with the line.
      */
     fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
-        if (sessionID == id && currentLines.any { it.id == segmentID }) {
-            val before = currentLines.lastOrNull { it.id == segmentID }?.text
-            if (!onScreen(segmentID, fix) || currentLines.lastOrNull { it.id == segmentID }?.text == before) return false
+        if (sessionID == id) {
+            if (currentLines.none { it.id == segmentID } || !onScreen(segmentID, fix)) return false
             save(ended = false)
             return true
         }

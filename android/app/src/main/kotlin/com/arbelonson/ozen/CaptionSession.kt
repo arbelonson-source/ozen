@@ -617,6 +617,9 @@ class CaptionSession(
 
         override fun wordFixes() = settings.current.value.wordFixes
 
+        // Whether the line on screen changed, decided in the one main-thread
+        // step that reads and fixes it: History asks from its own thread,
+        // and the engine can rewrite the line before the fix gets there.
         override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
             val fix = WordFix(heard, written)
             val onScreen = { line: UUID, change: WordFix ->
@@ -1847,9 +1850,7 @@ class CaptionSession(
      * dialog then stays open and says so, and nothing is kept for next time.
      */
     fun fixLine(line: UUID, heard: String, written: String): Boolean {
-        val before = pipeline.segments.lastOrNull { it.id == line }?.text
         val text = pipeline.correctWord(line, WordFix(heard, written)) ?: return false
-        if (text == before) return false
         conversations.fixLiveLine(line, text)
         return true
     }
