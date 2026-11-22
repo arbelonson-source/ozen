@@ -955,6 +955,30 @@ class WhisperResultFilter(
             return result.toString()
         }
 
+        /**
+         * The words of [normalize]`(text)`, read from the front one at a
+         * time, each normalized by itself. Normalizing never looks past a
+         * space or a word joiner (a capital sigma's final form looks no
+         * further than its own word), so these are the same words; a caller
+         * that needs only the first few no longer normalizes a whole line
+         * that comes again at every word.
+         */
+        internal fun normalizedWords(text: String): Iterator<String> = iterator {
+            var start = -1
+            var index = 0
+            while (index < text.length) {
+                val codePoint = text.codePointAt(index)
+                if (isWhisperWhitespace(codePoint) || HebrewText.isWordJoiner(codePoint)) {
+                    if (start >= 0) normalize(text.substring(start, index)).let { if (it.isNotEmpty()) yield(it) }
+                    start = -1
+                } else if (start < 0) {
+                    start = index
+                }
+                index += Character.charCount(codePoint)
+            }
+            if (start >= 0) normalize(text.substring(start)).let { if (it.isNotEmpty()) yield(it) }
+        }
+
         internal fun normalize(text: String): String {
             // Also strips Unicode format characters (bidi marks, zero-width
             // joiners): WhisperKit's Hebrew/Arabic output regularly carries a

@@ -2052,6 +2052,18 @@ public final class CaptionPipeline {
         coveredSettings?.whisperModelVariant = variant
     }
 
+    /// Saved settings came back in place of the ones captions began with
+    /// (`SettingsStore.saveTakingUp`): the voices they hold are listened
+    /// for, and their sound alerts apply at once, also while captions are
+    /// paused or only sounds are listened for, where no restart reaches.
+    /// Captions start again only by the caller's restart, while they run.
+    public func settingsTakenUp(_ settings: AppSettings, replacing before: AppSettings) {
+        for profile in settings.speakerProfiles where !before.speakerProfiles.contains(where: { $0.id == profile.id }) {
+            enroll(profile: profile)
+        }
+        if soundPolicy.preferences != settings.soundAlerts { setSoundAlertPreferences(settings.soundAlerts) }
+    }
+
     public func setSoundAlertPreferences(_ preferences: SoundAlertPreferences) {
         soundPolicy.preferences = preferences
         activeSettings?.soundAlerts = preferences

@@ -149,7 +149,7 @@ struct StarredLinesView: View {
             // Off the list at once, so it can't be asked again (which would put
             // the star back); the read after brings it back if the star stayed.
             lines.removeAll { $0.id == line.id }
-            if viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id) {
+            if viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id, to: false) {
                 Announcement.post(tr("הסימון הוסר", "Star removed"))
             } else {
                 starRefused = true

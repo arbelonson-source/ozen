@@ -135,17 +135,21 @@ internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, repo
 
 /**
  * "Saving failed", as the iPhone's, with its reason: a full phone, or
- * ([settingsUnreadable]) settings whose file can't be read right now. Only
- * the close button puts it away: a tap on the screen is how the hidden
- * buttons come back, and when the whole card closed it, the warning was gone
- * before the helper it names had seen it.
+ * ([settingsUnreadable]) settings whose file can't be read right now. With
+ * that reason alone ([onlyUnreadable]: no save has failed yet) the title
+ * says the saved settings can't be read instead. Only the close button puts
+ * it away: a tap on the screen is how the hidden buttons come back, and when
+ * the whole card closed it, the warning was gone before the helper it names
+ * had seen it. The whole card is one polite live
+ * region, so TalkBack reads it again when its reason changes while it stays
+ * up, as VoiceOver does on the iPhone.
  */
 @Composable
-internal fun SavingTroubleBanner(settingsUnreadable: Boolean, onDismiss: () -> Unit) {
+internal fun SavingTroubleBanner(settingsUnreadable: Boolean, onlyUnreadable: Boolean, onDismiss: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Warning,
-        SavingTroubleNotice.title,
+        SavingTroubleNotice.titleFor(onlyUnreadable),
         SavingTroubleNotice.detailFor(settingsUnreadable),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
