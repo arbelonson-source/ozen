@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
@@ -81,6 +82,16 @@ class ConversationSaverTest {
     }
 
     private fun saved() = writer.waitUntilIdle().let { store.listSummaries() }
+
+    /** The caption screen's own step, as `CaptionPipeline.correctWord` makes it: whether the line on screen changed. */
+    private fun fixOnScreen(line: UUID, fix: WordFix): Boolean {
+        val index = lines.indexOfLast { it.id == line }
+        if (index < 0) return false
+        val fixed = WordFixes.apply(listOf(fix), lines[index].text)
+        if (fixed == lines[index].text) return false
+        lines[index] = lines[index].copy(text = fixed)
+        return true
+    }
 
     @Test
     fun `a saved conversation keeps the zone the phone was in when it started`() {
@@ -657,8 +668,52 @@ class ConversationSaverTest {
         saver.save(ended = false)
         val conversation = saved().single().id
 
-        assertFalse(saver.fixLine(conversation, lines[0].id, WordFix("aval", "Avi")) { _, _ -> true })
+        assertFalse(saver.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
         assertEquals("I saw Avi today", store.load(conversation)!!.segments.single().text)
+    }
+
+    // History reads the line off the main thread and the screen fixes it on
+    // the main thread; the engine can rewrite the line in between. Checking
+    // the text again afterwards compared it with that early read, so a fix
+    // the screen did make was refused when the rewrite had put back the
+    // very word it fixed. Only the screen's own step can tell.
+    @Test
+    fun `a word fixed in History is taken when the screen's own step changed the line, whatever the engine rewrote before it`() {
+        start()
+        say("I saw Avi")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val line = lines[0].id
+
+        assertTrue(
+            saver.fixLine(conversation, line, WordFix("aval", "Avi")) { id, fix ->
+                lines[0] = lines[0].copy(text = "I saw aval")
+                fixOnScreen(id, fix)
+            },
+        )
+        assertEquals("I saw Avi", lines[0].text)
+        assertEquals("I saw Avi", store.load(conversation)!!.segments.single().text)
+    }
+
+    // A replay hears the same speech again and takes the lines it rewrites
+    // off the screen, and every save of the conversation being captioned is
+    // written from the lines on screen. A fix of such a line went to the
+    // file alone, said it was done, and the next save dropped it with the
+    // line.
+    @Test
+    fun `a word fixed in History on a line a replay took off the screen is refused, as the next save drops that line`() {
+        start()
+        say("I saw aval")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val gone = lines[0].id
+        lines.clear()
+        say("I saw aval today")
+
+        assertFalse(saver.fixLine(conversation, gone, WordFix("aval", "Avi"), ::fixOnScreen))
+        assertEquals(listOf("I saw aval"), store.load(conversation)!!.segments.map { it.text })
+        saver.save(ended = false)
+        assertEquals(listOf("I saw aval today"), store.load(conversation)!!.segments.map { it.text })
     }
 
     @Test

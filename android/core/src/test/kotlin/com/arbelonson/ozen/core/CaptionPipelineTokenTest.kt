@@ -150,6 +150,28 @@ class CaptionPipelineTokenTest {
         assertTrue(eventually { pipeline.segments[0].text == "I saw Avy today" })
     }
 
+    // History's Fix a word keeps the words the line had when it opened, and
+    // the engine can rewrite the line before the fix reaches it. A fix that
+    // then found nothing to change came back as the line's text, which
+    // History took as a line the screen had fixed: the dialog closed as done
+    // and the fix was kept for next time.
+    @Test
+    fun `a hand correction of a word the engine already took out of the line changes nothing and says so`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine), now = { 1_001.0 })
+        pipeline.start(AppSettings.default)
+        val id = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval", at = 1_000.0))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        pipeline.commitStaleSegments(now = 1_000_000.0)
+        engine.emit(token(id, "I saw Avi today", final = true, at = 1_002.0))
+        assertTrue(eventually { pipeline.segments[0].text == "I saw Avi today" })
+        assertTrue(pipeline.segments[0].isCommitted)
+
+        assertNull(pipeline.correctWord(id, WordFix("aval", "Avi")))
+        assertEquals("I saw Avi today", pipeline.segments[0].text)
+    }
+
     @Test
     fun `a line rewritten by hand in History moves its keyword highlight`() = runTest {
         val engine = FakeEngine()
