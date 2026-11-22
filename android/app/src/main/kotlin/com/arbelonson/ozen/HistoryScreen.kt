@@ -113,6 +113,7 @@ import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryReadRetry
+import com.arbelonson.ozen.core.HistoryRereads
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
@@ -711,6 +712,14 @@ internal fun ConversationScreen(
     } catch (_: IOException) {
         null
     }
+    // Each reading is numbered as it begins, and one is shown only when no
+    // reading begun after it has been shown. Shown as each came back, a
+    // reading of the file made just before a star, a name or a fix was saved
+    // could come back after that change's own reading: the star went away
+    // (and the next tap starred the line again), or the name or the fix
+    // seemed to vanish, until the next reading.
+    val rereads = remember { HistoryRereads() }
+    suspend fun readBack() = withContext(Dispatchers.IO) { readAgain() }
     // Opened while its file is there but can't be read just now, the screen
     // says so and reads it again every few seconds until it reads, as shown
     // or as gone; Try again reads it at once. Taken for no conversation, it
@@ -727,7 +736,9 @@ internal fun ConversationScreen(
             // and a name, star or fix shown meanwhile went away until the
             // next reading, twenty seconds later.
             val now = if (loaded != null) {
-                withContext(Dispatchers.IO) { readAgain() }
+                var newer: OpenConversation? = null
+                rereads.read({ readBack() }) { newer = it }
+                newer
             } else {
                 HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
                     withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
@@ -825,30 +836,34 @@ internal fun ConversationScreen(
                     fixSaving = opening
                     fixRefusal = null
                     marking.launch {
-                        val (result, now) = withContext(Dispatchers.IO) {
-                            val result = conversations.fixLine(id, line.id, heard, written)
-                            if (result != WordFixResult.Saved) return@withContext result to null
-                            conversations.saveWordFix(heard, written, everyTime)
-                            result to readAgain()
+                        val result = withContext(Dispatchers.IO) {
+                            conversations.fixLine(id, line.id, heard, written).also {
+                                if (it == WordFixResult.Saved) conversations.saveWordFix(heard, written, everyTime)
+                            }
                         }
                         // Read again through show(), here on the main thread:
                         // set straight from the reading, a fix of the word
                         // searched for left the button on a match that was
                         // gone, "Next match (3 of 2)".
-                        now?.let { show(it) }
+                        val readBackNow = result != WordFixResult.Saved || rereads.read({ readBack() }) { show(it) }
                         if (fixSaving == opening) fixSaving = null
-                        if (fixOpening != opening || fixingID == null) return@launch
-                        if (result == WordFixResult.Saved) {
-                            fixingID = null
-                            // Said once the fix is known to have gone through,
-                            // as the dialog closes. Said as it closed, the
-                            // dialog going away while the fix was still being
-                            // saved, as when the phone turns, said "Line
-                            // fixed" before anything was known.
-                            ScreenReader.said(context, tr("השורה תוקנה", "Line fixed"))
-                        } else {
-                            fixRefusal = result
+                        if (fixOpening == opening && fixingID != null) {
+                            if (result == WordFixResult.Saved) {
+                                fixingID = null
+                                // Said once the fix is known to have gone through,
+                                // as the dialog closes. Said as it closed, the
+                                // dialog going away while the fix was still being
+                                // saved, as when the phone turns, said "Line
+                                // fixed" before anything was known.
+                                ScreenReader.said(context, tr("השורה תוקנה", "Line fixed"))
+                            } else {
+                                fixRefusal = result
+                            }
                         }
+                        // Not read back just now, a fix in a conversation no
+                        // longer being captioned kept its old words on the
+                        // screen until it was opened again.
+                        if (!readBackNow) rereads.readAgainSoon(load = { readBack() }) { show(it) }
                     }
                 }
             },
@@ -948,7 +963,7 @@ internal fun ConversationScreen(
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
-                                        withContext(Dispatchers.IO) { readAgain() }?.let { show(it) }
+                                        rereads.afterChange(load = { readBack() }) { show(it) }
                                     }
                                 }
                             }
@@ -981,12 +996,8 @@ internal fun ConversationScreen(
                     onClick = {
                         naming = null
                         scope.launch {
-                            var kept = true
-                            withContext(Dispatchers.IO) {
-                                kept = conversations.rename(id, draft)
-                                readAgain()
-                            }?.let { show(it) }
-                            if (!kept) nameRefused = true
+                            if (!withContext(Dispatchers.IO) { conversations.rename(id, draft) }) nameRefused = true
+                            rereads.afterChange(load = { readBack() }) { show(it) }
                         }
                     },
                 ) { Text(tr("שמירה", "Save")) }

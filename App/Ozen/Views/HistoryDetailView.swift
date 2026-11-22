@@ -27,6 +27,12 @@ struct HistoryDetailView: View {
     /// value here) reads it at once.
     @State private var cantRead = false
     @State private var readTries = 0
+    /// This conversation's readings once it is shown, numbered as each
+    /// begins (see `refresh()`).
+    @State private var rereads = HistoryRereads()
+    /// The reading after a star, a fix or a name, read again every few
+    /// seconds while it can't be read just now.
+    @State private var rereading: Task<Void, Never>?
     /// The line this was opened at, lit up for a moment once scrolled to.
     @State private var arrivedLineID: UUID?
     /// VoiceOver is moved onto a line jumped to; the flash alone left it
@@ -191,7 +197,7 @@ struct HistoryDetailView: View {
         Button {
             if !viewModel.toggleStarInHistory(sessionID: sessionID, segmentID: segment.id) { starRefused = true }
             onHistoryChanged()
-            Task { await refresh() }
+            refreshAfterChange()
         } label: {
             if segment.isStarred {
                 Label(tr("הסרת הסימון", "Remove the star"), systemImage: "star.slash")
@@ -297,7 +303,10 @@ struct HistoryDetailView: View {
         .navigationTitle(record?.title ?? tr("שיחה", "Conversation"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { viewModel.historyOpened(sessionID) }
-        .onDisappear { viewModel.historyClosed(sessionID) }
+        .onDisappear {
+            viewModel.historyClosed(sessionID)
+            rereading?.cancel()
+        }
         .toolbar { toolbarContent }
         .task(id: exportKey) {
             exportedText = nil
@@ -317,7 +326,7 @@ struct HistoryDetailView: View {
             FixWordSheet(text: line.text, languageCode: record?.languageCode(orCurrent: viewModel.settings.languageCode) ?? viewModel.settings.languageCode, fixes: viewModel.wordFixes) { fix, always in
                 let result = viewModel.applyWordFix(fix, always: always, lineID: line.id, sessionID: sessionID)
                 onHistoryChanged()
-                Task { await refresh() }
+                refreshAfterChange()
                 return result
             }
             .alertOverlay(for: viewModel)
@@ -331,6 +340,11 @@ struct HistoryDetailView: View {
                 }
                 let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 record?.title = trimmed.isEmpty ? nil : trimmed
+                // A reading made before the name was saved doesn't take it
+                // away when it comes back; the one after it brings back
+                // anything that reading had, such as a star.
+                rereads.changed()
+                refreshAfterChange()
                 // The list behind this screen shows the name too.
                 onHistoryChanged()
             }
@@ -382,19 +396,42 @@ struct HistoryDetailView: View {
     /// conversation, the open one turned into "Conversation not found" right
     /// after the fix sheet said to try again in a moment, and there was
     /// nothing left to try again from without leaving the screen.
+    ///
+    /// Each reading is numbered as it begins, and one is shown only when no
+    /// reading begun after it has been shown. Shown as each came back, a
+    /// reading of the file made just before a star, a name or a fix was
+    /// saved could come back after that change's own reading: the star went
+    /// away (and the next tap starred the line again), or the name or the
+    /// fix seemed to vanish, until the next reading.
     private func refresh() async {
+        await rereads.read(reread, show: show)
+    }
+
+    /// Read again after a star, a fix or a name. Not read just now, it is
+    /// read again every few seconds until it reads, a reading begun after it
+    /// has been shown, or the screen closes: a closed conversation is never
+    /// read again by itself, so it kept the line as it was before the change
+    /// until it was opened again. A newer change's reading takes its place.
+    private func refreshAfterChange() {
+        rereading?.cancel()
+        rereading = Task { await rereads.afterChange(reread, show: show) }
+    }
+
+    private func reread() async -> Loaded? {
         let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
-        let reread = await Task.detached(priority: .utility) { () -> Loaded? in
+        return await Task.detached(priority: .utility) { () -> Loaded? in
             do {
                 return try Loaded(record: read(id), query: query, languageCode: language)
             } catch {
                 return nil
             }
         }.value
-        guard let loaded = reread else { return }
+    }
+
+    private func show(_ loaded: Loaded) {
         record = loaded.record
         stats = loaded.stats
         if let index = Self.position(of: currentMatch, from: matches, in: loaded.matches) {
