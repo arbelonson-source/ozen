@@ -48,6 +48,8 @@ class ConversationSaver(
     private val spokenLanguage: (() -> String)? = null,
     /** The phone's offset from UTC at a moment: a conversation keeps the one from when it started. */
     private val utcOffsetAt: (Double) -> Int = { at -> java.util.TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000 },
+    /** Runs a step on the main thread, where the lines on screen change; History asks from a thread of its own. */
+    private val onMainThread: (() -> Unit) -> Unit = { it() },
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -312,28 +314,63 @@ class ConversationSaver(
      * the line before the fix gets there, so a copy read here first could
      * call a fix that changed nothing done, or one that did refused. A line
      * of an earlier conversation is changed in its file, whether or not its
-     * lines are still on screen. A line that no longer has the word is
-     * refused: History's dialog keeps the words the line had when it
-     * opened, and such a fix changed nothing yet closed the dialog as done
-     * and was kept for next time. So is a line of the conversation being
-     * captioned that is no longer on screen (a replay heard that speech
-     * again and took the line off): every save of that conversation is
-     * written from the lines on screen, and the next one dropped a fix
-     * written to its file alone, with the line. History asks from its own
-     * thread, so a long quiet can close the conversation before the
-     * screen's step: the fix is then saved into the conversation it closed,
-     * not the next one, which has no lines yet.
+     * lines are still on screen, and a fix that must wait for room counts
+     * as saved (see [TranscriptHistoryWriter.fixTextNow]). A line that no
+     * longer has the word is refused: History's dialog keeps the words the
+     * line had when it opened, and such a fix changed nothing yet closed the
+     * dialog as done and was kept for next time. So is a line of the
+     * conversation being captioned that is no longer on screen (a replay
+     * heard that speech again and took the line off): every save of that
+     * conversation is written from the lines on screen, and the next one
+     * dropped a fix written to its file alone, with the line.
+     *
+     * History asks from its own thread, so which conversation the line
+     * belongs to, the screen's fix and what is saved are all decided in one
+     * step of the main thread: read on History's thread afterwards, a long
+     * quiet, a clear or a new caption landing in between paired the fix
+     * with the wrong conversation or the wrong lines. A line a long quiet
+     * closed before that step is an earlier conversation's.
      */
     fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
+        var took: Boolean? = null
+        onMainThread { took = fixOnScreen(sessionID, segmentID, fix, onScreen) }
+        val saved = took ?: return writer.fixTextNow(sessionID, segmentID) { WordFixes.apply(listOf(fix), it) }
+        writer.waitUntilIdle()
+        return saved
+    }
+
+    /**
+     * [fixLine]'s step on the main thread: null for a line of an earlier
+     * conversation, else whether the screen fixed the line, whose
+     * conversation is then queued to be saved, as the screen shows it now,
+     * before anything else the main thread saves.
+     */
+    private fun fixOnScreen(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean? {
+        if (sessionID != id) return null
+        if (currentLines.none { it.id == segmentID } || !onScreen(segmentID, fix)) return false
         if (sessionID == id) {
-            if (currentLines.none { it.id == segmentID } || !onScreen(segmentID, fix)) return false
-            if (sessionID != id) return closed[sessionID]?.let { closedRecord(it) }?.let { writer.saveNow(it) } ?: false
-            save(ended = false)
+            write(ended = false, endedAt = null, inBackground = true)
             return true
         }
-        var changed = false
-        val saved = writer.fixTextNow(sessionID, segmentID) { text -> WordFixes.apply(listOf(fix), text).also { if (it != text) changed = true } }
-        return saved && changed
+        writer.saveInBackground(closed[sessionID]?.let { closedRecord(it) } ?: return false)
+        return true
+    }
+
+    /**
+     * History's fix of a word: [fixLine], and a line of an earlier
+     * conversation still on screen takes the fix there too, unless the
+     * screen was asked already. Whether the line's conversation is still the
+     * one being captioned can change right after the screen's step (a long
+     * quiet), and asking again then fixed its words a second time.
+     */
+    fun fixLineEverywhere(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
+        var asked = false
+        val saved = fixLine(sessionID, segmentID, fix) { line, change ->
+            asked = true
+            onScreen(line, change)
+        }
+        if (saved && !asked) onMainThread { onScreen(segmentID, fix) }
+        return saved
     }
 
     /**
