@@ -264,6 +264,9 @@ class ConversationSaver(
      */
     fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
+    /** A saved conversation as History shows it: as it will be saved, with what still waits for room (see [TranscriptHistoryWriter.loadNow]). */
+    fun load(id: UUID): TranscriptSessionRecord? = writer.loadNow(id)
+
     /**
      * Stars a saved line from History, or takes its star away; the line's
      * new state, or null when it is gone or could not be saved. A line of
@@ -277,23 +280,30 @@ class ConversationSaver(
      * [fixLine] refuses a fix of it: every save of that conversation is
      * written from the lines on screen, and the next one dropped a star
      * written to its file alone, with the line.
+     *
+     * [to], when given, is the state the line takes, whichever conversation
+     * it is in; a line being captioned that has it already is still saved,
+     * so its file follows. The starred lines list shows the stars of the
+     * files, which a version waiting for room or the caption screen can
+     * differ from (a star taken off there while the phone was full), and its
+     * Remove the star, as a tap, put the star back on such a line.
      */
-    fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
+    fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean? {
         if (sessionID != id) {
-            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false)?.also { mark(segmentID, it) }
+            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false, to = to)?.also { mark(segmentID, it) }
         }
         if (currentLines.none { it.id == segmentID }) return null
-        val (starring, written) = starCurrentLine(segmentID)
+        val had = segmentID in starred
+        val (starring, written) = starCurrentLine(segmentID, to ?: !had)
         if (!written) {
-            starCurrentLine(segmentID)
+            starCurrentLine(segmentID, had)
             return null
         }
         return starring
     }
 
-    /** Stars a line of the conversation being captioned, or takes its star away, and saves it: its new state, and whether the save reached the disk. */
-    private fun starCurrentLine(segmentID: UUID): Pair<Boolean, Boolean> {
-        val starring = segmentID !in starred
+    /** Gives a line of the conversation being captioned [starring] and saves it: its new state, and whether the save reached the disk. */
+    private fun starCurrentLine(segmentID: UUID, starring: Boolean = segmentID !in starred): Pair<Boolean, Boolean> {
         mark(segmentID, starring)
         return starring to (write(ended = false, endedAt = null, inBackground = false)?.second ?: true)
     }

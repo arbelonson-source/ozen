@@ -3910,6 +3910,45 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.segments.isEmpty)
     }
 
+    // The star was taken off on the caption screen while the phone was full,
+    // so the file kept it and the starred lines list still showed it. Its
+    // Remove the star, as a tap, put the star back on the line.
+    @Test("Remove the star from the starred lines list takes it off a line still on screen whose unstarring waited for room")
+    func unstarFromStarredLinesOnScreen() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let history = TranscriptHistoryStore(directoryURL: folder)
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "Take two pills after dinner", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+        let line = try #require(viewModel.segments.last)
+        viewModel.toggleStar(line)
+        viewModel.waitForHistorySaves()
+        let conversation = try #require(history.listSummaries().first)
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        viewModel.toggleStar(line)
+        viewModel.waitForHistorySaves()
+        #expect(!viewModel.toggleStarInHistory(sessionID: conversation.id, segmentID: line.id, to: false), "still full: not saved, and said so")
+        #expect(!viewModel.starredSegmentIDs.contains(line.id))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == true)
+
+        #expect(viewModel.toggleStarInHistory(sessionID: conversation.id, segmentID: line.id, to: false))
+        #expect(!viewModel.starredSegmentIDs.contains(line.id))
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == false)
+    }
+
     @Test("a star History can't save says so and leaves the line as it was, still on screen or long gone")
     func starThatCannotBeSaved() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)
