@@ -289,7 +289,7 @@ class TranscriptHistoryWriter(
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (fromHistory && waiting != null && index < 0) {
-            catchUp(null)
+            if (catchUp(null)) failure.clear()
             return false
         }
         lastWritten.record = null
@@ -326,9 +326,12 @@ class TranscriptHistoryWriter(
      *
      * A newer version of the conversation still waiting for room takes the
      * same state: starring only the older file on disk was undone when the
-     * waiting one was written over it. The tap follows the file, which is
-     * what History shows; a line only the waiting version has follows that.
-     * A file the disk still refuses gives the waiting version the star when
+     * waiting one was written over it. The tap follows the conversation as
+     * History shows it (see [loadNow]): the waiting version when it has the
+     * line, and the file then takes the waiting version's new state. Toggled
+     * on its own, a file without the waiting version's star got the star
+     * back when History offered to take it off. A file the disk still
+     * refuses gives the waiting version the star when
      * [keepingRefused] (the caption screen, whose star shows from memory and
      * is saved once there is room). History passes false: the person is told
      * the star didn't change, so it mustn't turn up once there is room, or
@@ -336,8 +339,9 @@ class TranscriptHistoryWriter(
      */
     fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true): Boolean? = queue.sync {
         lastWritten.record = null
+        val starring = pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
-        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID) }
+        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
         val waiting = pendingSaves.records[sessionID]
         if ((reached || keepingRefused) && waiting != null) {
             val index = waiting.segments.indexOfFirst { it.id == segmentID }

@@ -577,6 +577,7 @@ class TranscriptHistoryWriterTest {
 
         assertFalse(writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
         assertEquals(listOf("שורה 0", "I saw Avi today"), store.load(early.id)?.segments?.map { it.text })
+        assertNull(writer.lastFailure, "nothing is left waiting, so the warning goes")
     }
 
     // A replay took the line off the screen before the conversation closed,
@@ -645,7 +646,7 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
-    fun `a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state`() = withWriterDirectory { dir ->
+    fun `a star tapped in History follows the conversation as History shows it, the version waiting for room, and the file takes the same state`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-unstar"))
         val early = record(UUID.randomUUID(), 2, false)
@@ -656,8 +657,9 @@ class TranscriptHistoryWriterTest {
         writer.saveNow(later)
         permissions(dir, "rwx------")
 
-        assertEquals(true, writer.toggleStarNow(early.id, early.segments[0].id))
-        assertEquals(true, store.load(early.id)?.segments?.get(0)?.isStarred)
+        assertEquals(true, writer.loadNow(early.id)?.segments?.get(0)?.isStarred)
+        assertEquals(false, writer.toggleStarNow(early.id, early.segments[0].id))
+        assertEquals(false, store.load(early.id)?.segments?.get(0)?.isStarred)
         assertEquals(200.0, store.load(early.id)?.endedAt)
         assertNull(writer.lastFailure)
     }

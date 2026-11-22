@@ -414,7 +414,7 @@ struct TranscriptHistoryWriterTests {
         #expect(saved.segments[0].isStarred)
     }
 
-    @Test("a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state")
+    @Test("a star tapped in History follows the conversation as History shows it, the version waiting for room, and the file takes the same state")
     func starFollowsHistoryWhileWaiting() throws {
         let (store, dir) = makeStore()
         defer {
@@ -431,8 +431,9 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(later)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
 
-        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id) == true)
-        #expect(store.load(id: early.id)?.segments[0].isStarred == true)
+        #expect(writer.loadNow(id: early.id)?.segments[0].isStarred == true)
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id) == false)
+        #expect(store.load(id: early.id)?.segments[0].isStarred == false)
         #expect(store.load(id: early.id)?.endedAt == 200)
         #expect(writer.lastFailure == nil)
     }
@@ -789,6 +790,34 @@ struct TranscriptHistoryWriterTests {
         let shown = try #require(writer.loadNow(id: early.id))
         #expect(shown.endedAt == 200)
         #expect(shown.segments.map(\.text) == ["I saw Avi today", "שורה 0"])
+    }
+
+    // Room came back before the refused fix: like every other fix, it
+    // writes what was waiting, so the newer version isn't left only in
+    // memory until the next save.
+    @Test("a refused History fix still writes the conversation waiting for room once there is room")
+    func refusedWordFixCatchesUp() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.refused-fix-catches-up"))
+        var early = record(id: UUID(), lines: 2, ended: false)
+        early.segments[1].text = "I saw aval today"
+        writer.saveNow(early)
+        let gone = early.segments[1].id
+        var later = early
+        later.segments[1] = record(id: early.id, lines: 1, ended: true).segments[0]
+        later.segments[1].text = "I saw Avi today"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(!writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(store.load(id: early.id)?.segments.map(\.text) == ["שורה 0", "I saw Avi today"])
+        #expect(writer.lastFailure == nil, "nothing is left waiting, so the warning goes")
     }
 
     // A replay took the line off the screen before the conversation closed,

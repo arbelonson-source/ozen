@@ -1072,9 +1072,10 @@ class TranscriptHistoryStore(
      * Stars a saved line, or takes its star away, after the conversation
      * ended: a line starred later protects its conversation from being
      * cleared out just as one starred while it was said does. Returns the
-     * line's new state, or null when the conversation or line is gone.
+     * line's new state, or null when the conversation or line is gone. With
+     * [to], the line takes that state instead of the other one.
      */
-    fun toggleStar(segmentID: UUID, inSession: UUID): Boolean? {
+    fun toggleStar(segmentID: UUID, inSession: UUID, to: Boolean? = null): Boolean? {
         val file = fileFor(inSession)
         var state: Boolean? = null
         patchRecordFile(file, writeSearchText = false) { object_ ->
@@ -1082,7 +1083,7 @@ class TranscriptHistoryStore(
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null
             val line = lines[index] as JsonObject
-            val starred = !((line["isStarred"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true")
+            val starred = to ?: !((line["isStarred"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true")
             state = starred
             JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("isStarred" to JsonPrimitive(starred))) })))
         }

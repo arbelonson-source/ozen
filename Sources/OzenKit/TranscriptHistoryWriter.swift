@@ -141,7 +141,12 @@ public final class TranscriptHistoryWriter: Sendable {
     @discardableResult
     public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
-            if let version = pendingSaves.records[sessionID], !version.segments.contains(where: { $0.id == segmentID }) { return false }
+            if let version = pendingSaves.records[sessionID], !version.segments.contains(where: { $0.id == segmentID }) {
+                if Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure) {
+                    failure.clear()
+                }
+                return false
+            }
             let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
                 ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
             guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return false }
@@ -249,9 +254,12 @@ public final class TranscriptHistoryWriter: Sendable {
     ///
     /// A newer version of the conversation still waiting for room takes the
     /// same state: starring only the older file on disk was undone when the
-    /// waiting one was written over it. The tap follows the file, which is
-    /// what History shows; a line only the waiting version has follows that.
-    /// A file the disk still refuses gives the waiting version the star when
+    /// waiting one was written over it. The tap follows the conversation as
+    /// History shows it (see `loadNow(id:)`): the waiting version when it
+    /// has the line, and the file then takes the waiting version's new
+    /// state. Toggled on its own, a file without the waiting version's star
+    /// got the star back when History offered to take it off. A file the
+    /// disk still refuses gives the waiting version the star when
     /// `keepingRefused` (the caption screen, whose star shows from memory and
     /// is saved once there is room). History passes false: the person is
     /// told the star didn't change, so it mustn't turn up once there is room,
@@ -260,8 +268,9 @@ public final class TranscriptHistoryWriter: Sendable {
     public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
+            let starring = pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
             var result: Bool?
-            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
+            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
             if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].isStarred = result ?? !waiting.segments[index].isStarred

@@ -1242,16 +1242,17 @@ public struct TranscriptHistoryStore: Sendable {
     /// Stars a saved line, or takes its star away, after the conversation
     /// ended: a line starred later protects its conversation from being
     /// cleared out just as one starred while it was said does. Returns the
-    /// line's new state, or nil when the conversation or line is gone.
+    /// line's new state, or nil when the conversation or line is gone. With
+    /// `wanted`, the line takes that state instead of the other one.
     @discardableResult
-    public func toggleStar(segmentID: UUID, inSession id: UUID) throws -> Bool? {
+    public func toggleStar(segmentID: UUID, inSession id: UUID, to wanted: Bool? = nil) throws -> Bool? {
         var state: Bool?
         _ = try patchRecordFile(at: fileURL(for: id)) { object in
             guard var entries = object["segments"] as? [Any],
                   let index = entries.firstIndex(where: { (($0 as? [String: Any])?["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID }),
                   var line = entries[index] as? [String: Any]
             else { return false }
-            let starred = !((line["isStarred"] as? Bool) ?? false)
+            let starred = wanted ?? !((line["isStarred"] as? Bool) ?? false)
             line["isStarred"] = starred
             entries[index] = line
             object["segments"] = entries
