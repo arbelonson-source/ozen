@@ -625,7 +625,9 @@ class CaptionSession(
             }
         }
 
-        override fun rename(id: UUID, title: String) = conversations.rename(id, title).also { refreshSavingTrouble() }
+        // History names from its own thread; the warning is on the caption
+        // screen, which the main thread changes at every word.
+        override fun rename(id: UUID, title: String) = conversations.rename(id, title).also { onMainThread { refreshSavingTrouble() } }
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.
