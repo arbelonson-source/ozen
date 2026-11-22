@@ -108,6 +108,27 @@ struct SavingTroubleNoticeTests {
         }
     }
 
+    @Test("what VoiceOver is told follows the reason on the banner while it stays up, and there is nothing to tell while it is away")
+    func spokenFollowsTheShownReason() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            #expect(notice.spoken == nil)
+
+            notice.update(settingsFailed: true, historyFailed: false)
+            let fullPhone = SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
+            #expect(notice.spoken == fullPhone)
+
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.spoken == SavingTroubleNotice.title + ". " + SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.update(settingsFailed: true, historyFailed: false)
+            #expect(notice.spoken == fullPhone)
+
+            notice.dismiss()
+            #expect(notice.spoken == nil)
+        }
+    }
+
     @Test("the reason for settings that can't be read is said in Hebrew too")
     func unreadableSettingsInHebrew() {
         Localization.$override.withValue(.hebrew) {

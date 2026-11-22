@@ -660,13 +660,13 @@ public struct SettingsStore: Sendable {
     /// damaged and stays where it is: `unreadableStandIn` only stands in
     /// for it, and `save` never writes that over it.
     public func load() -> AppSettings {
-        standInBox.withLock { (standIn: inout AppSettings?) -> AppSettings in
-            standIn = nil
+        standInBox.withLock { (state: inout StandInBox.State) -> AppSettings in
+            state = StandInBox.State()
             switch read() {
             case .missing:
                 return .default
             case .unreadable:
-                standIn = Self.unreadableStandIn
+                state = StandInBox.State(settings: Self.unreadableStandIn, unreadable: true)
                 return Self.unreadableStandIn
             case .read(let data):
                 if let settings = decoded(data) { return settings }
@@ -674,6 +674,15 @@ public struct SettingsStore: Sendable {
                 return .default
             }
         }
+    }
+
+    /// Whether the file is there but couldn't be read at the last `load`,
+    /// or at the last `save` that had to read it first: the settings in use
+    /// then stand in for it, and the caption screen says so before anything
+    /// is saved. A missing file (a first run) or a damaged one is not that.
+    /// It stays so until a later `save` or `load` finds the file readable.
+    public var isUnreadable: Bool {
+        standInBox.withLock { $0.unreadable }
     }
 
     /// What stands in for a file that is there but can't be read: the
@@ -715,15 +724,17 @@ public struct SettingsStore: Sendable {
     /// settings until the next launch loads the whole file, so later saves
     /// keep adding to the file the same way.
     public func save(_ settings: AppSettings) throws {
-        try standInBox.withLock { (standIn: inout AppSettings?) throws -> Void in
+        try standInBox.withLock { (state: inout StandInBox.State) throws -> Void in
             var written = settings
-            if let base = standIn {
+            if let base = state.settings {
                 switch read() {
                 case .unreadable(let error):
+                    state.unreadable = true
                     throw SettingsFileUnreadable(underlying: error)
                 case .missing:
-                    break
+                    state.unreadable = false
                 case .read(let data):
+                    state.unreadable = false
                     if let saved = decoded(data) {
                         written = try SettingsJSON.merged(base: base, mine: settings, theirs: saved)
                     } else {
@@ -734,7 +745,7 @@ public struct SettingsStore: Sendable {
             let data = try JSONEncoder().encode(written)
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: fileURL, options: .privateFile)
-            if standIn != nil { standIn = written == settings ? nil : settings }
+            if state.settings != nil { state.settings = written == settings ? nil : settings }
         }
     }
 
@@ -776,16 +787,23 @@ public struct SettingsFileUnreadable: Error, CustomStringConvertible {
     }
 }
 
-/// The settings a `SettingsStore` handed out or was last given in place of
-/// a file it couldn't read; nil when the caller holds what the file holds.
+/// What a `SettingsStore` keeps about a file it couldn't read.
 private final class StandInBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var settings: AppSettings?
+    struct State {
+        /// The settings the store handed out or was last given in place of
+        /// the file; nil when the caller holds what the file holds.
+        var settings: AppSettings?
+        /// The file couldn't be read the last time it was tried.
+        var unreadable = false
+    }
 
-    func withLock<T>(_ body: (inout AppSettings?) throws -> T) rethrows -> T {
+    private let lock = NSLock()
+    private var state = State()
+
+    func withLock<T>(_ body: (inout State) throws -> T) rethrows -> T {
         lock.lock()
         defer { lock.unlock() }
-        return try body(&settings)
+        return try body(&state)
     }
 }
 

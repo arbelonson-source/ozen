@@ -100,6 +100,56 @@ struct SettingsStoreUnreadableTests {
         #expect(back.wordFixes == [WordFix(heard: "dona", written: "Dana"), WordFix(heard: "abby", written: "Avi")])
     }
 
+    @Test("the store says when the file it loaded is there but can't be read, until the file can be read again; a first run or a damaged file is no such case")
+    func saysWhenTheFileCantBeRead() throws {
+        let dir = try folder()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let firstRun = SettingsStore(fileURL: dir.appendingPathComponent("not-there.json"))
+        _ = firstRun.load()
+        #expect(!firstRun.isUnreadable)
+        try firstRun.save(personal())
+        #expect(!firstRun.isUnreadable)
+
+        let damagedURL = dir.appendingPathComponent("damaged.json")
+        try Data("{ not settings".utf8).write(to: damagedURL)
+        let damaged = SettingsStore(fileURL: damagedURL)
+        _ = damaged.load()
+        #expect(!damaged.isUnreadable)
+
+        let url = dir.appendingPathComponent("ozen-settings.json")
+        try SettingsStore(fileURL: url).save(personal())
+        try lock(url)
+        let store = SettingsStore(fileURL: url)
+        var session = store.load()
+        #expect(store.isUnreadable)
+        session.speechRate = 0.5
+        #expect(throws: SettingsFileUnreadable.self) { try store.save(session) }
+        #expect(store.isUnreadable)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o400], ofItemAtPath: url.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(throws: (any Error).self) { try store.save(session) }
+        #expect(!store.isUnreadable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        try lock(url)
+        #expect(throws: SettingsFileUnreadable.self) { try store.save(session) }
+        #expect(store.isUnreadable)
+        try unlock(url)
+        try store.save(session)
+        #expect(!store.isUnreadable)
+
+        try lock(url)
+        _ = store.load()
+        #expect(store.isUnreadable)
+        try unlock(url)
+        _ = store.load()
+        #expect(!store.isUnreadable)
+    }
+
     @Test("while the file can't be read, the app counts as set up: no first-run guide over the captions, and no offer resting on the stand-in")
     func standInCountsAsSetUp() throws {
         let dir = try folder()

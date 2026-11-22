@@ -849,6 +849,18 @@ class SettingsStore(private val file: File) {
     private var standIn: JsonObject? = null
 
     /**
+     * Whether the file is there but couldn't be read at the last [load], or
+     * at the last [save] that had to read it first: the settings in use then
+     * stand in for it, and the caption screen says so before anything is
+     * saved. A missing file (a first run) or a damaged one is not that. It
+     * stays so until a later [save] or [load] finds the file readable. The
+     * iPhone's store says the same.
+     */
+    @Volatile
+    var isUnreadable: Boolean = false
+        private set
+
+    /**
      * The saved settings, or the defaults when there are none or the file
      * can't be read as settings at all. A damaged file is moved aside
      * first (see [damagedCopy]): the next save would otherwise write
@@ -862,9 +874,11 @@ class SettingsStore(private val file: File) {
     @Synchronized
     fun load(): AppSettings {
         standIn = null
+        isUnreadable = false
         val data = when (val read = read()) {
             FileRead.Missing -> return AppSettings.default
             is FileRead.Unreadable -> {
+                isUnreadable = true
                 standIn = settingsJson(unreadableStandIn())
                 return unreadableStandIn()
             }
@@ -922,7 +936,9 @@ class SettingsStore(private val file: File) {
             return
         }
         val mine = settingsJson(settings)
-        val written = when (val read = read()) {
+        val read = read()
+        isUnreadable = read is FileRead.Unreadable
+        val written = when (read) {
             FileRead.Missing -> mine
             is FileRead.Unreadable -> throw SettingsFileUnreadableException(read.error)
             is FileRead.Bytes -> {

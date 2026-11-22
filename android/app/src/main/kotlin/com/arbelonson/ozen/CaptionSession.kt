@@ -695,7 +695,7 @@ class CaptionSession(
         val started = settings.current.value
         started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
-        scope.launch { combine(settings.current, settings.saveFailed, settings.saveFailedUnreadable) { _, _, _ -> }.collect { refreshSavingTrouble() } }
+        scope.launch { combine(settings.current, settings.saveFailed, settings.settingsUnreadable) { _, _, _ -> }.collect { refreshSavingTrouble() } }
         scope.launch {
             settings.current.map { it.flashCameraLight }.distinctUntilChanged().collect { on ->
                 CameraLight.watch(context.applicationContext, on) { light.stop() }
@@ -1494,7 +1494,7 @@ class CaptionSession(
         savingTrouble.update(
             settingsFailed = settings.saveFailed.value,
             historyFailed = settings.current.value.saveHistory && conversations.lastSaveFailure != null,
-            settingsUnreadable = settings.saveFailedUnreadable.value,
+            settingsUnreadable = settings.settingsUnreadable.value,
         )
         CaptionState.savingTrouble(savingTrouble.shouldShow, savingTrouble.settingsUnreadable)
     }

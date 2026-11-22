@@ -94,7 +94,7 @@ data class CaptionScreenState(
     val recentlyHeardBy: Map<UUID, String> = emptyMap(),
     val speaking: Boolean = false,
     val savingTrouble: Boolean = false,
-    /** The failed save is of settings whose file can't be read right now, not a full phone; see `SavingTroubleNotice`. */
+    /** The reason is settings whose file can't be read right now (from launch on, or at a failed save), not a full phone; see `SavingTroubleNotice`. */
     val savingTroubleUnreadable: Boolean = false,
     val inputs: List<AudioInputDescriptor> = emptyList(),
     val selectedInput: AudioInputDescriptor? = null,

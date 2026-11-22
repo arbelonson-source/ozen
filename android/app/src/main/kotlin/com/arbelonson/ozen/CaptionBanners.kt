@@ -138,7 +138,9 @@ internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, repo
  * ([settingsUnreadable]) settings whose file can't be read right now. Only
  * the close button puts it away: a tap on the screen is how the hidden
  * buttons come back, and when the whole card closed it, the warning was gone
- * before the helper it names had seen it.
+ * before the helper it names had seen it. The whole card is one polite live
+ * region, so TalkBack reads it again when its reason changes while it stays
+ * up, as VoiceOver does on the iPhone.
  */
 @Composable
 internal fun SavingTroubleBanner(settingsUnreadable: Boolean, onDismiss: () -> Unit) {

@@ -10,10 +10,10 @@ class SavingTroubleNotice {
     val shouldShow: Boolean get() = isFailing && !isDismissed
 
     fun update(settingsFailed: Boolean, historyFailed: Boolean, settingsUnreadable: Boolean = false) {
-        val failing = settingsFailed || historyFailed
+        val failing = settingsFailed || historyFailed || settingsUnreadable
         if (!failing) isDismissed = false
         isFailing = failing
-        this.settingsUnreadable = settingsFailed && settingsUnreadable && !historyFailed
+        this.settingsUnreadable = settingsUnreadable && !historyFailed
     }
 
     val shownDetail: String get() = detailFor(settingsUnreadable)

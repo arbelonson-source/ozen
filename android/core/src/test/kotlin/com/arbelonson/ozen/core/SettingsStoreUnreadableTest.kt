@@ -6,6 +6,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -17,6 +18,7 @@ class SettingsStoreUnreadableTest {
     @AfterTest
     fun removeFolder() {
         file.setReadable(true, true)
+        folder.setWritable(true, true)
         folder.deleteRecursively()
     }
 
@@ -96,6 +98,48 @@ class SettingsStoreUnreadableTest {
         assertEquals(listOf("Noa"), back.vocabulary)
         assertEquals(AppSettings.default.speechRate, back.speechRate)
         assertEquals(listOf(WordFix("dona", "Dana"), WordFix("abby", "Avi")), back.wordFixes)
+    }
+
+    @Test
+    fun `the store says when the file it loaded is there but can't be read, until the file can be read again - a first run or a damaged file is no such case`() {
+        val firstRun = SettingsStore(File(folder, "not-there.json"))
+        firstRun.load()
+        assertFalse(firstRun.isUnreadable)
+        firstRun.save(personal())
+        assertFalse(firstRun.isUnreadable)
+
+        val damagedFile = File(folder, "damaged.json").apply { writeText("{ not settings") }
+        val damaged = SettingsStore(damagedFile)
+        damaged.load()
+        assertFalse(damaged.isUnreadable)
+
+        SettingsStore(file).save(personal())
+        lock()
+        val store = SettingsStore(file)
+        val session = store.load().copy().apply { speechRate = 0.5f }
+        assertTrue(store.isUnreadable)
+        assertFailsWith<SettingsFileUnreadableException> { store.save(session) }
+        assertTrue(store.isUnreadable)
+
+        unlock()
+        assertTrue(folder.setWritable(false, false))
+        assertFails { store.save(session) }
+        assertFalse(store.isUnreadable)
+        assertTrue(folder.setWritable(true, true))
+
+        lock()
+        assertFailsWith<SettingsFileUnreadableException> { store.save(session) }
+        assertTrue(store.isUnreadable)
+        unlock()
+        store.save(session)
+        assertFalse(store.isUnreadable)
+
+        lock()
+        store.load()
+        assertTrue(store.isUnreadable)
+        unlock()
+        store.load()
+        assertFalse(store.isUnreadable)
     }
 
     @Test

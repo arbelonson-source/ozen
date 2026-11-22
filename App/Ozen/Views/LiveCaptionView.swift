@@ -271,8 +271,12 @@ struct LiveCaptionView: View {
         // reader who can't see these two banners would never learn that
         // saving stopped or that captions now come through another microphone.
         // Also when the screen first appears with one already up: on a full
-        // phone saving can fail before the caption screen exists.
-        .announcing(savingTroubleAnnouncement, whenTurningTrue: viewModel.savingTrouble.shouldShow, alsoWhenFirstShown: true)
+        // phone saving can fail before the caption screen exists, and
+        // settings that can't be read are said from launch on. The saving
+        // one is said again whenever its reason changes while it stays up
+        // (settings that can't be read, then a full phone): the banner
+        // stays, only its words change.
+        .announcingEachChange(of: viewModel.savingTrouble.spoken, alsoWhenFirstShown: true)
         .announcing(microphoneDropAnnouncement, whenTurningTrue: viewModel.microphoneDrop.title != nil, alsoWhenFirstShown: true)
         .announcing(routedElsewhereAnnouncement, whenTurningTrue: viewModel.routedElsewhere != nil, alsoWhenFirstShown: true)
         .announcing(viewModel.listeningCut?.text() ?? "", whenTurningTrue: viewModel.listeningCut != nil, alsoWhenFirstShown: true)
@@ -1817,10 +1821,6 @@ struct LiveCaptionView: View {
     private static let buttonMinimumWidth: CGFloat = 32
     /// With the glass style's own padding, a target of at least 52 points.
     private static let buttonMinimumHeight: CGFloat = 44
-
-    private var savingTroubleAnnouncement: String {
-        SavingTroubleNotice.title + ". " + viewModel.savingTrouble.shownDetail
-    }
 
     private var microphoneDropAnnouncement: String {
         (viewModel.microphoneDrop.title ?? "") + ". " + MicrophoneDropNotice.detail(listening: viewModel.captionsAreRunning)

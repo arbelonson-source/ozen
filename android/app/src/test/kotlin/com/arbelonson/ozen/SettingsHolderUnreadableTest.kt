@@ -31,15 +31,31 @@ class SettingsHolderUnreadableTest {
 
         holder.change { it.speechRate = 0.5f }
         assertTrue(holder.saveFailed.value)
-        assertTrue(holder.saveFailedUnreadable.value)
+        assertTrue(holder.settingsUnreadable.value)
 
         assertTrue(file.setReadable(true, true))
         holder.change { it.vocabulary = it.vocabulary + "Avi" }
         assertFalse(holder.saveFailed.value)
-        assertFalse(holder.saveFailedUnreadable.value)
+        assertFalse(holder.settingsUnreadable.value)
         val back = SettingsStore(file).load()
         assertEquals(listOf("Noa", "Avi"), back.vocabulary)
         assertEquals(0.5f, back.speechRate)
+    }
+
+    @Test
+    fun `settings that can't be read at launch say so before anything is changed, and a first run does not`() {
+        SettingsStore(file).save(AppSettings.default.copy().apply { hasCompletedOnboarding = true })
+        assertTrue(file.setReadable(false, false))
+        val holder = SettingsHolder(SettingsStore(file))
+        assertTrue(holder.settingsUnreadable.value)
+        assertFalse(holder.saveFailed.value)
+
+        assertTrue(file.setReadable(true, true))
+        holder.change { it.speechRate = 0.5f }
+        assertFalse(holder.settingsUnreadable.value)
+        assertFalse(holder.saveFailed.value)
+
+        assertFalse(SettingsHolder(SettingsStore(File(folder, "not-there.json"))).settingsUnreadable.value)
     }
 
     @Test
@@ -49,6 +65,6 @@ class SettingsHolderUnreadableTest {
 
         holder.change { it.speechRate = 0.5f }
         assertTrue(holder.saveFailed.value)
-        assertFalse(holder.saveFailedUnreadable.value)
+        assertFalse(holder.settingsUnreadable.value)
     }
 }

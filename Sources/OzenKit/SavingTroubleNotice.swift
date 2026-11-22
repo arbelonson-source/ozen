@@ -10,13 +10,15 @@ public struct SavingTroubleNotice: Sendable, Equatable {
     public var shouldShow: Bool { isFailing && !isDismissed }
 
     public mutating func update(settingsFailed: Bool, historyFailed: Bool, settingsUnreadable: Bool = false) {
-        let failing = settingsFailed || historyFailed
+        let failing = settingsFailed || historyFailed || settingsUnreadable
         if !failing { isDismissed = false }
         isFailing = failing
-        self.settingsUnreadable = settingsFailed && settingsUnreadable && !historyFailed
+        self.settingsUnreadable = settingsUnreadable && !historyFailed
     }
 
     public var shownDetail: String { settingsUnreadable ? Self.unreadableSettingsDetail : Self.detail }
+
+    public var spoken: String? { shouldShow ? Self.title + ". " + shownDetail : nil }
 
     public mutating func dismiss() {
         isDismissed = true
