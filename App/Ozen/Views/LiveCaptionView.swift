@@ -369,7 +369,7 @@ struct LiveCaptionView: View {
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if viewModel.savingTrouble.shouldShow {
-                SavingTroubleBanner {
+                SavingTroubleBanner(detail: viewModel.savingTrouble.shownDetail) {
                     withAnimation { viewModel.dismissSavingTrouble() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
@@ -1819,7 +1819,7 @@ struct LiveCaptionView: View {
     private static let buttonMinimumHeight: CGFloat = 44
 
     private var savingTroubleAnnouncement: String {
-        SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
+        SavingTroubleNotice.title + ". " + viewModel.savingTrouble.shownDetail
     }
 
     private var microphoneDropAnnouncement: String {

@@ -390,7 +390,7 @@ class HistoryScreenDeviceTest {
         home.assertIsSelected()
         fixField(1).performTextInput("Rome")
         compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
-        waitFor("The fix was not saved. Try again in a moment.")
+        waitFor("The line changed or is gone, so the fix was not saved.")
         compose.onNodeWithText("Tap the words that came out wrong").assertExists()
         assertEquals(listOf("home"), conversation.tried.toList())
         assertTrue(conversation.kept.isEmpty())

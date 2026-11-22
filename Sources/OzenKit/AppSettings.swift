@@ -657,8 +657,8 @@ public struct SettingsStore: Sendable {
     ///
     /// A file that is there but can't be read right now (a read error, or
     /// iOS keeping it locked until the first unlock after a restart) isn't
-    /// damaged and stays where it is: the defaults only stand in for it,
-    /// and `save` never writes them over it.
+    /// damaged and stays where it is: `unreadableStandIn` only stands in
+    /// for it, and `save` never writes that over it.
     public func load() -> AppSettings {
         standInBox.withLock { (standIn: inout AppSettings?) -> AppSettings in
             standIn = nil
@@ -666,14 +666,29 @@ public struct SettingsStore: Sendable {
             case .missing:
                 return .default
             case .unreadable:
-                standIn = .default
-                return .default
+                standIn = Self.unreadableStandIn
+                return Self.unreadableStandIn
             case .read(let data):
                 if let settings = decoded(data) { return settings }
                 setAside()
                 return .default
             }
         }
+    }
+
+    /// What stands in for a file that is there but can't be read: the
+    /// defaults, as for someone who has used the app (the file being there
+    /// says so). The first-run guide doesn't take the place of the
+    /// captions after a restart that left the file locked, and the caption
+    /// screen makes no offer that rests on the defaults, such as the alert
+    /// for a name the saved settings may well have. Saves compare against
+    /// this stand-in, so neither answer reaches the file unless the person
+    /// changes it.
+    private static var unreadableStandIn: AppSettings {
+        var settings = AppSettings.default
+        settings.hasCompletedOnboarding = true
+        settings.nameAlertOfferDismissed = true
+        return settings
     }
 
     /// Where a settings file that couldn't be read is kept, next to it:
@@ -689,11 +704,11 @@ public struct SettingsStore: Sendable {
     /// (finishing the walkthrough, say) fail and are forgotten on relaunch.
     ///
     /// After a `load` that couldn't read the file, `settings` began as the
-    /// defaults, not as what the file holds, so the file is read again
+    /// stand-in, not as what the file holds, so the file is read again
     /// first. Still unreadable: nothing is written and this throws
     /// `SettingsFileUnreadable`; the caller keeps its settings in memory
     /// and the next save tries again. Readable again: what changed in
-    /// `settings` since the defaults (or since the last such save) is
+    /// `settings` since the stand-in (or since the last such save) is
     /// added to the file's own settings, so neither the saved voices,
     /// names and alerts nor this session's changes are lost (see
     /// `SettingsJSON.merged`). The caller still holds only its own

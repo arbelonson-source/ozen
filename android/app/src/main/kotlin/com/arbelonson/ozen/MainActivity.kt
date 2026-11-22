@@ -1054,7 +1054,7 @@ private fun CaptionScreen(
             text,
             languageCode = languageCode,
             fixes = wordFixes,
-            error = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.").takeIf { fixRefused },
+            refused = fixRefused,
             onSave = { heard, written, everyTime ->
                 if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {
                     fixing = null
@@ -1246,7 +1246,7 @@ private fun CaptionScreen(
                             if (index >= 0) scope.launch { list.scrollToItem(index) }
                         }
                     }
-                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(onDismissSavingTrouble) }
+                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(state.savingTroubleUnreadable, onDismissSavingTrouble) }
                     ArrivingBanner(state.dropped) { lost ->
                         MicrophoneDropBanner(
                             title = MicrophoneDropNotice.titleFor(lost),

@@ -109,6 +109,29 @@ public enum WordFixes {
         return end.coreStart < end.replacedEnd && end.replacedEnd == end.scalars.count
     }
 
+    /// The words to tap in Fix a word, each as the line writes it: a name's
+    /// ending geresh with it, the punctuation around it left out, as on
+    /// Android. Split at spaces and a maqaf, as fixes match words; a run of
+    /// punctuation alone is no word.
+    public static func wordsOf(_ text: String) -> [String] {
+        Token.split(Array(text.unicodeScalars)).filter(\.hasWord).map { String(String.UnicodeScalarView($0.scalars[$0.coreStart..<$0.replacedEnd])) }
+    }
+
+    /// Whether word `first` of `wordsOf(text)` and the next are one plain
+    /// space apart with no punctuation on either side, so one heard phrase
+    /// can cover both, as on Android. The tiles leave the punctuation out,
+    /// so this looks at the line itself.
+    public static func joinedBySpace(_ text: String, _ first: Int) -> Bool {
+        let scalars = Array(text.unicodeScalars)
+        let tokens = Token.split(scalars)
+        let words = tokens.indices.filter { tokens[$0].hasWord }
+        guard words.indices.contains(first), words.indices.contains(first + 1) else { return false }
+        let left = words[first], right = words[first + 1]
+        guard right == left + 1, tokens[left].gap == [" "] else { return false }
+        let end = tokens[...left].reduce(0) { $0 + $1.scalars.count + $1.gap.count } - tokens[left].gap.count
+        return canJoin(String(String.UnicodeScalarView(scalars[..<end])), String(String.UnicodeScalarView(tokens[right].scalars)))
+    }
+
     public static func apply(_ fixes: [WordFix], to text: String) -> String {
         rewrite(fixes, text).text
     }
@@ -447,6 +470,9 @@ public enum WordFixes {
 
         /// A word of vowel marks or tatweel alone: no fix can be heard as it.
         var isOnlyMarks: Bool { coreStart < coreEnd && key.isEmpty }
+
+        /// A letter, digit or mark in it, not punctuation alone.
+        var hasWord: Bool { coreStart < coreEnd }
 
         var caseKey: String {
             let base = scalars[coreStart..<coreEnd].filter { !Token.isHebrewNiqqud($0) }

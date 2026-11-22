@@ -134,17 +134,19 @@ internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, repo
 }
 
 /**
- * "Saving failed", as the iPhone's. Only the close button puts it away: a tap
- * on the screen is how the hidden buttons come back, and when the whole card
- * closed it, the warning was gone before the helper it names had seen it.
+ * "Saving failed", as the iPhone's, with its reason: a full phone, or
+ * ([settingsUnreadable]) settings whose file can't be read right now. Only
+ * the close button puts it away: a tap on the screen is how the hidden
+ * buttons come back, and when the whole card closed it, the warning was gone
+ * before the helper it names had seen it.
  */
 @Composable
-internal fun SavingTroubleBanner(onDismiss: () -> Unit) {
+internal fun SavingTroubleBanner(settingsUnreadable: Boolean, onDismiss: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.Warning,
         NoticeTone.Warning,
         SavingTroubleNotice.title,
-        SavingTroubleNotice.detail,
+        SavingTroubleNotice.detailFor(settingsUnreadable),
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }

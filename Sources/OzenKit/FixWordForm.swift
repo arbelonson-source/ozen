@@ -36,17 +36,21 @@ public enum FixWordForm {
         changes(line: line, heard: heard, written: written) ? refusal(WordFix(heard: heard, written: written), to: list) : nil
     }
 
-    public static func tapped(_ picked: ClosedRange<Int>?, index: Int, words: [String]) -> ClosedRange<Int>? {
+    public static func tapped(_ picked: ClosedRange<Int>?, index: Int, line: String) -> ClosedRange<Int>? {
         guard let range = picked else { return index...index }
         if range.contains(index) {
             if range.count == 1 { return nil }
             return index == range.lowerBound ? (index + 1)...range.upperBound : range.lowerBound...(index - 1)
         }
         if range.count < WordFixes.maximumPhraseWords {
-            if index == range.upperBound + 1, WordFixes.canJoin(words[...range.upperBound].joined(separator: " "), words[index]) { return range.lowerBound...index }
-            if index == range.lowerBound - 1, WordFixes.canJoin(words[...index].joined(separator: " "), words[range.lowerBound]) { return index...range.upperBound }
+            if index == range.upperBound + 1, WordFixes.joinedBySpace(line, range.upperBound) { return range.lowerBound...index }
+            if index == range.lowerBound - 1, WordFixes.joinedBySpace(line, index) { return index...range.upperBound }
         }
         return index...index
+    }
+
+    public static func pickedText(_ picked: ClosedRange<Int>, words: [String]) -> String {
+        cleaned(words[picked].joined(separator: " "))
     }
 
     public static func note(line: String, heard: String, written: String) -> Note? {

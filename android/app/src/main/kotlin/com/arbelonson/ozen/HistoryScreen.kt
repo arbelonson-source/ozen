@@ -772,7 +772,7 @@ internal fun ConversationScreen(
             fixingText,
             languageCode = line.languageCode,
             fixes = conversations.wordFixes(),
-            error = tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.").takeIf { fixRejected },
+            refused = fixRejected,
             onSave = { heard, written, everyTime ->
                 if (!fixSaving) {
                     fixSaving = true
