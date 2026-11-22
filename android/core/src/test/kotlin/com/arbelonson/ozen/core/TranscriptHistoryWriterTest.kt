@@ -634,6 +634,33 @@ class TranscriptHistoryWriterTest {
         assertEquals(listOf("I saw Avi", "and Dana Cohen"), store.load(old.id)?.segments?.map { it.text })
     }
 
+    // A fix of a word the saved line no longer has wrote the file again
+    // unchanged, as the iPhone doesn't: that write going through took away
+    // the warning of a write that had really been refused, and refused on a
+    // full phone it put up a warning of its own for a fix that changed
+    // nothing.
+    @Test
+    fun `a word fixed in History that the saved line no longer has writes nothing and leaves the saving warning as it was`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unchanged"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Avi", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(other)
+        val fix = { text: String -> text.replace("aval", "Avi") }
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "nothing was written, so nothing new was refused")
+        permissions(dir, "rwx------")
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "nothing was written, so it says nothing about room")
+        assertEquals("I saw Avi", store.load(old.id)?.segments?.single()?.text)
+    }
+
     // Read as no conversation, the conversation open in History turned into
     // "Conversation not found" after a star or a name it refused there, and
     // there was nothing left to try again from.
