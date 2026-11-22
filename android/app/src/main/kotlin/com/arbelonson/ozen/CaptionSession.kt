@@ -567,7 +567,7 @@ class CaptionSession(
 
         override fun search(query: String) = historyStore.search(query)
 
-        override fun load(id: UUID) = historyStore.load(id)
+        override fun load(id: UUID) = conversations.load(id)
 
         override fun starredLines() = historyStore.starredLines()
 
@@ -609,7 +609,7 @@ class CaptionSession(
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.
-        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { starring ->
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also { starring ->
             starring?.let { CaptionState.markStarred(segmentID, it) }
             refreshSavingTrouble()
         }

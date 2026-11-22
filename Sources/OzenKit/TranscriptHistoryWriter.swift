@@ -101,6 +101,24 @@ public final class TranscriptHistoryWriter: Sendable {
         }
     }
 
+    /// A saved conversation as it will be saved, in order with the saves
+    /// already queued: its newer version still waiting for room (a phone
+    /// too full) or else its file, with the line texts still waiting put
+    /// in. History shows this: read from the file alone, a word fixed
+    /// while the phone was full kept its old words there though the fix
+    /// was called done, and the person fixed the same word again.
+    public func loadNow(id: UUID) -> TranscriptSessionRecord? {
+        queue.sync { [store, pendingRenames, pendingSaves] in
+            guard var record = pendingSaves.records[id] ?? store.load(id: id) else { return nil }
+            for waiting in pendingRenames.texts where waiting.sessionID == id {
+                if let index = record.segments.firstIndex(where: { $0.id == waiting.segmentID }) {
+                    record.segments[index].text = waiting.text
+                }
+            }
+            return record
+        }
+    }
+
     public func replaceTextNow(sessionID: UUID, segmentID: UUID, text: String) {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
@@ -115,10 +133,20 @@ public final class TranscriptHistoryWriter: Sendable {
     /// back with the fix replaced newer ones. A waiting text is always the
     /// newest: any later save of its conversation takes its place (see
     /// `PendingRenames.dropTexts(of:)`). False, with nothing written, when
-    /// the line is gone or no longer has the word.
+    /// the line is gone or no longer has the word, and when the version of
+    /// its conversation waiting for room no longer has the line (a replay
+    /// took it off the screen before the conversation closed): the fix was
+    /// written to the file and called saved, then that version was written
+    /// over it without the line.
     @discardableResult
     public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
+            if let version = pendingSaves.records[sessionID], !version.segments.contains(where: { $0.id == segmentID }) {
+                if Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure) {
+                    failure.clear()
+                }
+                return false
+            }
             let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
                 ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
             guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return false }
@@ -226,22 +254,29 @@ public final class TranscriptHistoryWriter: Sendable {
     ///
     /// A newer version of the conversation still waiting for room takes the
     /// same state: starring only the older file on disk was undone when the
-    /// waiting one was written over it. The tap follows the file, which is
-    /// what History shows; a line only the waiting version has follows that.
-    /// A file the disk still refuses gives the waiting version the star when
+    /// waiting one was written over it. The tap follows the conversation as
+    /// History shows it (see `loadNow(id:)`): the waiting version when it
+    /// has the line, and the file then takes the waiting version's new
+    /// state. Toggled on its own, a file without the waiting version's star
+    /// got the star back when History offered to take it off. A file the
+    /// disk still refuses gives the waiting version the star when
     /// `keepingRefused` (the caption screen, whose star shows from memory and
     /// is saved once there is room). History passes false: the person is
     /// told the star didn't change, so it mustn't turn up once there is room,
-    /// or be undone by the tap that tries again.
+    /// or be undone by the tap that tries again. With `wanted`, the line
+    /// takes that state instead: the starred lines list shows the files'
+    /// stars, and its Remove the star, followed as a tap, put the star back
+    /// on a line the waiting version had none on.
     @discardableResult
-    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true) -> Bool? {
+    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true, to wanted: Bool? = nil) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
+            let starring = wanted ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
             var result: Bool?
-            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
+            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
             if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
-                waiting.segments[index].isStarred = result ?? !waiting.segments[index].isStarred
+                waiting.segments[index].isStarred = result ?? wanted ?? !waiting.segments[index].isStarred
                 pendingSaves.records[sessionID] = waiting
                 result = waiting.segments[index].isStarred
             }

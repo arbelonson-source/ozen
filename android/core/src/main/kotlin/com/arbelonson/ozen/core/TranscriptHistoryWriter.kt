@@ -159,6 +159,20 @@ class TranscriptHistoryWriter(
     }
 
     /**
+     * A saved conversation as it will be saved, in order with the saves
+     * already queued: its newer version still waiting for room (a phone too
+     * full) or else its file, with the line changes still waiting put in.
+     * History shows this: read from the file alone, a word fixed while the
+     * phone was full kept its old words there though the fix was called
+     * done, and the person fixed the same word again.
+     */
+    fun loadNow(id: UUID): TranscriptSessionRecord? = queue.sync {
+        val record = pendingSaves.records[id] ?: store.load(id) ?: return@sync null
+        val texts = pendingRenames.texts.filter { it.sessionID == id }
+        record.copy(segments = record.segments.map { line -> texts.filter { it.segmentID == line.id }.fold(line) { shown, next -> shown.copy(text = next.change(shown.text)) } })
+    }
+
+    /**
      * Renames a voice across every saved conversation, queued behind the
      * saves already waiting so none of them lands the old name back.
      */
@@ -262,12 +276,22 @@ class TranscriptHistoryWriter(
      * kept, when the line is gone, can't be read now or keeps its words:
      * History then says the fix was not saved, and one kept waiting all the
      * same was written once there was room, and again by the tap that tried
-     * once more.
+     * once more. False with nothing written, too, when the version of its
+     * conversation waiting for room no longer has the line (a replay took it
+     * off the screen before the conversation closed): the fix was written to
+     * the file and called saved, then that version was written over it
+     * without the line.
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean =
         queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
 
     private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): Boolean {
+        val waiting = pendingSaves.records[sessionID]
+        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
+        if (fromHistory && waiting != null && index < 0) {
+            if (catchUp(null)) failure.clear()
+            return false
+        }
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
         var changed = false
@@ -277,8 +301,6 @@ class TranscriptHistoryWriter(
         }
         var done = false
         val written = failure.capture { done = store.fixText(segmentID, sessionID, combined) }
-        val waiting = pendingSaves.records[sessionID]
-        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (waiting != null && index >= 0) {
             val segments = waiting.segments.toMutableList()
             segments[index] = segments[index].copy(text = combined(segments[index].text))
@@ -304,24 +326,31 @@ class TranscriptHistoryWriter(
      *
      * A newer version of the conversation still waiting for room takes the
      * same state: starring only the older file on disk was undone when the
-     * waiting one was written over it. The tap follows the file, which is
-     * what History shows; a line only the waiting version has follows that.
-     * A file the disk still refuses gives the waiting version the star when
+     * waiting one was written over it. The tap follows the conversation as
+     * History shows it (see [loadNow]): the waiting version when it has the
+     * line, and the file then takes the waiting version's new state. Toggled
+     * on its own, a file without the waiting version's star got the star
+     * back when History offered to take it off. A file the disk still
+     * refuses gives the waiting version the star when
      * [keepingRefused] (the caption screen, whose star shows from memory and
      * is saved once there is room). History passes false: the person is told
      * the star didn't change, so it mustn't turn up once there is room, or
-     * be undone by the tap that tries again.
+     * be undone by the tap that tries again. With [to], the line takes that
+     * state instead: the starred lines list shows the files' stars, and its
+     * Remove the star, followed as a tap, put the star back on a line the
+     * waiting version had none on.
      */
-    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true): Boolean? = queue.sync {
+    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
         lastWritten.record = null
+        val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
-        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID) }
+        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
         val waiting = pendingSaves.records[sessionID]
         if ((reached || keepingRefused) && waiting != null) {
             val index = waiting.segments.indexOfFirst { it.id == segmentID }
             if (index >= 0) {
                 val line = waiting.segments[index]
-                val starred = result ?: !line.isStarred
+                val starred = result ?: to ?: !line.isStarred
                 val segments = waiting.segments.toMutableList()
                 segments[index] = line.copy(isStarred = starred)
                 pendingSaves.records[sessionID] = waiting.copy(segments = segments)

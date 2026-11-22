@@ -264,6 +264,9 @@ class ConversationSaver(
      */
     fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
+    /** A saved conversation as History shows it: as it will be saved, with what still waits for room (see [TranscriptHistoryWriter.loadNow]). */
+    fun load(id: UUID): TranscriptSessionRecord? = writer.loadNow(id)
+
     /**
      * Stars a saved line from History, or takes its star away; the line's
      * new state, or null when it is gone or could not be saved. A line of
@@ -276,11 +279,14 @@ class ConversationSaver(
      * replay heard that speech again and took the line off) is refused, as
      * [fixLine] refuses a fix of it: every save of that conversation is
      * written from the lines on screen, and the next one dropped a star
-     * written to its file alone, with the line.
+     * written to its file alone, with the line. A line of another
+     * conversation takes [to] when given: the starred lines list shows the
+     * stars of the files, which a version waiting for room can differ from,
+     * and its Remove the star put the star back on such a line.
      */
-    fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
+    fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean? {
         if (sessionID != id) {
-            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false)?.also { mark(segmentID, it) }
+            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false, to = to)?.also { mark(segmentID, it) }
         }
         if (currentLines.none { it.id == segmentID }) return null
         val (starring, written) = starCurrentLine(segmentID)
