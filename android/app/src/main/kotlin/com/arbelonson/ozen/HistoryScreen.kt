@@ -779,7 +779,13 @@ internal fun ConversationScreen(
     // is still being said, can come back with fewer words.
     var fixingText by rememberSaveable { mutableStateOf("") }
     var fixRefusal by rememberSaveable { mutableStateOf<WordFixResult?>(null) }
-    var fixSaving by remember { mutableStateOf(false) }
+    // Each opening of the dialog is its own, and a fix answers only the one
+    // it was saved from. A fix still being saved when its dialog closed
+    // answered whatever dialog was open when it was done: another line's
+    // showed its "try again", the same line's opened again was closed, and
+    // Save did nothing in either until it was done.
+    var fixOpening by remember { mutableIntStateOf(0) }
+    var fixSaving by remember { mutableStateOf<Int?>(null) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
     var nameRefused by rememberSaveable { mutableStateOf(false) }
     val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
@@ -790,20 +796,35 @@ internal fun ConversationScreen(
             fixes = conversations.wordFixes(),
             refusal = fixRefusal,
             onSave = { heard, written, everyTime ->
-                if (!fixSaving) {
-                    fixSaving = true
+                val opening = fixOpening
+                if (fixSaving != opening) {
+                    fixSaving = opening
                     fixRefusal = null
                     marking.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            conversations.fixLine(id, line.id, heard, written).also { result ->
-                                if (result == WordFixResult.Saved) {
-                                    conversations.saveWordFix(heard, written, everyTime)
-                                    readAgain()?.let { loaded = it }
-                                }
-                            }
+                        val (result, now) = withContext(Dispatchers.IO) {
+                            val result = conversations.fixLine(id, line.id, heard, written)
+                            if (result != WordFixResult.Saved) return@withContext result to null
+                            conversations.saveWordFix(heard, written, everyTime)
+                            result to readAgain()
                         }
-                        fixSaving = false
-                        if (result != WordFixResult.Saved) fixRefusal = result else if (fixingID == line.id.toString()) fixingID = null
+                        // Read again through show(), here on the main thread:
+                        // set straight from the reading, a fix of the word
+                        // searched for left the button on a match that was
+                        // gone, "Next match (3 of 2)".
+                        now?.let { show(it) }
+                        if (fixSaving == opening) fixSaving = null
+                        if (fixOpening != opening || fixingID == null) return@launch
+                        if (result == WordFixResult.Saved) {
+                            fixingID = null
+                            // Said once the fix is known to have gone through,
+                            // as the dialog closes. Said as it closed, the
+                            // dialog going away while the fix was still being
+                            // saved, as when the phone turns, said "Line
+                            // fixed" before anything was known.
+                            ScreenReader.said(context, tr("השורה תוקנה", "Line fixed"))
+                        } else {
+                            fixRefusal = result
+                        }
                     }
                 }
             },
@@ -893,7 +914,7 @@ internal fun ConversationScreen(
                                 }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
                                         withContext(Dispatchers.IO) { readAgain() }?.let { show(it) }
