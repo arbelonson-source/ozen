@@ -2149,6 +2149,35 @@ class HistoryScreenDeviceTest {
         assertEquals(shown, conversation.reads.get())
     }
 
+    // Each star tapped while the conversation, no longer being captioned,
+    // could not be read back started its own reading every few seconds:
+    // taps while it stayed unreadable left several readings of the file
+    // going at once. The newest change's reading takes the place of the
+    // one before it, and once one shows, none goes on.
+    @Test
+    fun starsTappedWhileTheConversationCannotBeReadAreReadAgainOneReadingAtATime() {
+        val conversation = RacingConversation("Retry star test the pharmacy closes at nine", "Retry star test we meet Dan at nine")
+        showRacing(conversation)
+        compose.waitUntil(5_000) { shownLine("Retry star test we meet Dan at nine") }
+        conversation.cannotReadNext(1_000)
+        val opened = conversation.reads.get()
+        lineAction("Retry star test the pharmacy closes at nine", "Mark as important")
+        compose.waitUntil(5_000) { conversation.reads.get() == opened + 1 }
+        lineAction("Retry star test we meet Dan at nine", "Mark as important")
+        compose.waitUntil(5_000) { conversation.reads.get() == opened + 2 }
+
+        letTimePass(3_500)
+        assertEquals("readings a few seconds after the two stars", opened + 3, conversation.reads.get())
+
+        conversation.cannotReadNext(0)
+        letTimePass(3_000)
+        compose.waitUntil(5_000) { shownLine("Marked as important. Retry star test we meet Dan at nine") }
+        assertTrue(shownLine("Marked as important. Retry star test the pharmacy closes at nine"))
+        assertEquals("readings once the file could be read", opened + 4, conversation.reads.get())
+        letTimePass(30_000)
+        assertEquals(opened + 4, conversation.reads.get())
+    }
+
     @Test
     fun aStarStarredLinesCannotTakeOffSaysSoAndTheLineComesBack() {
         val id = starredConversation("Starred list test the dentist at four", System.currentTimeMillis() / 1_000.0 - 60)

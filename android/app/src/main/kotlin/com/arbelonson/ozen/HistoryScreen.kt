@@ -712,14 +712,23 @@ internal fun ConversationScreen(
     } catch (_: IOException) {
         null
     }
-    // Each reading is numbered as it begins, and one is shown only when no
-    // reading begun after it has been shown. Shown as each came back, a
-    // reading of the file made just before a star, a name or a fix was saved
-    // could come back after that change's own reading: the star went away
-    // (and the next tap starred the line again), or the name or the fix
-    // seemed to vanish, until the next reading.
+    // Each reading is numbered as it reads the file, and one is shown only
+    // when no reading that read the file after it has been shown. Shown as
+    // each came back, a reading of the file made just before a star, a name
+    // or a fix was saved could come back after that change's own reading:
+    // the star went away (and the next tap starred the line again), or the
+    // name or the fix seemed to vanish, until the next reading. Numbered as
+    // each began, one begun later that read the file first, before a star
+    // was saved, could come back after one that waited for a free thread and
+    // read the star, and take it away again. A change that can't be read
+    // back just now is read again every few seconds, by one reading at a
+    // time: the newest change's takes the place of the one before it, which
+    // each tap of a star while the file stayed unreadable added to.
     val rereads = remember { HistoryRereads() }
-    suspend fun readBack() = withContext(Dispatchers.IO) { readAgain() }
+    suspend fun readBack(reads: () -> Unit) = withContext(Dispatchers.IO) {
+        reads()
+        readAgain()
+    }
     // Opened while its file is there but can't be read just now, the screen
     // says so and reads it again every few seconds until it reads, as shown
     // or as gone; Try again reads it at once. Taken for no conversation, it
@@ -737,7 +746,7 @@ internal fun ConversationScreen(
             // next reading, twenty seconds later.
             val now = if (loaded != null) {
                 var newer: OpenConversation? = null
-                rereads.read({ readBack() }) { newer = it }
+                rereads.read({ readBack(it) }) { newer = it }
                 newer
             } else {
                 HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
@@ -845,7 +854,7 @@ internal fun ConversationScreen(
                         // set straight from the reading, a fix of the word
                         // searched for left the button on a match that was
                         // gone, "Next match (3 of 2)".
-                        val readBackNow = result != WordFixResult.Saved || rereads.read({ readBack() }) { show(it) }
+                        val readBackNow = result != WordFixResult.Saved || rereads.read({ readBack(it) }) { show(it) }
                         if (fixSaving == opening) fixSaving = null
                         if (fixOpening == opening && fixingID != null) {
                             if (result == WordFixResult.Saved) {
@@ -863,7 +872,7 @@ internal fun ConversationScreen(
                         // Not read back just now, a fix in a conversation no
                         // longer being captioned kept its old words on the
                         // screen until it was opened again.
-                        if (!readBackNow) rereads.readAgainSoon(load = { readBack() }) { show(it) }
+                        if (!readBackNow) rereads.readAgainSoon(load = { readBack(it) }) { show(it) }
                     }
                 }
             },
@@ -963,7 +972,7 @@ internal fun ConversationScreen(
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
-                                        rereads.afterChange(load = { readBack() }) { show(it) }
+                                        rereads.afterChange(load = { readBack(it) }) { show(it) }
                                     }
                                 }
                             }
@@ -997,7 +1006,7 @@ internal fun ConversationScreen(
                         naming = null
                         scope.launch {
                             if (!withContext(Dispatchers.IO) { conversations.rename(id, draft) }) nameRefused = true
-                            rereads.afterChange(load = { readBack() }) { show(it) }
+                            rereads.afterChange(load = { readBack(it) }) { show(it) }
                         }
                     },
                 ) { Text(tr("שמירה", "Save")) }
