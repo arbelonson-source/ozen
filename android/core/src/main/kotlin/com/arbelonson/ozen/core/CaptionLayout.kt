@@ -20,8 +20,12 @@ object CaptionLayout {
     const val PARAGRAPH_CHARACTERS = 90
 
     fun readableText(text: String, paragraphCharacters: Int = PARAGRAPH_CHARACTERS): String {
+        // Counted before it is split: the line still being said is shaped
+        // again at every word, and a short one stays as it is however many
+        // sentences it has.
+        if (graphemeCountOf(text) <= paragraphCharacters) return text
         val sentences = splitSentences(text)
-        if (sentences.size <= 1 || graphemeCountOf(text) <= paragraphCharacters) return text
+        if (sentences.size <= 1) return text
 
         val paragraphs = ArrayList<String>()
         var current = ""
@@ -66,17 +70,40 @@ object CaptionLayout {
      * length, so offsets stay valid. Display only.
      */
     internal fun joiningNumbers(text: String, languageCode: String): String {
-        val phones = PhoneNumbers.matches(text).map { it.start until it.end }
-        val amounts = NumberEmphasis.ranges(text, languageCode = languageCode).map { it.start until it.endExclusive }
-            .filter { span -> span.count { text[it] == ' ' } == 1 }
-        val result = StringBuilder(text)
-        for (span in phones + amounts) {
-            for (index in span) if (result[index] == ' ') result.setCharAt(index, NO_BREAK_SPACE)
+        val phones = PhoneNumbers.matches(text)
+        val amounts = NumberEmphasis.ranges(text, languageCode = languageCode)
+        // Copied only once something changes: most lines have no number in
+        // them, and the line still being said comes here at every word.
+        // A change only turns a space or a hyphen into its joining form, and
+        // making it twice is making it once, so [text] says where they are.
+        var result: StringBuilder? = null
+        fun joined(index: Int, character: Char) {
+            val copy = result ?: StringBuilder(text)
+            copy.setCharAt(index, character)
+            result = copy
         }
-        for (span in phones) {
-            for (index in span) if (result[index] == '-') result.setCharAt(index, NON_BREAKING_HYPHEN)
+        for (phone in phones) {
+            for (index in phone.start until phone.end) if (text[index] == ' ') joined(index, NO_BREAK_SPACE)
         }
-        return doseSpace.matcher(result).replaceAll(NO_BREAK_SPACE.toString())
+        for (amount in amounts) {
+            val start = amount.start
+            val end = amount.endExclusive
+            if (spacesIn(text, start, end) != 1) continue
+            for (index in start until end) if (text[index] == ' ') joined(index, NO_BREAK_SPACE)
+        }
+        for (phone in phones) {
+            for (index in phone.start until phone.end) if (text[index] == '-') joined(index, NON_BREAKING_HYPHEN)
+        }
+        val changed = result
+        val dose = doseSpace.matcher(changed ?: text)
+        if (!dose.find()) return changed?.toString() ?: text
+        return dose.replaceAll(NO_BREAK_SPACE.toString())
+    }
+
+    private fun spacesIn(text: String, start: Int, end: Int): Int {
+        var spaces = 0
+        for (index in start until end) if (text[index] == ' ') spaces++
+        return spaces
     }
 
     private const val NO_BREAK_SPACE = '\u00A0'
@@ -90,15 +117,16 @@ object CaptionLayout {
      */
     fun directed(text: String, languageCode: String): String {
         if (!isRightToLeft(languageCode)) return text
-        return isolatingNumbers(text)
-            .split("\n")
-            .joinToString("\n") { paragraph ->
-                // English said to her has no Hebrew to read from the right:
-                // forced right to left, "how did you sleep?" was drawn
-                // "?how did you sleep", its question mark at the start.
-                if (hasOnlyLeftToRightLetters(paragraph)) paragraph else RIGHT_TO_LEFT_MARK + anchorTrailingPunctuation(paragraph)
-            }
+        val isolated = isolatingNumbers(text)
+        if ('\n' !in isolated) return directedParagraph(isolated)
+        return isolated.split("\n").joinToString("\n") { directedParagraph(it) }
     }
+
+    // English said to her has no Hebrew to read from the right: forced
+    // right to left, "how did you sleep?" was drawn "?how did you sleep",
+    // its question mark at the start.
+    private fun directedParagraph(paragraph: String): String =
+        if (hasOnlyLeftToRightLetters(paragraph)) paragraph else RIGHT_TO_LEFT_MARK + anchorTrailingPunctuation(paragraph)
 
     /**
      * Whether [text] has letters and none of them is a right-to-left one.
@@ -154,7 +182,7 @@ object CaptionLayout {
 
     private val starCode: Pattern = unicodePattern("(?<![\\d*])\\*\\d{2,6}(?!\\d)")
 
-    private val neutralEnders = setOf(".", "!", "?", ")", ":")
+    private const val NEUTRAL_ENDERS = ".!?):"
 
     /**
      * Neutral punctuation ending a right-to-left paragraph (UAX #9) takes
@@ -166,14 +194,12 @@ object CaptionLayout {
      * where it belongs.
      */
     private fun anchorTrailingPunctuation(line: String): String {
-        val characters = graphemesOf(line)
-        val last = characters.lastOrNull() ?: return line
-        if (last !in neutralEnders) return line
-        var beforeMarks = characters.size
-        while (beforeMarks > 0 && characters[beforeMarks - 1] in neutralEnders) beforeMarks -= 1
+        val characters = Graphemes.of(line)
+        if (characters.count == 0 || !characters.isOneOf(characters.count - 1, NEUTRAL_ENDERS)) return line
+        var beforeMarks = characters.count
+        while (beforeMarks > 0 && characters.isOneOf(beforeMarks - 1, NEUTRAL_ENDERS)) beforeMarks -= 1
         if (beforeMarks <= 0) return line
-        val character = characters[beforeMarks - 1]
-        val scalar = character.codePointAt(0)
+        val scalar = characters.firstScalar(beforeMarks - 1)
         val isLetterOrNumber = Character.isAlphabetic(scalar) || when (Character.getType(scalar).toByte()) {
             Character.DECIMAL_DIGIT_NUMBER, Character.LETTER_NUMBER, Character.OTHER_NUMBER -> true
             else -> false
@@ -209,8 +235,8 @@ object CaptionLayout {
         return isRightToLeft(languageCode)
     }
 
-    private val enders = setOf(".", "?", "!", "…")
-    private val closers = setOf("\"", "'", "”", "’", ")", "]", "״", "׳")
+    private const val ENDERS = ".?!…"
+    private const val CLOSERS = "\"'”’)]״׳"
 
     /**
      * Splits after ".", "?", "!" or "…" (and any closing quote or bracket
@@ -219,29 +245,27 @@ object CaptionLayout {
      * follows the dot or the gershayim.
      */
     internal fun splitSentences(text: String): List<String> {
-        val characters = graphemesOf(text)
+        val characters = Graphemes.of(text)
+        val count = characters.count
         val sentences = ArrayList<String>()
-        var current = StringBuilder()
+        // A sentence is the text from [from] to where it ends: every
+        // character after the last cut up to there belongs to it.
+        var from = 0
         var index = 0
-        while (index < characters.size) {
-            val character = characters[index]
-            current.append(character)
+        while (index < count) {
             var next = index + 1
-            if (character in enders) {
-                while (next < characters.size && (characters[next] in enders || characters[next] in closers)) {
-                    current.append(characters[next])
-                    next += 1
-                }
-                if (next < characters.size && isWhitespaceCharacter(characters[next])) {
-                    val trimmed = trimmingSpaces(current.toString())
+            if (characters.isOneOf(index, ENDERS)) {
+                while (next < count && (characters.isOneOf(next, ENDERS) || characters.isOneOf(next, CLOSERS))) next += 1
+                if (next < count && isLayoutWhitespace(characters.firstScalar(next))) {
+                    val trimmed = trimmingSpaces(text.substring(from, characters.start(next)))
                     if (trimmed.isNotEmpty()) sentences.add(trimmed)
-                    current = StringBuilder()
-                    while (next < characters.size && isWhitespaceCharacter(characters[next])) next += 1
+                    while (next < count && isLayoutWhitespace(characters.firstScalar(next))) next += 1
+                    from = characters.start(next)
                 }
             }
             index = next
         }
-        val tail = trimmingSpaces(current.toString())
+        val tail = trimmingSpaces(text.substring(from))
         if (tail.isNotEmpty()) sentences.add(tail)
         return sentences
     }
@@ -356,28 +380,12 @@ object CaptionLayout {
     }
 }
 
-private fun graphemesOf(text: String): List<String> {
-    val iterator = BreakIterator.getCharacterInstance(Locale.ROOT)
-    iterator.setText(text)
-    val result = ArrayList<String>()
-    var start = iterator.first()
-    var end = iterator.next()
-    while (end != BreakIterator.DONE) {
-        result.add(text.substring(start, end))
-        start = end
-        end = iterator.next()
-    }
-    return result
-}
-
-private fun graphemeCountOf(text: String): Int = graphemesOf(text).size
+private fun graphemeCountOf(text: String): Int = Graphemes.of(text).count
 
 private fun isLayoutWhitespace(codePoint: Int): Boolean =
     codePoint in 0x09..0x0D || codePoint == 0x20 || codePoint == 0x85 || codePoint == 0xA0 || codePoint == 0x1680 ||
         codePoint in 0x2000..0x200A || codePoint == 0x2028 || codePoint == 0x2029 || codePoint == 0x202F ||
         codePoint == 0x205F || codePoint == 0x3000
-
-private fun isWhitespaceCharacter(character: String): Boolean = isLayoutWhitespace(character.codePointAt(0))
 
 private fun trimmingSpaces(text: String): String =
     trimmingLayoutScalars(text) { Character.getType(it).toByte() == Character.SPACE_SEPARATOR || it == 0x09 }
@@ -391,10 +399,130 @@ private fun trimmingWhitespaceAndNewlines(text: String): String =
     }
 
 private inline fun trimmingLayoutScalars(text: String, isTrimmed: (Int) -> Boolean): String {
-    val scalars = text.codePoints().toArray()
     var from = 0
-    var to = scalars.size
-    while (from < to && isTrimmed(scalars[from])) from++
-    while (to > from && isTrimmed(scalars[to - 1])) to--
-    return String(scalars, from, to - from)
+    while (from < text.length) {
+        val scalar = text.codePointAt(from)
+        if (!isTrimmed(scalar)) break
+        from += Character.charCount(scalar)
+    }
+    var to = text.length
+    while (to > from) {
+        val scalar = text.codePointBefore(to)
+        if (!isTrimmed(scalar)) break
+        to -= Character.charCount(scalar)
+    }
+    return text.substring(from, to)
+}
+
+/**
+ * The characters a reader sees in [text] (grapheme clusters), by where
+ * each one starts.
+ *
+ * Splitting a line made a new string for each of its characters, and the
+ * line still being said is split several times at every word: with the
+ * rest of its layout, a line of 60 Hebrew words made about 300 KB a word.
+ * Most caption text has no character of more than one UTF-16 unit, and
+ * none that joins the one next to it ([standsAlone]): such a text is split
+ * at every unit without asking a BreakIterator, and its characters are
+ * made into strings only when asked for, most of them shared ([unit]). Any
+ * other text (a vowel point, an accent mark, an emoji, CR LF) is split by
+ * the BreakIterator as before.
+ */
+internal class Graphemes private constructor(val text: String, private val starts: IntArray?) {
+    val count: Int = if (starts == null) text.length else starts.size - 1
+
+    /** Where character [index] starts; [count] gives the end of the text. */
+    fun start(index: Int): Int = if (starts == null) index else starts[index]
+
+    operator fun get(index: Int): String = if (starts == null) unit(text[index]) else text.substring(starts[index], starts[index + 1])
+
+    /** Whether character [index] is one unit, and one of [units]. */
+    fun isOneOf(index: Int, units: String): Boolean {
+        val start = start(index)
+        return start(index + 1) - start == 1 && units.indexOf(text[start]) >= 0
+    }
+
+    fun firstScalar(index: Int): Int = text.codePointAt(start(index))
+
+    /** Every character as a string, in order: made at once, or for a text split at every unit, each when it is read. */
+    fun strings(): List<String> = if (starts == null) {
+        object : AbstractList<String>() {
+            override val size: Int get() = text.length
+
+            override fun get(index: Int): String = unit(text[index])
+        }
+    } else {
+        List(count) { get(it) }
+    }
+
+    companion object {
+        fun of(text: String): Graphemes = Graphemes(text, if (splitsAtEveryUnit(text)) null else byBreakIterator(text))
+
+        fun splitsAtEveryUnit(text: String): Boolean {
+            for (unit in text) if (!standsAlone(unit)) return false
+            return true
+        }
+
+        /** Where each character starts, then the end of the text, as the BreakIterator finds them. */
+        fun byBreakIterator(text: String): IntArray {
+            val iterator = BreakIterator.getCharacterInstance(Locale.ROOT)
+            iterator.setText(text)
+            val boundaries = IntArray(text.length + 1)
+            var count = 0
+            var boundary = iterator.first()
+            while (boundary != BreakIterator.DONE) {
+                boundaries[count++] = boundary
+                boundary = iterator.next()
+            }
+            return boundaries.copyOf(count)
+        }
+
+        /**
+         * Whether [unit] is a character by itself whatever stands next to
+         * it: a letter, digit, space or punctuation mark of Latin, Hebrew,
+         * Arabic, Cyrillic or Chinese text, a control, or a direction mark,
+         * none of which a grapheme rule joins to a neighbour. Left out are
+         * the vowel points, accent and other combining marks, the joiners,
+         * the Arabic signs that join the next letter, surrogates (emoji),
+         * CR (one with a LF after it) and Hangul: text with any of them
+         * goes to the BreakIterator.
+         */
+        fun standsAlone(unit: Char): Boolean {
+            val code = unit.code
+            return when {
+                code < 0x0300 -> code != 0x0D
+                code in 0x0400..0x0482 || code in 0x048A..0x052F -> true
+                code in 0x05D0..0x05EA || code in 0x05EF..0x05F4 -> true
+                code == 0x05BE || code == 0x05C0 || code == 0x05C3 || code == 0x05C6 -> true
+                code in 0x0600..0x06FF -> when (Character.getType(unit).toByte()) {
+                    Character.NON_SPACING_MARK, Character.ENCLOSING_MARK, Character.COMBINING_SPACING_MARK,
+                    Character.FORMAT, Character.UNASSIGNED,
+                    -> false
+                    else -> true
+                }
+                code in 0x2000..0x206F -> code != 0x200C && code != 0x200D && code != 0x2065
+                code in 0x20A0..0x20BF -> true
+                code in 0x3000..0x3029 || code in 0x4E00..0x9FFF || code in 0xFF01..0xFF5E -> true
+                else -> false
+            }
+        }
+
+        private const val SHARED_BELOW = 0x3000
+
+        private val units = arrayOfNulls<Array<String?>>(SHARED_BELOW ushr 8)
+
+        /**
+         * [unit] as a string. Below [SHARED_BELOW] (Latin, Hebrew, Arabic,
+         * Cyrillic, punctuation) it is the same one each time, made when it
+         * is first asked for; two threads asking at once may each make one,
+         * and either is the same text. A Chinese character is made each
+         * time, so thousands of them are not kept for good.
+         */
+        fun unit(unit: Char): String {
+            if (unit.code >= SHARED_BELOW) return unit.toString()
+            val pageAt = unit.code ushr 8
+            val page = units[pageAt] ?: arrayOfNulls<String>(256).also { units[pageAt] = it }
+            return page[unit.code and 0xFF] ?: unit.toString().also { page[unit.code and 0xFF] = it }
+        }
+    }
 }

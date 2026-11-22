@@ -137,8 +137,11 @@ object HebrewText {
      * joined by a Maqaf is left for [separatingJoiners] to turn into a space
      * rather than silently vanishing and fusing the two halves together.
      */
-    fun stripNiqqud(text: String): String = text.filteringScalars {
-        !(it in 0x0591..0x05C7 && Character.getType(it) == Character.NON_SPACING_MARK.toInt())
+    fun stripNiqqud(text: String): String {
+        // Most words have no vowel points, and each word of a line is
+        // looked at again at every word said: those are kept as they are.
+        if (text.none { it in '\u0591'..'\u05C7' }) return text
+        return text.filteringScalars { !(it in 0x0591..0x05C7 && Character.getType(it) == Character.NON_SPACING_MARK.toInt()) }
     }
 
     /**
@@ -160,6 +163,11 @@ object HebrewText {
 
     /** Hyphen, Hebrew maqaf, hyphen variants, en and em dashes, slash. */
     internal val wordJoiners: Set<Int> = setOf('-'.code, 0x05BE, 0x2010, 0x2011, 0x2013, 0x2014, '/'.code)
+
+    private val wordJoinerCodes: IntArray = wordJoiners.toIntArray()
+
+    /** [wordJoiners] asked for a plain number, so asking for every character of a line makes no object for each. */
+    internal fun isWordJoiner(codePoint: Int): Boolean = codePoint in wordJoinerCodes
 
     /**
      * Turns characters that join two words into spaces, so a hyphenated

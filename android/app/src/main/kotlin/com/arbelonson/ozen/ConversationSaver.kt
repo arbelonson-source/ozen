@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.WordFixes
+import java.util.TreeMap
 import java.util.UUID
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +57,9 @@ class ConversationSaver(
     private var end: Pair<UUID, Double>? = null
     private var offset = 0
     private val closed = linkedMapOf<UUID, Closed>()
+
+    /** Which of [closed] holds each line, made again after one closes or goes. */
+    private var closedLines: ClosedLines? = null
 
     /** A conversation a long quiet ended while its lines stay on screen, and how it was last written. */
     private class Closed(val lines: IntRange, val record: TranscriptSessionRecord?)
@@ -212,6 +216,7 @@ class ConversationSaver(
     private fun close(endedAt: Double?) {
         if (settings().saveHistory) {
             closed[id] = Closed(offset until lines().size, save(ended = true, endedAt = endedAt))
+            closedLines = null
         }
         forgetCurrent()
     }
@@ -224,6 +229,7 @@ class ConversationSaver(
     fun delete(id: UUID) {
         writer.deleteNow(id)
         closed.remove(id)
+        closedLines = null
         if (id == this.id) forgetCurrent()
     }
 
@@ -243,6 +249,7 @@ class ConversationSaver(
         }
         clearLines()
         closed.clear()
+        closedLines = null
         starred.clear()
         id = UUID.randomUUID()
         offset = 0
@@ -254,6 +261,7 @@ class ConversationSaver(
     fun deleteAll() {
         writer.deleteAllNow()
         closed.clear()
+        closedLines = null
         forgetCurrent()
     }
 
@@ -412,10 +420,17 @@ class ConversationSaver(
         return conversationOfLine(index)
     }
 
+    /**
+     * The caption screen asks this for each line it draws at every word.
+     * A phone listening for days keeps every conversation a long quiet
+     * closed while their lines stay on screen, and asking each of them in
+     * turn took a phone's word longer with every one.
+     */
     fun conversationOfLine(index: Int): UUID? {
         if (index !in lines().indices) return null
         if (index >= offset) return id
-        return closed.entries.lastOrNull { index in it.value.lines }?.key
+        val lookup = closedLines ?: ClosedLines(closed.map { (id, conversation) -> id to conversation.lines }).also { closedLines = it }
+        return lookup.at(index)
     }
 
     /** A conversation open for reading is not deleted as old while it is read. */
@@ -460,5 +475,67 @@ class ConversationSaver(
     private companion object {
         const val AUTOSAVE_MILLIS = 20_000L
         const val RETENTION_CHECK_SECONDS = 6 * 60 * 60.0
+    }
+}
+
+/**
+ * Which of the conversations a long quiet closed holds a line, given in
+ * the order they closed, found by halving rather than by asking each in
+ * turn. Two of them hold the same line only when lines left the screen in
+ * between; the later one has it, as before. Calls come for the drawn lines
+ * in order, so the stretch found last is tried first, then the one after it.
+ */
+internal class ClosedLines(conversations: List<Pair<UUID, IntRange>>) {
+    private val starts: IntArray
+    private val ends: IntArray
+    private val ids: Array<UUID>
+    private var lastFound = -1
+
+    init {
+        // From the latest back, each takes the lines no later one holds.
+        val taken = TreeMap<Int, Int>()
+        val owners = HashMap<Int, UUID>()
+        for ((id, lines) in conversations.asReversed()) {
+            var from = lines.first
+            while (from <= lines.last) {
+                val before = taken.floorEntry(from)
+                if (before != null && before.value >= from) {
+                    from = before.value + 1
+                    continue
+                }
+                val after = taken.ceilingKey(from)
+                val to = if (after == null) lines.last else minOf(lines.last, after - 1)
+                taken[from] = to
+                owners[from] = id
+                from = to + 1
+            }
+        }
+        starts = taken.keys.toIntArray()
+        ends = taken.values.toIntArray()
+        ids = Array(starts.size) { owners.getValue(starts[it]) }
+    }
+
+    fun at(index: Int): UUID? {
+        val last = lastFound
+        if (last >= 0 && index >= starts[last] && index <= ends[last]) return ids[last]
+        val next = last + 1
+        if (last >= 0 && next < starts.size && index >= starts[next] && index <= ends[next]) {
+            lastFound = next
+            return ids[next]
+        }
+        var low = 0
+        var high = starts.size - 1
+        while (low <= high) {
+            val middle = (low + high) ushr 1
+            when {
+                index < starts[middle] -> high = middle - 1
+                index > ends[middle] -> low = middle + 1
+                else -> {
+                    lastFound = middle
+                    return ids[middle]
+                }
+            }
+        }
+        return null
     }
 }

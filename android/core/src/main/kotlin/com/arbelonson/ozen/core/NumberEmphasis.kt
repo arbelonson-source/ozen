@@ -1,6 +1,5 @@
 package com.arbelonson.ozen.core
 
-import java.text.BreakIterator
 import java.util.Locale
 
 /**
@@ -9,30 +8,31 @@ import java.util.Locale
  * Swift string index meant.
  */
 private class NumberEmphasisLine(val text: String) {
-    val graphemes: List<String>
-    val offsets: IntArray
+    private val characters = Graphemes.of(text)
+    val graphemes: List<String> = characters.strings()
 
-    init {
-        val iterator = BreakIterator.getCharacterInstance(Locale.ROOT)
-        iterator.setText(text)
-        val pieces = mutableListOf<String>()
-        val starts = mutableListOf<Int>()
-        var start = iterator.first()
-        var end = iterator.next()
-        while (end != BreakIterator.DONE) {
-            pieces.add(text.substring(start, end))
-            starts.add(start)
-            start = end
-            end = iterator.next()
-        }
-        starts.add(text.length)
-        graphemes = pieces
-        offsets = starts.toIntArray()
+    val count: Int get() = characters.count
+
+    /** Where character [index] starts; [count] gives the end of the text. */
+    fun offset(index: Int): Int = characters.start(index)
+
+    fun slice(from: Int, to: Int): String = text.substring(offset(from), offset(to))
+}
+
+/** The first character from [from] until [to] that [matches] accepts, or -1. */
+private inline fun NumberEmphasisLine.firstAt(from: Int, to: Int, matches: (String) -> Boolean): Int {
+    for (index in from until to) if (matches(graphemes[index])) return index
+    return -1
+}
+
+/** The last character from [from] until [to] that [matches] accepts, or -1. */
+private inline fun NumberEmphasisLine.lastAt(from: Int, to: Int, matches: (String) -> Boolean): Int {
+    var index = to - 1
+    while (index >= from) {
+        if (matches(graphemes[index])) return index
+        index -= 1
     }
-
-    val count: Int get() = graphemes.size
-
-    fun slice(from: Int, to: Int): String = text.substring(offsets[from], offsets[to])
+    return -1
 }
 
 private class NumberEmphasisWord(
@@ -63,11 +63,14 @@ private fun isEmphasisWhitespace(character: String): Boolean = firstScalarOf(cha
         it == 0x2028 || it == 0x2029 || it == 0x202F || it == 0x205F || it == 0x3000
 }
 
-private fun emphasisCharacters(text: String): List<String> = NumberEmphasisLine(text).graphemes
+private fun emphasisCharacters(text: String): List<String> = Graphemes.of(text).strings()
 
-private fun emphasisDropFirst(text: String, count: Int = 1): String = emphasisCharacters(text).drop(count).joinToString("")
+private fun emphasisDropFirst(text: String, count: Int = 1): String {
+    val characters = Graphemes.of(text)
+    return if (count >= characters.count) "" else text.substring(characters.start(count))
+}
 
-private fun emphasisCount(text: String): Int = emphasisCharacters(text).size
+private fun emphasisCount(text: String): Int = Graphemes.of(text).count
 
 private val emphasisGluedUnitSigns: Set<String> = setOf("%", "₪", "$")
 
@@ -143,7 +146,7 @@ object NumberEmphasis {
                 if (!joined.isFraction) break
                 afterFraction = true
             }
-            result.add(IntRange(line.offsets[found.first], line.offsets[end] - 1))
+            result.add(IntRange(line.offset(found.first), line.offset(end) - 1))
             lastJoined = last
         }
         return result
@@ -301,10 +304,9 @@ private fun emphasisNumberRange(
     position: Int,
     words: List<NumberEmphasisWord>,
 ): Pair<Int, Int>? {
-    val indices = word.start until word.end
-    val firstDigit = indices.firstOrNull { isEmphasisNumber(line.graphemes[it]) }
-    val lastDigit = indices.lastOrNull { isEmphasisNumber(line.graphemes[it]) }
-    if (firstDigit != null && lastDigit != null) {
+    val firstDigit = line.firstAt(word.start, word.end, ::isEmphasisNumber)
+    if (firstDigit >= 0) {
+        val lastDigit = line.lastAt(word.start, word.end, ::isEmphasisNumber)
         var end = lastDigit + 1
         if (end < word.end && line.graphemes[end] in emphasisGluedUnitSigns) end += 1
         return firstDigit to end
@@ -313,7 +315,8 @@ private fun emphasisNumberRange(
     if (isOncePerPeriod(core, position, words)) return word.coreStart to word.coreEnd
     val reading = emphasisReading(core) ?: return null
     val previous = if (position > 0) words[position - 1].core else null
-    val following = words.drop(position + 1).take(3).mapNotNull { it.core }
+    val following = ArrayList<String>(3)
+    for (next in position + 1 until minOf(words.size, position + 4)) words[next].core?.let { following.add(it) }
     if (previous != null && previous in NumberEmphasis.onHandWords &&
         (reading.number in NumberEmphasis.onesWords || reading.number in NumberEmphasis.twoWords)
     ) {
@@ -364,24 +367,24 @@ private fun isOncePerPeriod(core: String, position: Int, words: List<NumberEmpha
 
 private fun emphasisWords(line: NumberEmphasisLine, decimalComma: Boolean): List<NumberEmphasisWord> {
     val words = mutableListOf<NumberEmphasisWord>()
-    var start: Int? = null
+    var start = -1
     var index = 0
     while (true) {
         val atEnd = index == line.count
         if (atEnd || emphasisSeparates(line, index, decimalComma)) {
             val wordStart = start
-            if (wordStart != null) {
-                val first = (wordStart until index).firstOrNull { isEmphasisLetter(line.graphemes[it]) }
-                val last = (wordStart until index).lastOrNull { isEmphasisLetter(line.graphemes[it]) }
-                if (first != null && last != null) {
+            if (wordStart >= 0) {
+                val first = line.firstAt(wordStart, index, ::isEmphasisLetter)
+                val last = line.lastAt(wordStart, index, ::isEmphasisLetter)
+                if (first >= 0) {
                     val core = HebrewText.stripNiqqud(line.slice(first, last + 1))
                     words.add(NumberEmphasisWord(wordStart, index, first, last + 1, core))
                 } else {
                     words.add(NumberEmphasisWord(wordStart, index, -1, -1, null))
                 }
-                start = null
+                start = -1
             }
-        } else if (start == null) {
+        } else if (start < 0) {
             start = index
         }
         if (atEnd) break
@@ -399,7 +402,7 @@ private fun emphasisSeparates(line: NumberEmphasisLine, index: Int, decimalComma
     val character = line.graphemes[index]
     if (isEmphasisWhitespace(character)) return true
     if (character == ",") return !(isThousandsGroupComma(line, index) || (decimalComma && isDecimalComma(line, index)))
-    if (character.codePointCount(0, character.length) != 1 || character.codePointAt(0) !in HebrewText.wordJoiners) return false
+    if (character.codePointCount(0, character.length) != 1 || !HebrewText.isWordJoiner(character.codePointAt(0))) return false
     if (index == 0) return true
     val after = index + 1
     if (after >= line.count) return true
@@ -417,7 +420,7 @@ private fun emphasisFollowedByComma(line: NumberEmphasisLine, index: Int, decima
 private fun isJoinerBetweenDigits(line: NumberEmphasisLine, index: Int): Boolean {
     val character = line.graphemes[index]
     if (character == ",") return true
-    return character.codePointCount(0, character.length) == 1 && character.codePointAt(0) in HebrewText.wordJoiners
+    return character.codePointCount(0, character.length) == 1 && HebrewText.isWordJoiner(character.codePointAt(0))
 }
 
 /**
@@ -472,15 +475,14 @@ private fun isThousandsGroupComma(line: NumberEmphasisLine, index: Int): Boolean
  */
 private fun emphasisReading(word: String): NumberEmphasisReading? {
     if (word in NumberEmphasis.numberWords) return NumberEmphasisReading(word, "")
-    val characters = emphasisCharacters(word)
+    val characters = Graphemes.of(word)
     var restStart = 0
     repeat(2) {
-        val first = characters.getOrNull(restStart)
-        if (first == null || first !in NumberEmphasis.prefixes || characters.size - restStart <= 2) return null
+        if (restStart >= characters.count || characters[restStart] !in NumberEmphasis.prefixes || characters.count - restStart <= 2) return null
         restStart += 1
-        val rest = characters.drop(restStart).joinToString("")
+        val rest = word.substring(characters.start(restStart))
         if (rest in NumberEmphasis.numberWords) {
-            return NumberEmphasisReading(rest, characters.take(restStart).joinToString(""))
+            return NumberEmphasisReading(rest, word.substring(0, characters.start(restStart)))
         }
     }
     return null
@@ -500,6 +502,9 @@ private fun isHour(word: String): Boolean =
 
 private class SpelledTail(val last: Int, val end: Int, val joined: Boolean)
 
+/** What a word starts a sentence after: the end of one, a new line or an opening quote. */
+private val sentenceOpenersAfter = listOf(".", "!", "?", "।", "…", "\n", "“", "‘", "«", "\"")
+
 /**
  * The ranges for a language with a word list (see [NumberWordProfile]): counting words
  * in runs ("ten thirty", "two hundred and fifty"), the unit after them ("three pills",
@@ -514,12 +519,17 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
     fun joinsNext(index: Int, end: Int): Boolean =
         index + 1 < words.size && end == words[index].end && !emphasisFollowedByComma(line, end, decimalComma)
     fun startsSentence(start: Int): Boolean {
-        val last = (start - 1 downTo 0).firstOrNull { !isEmphasisWhitespace(line.graphemes[it]) || line.graphemes[it] == "\n" } ?: return true
-        return line.graphemes[last] in listOf(".", "!", "?", "।", "…", "\n", "“", "‘", "«", "\"")
+        val last = line.lastAt(0, start) { !isEmphasisWhitespace(it) || it == "\n" }
+        if (last < 0) return true
+        return line.graphemes[last] in sentenceOpenersAfter
     }
     fun isNumber(index: Int): Boolean = lowered[index]?.let { it in profile.numbers } ?: false
-    fun hasDigit(index: Int): Boolean = (words[index].start until words[index].end).any { isEmphasisNumber(line.graphemes[it]) }
-    fun digitEnd(index: Int): Int = (words[index].start until words[index].end).last { isEmphasisNumber(line.graphemes[it]) } + 1
+    fun hasDigit(index: Int): Boolean = line.firstAt(words[index].start, words[index].end, ::isEmphasisNumber) >= 0
+    fun digitEnd(index: Int): Int {
+        val last = line.lastAt(words[index].start, words[index].end, ::isEmphasisNumber)
+        if (last < 0) throw NoSuchElementException("No digit in word $index.")
+        return last + 1
+    }
 
     fun runEnd(start: Int): Int {
         var last = start
@@ -657,12 +667,10 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
         var start = -1
         var last = -1
         var end = -1
-        val indices = word.start until word.end
-        val firstDigit = indices.firstOrNull { isEmphasisNumber(line.graphemes[it]) }
-        val lastDigit = indices.lastOrNull { isEmphasisNumber(line.graphemes[it]) }
+        val firstDigit = line.firstAt(word.start, word.end, ::isEmphasisNumber)
         val core = lowered[position]
-        if (firstDigit != null && lastDigit != null) {
-            var digitsEnd = lastDigit + 1
+        if (firstDigit >= 0) {
+            var digitsEnd = line.lastAt(word.start, word.end, ::isEmphasisNumber) + 1
             if (digitsEnd < word.end && line.graphemes[digitsEnd] in emphasisGluedUnitSigns) digitsEnd += 1
             val mixed = mixedFraction(position, digitsEnd)
             val done = if (mixed != null) finish(mixed.first, mixed.second, null, true) else finish(position, digitsEnd, null, false)
@@ -770,7 +778,7 @@ internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberW
             }
         }
         if (start < 0) continue
-        result.add(IntRange(line.offsets[start], line.offsets[end] - 1))
+        result.add(IntRange(line.offset(start), line.offset(end) - 1))
         lastJoined = last
     }
     return result

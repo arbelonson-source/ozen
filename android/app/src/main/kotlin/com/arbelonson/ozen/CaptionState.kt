@@ -205,6 +205,16 @@ fun jumpToLatestTitle(newLines: Int): String =
     if (newLines > 0) ConversationStats.linesText(newLines, adjective = "חדשה" to "חדשות", englishAdjective = "new")
     else tr("לשורה האחרונה", "To the last line")
 
+/**
+ * Which saved conversation each caption line belongs to, by the line's
+ * index among all the lines. The caption state asks for every drawn line
+ * at every word: through a function value each index past 127 was wrapped
+ * in a new object first, and here it is passed as a plain number.
+ */
+fun interface LineConversation {
+    fun at(index: Int): UUID?
+}
+
 object CaptionState {
     private val state = MutableStateFlow(CaptionScreenState())
     val screen: StateFlow<CaptionScreenState> = state.asStateFlow()
@@ -230,7 +240,7 @@ object CaptionState {
         scoringEngine: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit,
         scoringModel: String? = null,
         starred: (UUID) -> Boolean = { false },
-        conversation: (Int) -> UUID? = { null },
+        conversation: LineConversation = LineConversation { null },
         keywordHits: Set<UUID> = emptySet(),
         recentlyHeard: List<KeywordHit> = emptyList(),
         languageCode: String = "he",
@@ -308,7 +318,7 @@ object CaptionState {
             recentlyHeardBy = heardBy(recent, segments, unchanged),
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
-            earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
+            earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation.at(firstShown - 1), it.id) },
         )
     }
 
@@ -346,7 +356,7 @@ object CaptionState {
         scoringEngine: TranscriptionEngineKind,
         scoringModel: String?,
         starred: (UUID) -> Boolean,
-        conversation: (Int) -> UUID?,
+        conversation: LineConversation,
         keywordHits: Set<UUID>,
     ): List<CaptionLine> {
         val before = state.value.lines
@@ -367,7 +377,7 @@ object CaptionState {
             val segment = segments[index]
             val speaker = voices.name(segment.speakerClusterID)
             val isStarred = starred(segment.id)
-            val savedIn = conversation(index)
+            val savedIn = conversation.at(index)
             val important = segment.id in keywordHits
             val slot = voices.slot(segment.speakerClusterID)
             val showsSpeaker = speaker != null && CaptionLayout.showsSpeakerLabel(segment, previous, nameOrBlank)
