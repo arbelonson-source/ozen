@@ -15,8 +15,8 @@ private val threadMemory = ManagementFactory.getThreadMXBean() as com.sun.manage
 
 private class Conversation(val pipeline: CaptionPipeline, val engine: FakeEngine)
 
-private fun said(id: UUID, text: String, final: Boolean = false) =
-    TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = 1_000.0)
+private fun said(id: UUID, text: String, final: Boolean = false, doubtful: List<String> = emptyList()) =
+    TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = 1_000.0, uncertainWords = doubtful)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun TestScope.conversationOf(
@@ -56,11 +56,17 @@ private fun TestScope.bytesPerToken(conversation: Conversation, tokens: List<Tra
 
 /**
  * One line growing a word at a time, as the engine sends a sentence being
- * said: every pass carries all its words so far, as [pass] writes them.
+ * said: every pass carries all its words so far, as [pass] writes them, and
+ * the words [doubtful] says the engine was unsure of on that pass.
  */
-private fun growingLine(words: Int, word: (Int) -> String = { "word$it" }, pass: (String) -> String = { it }): List<TranscriptToken> {
+private fun growingLine(
+    words: Int,
+    word: (Int) -> String = { "word$it" },
+    pass: (String) -> String = { it },
+    doubtful: (String) -> List<String> = { emptyList() },
+): List<TranscriptToken> {
     val id = UUID.randomUUID()
-    return (1..words).map { count -> said(id, pass((1..count).joinToString(" ") { word(it) })) }
+    return (1..words).map { count -> pass((1..count).joinToString(" ") { word(it) }).let { said(id, it, doubtful = doubtful(it)) } }
 }
 
 /** Hebrew captions with a name to be alerted about and a word fix saved that writes that name for "נוע". */
@@ -69,8 +75,19 @@ private fun withNameAlertAndFix(): AppSettings = AppSettings.default.copy().also
     it.wordFixes = listOf(WordFix("נוע", "נועה"))
 }
 
-/** A line of [word]s said with [settings], each pass written as [pass] writes it. */
-private class LineCase(val setup: String, val settings: AppSettings, val pass: (String) -> String = { it }, val word: (Int) -> String)
+/** Hebrew captions with [withNameAlertAndFix]'s alert and fix, and the words the engine was unsure of marked on the screen. */
+private fun withNameAlertFixAndDoubtfulWords(): AppSettings = withNameAlertAndFix().also {
+    it.display = it.display.copy(markUncertainLines = true)
+}
+
+/** A line of [word]s said with [settings], each pass written as [pass] writes it, with the words [doubtful] picks marked doubtful. */
+private class LineCase(
+    val setup: String,
+    val settings: AppSettings,
+    val pass: (String) -> String = { it },
+    val doubtful: (String) -> List<String> = { emptyList() },
+    val word: (Int) -> String,
+)
 
 private fun newLines(count: Int): List<TranscriptToken> =
     (1..count).map { said(UUID.randomUUID(), "and then $it more", final = true) }
@@ -97,6 +114,11 @@ class CaptionPipelineLongConversationTest {
             LineCase("a name alert and a word fix", withNameAlertAndFix()) { "מילה$it" },
             LineCase("a word fix whose heard word is on the line", withNameAlertAndFix()) { if (it == 2) "נוע" else "מילה$it" },
             LineCase("a name alert, on live passes cut mid-word after a direction mark", withNameAlertAndFix(), { "\u200F$it הטל..." }) { "מילה$it" },
+            LineCase(
+                "a word fix whose heard word is on the line, and doubtful words marked",
+                withNameAlertFixAndDoubtfulWords(),
+                doubtful = { line -> listOf("נוע", line.substringAfterLast(' ')) },
+            ) { if (it == 2) "נוע" else "מילה$it" },
         )
         val failures = ArrayList<String>()
         for (case in cases) {
@@ -104,9 +126,9 @@ class CaptionPipelineLongConversationTest {
             // A first line says every word counted below, so both lines
             // count words seen before: a word never seen yet costs more, the
             // same on a line of any length.
-            bytesPerToken(conversation, growingLine(LONG_LINE + 2 * COUNTED_WORDS, case.word, case.pass))
-            val short = bytesPerToken(conversation, growingLine(SHORT_LINE + COUNTED_WORDS, case.word, case.pass), warmUp = SHORT_LINE)
-            val long = bytesPerToken(conversation, growingLine(LONG_LINE + COUNTED_WORDS, case.word, case.pass), warmUp = LONG_LINE)
+            bytesPerToken(conversation, growingLine(LONG_LINE + 2 * COUNTED_WORDS, case.word, case.pass, case.doubtful))
+            val short = bytesPerToken(conversation, growingLine(SHORT_LINE + COUNTED_WORDS, case.word, case.pass, case.doubtful), warmUp = SHORT_LINE)
+            val long = bytesPerToken(conversation, growingLine(LONG_LINE + COUNTED_WORDS, case.word, case.pass, case.doubtful), warmUp = LONG_LINE)
             if (long - short >= EXTRA_BYTES_ALLOWED) {
                 failures += "with ${case.setup}, counting $COUNTED_WORDS words, each word after $LONG_LINE allocated $long bytes, against $short " +
                     "after $SHORT_LINE: ${long - short} more, so some step still redoes its work over the whole line at every word"
