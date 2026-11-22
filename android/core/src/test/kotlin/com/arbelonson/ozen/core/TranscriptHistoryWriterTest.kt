@@ -612,6 +612,26 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // Once there was room, a History fix of a line only the version waiting
+    // for room has wrote that version, and the caption screen still said
+    // the phone was probably full, until the next save.
+    @Test
+    fun `a word fixed in History that writes what waited for room takes the saving warning away`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-writes-waiting-save"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(UUID.randomUUID(), "I saw Avi", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        assertFalse(writer.saveNow(old.copy(segments = old.segments + SavedSegment(line, "and Cohen", null, null, 101.0, true))))
+        assertNotNull(writer.lastFailure)
+
+        permissions(dir, "rwx------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("Cohen", "Dana Cohen") })
+        assertNull(writer.lastFailure, "what waited is written, so there is room")
+        assertEquals(listOf("I saw Avi", "and Dana Cohen"), store.load(old.id)?.segments?.map { it.text })
+    }
+
     // History's dialog says a fix that waits for room is done. Read from the
     // file, History kept showing the old words, and the person fixed the
     // same word again.

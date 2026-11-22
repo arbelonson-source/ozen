@@ -315,7 +315,7 @@ class TranscriptHistoryWriter(
         if (newest != null) {
             val text = change(newest)
             if (text == newest) {
-                catchUp(null)
+                catchUpAfterFix()
                 return@sync WordFixResult.LineChanged
             }
             write(text, sessionID, segmentID)
@@ -333,13 +333,13 @@ class TranscriptHistoryWriter(
             done = true
         } else if (!written) {
             if (changed != true) {
-                catchUp(null)
+                catchUpAfterFix()
                 return@sync if (changed == null) WordFixResult.Unreadable else WordFixResult.LineChanged
             }
             fixed?.let { pendingRenames.texts.add(PendingText(sessionID, segmentID, it)) }
             done = true
         }
-        catchUp(null)
+        catchUpAfterFix()
         if (done && changed == true) WordFixResult.Saved else WordFixResult.LineChanged
     }
 
@@ -365,8 +365,20 @@ class TranscriptHistoryWriter(
         } else if (!written) {
             pendingRenames.texts.add(PendingText(sessionID, segmentID, text))
         }
-        catchUp(null)
+        catchUpAfterFix()
         return found
+    }
+
+    /**
+     * [catchUp] after a fix. When something waited for room and all of it
+     * is written now, there is room again, and the error of the write that
+     * left it waiting is gone: kept, the caption screen still said the phone
+     * was probably full until the next save. With nothing waiting, an
+     * earlier error stays as it was.
+     */
+    private fun catchUpAfterFix() {
+        val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty()
+        if (catchUp(null) && waited) failure.clear()
     }
 
     /**
