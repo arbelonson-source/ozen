@@ -483,6 +483,48 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a word fixed in History on a line whose conversation was saved again after its text queued for room fixes the newer words`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-newer-save"))
+        val line = UUID.randomUUID()
+        val evening = record(UUID.randomUUID(), 0, false).copy(segments = listOf(SavedSegment(line, "I saw aval today", null, null, 100.0, true)))
+        writer.saveNow(evening)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(evening.id, line, "I saw Dan today")
+        writer.saveNow(evening.copy(segments = listOf(evening.segments[0].copy(text = "I saw Dan at the market")), endedAt = 200.0))
+
+        assertTrue(writer.fixTextNow(evening.id, line) { it.replace("Dan", "Dana") })
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Dana at the market", store.load(evening.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
+    @Test
+    fun `a line's text waiting for room does not replace the newer words of a later save of its conversation`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.waiting-text-newer-save"))
+        val line = UUID.randomUUID()
+        val evening = record(UUID.randomUUID(), 0, false).copy(segments = listOf(SavedSegment(line, "I saw aval today", null, null, 100.0, true)))
+        writer.saveNow(evening)
+        val later = evening.copy(segments = listOf(evening.segments[0].copy(text = "I saw Avi at the market")), endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(evening.id, line, "I saw Avi today")
+        writer.saveNow(later)
+
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi at the market", store.load(evening.id)?.segments?.first()?.text)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(evening.id, line, "I saw Dan today")
+        permissions(dir, "rwx------")
+        writer.saveInBackground(later)
+        writer.waitUntilIdle()
+        assertEquals("I saw Avi at the market", store.load(evening.id)?.segments?.first()?.text, "an autosave that reached the disk is newer too")
+        assertNull(writer.lastFailure)
+    }
+
+    @Test
     fun `a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-unstar"))

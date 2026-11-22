@@ -49,6 +49,7 @@ public final class TranscriptHistoryWriter: Sendable {
                 saved = failure.capture { try store.save(record, throttleCaches: record.endedAt == nil) }
                 lastWritten.record = saved ? record : nil
                 pendingSaves.records[record.id] = saved ? nil : record
+                pendingRenames.dropTexts(of: record)
             }
             // Unchanged, this one wasn't written again, so nothing cleared
             // the error of a waiting one that has now gone through.
@@ -71,6 +72,7 @@ public final class TranscriptHistoryWriter: Sendable {
             let saved = failure.capture { try store.save(record, updateSearchCaches: false) }
             lastWritten.record = saved ? record : nil
             pendingSaves.records[record.id] = saved ? nil : record
+            pendingRenames.dropTexts(of: record)
             Self.catchUp(pendingSaves, other: record.id, pendingRenames, store: store, failure: failure)
         }
     }
@@ -110,8 +112,10 @@ public final class TranscriptHistoryWriter: Sendable {
     /// write happens, newest first: a text of it still waiting for room,
     /// the waiting version of its conversation, then the file. History's
     /// sheet keeps the words the line had when it opened, and writing those
-    /// back with the fix replaced newer ones. False, with nothing written,
-    /// when the line is gone or no longer has the word.
+    /// back with the fix replaced newer ones. A waiting text is always the
+    /// newest: any later save of its conversation takes its place (see
+    /// `PendingRenames.dropTexts(of:)`). False, with nothing written, when
+    /// the line is gone or no longer has the word.
     @discardableResult
     public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
@@ -128,14 +132,16 @@ public final class TranscriptHistoryWriter: Sendable {
 
     /// A line's new text, on the file and on a waiting version of its
     /// conversation; refused with neither, it waits for room by itself.
+    /// An older text of the line still waiting goes either way: once there
+    /// was room it was written after this one and brought the old words back.
     private static func write(_ text: String, sessionID: UUID, segmentID: UUID, store: TranscriptHistoryStore, failure: FailureBox, renames: PendingRenames, saves: PendingSaves) {
         let patched = failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
+        renames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
         if var waiting = saves.records[sessionID],
            let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
             waiting.segments[index].text = text
             saves.records[sessionID] = waiting
         } else if !patched {
-            renames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
             renames.texts.append((sessionID, segmentID, text))
         }
         catchUp(saves, other: nil, renames, store: store, failure: failure)
@@ -337,6 +343,14 @@ private final class FailureBox: @unchecked Sendable {
 private final class PendingRenames: @unchecked Sendable {
     var list: [(from: String, to: String)] = []
     var texts: [(sessionID: UUID, segmentID: UUID, text: String)] = []
+
+    /// A save of a conversation, written or left waiting, is newer than any
+    /// text of its lines still waiting: that text was written after it once
+    /// there was room, and History's next fix read those older words.
+    func dropTexts(of record: TranscriptSessionRecord) {
+        let lines = Set(record.segments.map(\.id))
+        texts.removeAll { $0.sessionID == record.id && lines.contains($0.segmentID) }
+    }
 }
 
 /// Conversations the disk refused, waiting to be written. Only touched on

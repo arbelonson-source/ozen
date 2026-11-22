@@ -695,6 +695,32 @@ class ConversationSaverTest {
         assertEquals("I saw Avi", store.load(conversation)!!.segments.single().text)
     }
 
+    // History asks from its own thread, and a long quiet can close the
+    // conversation on the main thread before the screen's step fixes the
+    // line. The fix was then saved into the next conversation, which has
+    // no lines yet, and was called done while History kept the old words.
+    @Test
+    fun `a word fixed in History on a line a long quiet closed meanwhile is saved in the conversation it belongs to`() {
+        start()
+        val quietSince = clock - 30 * 60
+        say("I saw aval", at = quietSince)
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val line = lines[0].id
+
+        assertTrue(
+            saver.fixLine(conversation, line, WordFix("aval", "Avi")) { id, fix ->
+                assertTrue(saver.checkForConversationBreak())
+                fixOnScreen(id, fix)
+            },
+        )
+        assertEquals("I saw Avi", lines[0].text)
+        val closed = store.load(conversation)!!
+        assertEquals(listOf("I saw Avi"), closed.segments.map { it.text })
+        assertEquals(quietSince, closed.endedAt)
+        assertEquals(listOf(conversation), saved().map { it.id })
+    }
+
     // A replay hears the same speech again and takes the lines it rewrites
     // off the screen, and every save of the conversation being captioned is
     // written from the lines on screen. A fix of such a line went to the

@@ -103,6 +103,7 @@ class TranscriptHistoryWriter(
                 saved = failure.capture { store.save(record, throttleCaches = record.endedAt == null) }
                 lastWritten.record = if (saved) record else null
                 if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
+                pendingRenames.dropTexts(record)
             }
             // Unchanged, this one wasn't written again, so nothing cleared
             // the error of a waiting one that has now gone through.
@@ -128,6 +129,7 @@ class TranscriptHistoryWriter(
             saved = failure.capture { store.save(record, updateSearchCaches = false) }
             lastWritten.record = if (saved) record else null
             if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
+            pendingRenames.dropTexts(record)
             catchUp(record.id)
         }
         return saved
@@ -248,7 +250,10 @@ class TranscriptHistoryWriter(
     /**
      * The same, changing the line's text as it is when the write happens.
      * An older change of that line still waiting goes first and is dropped
-     * from the queue, so it is neither written after this one nor lost.
+     * from the queue, so it is neither written after this one nor lost. A
+     * change still waiting is always newer than the waiting version of its
+     * conversation: any later save of the conversation takes its place (see
+     * [PendingRenames.dropTexts]).
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean = queue.sync {
         lastWritten.record = null
@@ -389,6 +394,17 @@ class TranscriptHistoryWriter(
     private class PendingRenames {
         val list = ArrayList<PendingRename>()
         val texts = ArrayList<PendingText>()
+
+        /**
+         * A save of a conversation, written or left waiting, is newer than any
+         * change of its lines still waiting: that change was written after it
+         * once there was room, and History's next fix started from the older
+         * words.
+         */
+        fun dropTexts(record: TranscriptSessionRecord) {
+            val lines = record.segments.mapTo(HashSet()) { it.id }
+            texts.removeAll { it.sessionID == record.id && it.segmentID in lines }
+        }
     }
 
     /** Conversations the disk refused, waiting to be written. Only touched on the writer's queue. */

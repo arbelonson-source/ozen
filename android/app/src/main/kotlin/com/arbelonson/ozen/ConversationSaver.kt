@@ -139,27 +139,28 @@ class ConversationSaver(
     fun speakerLabelsChanged() {
         if (!settings().saveHistory) return
         val all = lines()
-        for (conversation in closed.values) {
-            val record = conversation.record ?: continue
-            val from = all.subList(minOf(conversation.lines.first, all.size), minOf(conversation.lines.last + 1, all.size))
-            writer.saveInBackground(
-                TranscriptSessionRecord.make(
-                    from = from,
-                    speakerName = speakerName,
-                    id = record.id,
-                    startedAt = record.startedAt,
-                    endedAt = record.endedAt,
-                    engine = record.engine,
-                    modelVariant = record.modelVariant,
-                    inputName = record.inputName,
-                    starred = starred.toSet(),
-                    languageCode = record.languageCode,
-                    utcOffsetSeconds = record.utcOffsetSeconds,
-                    timeZoneId = record.timeZoneId,
-                ),
-            )
-        }
+        for (conversation in closed.values) writer.saveInBackground(closedRecord(conversation, all) ?: continue)
         save(ended = false, inBackground = true)
+    }
+
+    /** A conversation a long quiet closed, as its lines still on screen show it now, with the times and labels it was closed with. */
+    private fun closedRecord(conversation: Closed, all: List<TranscriptSegment> = lines()): TranscriptSessionRecord? {
+        val record = conversation.record ?: return null
+        val from = all.subList(minOf(conversation.lines.first, all.size), minOf(conversation.lines.last + 1, all.size))
+        return TranscriptSessionRecord.make(
+            from = from,
+            speakerName = speakerName,
+            id = record.id,
+            startedAt = record.startedAt,
+            endedAt = record.endedAt,
+            engine = record.engine,
+            modelVariant = record.modelVariant,
+            inputName = record.inputName,
+            starred = starred.toSet(),
+            languageCode = record.languageCode,
+            utcOffsetSeconds = record.utcOffsetSeconds,
+            timeZoneId = record.timeZoneId,
+        )
     }
 
     /** A saved person's name changed: every saved conversation follows, not only those on screen. */
@@ -318,11 +319,15 @@ class ConversationSaver(
      * captioned that is no longer on screen (a replay heard that speech
      * again and took the line off): every save of that conversation is
      * written from the lines on screen, and the next one dropped a fix
-     * written to its file alone, with the line.
+     * written to its file alone, with the line. History asks from its own
+     * thread, so a long quiet can close the conversation before the
+     * screen's step: the fix is then saved into the conversation it closed,
+     * not the next one, which has no lines yet.
      */
     fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
         if (sessionID == id) {
             if (currentLines.none { it.id == segmentID } || !onScreen(segmentID, fix)) return false
+            if (sessionID != id) return closed[sessionID]?.let { closedRecord(it) }?.let { writer.saveNow(it) } ?: false
             save(ended = false)
             return true
         }
