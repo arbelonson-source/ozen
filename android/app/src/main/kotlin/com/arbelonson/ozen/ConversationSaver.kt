@@ -227,12 +227,22 @@ class ConversationSaver(
      * Deletes a saved conversation. If it is the one still being
      * captioned, its lines stay on screen but the next words start a new
      * conversation, so an autosave can't bring the deleted one back.
+     *
+     * History asks from its own thread, while the caption screen reads at
+     * every word, on the main thread, which conversation each line belongs
+     * to. So what is kept here changes in one step of the main thread, and
+     * only then is the file deleted, after every save of it the main thread
+     * queued before that step. Changed on History's thread, a word landing
+     * meanwhile closed the app, or kept naming the deleted conversation for
+     * its lines.
      */
     fun delete(id: UUID) {
+        onMainThread {
+            closed.remove(id)
+            closedLines = null
+            if (id == this.id) forgetCurrent()
+        }
         writer.deleteNow(id)
-        closed.remove(id)
-        closedLines = null
-        if (id == this.id) forgetCurrent()
     }
 
     /**
@@ -259,12 +269,24 @@ class ConversationSaver(
         return true
     }
 
-    /** Deletes every saved conversation; the lines on screen stay, and the next words start a new one. */
+    /**
+     * Deletes every saved conversation; the lines on screen stay, and the
+     * next words start a new one. Asked from History's thread, as [delete]
+     * is. The deletion is handed to the writer in the same main-thread step
+     * that starts the next conversation, and waited for here: handed in
+     * after that step, a save of the next conversation the main thread made
+     * meanwhile was deleted with the rest, and with captions stopped no
+     * later save brought it back.
+     */
     fun deleteAll() {
-        writer.deleteAllNow()
-        closed.clear()
-        closedLines = null
-        forgetCurrent()
+        var deleted: () -> Unit = {}
+        onMainThread {
+            closed.clear()
+            closedLines = null
+            forgetCurrent()
+            deleted = writer.deleteAllInTurn()
+        }
+        deleted()
     }
 
     /**
@@ -442,9 +464,17 @@ class ConversationSaver(
     fun conversationOfLine(index: Int): UUID? {
         if (index !in lines().indices) return null
         if (index >= offset) return id
-        val lookup = closedLines ?: ClosedLines(closed.map { (id, conversation) -> id to conversation.lines }).also { closedLines = it }
+        val lookup = closedLines ?: ClosedLines(
+            closed.map { (id, conversation) ->
+                whileReadingClosed?.invoke()
+                id to conversation.lines
+            },
+        ).also { closedLines = it }
         return lookup.at(index)
     }
+
+    /** Test-only: runs as the table of which conversation holds each line reads each one a long quiet closed. */
+    internal var whileReadingClosed: (() -> Unit)? = null
 
     /** A conversation open for reading is not deleted as old while it is read. */
     fun opened(id: UUID) {

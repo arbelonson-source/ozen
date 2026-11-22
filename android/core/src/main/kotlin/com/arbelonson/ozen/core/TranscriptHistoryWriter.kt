@@ -11,7 +11,8 @@ import java.util.concurrent.FutureTask
 /**
  * A serial queue: work runs one piece at a time on a thread of its own, in
  * the order it was handed in. [async] returns at once, [sync] waits for its
- * work. A suspended queue holds everything back until [resume].
+ * work, and [queued] hands it in at once and returns the wait for it. A
+ * suspended queue holds everything back until [resume].
  */
 class SerialQueue(name: String = "ozen.serial-queue") {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
@@ -44,16 +45,21 @@ class SerialQueue(name: String = "ozen.serial-queue") {
         }
     }
 
-    fun <T> sync(work: () -> T): T {
+    fun <T> sync(work: () -> T): T = queued(work)()
+
+    /** Hands [work] in now; the function returned waits for it and returns its result, or throws what it threw. */
+    fun <T> queued(work: () -> T): () -> T {
         val task = FutureTask(Callable {
             waitWhileSuspended()
             work()
         })
         executor.execute(task)
-        try {
-            return task.get()
-        } catch (error: ExecutionException) {
-            throw error.cause ?: error
+        return {
+            try {
+                task.get()
+            } catch (error: ExecutionException) {
+                throw error.cause ?: error
+            }
         }
     }
 }
@@ -461,15 +467,19 @@ class TranscriptHistoryWriter(
     }
 
     /** Deletes every conversation, after the saves already queued. */
-    fun deleteAllNow() {
-        queue.sync {
-            lastWritten.record = null
-            pendingSaves.records.clear()
-            store.deleteAll()
-            pendingRenames.list.clear()
-            pendingRenames.texts.clear()
-            failure.clear()
-        }
+    fun deleteAllNow() = deleteAllInTurn()()
+
+    /**
+     * [deleteAllNow] handed in now, so every save asked after this call
+     * lands after the deletion; the function returned waits for it.
+     */
+    fun deleteAllInTurn(): () -> Unit = queue.queued {
+        lastWritten.record = null
+        pendingSaves.records.clear()
+        store.deleteAll()
+        pendingRenames.list.clear()
+        pendingRenames.texts.clear()
+        failure.clear()
     }
 
     /**

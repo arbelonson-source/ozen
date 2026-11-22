@@ -5,6 +5,8 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
@@ -54,6 +56,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -172,6 +175,54 @@ class CaptionSessionDeviceTest {
             withContext(Dispatchers.Main) { session.clearCaptions() }
             assertNull(CaptionState.screen.value.recentConversation)
         } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
+    }
+
+    // History deletes on its own thread, while the caption screen is drawn
+    // on the main thread at every word. The screen was changed from
+    // History's thread in the middle of whatever the main thread was doing
+    // with it, and a word landing meanwhile could close the app.
+    @Test
+    fun aConversationDeletedInHistoryChangesTheCaptionScreenOnlyOnTheMainThread() = runBlocking {
+        val work = File(context.cacheDir, "history-thread-test").apply { deleteRecursively(); mkdirs() }
+        val history = TranscriptHistoryStore(File(work, "history"))
+        val now = System.currentTimeMillis() / 1_000.0
+        val cutOff = TranscriptSessionRecord(
+            startedAt = now - 180,
+            endedAt = now - 120,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The doctor said twice a day", null, null, now - 180, true)),
+        ).also { history.save(it) }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        val mainFree = CountDownLatch(1)
+        try {
+            assertEquals(cutOff.id, withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation?.id)
+            val mainBusy = CountDownLatch(1)
+            Handler(Looper.getMainLooper()).post {
+                mainBusy.countDown()
+                mainFree.await(10, TimeUnit.SECONDS)
+            }
+            assertTrue(mainBusy.await(5, TimeUnit.SECONDS))
+            val deleting = thread(name = "history") { session.savedConversations.delete(cutOff.id) }
+            deleting.join(1_000)
+            val offeredMeanwhile = CaptionState.screen.value.recentConversation?.id
+            mainFree.countDown()
+            deleting.join(10_000)
+            assertEquals("History's thread changed the caption screen while the main thread was busy", cutOff.id, offeredMeanwhile)
+            assertFalse("the delete never finished", deleting.isAlive)
+            assertNull(CaptionState.screen.value.recentConversation)
+            assertTrue(history.listSummaries().isEmpty())
+        } finally {
+            mainFree.countDown()
             withContext(Dispatchers.Main) {
                 session.close()
                 CaptionState.clear()

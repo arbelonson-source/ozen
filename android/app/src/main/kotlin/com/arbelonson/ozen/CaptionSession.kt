@@ -571,8 +571,12 @@ class CaptionSession(
         scope = scope,
         problemAudio = problemAudio,
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
-        onMainThread = { step -> runBlocking { withContext(Dispatchers.Main.immediate) { step() } } },
+        onMainThread = ::onMainThread,
     )
+
+    /** Runs a step on the main thread and waits for it: History asks from a thread of its own. */
+    private fun onMainThread(step: () -> Unit) = runBlocking { withContext(Dispatchers.Main.immediate) { step() } }
+
     val savedConversations = object : SavedConversations {
         override fun list() = historyStore.listSummaries()
 
@@ -600,8 +604,11 @@ class CaptionSession(
                 journal.removeCaptionLines(gone, running, next)
             }
             forgetSharedCopy()
-            if (CaptionState.screen.value.recentConversation?.id == id) dismissRecentConversation()
-            publish()
+            // The caption screen is drawn on the main thread, at every word.
+            onMainThread {
+                if (CaptionState.screen.value.recentConversation?.id == id) dismissRecentConversation()
+                publish()
+            }
         }
 
         // Her words and the room's sound kept with a marked problem are part
@@ -612,8 +619,10 @@ class CaptionSession(
             forgetSharedCopy()
             deleteMarkedCaptionLines()
             problemAudio.deleteAll()
-            dismissRecentConversation()
-            publish()
+            onMainThread {
+                dismissRecentConversation()
+                publish()
+            }
         }
 
         override fun rename(id: UUID, title: String) = conversations.rename(id, title).also { refreshSavingTrouble() }
