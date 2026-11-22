@@ -14,8 +14,7 @@ class LiveAgreement {
     private fun settle(text: String, words: List<String>): String {
         if (words.isEmpty()) return text
 
-        val shown = words.toMutableList()
-        var substituted = false
+        var shown: MutableList<String>? = null
         if (words.size >= held.size) {
             for (index in held.indices) {
                 if (words[index] != held[index] && index in lastWords.indices && lastWords[index] == words[index]) {
@@ -24,20 +23,18 @@ class LiveAgreement {
             }
             val changed = held.indices.filter { words[it] != held[it] }
             if (changed.isNotEmpty() && changed.size <= MAXIMUM_HELD_CHANGES && changed.size * 3 <= held.size) {
+                shown = words.toMutableList()
                 for (index in changed) shown[index] = held[index]
-                substituted = true
             } else if (changed.isNotEmpty()) {
-                held = held.subList(0, changed[0]).toMutableList()
+                held.subList(changed[0], held.size).clear()
             }
         } else {
-            held = held.zip(words).takeWhile { (a, b) -> a == b }.map { it.first }.toMutableList()
+            held.subList(agreeing(held, words), held.size).clear()
         }
 
-        val agreed = lastWords.zip(words).takeWhile { (a, b) -> a == b }.size
-        if (agreed > held.size) {
-            held = (shown.subList(0, held.size) + words.subList(held.size, agreed)).toMutableList()
-        }
-        return if (substituted) shown.joinToString(" ") else text
+        val agreed = agreeing(lastWords, words)
+        if (agreed > held.size) held.addAll(words.subList(held.size, agreed))
+        return shown?.joinToString(" ") ?: text
     }
 
     fun copy(): LiveAgreement {
@@ -52,24 +49,34 @@ class LiveAgreement {
 
     override fun hashCode(): Int = 31 * lastWords.hashCode() + held.hashCode()
 
+    private fun agreeing(first: List<String>, second: List<String>): Int {
+        var count = 0
+        while (count < first.size && count < second.size && first[count] == second[count]) count++
+        return count
+    }
+
     private fun splitWords(text: String): List<String> {
-        val words = ArrayList<String>()
-        val current = StringBuilder()
+        val words = ArrayList<String>(lastWords.size + 1)
+        var start = -1
         var index = 0
         while (index < text.length) {
             val codePoint = text.codePointAt(index)
             if (Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint)) {
-                if (current.isNotEmpty()) {
-                    words.add(current.toString())
-                    current.setLength(0)
-                }
-            } else {
-                current.appendCodePoint(codePoint)
+                if (start >= 0) words.add(wordAt(text, start, index, words.size))
+                start = -1
+            } else if (start < 0) {
+                start = index
             }
             index += Character.charCount(codePoint)
         }
-        if (current.isNotEmpty()) words.add(current.toString())
+        if (start >= 0) words.add(wordAt(text, start, text.length, words.size))
         return words
+    }
+
+    private fun wordAt(text: String, start: Int, end: Int, position: Int): String {
+        val before = lastWords.getOrNull(position)
+        if (before != null && before.length == end - start && text.regionMatches(start, before, 0, end - start)) return before
+        return text.substring(start, end)
     }
 
     companion object {

@@ -320,7 +320,7 @@ class CaptionStabilizer(
             // An engine can send an empty update (Apple's recognizer does
             // when a request ends on silence). Text the reader has already
             // seen must never vanish because of it.
-            if (trimmingStabilizerWhitespace(token.text).isNotEmpty()) {
+            if (hasStabilizerText(token.text)) {
                 line = line.copy(text = settled(token))
             }
             line = line.copy(lastUpdateTimestamp = token.timestamp)
@@ -445,7 +445,20 @@ private fun isStabilizerSpaceOrNewline(codePoint: Int): Boolean =
         else -> codePoint in 0x09..0x0D || codePoint == 0x85
     }
 
-private fun trimmingStabilizerWhitespace(text: String): String = trimmingStabilizerScalars(text) { isStabilizerSpaceOrNewline(it) }
+/**
+ * Whether [text] has anything but spaces and line breaks, read in place: a
+ * line still being written comes at every word with all of its words so
+ * far, and trimming a copy of it to find out cost a copy of the line.
+ */
+private fun hasStabilizerText(text: String): Boolean {
+    var index = 0
+    while (index < text.length) {
+        val codePoint = text.codePointAt(index)
+        if (!isStabilizerSpaceOrNewline(codePoint)) return true
+        index += Character.charCount(codePoint)
+    }
+    return false
+}
 
 private fun trimmingStabilizerSpaces(text: String): String =
     trimmingStabilizerScalars(text) { Character.getType(it).toByte() == Character.SPACE_SEPARATOR || it == 0x09 }

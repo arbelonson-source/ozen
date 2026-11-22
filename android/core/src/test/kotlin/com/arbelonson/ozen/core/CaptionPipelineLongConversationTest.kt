@@ -19,10 +19,10 @@ private fun said(id: UUID, text: String, final: Boolean = false) =
     TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = 1_000.0)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-private suspend fun TestScope.conversationOf(lines: Int): Conversation {
+private suspend fun TestScope.conversationOf(lines: Int, settings: AppSettings = AppSettings.default): Conversation {
     val engine = FakeEngine()
     val (pipeline, _, _) = makePipeline(engines = mapOf(TranscriptionEngineKind.WhisperKit to engine))
-    pipeline.start(AppSettings.default)
+    pipeline.start(settings)
     repeat(lines) { engine.emit(said(UUID.randomUUID(), "line $it was said here", final = true)) }
     runCurrent()
     assertEquals(lines, pipeline.segments.size)
@@ -32,11 +32,11 @@ private suspend fun TestScope.conversationOf(lines: Int): Conversation {
 /**
  * The bytes the pipeline's own thread (the test's, here) allocates for
  * each token, counted by the JVM rather than timed, after a few tokens
- * that warm the same path up. The tokens are made before counting starts.
+ * that warm the same path up ([warmUp], or bring a line up to the length
+ * being measured). The tokens are made before counting starts.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-private fun TestScope.bytesPerToken(conversation: Conversation, tokens: List<TranscriptToken>): Long {
-    val warmUp = 5
+private fun TestScope.bytesPerToken(conversation: Conversation, tokens: List<TranscriptToken>, warmUp: Int = 5): Long {
     tokens.take(warmUp).forEach {
         conversation.engine.emit(it)
         runCurrent()
@@ -51,9 +51,15 @@ private fun TestScope.bytesPerToken(conversation: Conversation, tokens: List<Tra
 }
 
 /** One line growing a word at a time, as the engine sends a sentence being said: every pass carries all its words so far. */
-private fun growingLine(words: Int): List<TranscriptToken> {
+private fun growingLine(words: Int, word: (Int) -> String = { "word$it" }): List<TranscriptToken> {
     val id = UUID.randomUUID()
-    return (1..words).map { count -> said(id, (1..count).joinToString(" ") { "word$it" }) }
+    return (1..words).map { count -> said(id, (1..count).joinToString(" ") { word(it) }) }
+}
+
+/** Hebrew captions with a name to be alerted about and a word fix saved, neither of them said on the line. */
+private fun withNameAlertAndFix(): AppSettings = AppSettings.default.copy().also {
+    it.keywordAlerts = listOf(KeywordAlert(phrase = "נועה"))
+    it.wordFixes = listOf(WordFix("נוע", "נועה"))
 }
 
 private fun newLines(count: Int): List<TranscriptToken> =
@@ -70,6 +76,28 @@ class CaptionPipelineLongConversationTest {
                 long - short < EXTRA_BYTES_ALLOWED,
                 "counting $words word(s), each word at 10,000 lines allocated $long bytes, against $short at 10 lines: " +
                     "${long - short} more, so the whole list of lines is still being copied",
+            )
+        }
+    }
+
+    @Test
+    fun `a word on a line of a hundred words costs about what it costs on a line of six`() = runTest {
+        val cases = listOf(
+            Triple("no alerts or fixes", AppSettings.default) { index: Int -> "word$index" },
+            Triple("a name alert and a word fix", withNameAlertAndFix()) { index: Int -> "מילה$index" },
+        )
+        for ((setup, settings, word) in cases) {
+            val conversation = conversationOf(10, settings)
+            // A first line says every word counted below, so both lines
+            // count words seen before: a word never seen yet costs more, the
+            // same on a line of any length.
+            bytesPerToken(conversation, growingLine(LONG_LINE + 2 * COUNTED_WORDS, word))
+            val short = bytesPerToken(conversation, growingLine(SHORT_LINE + COUNTED_WORDS, word), warmUp = SHORT_LINE)
+            val long = bytesPerToken(conversation, growingLine(LONG_LINE + COUNTED_WORDS, word), warmUp = LONG_LINE)
+            assertTrue(
+                long - short < EXTRA_BYTES_ALLOWED,
+                "with $setup, counting $COUNTED_WORDS words, each word after $LONG_LINE allocated $long bytes, against $short after " +
+                    "$SHORT_LINE: ${long - short} more, so some step still redoes its work over the whole line at every word",
             )
         }
     }
@@ -108,5 +136,8 @@ class CaptionPipelineLongConversationTest {
 
     private companion object {
         const val EXTRA_BYTES_ALLOWED = 8 * 1_024L
+        const val SHORT_LINE = 6
+        const val LONG_LINE = 100
+        const val COUNTED_WORDS = 10
     }
 }

@@ -12,8 +12,8 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
     private var waitingForVoice: UUID? = null
 
     fun admits(token: TranscriptToken, time: Double): Boolean {
-        val words = wordsOf(token.text)
-        if (words.isEmpty()) return true
+        val words = Words(token.text)
+        if (!words.has(0)) return true
         val matched = phrases(words)
         if (matched == null || matched.map { it in soundTags }.toSet().size != 1) {
             lastPhraseAt = null
@@ -42,10 +42,10 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
         return true
     }
 
-    private fun phrases(words: List<String>): List<String>? {
+    private fun phrases(words: Words): List<String>? {
         var index = 0
         val matched = ArrayList<String>()
-        while (index < words.size) {
+        while (words.has(index)) {
             val phrase = phrases.firstOrNull { startsWith(words, index, it) } ?: return null
             index += phrase.size
             matched.add(phrase.joinToString(" "))
@@ -53,12 +53,23 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
         return matched
     }
 
-    private fun startsWith(words: List<String>, from: Int, phrase: List<String>): Boolean {
-        if (from + phrase.size > words.size) return false
+    private fun startsWith(words: Words, from: Int, phrase: List<String>): Boolean {
         for (offset in phrase.indices) {
-            if (words[from + offset] != phrase[offset]) return false
+            if (!words.has(from + offset) || words[from + offset] != phrase[offset]) return false
         }
         return true
+    }
+
+    private class Words(text: String) {
+        private val source = WhisperResultFilter.normalizedWords(text)
+        private val read = ArrayList<String>()
+
+        fun has(index: Int): Boolean {
+            while (read.size <= index && source.hasNext()) read.add(source.next())
+            return index < read.size
+        }
+
+        operator fun get(index: Int): String = read[index]
     }
 
     companion object {
