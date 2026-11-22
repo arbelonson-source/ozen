@@ -236,9 +236,9 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.buttons[saveTitle].waitForExistence(timeout: 10), "\(name): the sheet has no \(saveTitle) button")
         XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 5), "\(name): the sheet has no every-time switch")
         XCTAssertTrue(app.textFields[hintField].exists, "\(name): the sheet has no \(hintField) field")
-        let word = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", wordButton)).firstMatch
+        let word = app.buttons.matching(NSPredicate(format: "label == %@", wordButton)).firstMatch
         if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
-        XCTAssertTrue(word.exists, "\(name): the line's word \(wordButton) is not a button")
+        XCTAssertTrue(word.exists, "\(name): no word button reads exactly \(wordButton), without the punctuation after it")
         XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
         word.tap()
         Thread.sleep(forTimeInterval: 0.5)
@@ -250,7 +250,7 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     func testFixWordSheetEnglish() throws {
-        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type the wrong word", wordButton: "morning,")
+        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type the wrong word", wordButton: "morning")
     }
 
     func testWordFixesSettingsHebrew() throws {
