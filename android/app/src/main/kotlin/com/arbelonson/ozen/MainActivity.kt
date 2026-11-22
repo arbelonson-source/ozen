@@ -1246,7 +1246,7 @@ private fun CaptionScreen(
                             if (index >= 0) scope.launch { list.scrollToItem(index) }
                         }
                     }
-                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(onDismissSavingTrouble) }
+                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(state.savingTroubleUnreadable, onDismissSavingTrouble) }
                     ArrivingBanner(state.dropped) { lost ->
                         MicrophoneDropBanner(
                             title = MicrophoneDropNotice.titleFor(lost),

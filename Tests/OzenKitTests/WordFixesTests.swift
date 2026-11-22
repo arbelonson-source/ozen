@@ -354,6 +354,32 @@ struct WordFixesTests {
         #expect(WordFixes.apply([surname], to: "قال احمد") == "قال أحمد علي")
     }
 
+    @Test("a fix that writes words before the heard one is not written twice where the line spells them with the other apostrophe or with vowel marks")
+    func earlierWordsOnceAcrossSpellings() {
+        let neil = fix("smith", "O\u{2019}Neil Smith")
+        #expect(WordFixes.apply([neil], to: "I met O'Neil Smith") == "I met O'Neil Smith")
+        #expect(WordFixes.apply([neil], to: "I met smith") == "I met O\u{2019}Neil Smith")
+        let ahmad = fix("علي", "أحمد علي")
+        #expect(WordFixes.apply([ahmad], to: "قال أَحمد علي") == "قال أَحمد علي")
+        #expect(WordFixes.apply([ahmad], to: "قال علي") == "قال أحمد علي")
+    }
+
+    @Test("a line fixed once is left as it is when the same fix runs on it again, as Fix it every time and a History fix do")
+    func fixedLineFixedAgain() {
+        let cases = [
+            (fix("cohen", "Avi Cohen"), "I met cohen"),
+            (fix("cohen", "Dr. Cohen"), "cohen said"),
+            (fix("john", "John son of John"), "john spoke"),
+            (fix("כהן", "אבי כהן"), "סיפרתי לכהן"),
+            (fix("שירותי בריאות", "מכבי שירותי בריאות"), "התקשרתי לשירותי בריאות"),
+        ]
+        for (one, line) in cases {
+            let once = WordFixes.apply([one], to: line)
+            #expect(once != line, "\(one.heard) on \(line)")
+            #expect(WordFixes.apply([one], to: once) == once, "\(one.heard) on \(line)")
+        }
+    }
+
     @Test("a fix that only respells its word still applies where the line spells it another way, and can take vowel marks away")
     func respellingAcrossSpellings() {
         let plain = fix("مُحمّد", "محمد")

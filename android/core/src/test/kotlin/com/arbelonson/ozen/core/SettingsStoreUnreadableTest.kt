@@ -97,4 +97,34 @@ class SettingsStoreUnreadableTest {
         assertEquals(AppSettings.default.speechRate, back.speechRate)
         assertEquals(listOf(WordFix("dona", "Dana"), WordFix("abby", "Avi")), back.wordFixes)
     }
+
+    @Test
+    fun `while the file can't be read, the app counts as set up - no first-run guide over the captions, and no offer resting on the stand-in`() {
+        SettingsStore(file).save(personal())
+        lock()
+
+        val standIn = SettingsStore(file).load()
+        assertTrue(standIn.hasCompletedOnboarding)
+        assertFalse(standIn.offersNameAlert)
+        assertFalse(standIn.offersBetterModel())
+        assertFalse(SettingsStore(File(folder, "not-there.json")).load().hasCompletedOnboarding)
+    }
+
+    @Test
+    fun `the stand-in's own answers never reach the file - a guide not finished and a name offer not turned down stay so`() {
+        SettingsStore(file).save(personal().apply { hasCompletedOnboarding = false })
+        lock()
+
+        val store = SettingsStore(file)
+        val session = store.load().copy()
+        unlock()
+        session.speechRate = 0.5f
+        store.save(session)
+
+        val back = SettingsStore(file).load()
+        assertFalse(back.hasCompletedOnboarding)
+        assertFalse(back.nameAlertOfferDismissed)
+        assertEquals(0.5f, back.speechRate)
+        assertEquals(listOf("Dana"), back.speakerProfiles.map { it.name })
+    }
 }

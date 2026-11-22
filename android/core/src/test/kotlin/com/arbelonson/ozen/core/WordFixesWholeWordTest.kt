@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 class WordFixesWholeWordTest {
     private fun fix(heard: String, written: String) = WordFix(heard, written)
@@ -155,6 +156,32 @@ class WordFixesWholeWordTest {
         val surname = fix("احمد", "أحمد علي")
         assertEquals("قال أَحمد علي", run("قال أَحمد علي", surname))
         assertEquals("قال أحمد علي", run("قال احمد", surname))
+    }
+
+    @Test
+    fun `a fix that writes words before the heard one is not written twice where the line spells them with the other apostrophe or with vowel marks`() {
+        val neil = fix("smith", "O’Neil Smith")
+        assertEquals("I met O'Neil Smith", run("I met O'Neil Smith", neil))
+        assertEquals("I met O’Neil Smith", run("I met smith", neil))
+        val ahmad = fix("علي", "أحمد علي")
+        assertEquals("قال أَحمد علي", run("قال أَحمد علي", ahmad))
+        assertEquals("قال أحمد علي", run("قال علي", ahmad))
+    }
+
+    @Test
+    fun `a line fixed once is left as it is when the same fix runs on it again, as Fix it every time and a History fix do`() {
+        val cases = listOf(
+            fix("cohen", "Avi Cohen") to "I met cohen",
+            fix("cohen", "Dr. Cohen") to "cohen said",
+            fix("john", "John son of John") to "john spoke",
+            fix("כהן", "אבי כהן") to "סיפרתי לכהן",
+            fix("שירותי בריאות", "מכבי שירותי בריאות") to "התקשרתי לשירותי בריאות",
+        )
+        for ((one, line) in cases) {
+            val once = run(line, one)
+            assertNotEquals(line, once, "${one.heard} on $line")
+            assertEquals(once, run(once, one), "${one.heard} on $line")
+        }
     }
 
     @Test

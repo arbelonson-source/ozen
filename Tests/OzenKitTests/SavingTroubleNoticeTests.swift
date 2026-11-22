@@ -63,4 +63,33 @@ struct SavingTroubleNoticeTests {
         notice.update(settingsFailed: false, historyFailed: true)
         #expect(notice.shouldShow)
     }
+
+    @Test("settings that can't be saved because their file can't be read right now are not blamed on a full phone")
+    func unreadableSettingsAreNotAFullPhone() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.shouldShow)
+            #expect(notice.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+            #expect(!notice.shownDetail.contains("full"))
+            #expect(notice.shownDetail.contains("can’t read its saved settings"))
+
+            notice.update(settingsFailed: true, historyFailed: false)
+            #expect(notice.shownDetail == SavingTroubleNotice.detail)
+
+            notice.update(settingsFailed: true, historyFailed: true, settingsUnreadable: true)
+            #expect(notice.shownDetail == SavingTroubleNotice.detail)
+
+            notice.update(settingsFailed: false, historyFailed: true, settingsUnreadable: true)
+            #expect(notice.shownDetail == SavingTroubleNotice.detail)
+        }
+    }
+
+    @Test("the reason for settings that can't be read is said in Hebrew too")
+    func unreadableSettingsInHebrew() {
+        Localization.$override.withValue(.hebrew) {
+            #expect(SavingTroubleNotice.unreadableSettingsDetail.contains("לקרוא"))
+            #expect(SavingTroubleNotice.unreadableSettingsDetail != SavingTroubleNotice.detail)
+        }
+    }
 }
