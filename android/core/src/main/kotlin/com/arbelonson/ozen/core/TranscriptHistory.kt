@@ -716,6 +716,31 @@ class TranscriptHistoryStore(
         if (record.segments.isEmpty()) return false
         Files.createDirectories(directory.toPath())
         val file = fileFor(record.id)
+        val toSave = keepingSavedDetails(record)
+        forget(record.id)
+        PrivateFileWrites.write(file, toSave.toJson().toByteArray(Charsets.UTF_8))
+        remember(toSave, file)
+        if (!updateSearchCaches) return true
+        if (throttleCaches && !cacheRefreshDue(record.id)) return true
+        // Written after the record, so a fresh summary is never older than
+        // its conversation. If this write fails the conversation is still
+        // saved; the list just rebuilds the summary next time.
+        val written = modificationDate(file)
+        cacheRefreshes.incrementAndGet()
+        writeSummary(TranscriptSessionSummary.summarizing(toSave), file, written)
+        writeSearchText(searchableText(toSave), file, written)
+        return true
+    }
+
+    /**
+     * [record] as [save] writes it: without a title it takes the one the
+     * file has, and it takes the source, language and time zone of the
+     * file's first save. History shows a version waiting for room this way
+     * (see [TranscriptHistoryWriter.loadNow]). Throws when the file is there
+     * but can't be read right now.
+     */
+    fun keepingSavedDetails(record: TranscriptSessionRecord): TranscriptSessionRecord = synchronized(lock) {
+        val file = fileFor(record.id)
         var toSave = record
         val remembered = remembered(record.id, file)
         if (remembered != null) {
@@ -745,19 +770,7 @@ class TranscriptHistoryStore(
                 }
             }
         }
-        forget(record.id)
-        PrivateFileWrites.write(file, toSave.toJson().toByteArray(Charsets.UTF_8))
-        remember(toSave, file)
-        if (!updateSearchCaches) return true
-        if (throttleCaches && !cacheRefreshDue(record.id)) return true
-        // Written after the record, so a fresh summary is never older than
-        // its conversation. If this write fails the conversation is still
-        // saved; the list just rebuilds the summary next time.
-        val written = modificationDate(file)
-        cacheRefreshes.incrementAndGet()
-        writeSummary(TranscriptSessionSummary.summarizing(toSave), file, written)
-        writeSearchText(searchableText(toSave), file, written)
-        return true
+        toSave
     }
 
     /**

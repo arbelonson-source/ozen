@@ -690,6 +690,35 @@ public struct TranscriptHistoryStore: Sendable {
         defer { lock.unlock() }
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         let url = fileURL(for: record.id)
+        let record = try keepingSavedDetails(of: record, at: url)
+        memory.forget(url)
+        let data = try JSONEncoder().encode(record)
+        try data.write(to: url, options: .privateFile)
+        memory.remember(record, at: url)
+        guard updateSearchCaches else { return true }
+        if throttleCaches, !memory.cacheRefreshDue(url, at: now()) { return true }
+        memory.countRefresh()
+        // Written after the record, so a fresh summary is never older than
+        // its conversation. If this write fails the conversation is still
+        // saved; the list just rebuilds the summary next time.
+        let written = Self.modificationDate(of: url)
+        writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
+        writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
+        return true
+    }
+
+    /// `record` as `save` writes it: without a title it takes the one the
+    /// file has, and it takes the source, language and time zone of the
+    /// file's first save. History shows a version waiting for room this way
+    /// (see `TranscriptHistoryWriter.loadNow(id:)`). Throws when the file is
+    /// there but can't be read right now.
+    public func keepingSavedDetails(of record: TranscriptSessionRecord) throws -> TranscriptSessionRecord {
+        lock.lock()
+        defer { lock.unlock() }
+        return try keepingSavedDetails(of: record, at: fileURL(for: record.id))
+    }
+
+    private func keepingSavedDetails(of record: TranscriptSessionRecord, at url: URL) throws -> TranscriptSessionRecord {
         var record = record
         if let remembered = memory.remembered(url) {
             if record.title == nil { record.title = remembered.title }
@@ -721,20 +750,7 @@ public struct TranscriptHistoryStore: Sendable {
                 record.timeZoneIdentifier = source.timeZoneIdentifier
             }
         }
-        memory.forget(url)
-        let data = try JSONEncoder().encode(record)
-        try data.write(to: url, options: .privateFile)
-        memory.remember(record, at: url)
-        guard updateSearchCaches else { return true }
-        if throttleCaches, !memory.cacheRefreshDue(url, at: now()) { return true }
-        memory.countRefresh()
-        // Written after the record, so a fresh summary is never older than
-        // its conversation. If this write fails the conversation is still
-        // saved; the list just rebuilds the summary next time.
-        let written = Self.modificationDate(of: url)
-        writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
-        writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
-        return true
+        return record
     }
 
     /// Nil only when there is no such file yet. A file that is there but

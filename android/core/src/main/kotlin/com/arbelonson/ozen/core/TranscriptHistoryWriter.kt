@@ -161,13 +161,22 @@ class TranscriptHistoryWriter(
     /**
      * A saved conversation as it will be saved, in order with the saves
      * already queued: its newer version still waiting for room (a phone too
-     * full) or else its file, with the line changes still waiting put in.
+     * full), with the name and source its save keeps from the file (see
+     * [TranscriptHistoryStore.keepingSavedDetails]), or else its file, with
+     * the line changes still waiting put in.
      * History shows this: read from the file alone, a word fixed while the
      * phone was full kept its old words there though the fix was called
      * done, and the person fixed the same word again.
      */
     fun loadNow(id: UUID): TranscriptSessionRecord? = queue.sync {
-        val record = pendingSaves.records[id] ?: store.load(id) ?: return@sync null
+        val waiting = pendingSaves.records[id]?.let {
+            try {
+                store.keepingSavedDetails(it)
+            } catch (_: Exception) {
+                it
+            }
+        }
+        val record = waiting ?: store.load(id) ?: return@sync null
         val texts = pendingRenames.texts.filter { it.sessionID == id }
         record.copy(segments = record.segments.map { line -> texts.filter { it.segmentID == line.id }.fold(line) { shown, next -> shown.copy(text = next.change(shown.text)) } })
     }
@@ -338,13 +347,22 @@ class TranscriptHistoryWriter(
      * be undone by the tap that tries again. With [to], the line takes that
      * state instead: the starred lines list shows the files' stars, and its
      * Remove the star, followed as a tap, put the star back on a line the
-     * waiting version had none on.
+     * waiting version had none on. A line only the waiting version has is
+     * not in the file, which then had nothing to refuse: History's star was
+     * called saved while it only waited. Without [keepingRefused] the
+     * waiting version is written first, and the star is refused while that
+     * version still can't be.
      */
     fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
         lastWritten.record = null
         val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
-        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
+        var reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
+        if (reached && result == null && !keepingRefused && pendingSaves.records[sessionID]?.segments?.any { it.id == segmentID } == true) {
+            catchUp(null)
+            if (pendingSaves.records.containsKey(sessionID)) return@sync null
+            reached = failure.capture { result = store.toggleStar(segmentID, sessionID, starring) }
+        }
         val waiting = pendingSaves.records[sessionID]
         if ((reached || keepingRefused) && waiting != null) {
             val index = waiting.segments.indexOfFirst { it.id == segmentID }

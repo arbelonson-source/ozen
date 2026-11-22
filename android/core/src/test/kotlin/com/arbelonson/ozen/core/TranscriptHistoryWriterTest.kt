@@ -739,6 +739,52 @@ class TranscriptHistoryWriterTest {
         assertNull(store.load(evening.id))
     }
 
+    // The version waiting for room is the one the caption screen saved,
+    // which knows nothing of a name given in History or of what first wrote
+    // the conversation; its save keeps those from the file.
+    @Test
+    fun `History shows a version waiting for room with the name and source its save keeps from the file`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.load-waiting-details"))
+        val early = record(UUID.randomUUID(), 1, false).copy(inputName = "Kitchen", languageCode = "he")
+        writer.saveNow(early)
+        assertTrue(writer.renameNow(early.id, "Doctor"))
+        val later = early.copy(segments = early.segments + record(early.id, 1, true).segments, title = null, inputName = "Car", languageCode = "en", endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+
+        val shown = writer.loadNow(early.id)!!
+        assertEquals(listOf("Doctor", "Kitchen", "he"), listOf(shown.title, shown.inputName, shown.languageCode))
+        assertEquals(2, shown.segments.size)
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        val saved = store.load(early.id)!!
+        assertEquals(listOf(shown.title, shown.inputName, shown.languageCode), listOf(saved.title, saved.inputName, saved.languageCode))
+        assertEquals(2, saved.segments.size)
+    }
+
+    // History is told a star it can't save didn't change. A line only the
+    // waiting version has isn't in the file, so the file had nothing to
+    // refuse, and the star was called saved while it only waited.
+    @Test
+    fun `a star from History on a line only the waiting version has counts once that version reaches the disk`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.history-star-line-only-waiting"))
+        val early = record(UUID.randomUUID(), 1, false)
+        writer.saveNow(early)
+        val later = early.copy(segments = early.segments + record(early.id, 1, true).segments, endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        val added = later.segments[1].id
+
+        assertNull(writer.toggleStarNow(early.id, added, keepingRefused = false))
+        assertEquals(listOf(false, false), writer.loadNow(early.id)?.segments?.map { it.isStarred })
+        permissions(dir, "rwx------")
+        assertEquals(true, writer.toggleStarNow(early.id, added, keepingRefused = false))
+        assertEquals(listOf(false, true), store.load(early.id)?.segments?.map { it.isStarred })
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a star on a line only the waiting version has is put on that line`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)

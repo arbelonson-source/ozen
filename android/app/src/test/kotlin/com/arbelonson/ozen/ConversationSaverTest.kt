@@ -903,6 +903,30 @@ class ConversationSaverTest {
         assertNull(saver.toggleStar(earlier, UUID.randomUUID()))
     }
 
+    // The star was taken off on the caption screen while the phone was full,
+    // so the file kept it and the starred lines list still showed it. Its
+    // Remove the star, as a tap, put the star back on the line.
+    @Test
+    fun `Remove the star from the starred lines list takes it off a line still being captioned whose unstarring waited for room`() {
+        start()
+        say("Take two pills after dinner")
+        assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        val conversation = saver.currentId
+        assertTrue(folder.setWritable(false))
+        try {
+            assertEquals(false, saver.toggleLiveStar(lines[0].id))
+            assertNull(saver.toggleStar(conversation, lines[0].id, to = false), "still full: not saved, and said so")
+            assertFalse(saver.isStarred(lines[0].id))
+        } finally {
+            folder.setWritable(true)
+        }
+        assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+
+        assertEquals(false, saver.toggleStar(conversation, lines[0].id, to = false))
+        assertFalse(saver.isStarred(lines[0].id))
+        assertEquals(listOf(false), store.load(conversation)!!.segments.map { it.isStarred })
+    }
+
     // The starred lines list shows the files' stars. Its Remove the star,
     // as a tap following the waiting version (no star), put the star back.
     @Test

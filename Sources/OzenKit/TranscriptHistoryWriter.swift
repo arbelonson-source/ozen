@@ -103,13 +103,15 @@ public final class TranscriptHistoryWriter: Sendable {
 
     /// A saved conversation as it will be saved, in order with the saves
     /// already queued: its newer version still waiting for room (a phone
-    /// too full) or else its file, with the line texts still waiting put
-    /// in. History shows this: read from the file alone, a word fixed
+    /// too full), with the name and source its save keeps from the file
+    /// (see `TranscriptHistoryStore.keepingSavedDetails(of:)`), or else its
+    /// file, with the line texts still waiting put in. History shows this: read from the file alone, a word fixed
     /// while the phone was full kept its old words there though the fix
     /// was called done, and the person fixed the same word again.
     public func loadNow(id: UUID) -> TranscriptSessionRecord? {
         queue.sync { [store, pendingRenames, pendingSaves] in
-            guard var record = pendingSaves.records[id] ?? store.load(id: id) else { return nil }
+            let waiting = pendingSaves.records[id].map { (try? store.keepingSavedDetails(of: $0)) ?? $0 }
+            guard var record = waiting ?? store.load(id: id) else { return nil }
             for waiting in pendingRenames.texts where waiting.sessionID == id {
                 if let index = record.segments.firstIndex(where: { $0.id == waiting.segmentID }) {
                     record.segments[index].text = waiting.text
@@ -266,14 +268,24 @@ public final class TranscriptHistoryWriter: Sendable {
     /// or be undone by the tap that tries again. With `wanted`, the line
     /// takes that state instead: the starred lines list shows the files'
     /// stars, and its Remove the star, followed as a tap, put the star back
-    /// on a line the waiting version had none on.
+    /// on a line the waiting version had none on. A line only the waiting
+    /// version has is not in the file, which then had nothing to refuse:
+    /// History's star was called saved while it only waited. Without
+    /// `keepingRefused` the waiting version is written first, and the star
+    /// is refused while that version still can't be.
     @discardableResult
     public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true, to wanted: Bool? = nil) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
             let starring = wanted ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }.map { !$0.isStarred }
             var result: Bool?
-            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
+            var reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
+            if reached, result == nil, !keepingRefused,
+               pendingSaves.records[sessionID]?.segments.contains(where: { $0.id == segmentID }) == true {
+                Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+                guard pendingSaves.records[sessionID] == nil else { return nil }
+                reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID, to: starring) }
+            }
             if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].isStarred = result ?? wanted ?? !waiting.segments[index].isStarred

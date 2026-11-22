@@ -1255,15 +1255,23 @@ public final class LiveCaptionViewModel {
     /// Marks a line as important, or unmarks it, and saves right away so
     /// the mark isn't lost if the app is closed before the next autosave.
     public func toggleStar(_ segment: TranscriptSegment) {
-        if starredSegmentIDs.remove(segment.id) == nil {
+        setStar(segment, to: !starredSegmentIDs.contains(segment.id))
+    }
+
+    /// Gives a line `starring` and saves it right away, also when it has
+    /// that state already, so its file follows the screen.
+    private func setStar(_ segment: TranscriptSegment, to starring: Bool) {
+        if starring {
             starredSegmentIDs.insert(segment.id)
+        } else {
+            starredSegmentIDs.remove(segment.id)
         }
         if let index = pipeline.segments.firstIndex(where: { $0.id == segment.id }),
            index < historySegmentOffset,
            let closed = closedHistorySessions.last(where: { $0.lines.contains(index) }) {
             if settings.saveHistory {
                 saveClosed(closed)
-            } else if let starred = historyWriter.toggleStarNow(sessionID: closed.id, segmentID: segment.id) {
+            } else if let starred = historyWriter.toggleStarNow(sessionID: closed.id, segmentID: segment.id, to: starring) {
                 // Saving is off, but this conversation was saved before and
                 // nothing rewrites it now: its file takes the star itself.
                 // Before, the star showed nowhere in History and a second
@@ -2759,10 +2767,14 @@ public final class LiveCaptionViewModel {
     /// a line of the conversation being captioned that is no longer on
     /// screen (a replay heard that speech again and took the line off):
     /// the next autosave, written from the lines on screen, dropped a star
-    /// written to its file alone, with the line. A line gone from the screen
-    /// takes `wanted` when given: the starred lines list shows the stars of
-    /// the files, which a version waiting for room can differ from, and its
-    /// Remove the star put the star back on such a line.
+    /// written to its file alone, with the line.
+    ///
+    /// `wanted`, when given, is the state the line takes, on screen or not;
+    /// a line on screen that has it already is still saved, so its file
+    /// follows. The starred lines list shows the stars of the files, which a
+    /// version waiting for room or the caption screen can differ from (a
+    /// star taken off there while the phone was full), and its Remove the
+    /// star, as a tap, put the star back on such a line.
     @discardableResult
     public func toggleStarInHistory(sessionID: UUID, segmentID: UUID, to wanted: Bool? = nil) -> Bool {
         defer { refreshSavingTrouble() }
@@ -2770,7 +2782,8 @@ public final class LiveCaptionViewModel {
             guard sessionID != historySessionID else { return false }
             return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID, keepingRefused: false, to: wanted) != nil
         }
-        toggleStar(segment)
+        let had = starredSegmentIDs.contains(segmentID)
+        setStar(segment, to: wanted ?? !had)
         // The opened conversation reads its file straight back: before
         // the queued save landed, the star looked untouched and a
         // second tap took it off.
@@ -2781,7 +2794,7 @@ public final class LiveCaptionViewModel {
         // line goes back to the star History shows, and is saved that way,
         // so neither the save left waiting nor a second tap brings back a
         // star the person was told didn't change.
-        toggleStar(segment)
+        setStar(segment, to: had)
         historyWriter.waitUntilIdle()
         return false
     }

@@ -878,6 +878,71 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    // The version waiting for room is the one the caption screen saved,
+    // which knows nothing of a name given in History or of what first wrote
+    // the conversation; its save keeps those from the file.
+    @Test("History shows a version waiting for room with the name and source its save keeps from the file")
+    func historyShowsTheWaitingVersionWithItsSavedDetails() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.load-waiting-details"))
+        var early = record(id: UUID(), lines: 1, ended: false)
+        early.inputName = "Kitchen"
+        early.languageCode = "he"
+        writer.saveNow(early)
+        #expect(writer.renameNow(id: early.id, title: "Doctor"))
+        var later = early
+        later.segments += record(id: early.id, lines: 1, ended: true).segments
+        later.title = nil
+        later.inputName = "Car"
+        later.languageCode = "en"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+
+        let shown = try #require(writer.loadNow(id: early.id))
+        #expect(shown.title == "Doctor")
+        #expect(shown.inputName == "Kitchen")
+        #expect(shown.languageCode == "he")
+        #expect(shown.segments.count == 2)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        let saved = try #require(store.load(id: early.id))
+        #expect([saved.title, saved.inputName, saved.languageCode] == [shown.title, shown.inputName, shown.languageCode])
+        #expect(saved.segments.count == 2)
+    }
+
+    // History is told a star it can't save didn't change. A line only the
+    // waiting version has isn't in the file, so the file had nothing to
+    // refuse, and the star was called saved while it only waited.
+    @Test("a star from History on a line only the waiting version has counts once that version reaches the disk")
+    func historyStarOnALineOnlyWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.history-star-line-only-waiting"))
+        let early = record(id: UUID(), lines: 1, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.segments += record(id: early.id, lines: 1, ended: true).segments
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        let added = later.segments[1].id
+
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: added, keepingRefused: false) == nil)
+        #expect(writer.loadNow(id: early.id)?.segments.map(\.isStarred) == [false, false])
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: added, keepingRefused: false) == true)
+        #expect(store.load(id: early.id)?.segments.map(\.isStarred) == [false, true])
+        #expect(writer.lastFailure == nil)
+    }
+
     @Test("once a waiting conversation is written, the warning goes even if the one on screen hasn't changed")
     func warningClearsWhenRefusedWritten() throws {
         let (store, dir) = makeStore()
