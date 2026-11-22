@@ -19,11 +19,15 @@ private fun said(id: UUID, text: String, final: Boolean = false) =
     TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = 1_000.0)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-private suspend fun TestScope.conversationOf(lines: Int, settings: AppSettings = AppSettings.default): Conversation {
+private suspend fun TestScope.conversationOf(
+    lines: Int,
+    settings: AppSettings = AppSettings.default,
+    say: (Int) -> String = { "line $it was said here" },
+): Conversation {
     val engine = FakeEngine()
     val (pipeline, _, _) = makePipeline(engines = mapOf(TranscriptionEngineKind.WhisperKit to engine))
     pipeline.start(settings)
-    repeat(lines) { engine.emit(said(UUID.randomUUID(), "line $it was said here", final = true)) }
+    repeat(lines) { engine.emit(said(UUID.randomUUID(), say(it), final = true)) }
     runCurrent()
     assertEquals(lines, pipeline.segments.size)
     return Conversation(pipeline, engine)
@@ -50,17 +54,23 @@ private fun TestScope.bytesPerToken(conversation: Conversation, tokens: List<Tra
     return (threadMemory.currentThreadAllocatedBytes - before) / counted.size
 }
 
-/** One line growing a word at a time, as the engine sends a sentence being said: every pass carries all its words so far. */
-private fun growingLine(words: Int, word: (Int) -> String = { "word$it" }): List<TranscriptToken> {
+/**
+ * One line growing a word at a time, as the engine sends a sentence being
+ * said: every pass carries all its words so far, as [pass] writes them.
+ */
+private fun growingLine(words: Int, word: (Int) -> String = { "word$it" }, pass: (String) -> String = { it }): List<TranscriptToken> {
     val id = UUID.randomUUID()
-    return (1..words).map { count -> said(id, (1..count).joinToString(" ") { word(it) }) }
+    return (1..words).map { count -> said(id, pass((1..count).joinToString(" ") { word(it) })) }
 }
 
-/** Hebrew captions with a name to be alerted about and a word fix saved, neither of them said on the line. */
+/** Hebrew captions with a name to be alerted about and a word fix saved that writes that name for "נוע". */
 private fun withNameAlertAndFix(): AppSettings = AppSettings.default.copy().also {
     it.keywordAlerts = listOf(KeywordAlert(phrase = "נועה"))
     it.wordFixes = listOf(WordFix("נוע", "נועה"))
 }
+
+/** A line of [word]s said with [settings], each pass written as [pass] writes it. */
+private class LineCase(val setup: String, val settings: AppSettings, val pass: (String) -> String = { it }, val word: (Int) -> String)
 
 private fun newLines(count: Int): List<TranscriptToken> =
     (1..count).map { said(UUID.randomUUID(), "and then $it more", final = true) }
@@ -83,23 +93,49 @@ class CaptionPipelineLongConversationTest {
     @Test
     fun `a word on a line of a hundred words costs about what it costs on a line of six`() = runTest {
         val cases = listOf(
-            Triple("no alerts or fixes", AppSettings.default) { index: Int -> "word$index" },
-            Triple("a name alert and a word fix", withNameAlertAndFix()) { index: Int -> "מילה$index" },
+            LineCase("no alerts or fixes", AppSettings.default) { "word$it" },
+            LineCase("a name alert and a word fix", withNameAlertAndFix()) { "מילה$it" },
+            LineCase("a word fix whose heard word is on the line", withNameAlertAndFix()) { if (it == 2) "נוע" else "מילה$it" },
+            LineCase("a name alert, on live passes cut mid-word after a direction mark", withNameAlertAndFix(), { "\u200F$it הטל..." }) { "מילה$it" },
         )
-        for ((setup, settings, word) in cases) {
-            val conversation = conversationOf(10, settings)
+        val failures = ArrayList<String>()
+        for (case in cases) {
+            val conversation = conversationOf(10, case.settings)
             // A first line says every word counted below, so both lines
             // count words seen before: a word never seen yet costs more, the
             // same on a line of any length.
-            bytesPerToken(conversation, growingLine(LONG_LINE + 2 * COUNTED_WORDS, word))
-            val short = bytesPerToken(conversation, growingLine(SHORT_LINE + COUNTED_WORDS, word), warmUp = SHORT_LINE)
-            val long = bytesPerToken(conversation, growingLine(LONG_LINE + COUNTED_WORDS, word), warmUp = LONG_LINE)
-            assertTrue(
-                long - short < EXTRA_BYTES_ALLOWED,
-                "with $setup, counting $COUNTED_WORDS words, each word after $LONG_LINE allocated $long bytes, against $short after " +
-                    "$SHORT_LINE: ${long - short} more, so some step still redoes its work over the whole line at every word",
-            )
+            bytesPerToken(conversation, growingLine(LONG_LINE + 2 * COUNTED_WORDS, case.word, case.pass))
+            val short = bytesPerToken(conversation, growingLine(SHORT_LINE + COUNTED_WORDS, case.word, case.pass), warmUp = SHORT_LINE)
+            val long = bytesPerToken(conversation, growingLine(LONG_LINE + COUNTED_WORDS, case.word, case.pass), warmUp = LONG_LINE)
+            if (long - short >= EXTRA_BYTES_ALLOWED) {
+                failures += "with ${case.setup}, counting $COUNTED_WORDS words, each word after $LONG_LINE allocated $long bytes, against $short " +
+                    "after $SHORT_LINE: ${long - short} more, so some step still redoes its work over the whole line at every word"
+            }
         }
+        assertEquals(emptyList(), failures, failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `a word costs about what it costs after ten lines when two thousand lines said a saved name`() = runTest {
+        val settings = withNameAlertAndFix()
+        val few = conversationOf(10, settings) { "נועה אמרה $it" }
+        val many = conversationOf(2_000, settings) { "נועה אמרה $it" }
+        assertEquals(2_000, many.pipeline.keywordHitSegmentIDs.size)
+        val lines = listOf(
+            "saying the name" to { index: Int -> if (index == 1) "נועה" else "מילה$index" },
+            "not saying it" to { index: Int -> "מילה$index" },
+        )
+        val failures = ArrayList<String>()
+        for ((line, word) in lines) {
+            val short = bytesPerToken(few, growingLine(COUNTED_WORDS + 5, word))
+            val long = bytesPerToken(many, growingLine(COUNTED_WORDS + 5, word))
+            if (long - short >= EXTRA_BYTES_ALLOWED) {
+                failures += "on a line $line, each word after 2,000 lines with the name allocated $long bytes, against $short after 10: " +
+                    "${long - short} more, so the lines with an alert are still copied at every word"
+            }
+        }
+        assertEquals(emptyList(), failures, failures.joinToString("\n"))
+        assertEquals(2_001, many.pipeline.keywordHitSegmentIDs.size)
     }
 
     @Test

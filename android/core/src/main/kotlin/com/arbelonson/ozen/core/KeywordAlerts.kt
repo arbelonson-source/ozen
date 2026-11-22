@@ -112,9 +112,20 @@ private fun isKeywordSymbol(codePoint: Int): Boolean = when (Character.getType(c
 private fun isKeywordVariationSelector(codePoint: Int): Boolean =
     codePoint in 0x180B..0x180D || codePoint == 0x180F || codePoint in 0xFE00..0xFE0F || codePoint in 0xE0100..0xE01EF
 
-private fun String.filteringScalars(keep: (Int) -> Boolean): String {
+/**
+ * This string with only the scalars [keep] takes. Inline and read in place,
+ * so no scalar is boxed on its way to [keep]: a line with a direction mark
+ * comes here whole at every word, and boxing each Hebrew letter made about
+ * 10 KB per word on a line of a hundred words.
+ */
+private inline fun String.filteringScalars(keep: (Int) -> Boolean): String {
     val result = StringBuilder(length)
-    codePoints().forEach { if (keep(it)) result.appendCodePoint(it) }
+    var index = 0
+    while (index < length) {
+        val codePoint = codePointAt(index)
+        if (keep(codePoint)) result.appendCodePoint(codePoint)
+        index += Character.charCount(codePoint)
+    }
     return result.toString()
 }
 
@@ -379,15 +390,34 @@ object HebrewText {
     )
 
     internal fun isArabicStem(stem: String): Boolean =
-        stem.codePointCount(0, stem.length) >= 3 && stem.codePoints().allMatch { it in 0x0620..0x064A || it in 0x0671..0x06D3 }
+        stem.codePointCount(0, stem.length) >= 3 && stem.allScalars { it in 0x0620..0x064A || it in 0x0671..0x06D3 }
+
+    /** Whether every scalar of this string passes [test], read in place rather than through a stream. */
+    private inline fun String.allScalars(test: (Int) -> Boolean): Boolean {
+        var index = 0
+        while (index < length) {
+            val codePoint = codePointAt(index)
+            if (!test(codePoint)) return false
+            index += Character.charCount(codePoint)
+        }
+        return true
+    }
+
+    /**
+     * Whether [word] is [prefix] glued onto [stem], compared in place: each
+     * word never read before is tried against every prefix for every saved
+     * word, and gluing them first made a string for each.
+     */
+    private fun isGlued(word: String, prefix: String, stem: String): Boolean =
+        word.length == prefix.length + stem.length && word.startsWith(prefix) && word.endsWith(stem)
 
     internal fun hasArabicPrefix(word: String, stem: String): Boolean {
         if (!isArabicStem(stem)) return false
-        if (arabicAttachedPrefixes.any { word == it + stem }) return true
-        if (stem !in arabicNamesThatAreWords && arabicArticlePrefixes.any { word == it + stem }) return true
+        if (arabicAttachedPrefixes.any { isGlued(word, it, stem) }) return true
+        if (stem !in arabicNamesThatAreWords && arabicArticlePrefixes.any { isGlued(word, it, stem) }) return true
         if (!stem.startsWith("ال")) return false
         val noun = stem.substring(2)
-        return isArabicStem(noun) && listOf("لل", "ولل", "فلل").any { word == it + noun }
+        return isArabicStem(noun) && listOf("لل", "ولل", "فلل").any { isGlued(word, it, noun) }
     }
 
     /**
@@ -398,7 +428,7 @@ object HebrewText {
     fun stripAttachedPrefix(word: String, stem: String): Boolean {
         if (word == stem) return true
         if (everydayWordsNotNames[stem]?.contains(word) == true) return false
-        if (attachedPrefixes.any { word == it + stem }) return true
+        if (attachedPrefixes.any { isGlued(word, it, stem) }) return true
         return hasArabicPrefix(word, stem) || hasAmharicPrefix(word, stem)
     }
 
@@ -419,7 +449,7 @@ object HebrewText {
     val amharicAttachedSuffixes: Set<String> = setOf("ን", "ም")
 
     internal fun hasAmharicPrefix(word: String, stem: String): Boolean {
-        if (graphemesOf(stem).size < 3 || !stem.codePoints().allMatch { it in 0x1200..0x137F || it in 0x2D80..0x2DDF || it in 0xAB00..0xAB2F }) return false
+        if (!stem.allScalars { it in 0x1200..0x137F || it in 0x2D80..0x2DDF || it in 0xAB00..0xAB2F } || graphemesOf(stem).size < 3) return false
         for (prefix in amharicAttachedPrefixes + "") {
             for (suffix in amharicAttachedSuffixes + "") {
                 if (prefix.isEmpty() && suffix.isEmpty()) continue
