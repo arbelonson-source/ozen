@@ -560,6 +560,25 @@ class TranscriptHistoryWriterTest {
         assertEquals(listOf("I saw Avi today", "שורה 0"), shown?.segments?.map { it.text })
     }
 
+    // Room came back before the refused fix: like every other fix, it
+    // writes what was waiting, so the newer version isn't left only in
+    // memory until the next save.
+    @Test
+    fun `a refused History fix still writes the conversation waiting for room once there is room`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-fix-catches-up"))
+        val gone = UUID.randomUUID()
+        val early = record(UUID.randomUUID(), 1, false).let { it.copy(segments = it.segments + SavedSegment(gone, "I saw aval today", null, null, 100.0, true)) }
+        writer.saveNow(early)
+        val later = early.copy(segments = listOf(early.segments[0], SavedSegment(UUID.randomUUID(), "I saw Avi today", null, null, 100.0, true)), endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+        permissions(dir, "rwx------")
+
+        assertFalse(writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
+        assertEquals(listOf("שורה 0", "I saw Avi today"), store.load(early.id)?.segments?.map { it.text })
+    }
+
     // A replay took the line off the screen before the conversation closed,
     // so the version waiting for room no longer has it. The fix was written
     // to the file and called saved, then the waiting version was written

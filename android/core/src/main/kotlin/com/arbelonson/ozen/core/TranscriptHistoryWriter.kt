@@ -288,7 +288,10 @@ class TranscriptHistoryWriter(
     private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): Boolean {
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
-        if (fromHistory && waiting != null && index < 0) return false
+        if (fromHistory && waiting != null && index < 0) {
+            catchUp(null)
+            return false
+        }
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
         var changed = false
