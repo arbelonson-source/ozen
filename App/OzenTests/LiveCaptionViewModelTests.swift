@@ -3120,6 +3120,46 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(try read(conversation.id) == nil)
     }
 
+    // Opened while its file couldn't be read just now, a conversation showed
+    // "Conversation not found", as if it had been deleted, and one no longer
+    // being captioned was never read again: the person had to go back and
+    // open it once more.
+    @Test("History opening a conversation it can't read just now reads it again a few seconds later until it can, and finds a deleted one gone at once")
+    func historyOpensAConversationOnceItCanBeRead() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-openlater-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let (viewModel, _, _, history) = makeFixingViewModel(in: directory)
+        let saved = TranscriptSessionRecord(
+            id: UUID(), startedAt: 100, endedAt: 200, engine: .whisperKit, modelVariant: nil, inputName: nil,
+            segments: [SavedSegment(id: UUID(), text: "The bus leaves at six", speakerName: nil, speakerClusterID: nil, startTimestamp: 100, isCommitted: true)]
+        )
+        _ = try history.save(saved)
+        let file = directory.appendingPathComponent("history", isDirectory: true).appendingPathComponent("\(saved.id.uuidString).json")
+        let read = viewModel.savedConversation
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+
+        var unreadable = 0
+        var waits: [Duration] = []
+        let opened = try await HistoryReadRetry.untilRead(sleep: { wait in
+            waits.append(wait)
+            if waits.count == 2 { try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+        }, unreadable: { unreadable += 1 }) {
+            try read(saved.id)
+        }
+        #expect(opened?.segments.map(\.text) == ["The bus leaves at six"])
+        #expect(unreadable == 2)
+        #expect(waits == [.seconds(3), .seconds(3)])
+
+        try viewModel.deleteConversation(id: saved.id)
+        let gone = try await HistoryReadRetry.untilRead(sleep: { waits.append($0) }, unreadable: { unreadable += 1 }) {
+            try read(saved.id)
+        }
+        #expect(gone == nil)
+        #expect(unreadable == 2)
+        #expect(waits.count == 2)
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()

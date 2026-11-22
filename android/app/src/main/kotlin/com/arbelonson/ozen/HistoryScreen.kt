@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Share
@@ -111,6 +112,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HistoryDays
+import com.arbelonson.ozen.core.HistoryReadRetry
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
@@ -133,6 +135,7 @@ import com.arbelonson.ozen.ui.SectionHeader
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
 import java.io.IOException
@@ -156,7 +159,8 @@ interface SavedConversations {
     /**
      * The conversation as History shows it, or null when it is gone. Throws
      * when its file is there but can't be read just now: the conversation
-     * open in History then stays as it is shown.
+     * open in History then stays as it is shown, and one being opened says
+     * it can't be read just now and is read again.
      */
     @Throws(IOException::class)
     fun load(id: UUID): TranscriptSessionRecord?
@@ -707,38 +711,58 @@ internal fun ConversationScreen(
     } catch (_: IOException) {
         null
     }
+    // Opened while its file is there but can't be read just now, the screen
+    // says so and reads it again every few seconds until it reads, as shown
+    // or as gone; Try again reads it at once. Taken for no conversation, it
+    // said "Conversation not found", as if it had been deleted, and one no
+    // longer being captioned is never read again.
+    var cantRead by remember { mutableStateOf(false) }
+    var readTries by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
-    LaunchedEffect(id, marksUncertain) {
+    LaunchedEffect(id, marksUncertain, readTries) {
         var jumped = false
         while (true) {
-            val now = withContext(Dispatchers.IO) { readAgain() } ?: loaded ?: opened(null, query, marksUncertain, languageCode)
-            show(now)
-            if (!jumped && now.matches.isNotEmpty()) {
-                jumped = true
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
+            // Read again and not read just now, the screen keeps what it
+            // shows. It went back to what it showed as the reading began,
+            // and a name, star or fix shown meanwhile went away until the
+            // next reading, twenty seconds later.
+            val now = if (loaded != null) {
+                withContext(Dispatchers.IO) { readAgain() }
+            } else {
+                HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
+                    withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+                }
             }
-            val held = now.lines.indexOfFirst { it.id == line }
-            if (!jumped && held >= 0) {
-                jumped = true
-                // As on the iPhone: "next starred" goes on from the line she
-                // came for, which is marked for a moment so she sees it.
-                now.starred.indexOf(line).takeIf { it >= 0 }?.let {
-                    starAt = it
-                    jumpedToStar = true
+            if (now != null) {
+                cantRead = false
+                show(now)
+                if (!jumped && now.matches.isNotEmpty()) {
+                    jumped = true
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
                 }
-                withFrameNanos {}
-                list.scrollToItem(now.headerItems + held)
-                arrival?.cancel()
-                arrival = marking.launch {
-                    arrived = line
-                    delay(2_000)
-                    arrived = null
+                val held = now.lines.indexOfFirst { it.id == line }
+                if (!jumped && held >= 0) {
+                    jumped = true
+                    // As on the iPhone: "next starred" goes on from the line she
+                    // came for, which is marked for a moment so she sees it.
+                    now.starred.indexOf(line).takeIf { it >= 0 }?.let {
+                        starAt = it
+                        jumpedToStar = true
+                    }
+                    withFrameNanos {}
+                    list.scrollToItem(now.headerItems + held)
+                    arrival?.cancel()
+                    arrival = marking.launch {
+                        arrived = line
+                        delay(2_000)
+                        arrived = null
+                    }
+                    // A screen reader hears which line it was, as after a jump:
+                    // the mark alone told a blind or deaf-blind person nothing.
+                    AnnouncementHold.waitOut()
+                    ScreenReader.announce(context, now.lines[held].spoken)
                 }
-                // A screen reader hears which line it was, as after a jump:
-                // the mark alone told a blind or deaf-blind person nothing.
-                AnnouncementHold.waitOut()
-                ScreenReader.announce(context, now.lines[held].spoken)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
@@ -834,6 +858,13 @@ internal fun ConversationScreen(
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
+            shown == null && cantRead -> EmptyState(
+                Icons.Rounded.History,
+                tr("אי אפשר לקרוא את השיחה כרגע", "The conversation can’t be read just now"),
+                tr("השיחה עדיין שמורה בטלפון. מנסים שוב בעוד כמה שניות.", "It’s still saved on the phone. Trying again in a few seconds."),
+            ) {
+                TonalButton(tr("נסו שוב", "Try again"), onClick = { readTries++ }, icon = Icons.Rounded.Refresh)
+            }
             shown == null -> LoadingNote()
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
             else -> {

@@ -102,9 +102,11 @@ struct CloudSpeechEngineTests {
         let (audio, input) = AsyncStream<[Float]>.makeStream()
         let tokens = engine(http).stream(languageCode: "he", audio: audio)
         for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
-        let started = ContinuousClock.now
+        // The audio ends only if no line came first. The test asks whether
+        // it had ended, not how long the line took: a busy machine stretched
+        // that past a 5 s bound with nothing wrong.
         let closer = Task {
-            try await Task.sleep(for: .seconds(5))
+            try await Task.sleep(for: .seconds(30))
             input.finish()
         }
         var finished: String?
@@ -113,9 +115,10 @@ struct CloudSpeechEngineTests {
             break
         }
         closer.cancel()
+        let audioEndedFirst = (try? await closer.value) != nil
         input.finish()
         #expect(finished == "שלום לכולם")
-        #expect(ContinuousClock.now - started < .seconds(5))
+        #expect(!audioEndedFirst, "the line was finished by the end of the audio, not by the pause")
     }
 
     @Test("the audio sent is the sentence, not the silence around it")
