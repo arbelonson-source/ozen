@@ -108,10 +108,17 @@ public final class TranscriptHistoryWriter: Sendable {
     /// file, with the line texts still waiting put in. History shows this: read from the file alone, a word fixed
     /// while the phone was full kept its old words there though the fix
     /// was called done, and the person fixed the same word again.
-    public func loadNow(id: UUID) -> TranscriptSessionRecord? {
-        queue.sync { [store, pendingRenames, pendingSaves] in
+    ///
+    /// Throws when there is no waiting version and the file is there but
+    /// can't be read just now (see `TranscriptHistoryStore.loadThrowing(id:)`);
+    /// nil when there is no such conversation, or its file is damaged for
+    /// good. Read as gone, the conversation open in History turned into
+    /// "Conversation not found" right after its fix sheet said to try again
+    /// in a moment.
+    public func loadNow(id: UUID) throws -> TranscriptSessionRecord? {
+        try queue.sync { [store, pendingRenames, pendingSaves] in
             let waiting = pendingSaves.records[id].map { (try? store.keepingSavedDetails(of: $0)) ?? $0 }
-            guard var record = waiting ?? store.load(id: id) else { return nil }
+            guard var record = try waiting ?? store.loadThrowing(id: id) else { return nil }
             for waiting in pendingRenames.texts where waiting.sessionID == id {
                 if let index = record.segments.firstIndex(where: { $0.id == waiting.segmentID }) {
                     record.segments[index].text = waiting.text
