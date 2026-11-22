@@ -211,11 +211,20 @@ public struct CaptionStabilizer: Sendable {
         return liveAgreements[token.utteranceID, default: LiveAgreement()].settle(token.text)
     }
 
+    /// Where each line is in `segments`, which lines are only ever added
+    /// to: a new line's id was otherwise looked for through every line
+    /// said before it, and a phone left listening for days holds
+    /// thousands.
+    private var indexByID: [UUID: Int] = [:]
+
+    /// The line with `id`, as `segments` holds it.
+    public func segment(id: UUID) -> TranscriptSegment? {
+        indexByID[id].map { segments[$0] }
+    }
+
     @discardableResult
     public mutating func ingest(_ token: TranscriptToken) -> TranscriptSegment {
-        // From the end: the line being written is almost always the last
-        // one, and a phone left listening for days holds thousands.
-        if let index = segments.lastIndex(where: { $0.id == token.utteranceID }) {
+        if let index = indexByID[token.utteranceID] {
             if segments[index].isCommitted {
                 if provisionalCommits.remove(token.utteranceID) != nil {
                     // Committed only because the engine went quiet, and it
@@ -240,7 +249,7 @@ public struct CaptionStabilizer: Sendable {
             // An engine can send an empty update (Apple's recognizer does
             // when a request ends on silence). Text the reader has already
             // seen must never vanish because of it.
-            if !token.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !Self.isBlank(token.text) {
                 segments[index].text = settled(token)
             }
             segments[index].lastUpdateTimestamp = token.timestamp
@@ -273,11 +282,20 @@ public struct CaptionStabilizer: Sendable {
             uncertainWords: token.uncertainWords,
             scoredBy: token.confidence == nil ? nil : token.scoredBy
         )
+        indexByID[segment.id] = segments.count
         segments.append(segment)
         if !segment.isCommitted {
             openIndices.insert(segments.count - 1)
         }
         return segment
+    }
+
+    /// Whether `text` is only spaces and line breaks, as trimming them
+    /// would find, without making the trimmed copy: the line being written
+    /// comes again at every word.
+    static func isBlank(_ text: String) -> Bool {
+        let blanks = CharacterSet.whitespacesAndNewlines
+        return text.unicodeScalars.allSatisfy { blanks.contains($0) }
     }
 
     /// Marks an already-known segment as finished without changing its
@@ -288,7 +306,7 @@ public struct CaptionStabilizer: Sendable {
     /// react to) if there's no such segment, or it's already settled.
     @discardableResult
     public mutating func commit(id: UUID) -> TranscriptSegment? {
-        guard let index = segments.lastIndex(where: { $0.id == id }), !segments[index].isSettled else { return nil }
+        guard let index = indexByID[id], !segments[index].isSettled else { return nil }
         segments[index].isCommitted = true
         segments[index].isProvisionalCommit = false
         provisionalCommits.remove(id)
@@ -335,7 +353,7 @@ public struct CaptionStabilizer: Sendable {
     @discardableResult
     public mutating func commitAll() -> [TranscriptSegment] {
         var justCommitted: [TranscriptSegment] = []
-        let provisionalIndices = provisionalCommits.compactMap { id in segments.lastIndex { $0.id == id } }
+        let provisionalIndices = provisionalCommits.compactMap { indexByID[$0] }
         for index in provisionalIndices.sorted() {
             segments[index].isProvisionalCommit = false
             justCommitted.append(segments[index])

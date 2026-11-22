@@ -21,12 +21,11 @@ public struct LiveAgreement: Sendable, Equatable {
 
     /// The text to show for a live pass that read `text`.
     public mutating func settle(_ text: String) -> String {
-        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        let words = Self.words(of: text, reusing: lastWords)
         defer { lastWords = words }
         guard !words.isEmpty else { return text }
 
-        var shown = words
-        var substituted = false
+        var shown: [String]?
         if words.count >= held.count {
             // Two passes in a row reading the new word are the same
             // agreement that held the old one: "two pills" that became
@@ -37,19 +36,53 @@ public struct LiveAgreement: Sendable, Equatable {
             }
             let changed = held.indices.filter { words[$0] != held[$0] }
             if !changed.isEmpty, changed.count <= Self.maximumHeldChanges, changed.count * 3 <= held.count {
-                for index in changed { shown[index] = held[index] }
-                substituted = true
+                var substituted = words
+                for index in changed { substituted[index] = held[index] }
+                shown = substituted
             } else if !changed.isEmpty {
-                held = Array(held.prefix(changed[0]))
+                held.removeSubrange(changed[0]...)
             }
         } else {
-            held = Array(zip(held, words).prefix { $0 == $1 }.map(\.0))
+            held.removeSubrange(Self.agreeing(held, words)...)
         }
 
-        let agreed = zip(lastWords, words).prefix { $0 == $1 }.count
+        let agreed = Self.agreeing(lastWords, words)
         if agreed > held.count {
-            held = Array(shown.prefix(held.count)) + words[held.count..<agreed]
+            for index in held.indices { held[index] = shown?[index] ?? words[index] }
+            held.append(contentsOf: words[held.count..<agreed])
         }
-        return substituted ? shown.joined(separator: " ") : text
+        return shown?.joined(separator: " ") ?? text
+    }
+
+    private static func agreeing(_ first: [String], _ second: [String]) -> Int {
+        var count = 0
+        while count < first.count, count < second.count, first[count] == second[count] { count += 1 }
+        return count
+    }
+
+    static func words(of text: String, reusing before: [String]) -> [String] {
+        var words: [String] = []
+        words.reserveCapacity(before.count + 1)
+        func add(_ range: Range<String.Index>) {
+            let position = words.count
+            if position < before.count, before[position].utf8.elementsEqual(text.utf8[range]) {
+                words.append(before[position])
+            } else {
+                words.append(String(text[range]))
+            }
+        }
+        var start: String.Index?
+        var index = text.startIndex
+        while index < text.endIndex {
+            if text[index].isWhitespace {
+                if let from = start { add(from..<index) }
+                start = nil
+            } else if start == nil {
+                start = index
+            }
+            index = text.index(after: index)
+        }
+        if let from = start { add(from..<text.endIndex) }
+        return words
     }
 }

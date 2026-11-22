@@ -631,8 +631,13 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     /// finished line says the whole word; of the 16 names really said
     /// there, 15 buzzed on the same pass as before and one 0.6 s later.
     public func matches(inLiveText text: String) -> [KeywordMatch] {
-        matches(in: Self.droppingCutOffWord(text))
+        guard hasEnabledAlert else { return [] }
+        return matches(in: Self.droppingCutOffWord(text))
     }
+
+    /// With no alert switched on nothing can match, and the line being
+    /// written, which comes again at every word, isn't taken apart at all.
+    private var hasEnabledAlert: Bool { alerts.contains(where: \.isEnabled) }
 
     static func droppingCutOffWord(_ text: String) -> String {
         var words = HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))
@@ -647,39 +652,141 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
     /// alone between the two halves of a split name was a word of its own,
     /// and "savta" written as "sav", a mark and "ta" stayed silent.
     public func matches(in text: String) -> [KeywordMatch] {
+        guard hasEnabledAlert else { return [] }
         let captionRaw = HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))
             .split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        guard !captionRaw.isEmpty else { return [] }
-        // Normalizing word-by-word (rather than normalizing the whole
-        // string and re-splitting) keeps this array the same length as
-        // `rawWords`, so a word's index always means the same thing on
-        // both sides even when a word is pure punctuation and normalizes
-        // to the empty string.
-        let captionNormalized = captionRaw.map(HebrewText.normalizeCaptionWord)
-        let trimmedWords = captionRaw.map(Self.trimmingEdgePunctuation)
+        var plans: [String: Plan] = [:]
+        return matching(captionRaw.map { CaptionWord(raw: $0) }) { phrase in
+            if let plan = plans[phrase] { return plan }
+            let plan = Plan(phrase: phrase)
+            plans[phrase] = plan
+            return plan
+        }
+    }
+
+    /// A saved phrase as matching reads it, worked out once per phrase.
+    final class Plan {
+        let words: [String]
+        let isHan: Bool
+        let isInflectable: Bool
+        let variants: Set<String>
+        let joined: String
+        let gluesPairs: Bool
+
+        init(phrase: String) {
+            words = HebrewText.phraseWords(phrase)
+            isHan = HebrewText.containsHan(phrase)
+            isInflectable = words.count == 1 && HebrewText.inflectableOfferedWords.contains(words[0])
+            variants = isInflectable ? HebrewText.spellingVariants[words[0]] ?? [] : []
+            joined = HebrewText.foldingFinalLetters(words.joined())
+            gluesPairs = words.count == 1 && joined.count >= 4
+        }
+    }
+
+    /// One caption word, normalized once. Everything kept here follows
+    /// from the word itself (and, in `Reading`, the saved phrase and the
+    /// caption language), so a word kept from the pass before
+    /// (`KeywordAlertReader`) matches exactly as one worked out anew.
+    final class CaptionWord {
+        let raw: String
+        let normalized: String
+        let trimmed: String
+        /// Read with `HebrewText.normalize`, as `droppingCutOffWord` reads
+        /// the words after a cut-off one.
+        private(set) lazy var isBlank: Bool = HebrewText.normalize(raw).isEmpty
+        private var readings: [String: Reading] = [:]
+
+        init(raw: String) {
+            self.raw = raw
+            normalized = HebrewText.normalizeCaptionWord(raw)
+            trimmed = KeywordAlertMatcher.trimmingEdgePunctuation(raw)
+        }
+
+        func reading(for phrase: String, _ plan: Plan, language: String) -> Reading {
+            if let known = readings[phrase] { return known }
+            let made = Reading(self, plan, language: language)
+            readings[phrase] = made
+            return made
+        }
+    }
+
+    /// A caption word as one saved phrase reads it: "l'Anne" is the
+    /// article and the name, so for an alert on Anne the word reads as the
+    /// name, unless the saved phrase itself has the fused spelling (a name
+    /// like "D'Arcy").
+    final class Reading {
+        let raw: String
+        let normalized: String
+        private let plan: Plan
+        private let language: String
+        private var continuing: [Bool?]
+        private var gluedTo: String?
+        private var gluesName = false
+
+        init(_ word: CaptionWord, _ plan: Plan, language: String) {
+            let rest = plan.words.contains(word.normalized) ? nil : HebrewText.withoutElidedWord(word.raw, captionLanguage: language)
+            raw = rest ?? word.raw
+            normalized = rest.map(HebrewText.normalizeCaptionWord) ?? word.normalized
+            self.plan = plan
+            self.language = language
+            continuing = Array(repeating: nil, count: plan.words.count)
+        }
+
+        /// The whole word is the one saved word, inflected or in one of
+        /// its name forms.
+        private(set) lazy var isWholeForm: Bool = plan.isInflectable
+            ? plan.variants.contains(normalized) || HebrewText.isInflectedForm(normalized, of: plan.words[0])
+            : HebrewText.isNameCaseForm(normalized, of: plan.words[0])
+                || HebrewText.isLatinNameWithS(normalized, of: plan.words[0], captionLanguage: language)
+
+        private(set) lazy var startsPhrase: Bool =
+            HebrewText.stripAttachedPrefixOrVariant(rawWord: raw, normalizedWord: normalized, leaving: plan.words[0])
+
+        private(set) lazy var isJoinedPair: Bool =
+            HebrewText.stripAttachedPrefix(from: HebrewText.foldingFinalLetters(normalized), leaving: plan.joined)
+
+        func continuesPhrase(_ offset: Int) -> Bool {
+            if let known = continuing[offset] { return known }
+            let found = HebrewText.isAffectionateVariant(rawWord: raw, normalizedWord: normalized, of: plan.words[offset])
+            continuing[offset] = found
+            return found
+        }
+
+        /// Kept for the word after it by that word's text, not the word
+        /// itself, so kept words don't hold on to one another.
+        func gluesWith(_ next: Reading) -> Bool {
+            if let gluedTo, gluedTo.utf8.elementsEqual(next.normalized.utf8) { return gluesName }
+            gluesName = HebrewText.stripAttachedPrefix(
+                from: HebrewText.foldingFinalLetters(normalized + next.normalized), leaving: plan.joined
+            )
+            gluedTo = next.normalized
+            return gluesName
+        }
+    }
+
+    /// The matches among `caption`, the line's words split at spaces and
+    /// word joiners, with direction marks taken out.
+    func matching(_ caption: [CaptionWord], plan planFor: (String) -> Plan) -> [KeywordMatch] {
+        // One entry per caption word, even one of pure punctuation that
+        // normalizes to the empty string, so a word's index always means
+        // the same thing for its raw and normalized forms.
+        guard !caption.isEmpty else { return [] }
 
         var unordered: [(match: KeywordMatch, sequence: Int)] = []
         var repeatedInOneWord = Set<Int>()
         var sequence = 0
         for alert in alerts where alert.isEnabled {
-            let phraseWords = HebrewText.phraseWords(alert.phrase)
+            let plan = planFor(alert.phrase)
+            let phraseWords = plan.words
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             guard !phraseWords.isEmpty else { continue }
-
-            // "l'Anne" is the article and the name: for this alert the word
-            // reads as the name, unless the saved phrase itself has the fused
-            // spelling (a name like "D'Arcy").
-            var rawWords = captionRaw
-            var normalizedWords = captionNormalized
-            for index in rawWords.indices where !phraseWords.contains(normalizedWords[index]) {
-                guard let rest = HebrewText.withoutElidedWord(rawWords[index], captionLanguage: captionLanguage) else { continue }
-                rawWords[index] = rest
-                normalizedWords[index] = HebrewText.normalizeCaptionWord(rest)
+            func read(_ index: Int) -> Reading {
+                caption[index].reading(for: alert.phrase, plan, language: captionLanguage)
             }
 
-            if HebrewText.containsHan(alert.phrase) {
-                for hit in Self.substringMatches(of: phraseWords.joined(separator: " "), in: normalizedWords) {
+            if plan.isHan {
+                for hit in Self.substringMatches(of: phraseWords.joined(separator: " "), in: caption.indices.map { read($0).normalized }) {
                     let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: hit.text, wordIndex: hit.wordIndex)
                     unordered.append((match, sequence))
                     repeatedInOneWord.insert(sequence)
@@ -688,27 +795,16 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
                 continue
             }
 
-            if phraseWords.count == 1, HebrewText.inflectableOfferedWords.contains(phraseWords[0]) {
-                let variants = HebrewText.spellingVariants[phraseWords[0]] ?? []
-                for index in normalizedWords.indices
-                where variants.contains(normalizedWords[index]) || HebrewText.isInflectedForm(normalizedWords[index], of: phraseWords[0]) {
-                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
-                    unordered.append((match, sequence))
-                    sequence += 1
-                }
-            } else if phraseWords.count == 1 {
-                for index in normalizedWords.indices where HebrewText.isNameCaseForm(normalizedWords[index], of: phraseWords[0])
-                    || HebrewText.isLatinNameWithS(normalizedWords[index], of: phraseWords[0], captionLanguage: captionLanguage) {
-                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
+            if phraseWords.count == 1 {
+                for index in caption.indices where read(index).isWholeForm {
+                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: caption[index].trimmed, wordIndex: index)
                     unordered.append((match, sequence))
                     sequence += 1
                 }
             }
 
-            for start in 0..<normalizedWords.count {
-                guard HebrewText.stripAttachedPrefixOrVariant(
-                    rawWord: rawWords[start], normalizedWord: normalizedWords[start], leaving: phraseWords[0]
-                ) else { continue }
+            for start in caption.indices {
+                guard read(start).startsPhrase else { continue }
                 // A caption word that is pure punctuation ("," on its own,
                 // surrounded by spaces) normalizes to the empty string; a
                 // phrase's later words must still be found consecutively
@@ -719,21 +815,17 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
                 var isFullMatch = true
                 for offset in 1..<phraseWords.count {
                     cursor += 1
-                    while cursor < normalizedWords.count && normalizedWords[cursor].isEmpty {
+                    while cursor < caption.count && read(cursor).normalized.isEmpty {
                         cursor += 1
                     }
-                    guard cursor < normalizedWords.count,
-                          HebrewText.isAffectionateVariant(
-                              rawWord: rawWords[cursor], normalizedWord: normalizedWords[cursor], of: phraseWords[offset]
-                          )
-                    else {
+                    guard cursor < caption.count, read(cursor).continuesPhrase(offset) else {
                         isFullMatch = false
                         break
                     }
                 }
                 guard isFullMatch else { continue }
 
-                let matchedText = trimmedWords[start...cursor].filter { !$0.isEmpty }.joined(separator: " ")
+                let matchedText = caption[start...cursor].map(\.trimmed).filter { !$0.isEmpty }.joined(separator: " ")
                 let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: matchedText, wordIndex: start)
                 unordered.append((match, sequence))
                 sequence += 1
@@ -742,29 +834,26 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
             // A two-part name is written both as one word and as two
             // ("בנציון", "בן ציון", "בן-ציון"): whichever way it was saved,
             // the caption may use the other.
-            let joinedPhrase = HebrewText.foldingFinalLetters(phraseWords.joined())
             if phraseWords.count == 2 {
-                for index in normalizedWords.indices
-                where HebrewText.stripAttachedPrefix(from: HebrewText.foldingFinalLetters(normalizedWords[index]), leaving: joinedPhrase) {
-                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
+                for index in caption.indices where read(index).isJoinedPair {
+                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: caption[index].trimmed, wordIndex: index)
                     unordered.append((match, sequence))
                     sequence += 1
                 }
-            } else if phraseWords.count == 1, joinedPhrase.count >= 4 {
+            } else if plan.gluesPairs {
                 // A pair is glued only when neither word was the name by
                 // itself: "shel savta" (Grandma's) also glued into a
                 // she-le-savta prefix chain, so one mention was two matches,
                 // two notifications and two buzzes on a locked phone.
                 let alone = Set(unordered.filter { $0.0.alertID == alert.id }.map { $0.0.wordIndex })
-                for index in normalizedWords.indices.dropLast()
-                where !alone.contains(index) && !alone.contains(index + 1)
-                    && !normalizedWords[index].isEmpty && !normalizedWords[index + 1].isEmpty
-                    && !HebrewText.wordsThatTakeNoName.contains(normalizedWords[index])
-                    && !HebrewText.wordsThatNeverEndAName.contains(normalizedWords[index + 1])
-                    && HebrewText.stripAttachedPrefix(
-                        from: HebrewText.foldingFinalLetters(normalizedWords[index] + normalizedWords[index + 1]), leaving: joinedPhrase
-                    ) {
-                    let matchedText = trimmedWords[index] + " " + trimmedWords[index + 1]
+                for index in caption.indices.dropLast() where !alone.contains(index) && !alone.contains(index + 1) {
+                    let word = read(index)
+                    let next = read(index + 1)
+                    guard !word.normalized.isEmpty, !next.normalized.isEmpty,
+                          !HebrewText.wordsThatTakeNoName.contains(word.normalized),
+                          !HebrewText.wordsThatNeverEndAName.contains(next.normalized),
+                          word.gluesWith(next) else { continue }
+                    let matchedText = caption[index].trimmed + " " + caption[index + 1].trimmed
                     let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: matchedText, wordIndex: index)
                     unordered.append((match, sequence))
                     sequence += 1
@@ -846,6 +935,152 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
             scalars.removeLast()
         }
         return String(String.UnicodeScalarView(scalars))
+    }
+}
+
+/// `KeywordAlertMatcher` for the line being written, keeping the words it
+/// has read. The engine sends that line again with every new word, and
+/// working out every word again, for every alert, made a word cost more
+/// the longer the line: about 390 KB on a line of a hundred Hebrew words
+/// with one name saved. A word at the same place as on the pass before,
+/// or read recently, is taken as it was, so only the new word is read.
+/// Everything kept follows from the word, the saved phrase and the
+/// caption language, so it finds exactly what the matcher finds; lines it
+/// can't split in place the same way the matcher does go to the matcher.
+/// Not for use from more than one thread at a time.
+final class KeywordAlertReader {
+    /// Words kept between passes; a line holds far fewer.
+    static let keptWords = 512
+
+    private var language: String?
+    private var plans: [String: KeywordAlertMatcher.Plan] = [:]
+    private var known: [ExactText: KeywordAlertMatcher.CaptionWord] = [:]
+    private var lastCaption: [KeywordAlertMatcher.CaptionWord] = []
+
+    /// `matcher.matches(in:)`.
+    func matches(in text: String, with matcher: KeywordAlertMatcher) -> [KeywordMatch] {
+        guard matcher.alerts.contains(where: \.isEnabled) else { return [] }
+        guard let words = words(of: text, language: matcher.captionLanguage) else { return matcher.matches(in: text) }
+        return matcher.matching(words, plan: plan)
+    }
+
+    /// `matcher.matches(inLiveText:)`: a live pass that ends in a cut-off
+    /// word leaves it out, as `KeywordAlertMatcher.droppingCutOffWord`
+    /// does.
+    func matches(inLiveText text: String, with matcher: KeywordAlertMatcher) -> [KeywordMatch] {
+        guard matcher.alerts.contains(where: \.isEnabled) else { return [] }
+        guard var words = words(of: text, language: matcher.captionLanguage) else { return matcher.matches(inLiveText: text) }
+        if let last = words.last, last.raw.hasSuffix("...") || last.raw.hasSuffix("…") {
+            while let word = words.last, word.isBlank { words.removeLast() }
+            if !words.isEmpty { words.removeLast() }
+            // The matcher joins the words it keeps with spaces and splits
+            // them again; a word that would join the space next to it
+            // into one character goes there to come out the same.
+            guard words.allSatisfy(Self.standsApart) else { return matcher.matches(inLiveText: text) }
+        }
+        return matcher.matching(words, plan: plan)
+    }
+
+    private func plan(_ phrase: String) -> KeywordAlertMatcher.Plan {
+        if let known = plans[phrase] { return known }
+        if plans.count >= Self.keptWords { plans = [:] }
+        let made = KeywordAlertMatcher.Plan(phrase: phrase)
+        plans[phrase] = made
+        return made
+    }
+
+    /// The words of `text` as `KeywordAlertMatcher.matches(in:)` splits
+    /// them, each the same object as the pass before's word at that place
+    /// when it reads the same. The matcher splits the line into characters
+    /// after taking direction marks out and turning word joiners into
+    /// spaces; a joiner is a character of its own as a space is, so the
+    /// line's own characters are the same, and a character that starts
+    /// with a space or a joiner is between words. Nil for a line with a
+    /// direction mark, or with a joiner inside a character, which the
+    /// matcher then reads.
+    private func words(of text: String, language: String) -> [KeywordAlertMatcher.CaptionWord]? {
+        if language != self.language {
+            self.language = language
+            known = [:]
+            lastCaption = []
+        }
+        for scalar in text.unicodeScalars where HebrewText.directionMarks.contains(scalar) { return nil }
+        var words: [KeywordAlertMatcher.CaptionWord] = []
+        words.reserveCapacity(lastCaption.count + 1)
+        var start: String.Index?
+        var index = text.startIndex
+        while index < text.endIndex {
+            let next = text.index(after: index)
+            let scalars = text.unicodeScalars[index..<next]
+            if Self.separates(scalars.first!) {
+                if let from = start { words.append(word(text, from..<index, at: words.count)) }
+                start = nil
+            } else {
+                for scalar in scalars.dropFirst() where HebrewText.wordJoiners.contains(scalar) { return nil }
+                if start == nil { start = index }
+            }
+            index = next
+        }
+        if let from = start { words.append(word(text, from..<text.endIndex, at: words.count)) }
+        lastCaption = words
+        return words
+    }
+
+    private func word(_ text: String, _ range: Range<String.Index>, at position: Int) -> KeywordAlertMatcher.CaptionWord {
+        if position < lastCaption.count, lastCaption[position].raw.utf8.elementsEqual(text.utf8[range]) {
+            return lastCaption[position]
+        }
+        let key = ExactText(String(text[range]))
+        if let kept = known[key] { return kept }
+        if known.count >= Self.keptWords { known = [:] }
+        let made = KeywordAlertMatcher.CaptionWord(raw: key.text)
+        known[key] = made
+        return made
+    }
+
+    private static func separates(_ scalar: Unicode.Scalar) -> Bool {
+        scalar.properties.isWhitespace || HebrewText.wordJoiners.contains(scalar)
+    }
+
+    /// A word that starts with a letter a space before it would take in,
+    /// or ends with one that takes in the space after it, is read by the
+    /// matcher: those are marks, the few letters that join as marks do,
+    /// zero-width joiners, emoji modifiers and tags, and the signs written
+    /// before a number or a letter (Prepend).
+    private static func standsApart(_ word: KeywordAlertMatcher.CaptionWord) -> Bool {
+        guard let first = word.raw.unicodeScalars.first, let last = word.raw.unicodeScalars.last else { return true }
+        switch first.properties.generalCategory {
+        case .nonspacingMark, .spacingMark, .enclosingMark: return false
+        default: break
+        }
+        switch first.value {
+        case 0x0E33, 0x0EB3, 0x200C, 0x200D, 0xFF9E, 0xFF9F, 0x1F3FB...0x1F3FF, 0xE0020...0xE007F: return false
+        default: break
+        }
+        switch last.value {
+        case 0x0600...0x0605, 0x06DD, 0x070F, 0x0890, 0x0891, 0x08E2, 0x0D4E, 0x11000...0x11FFF: return false
+        default: return true
+        }
+    }
+}
+
+/// A string as a dictionary key that tells apart two ways of writing the
+/// same letters (an accent as one character or as two), which `String`'s
+/// own equality takes as one: a word kept under one would hand out the
+/// other's spelling.
+struct ExactText: Hashable {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    static func == (lhs: ExactText, rhs: ExactText) -> Bool {
+        lhs.text.utf8.elementsEqual(rhs.text.utf8)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        for byte in text.utf8 { hasher.combine(byte) }
     }
 }
 

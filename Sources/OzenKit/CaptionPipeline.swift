@@ -338,6 +338,9 @@ public final class CaptionPipeline {
     private let embedder: any SpeakerEmbedding
     private let soundDetector: (any SoundEventDetecting)?
     private var keywordMatcher = KeywordAlertMatcher(alerts: [])
+    /// Reads the line being written for `keywordMatcher` at every word
+    /// without working out again the words it already read.
+    private let keywordReader = KeywordAlertReader()
     private var keywordDeduplicator = KeywordAlertDeduplicator()
     private let now: @Sendable () -> TimeInterval
     private var clusterer: EmbeddingClusterer
@@ -1332,7 +1335,9 @@ public final class CaptionPipeline {
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {
-        let matches = segment.isCommitted ? keywordMatcher.matches(in: segment.text) : keywordMatcher.matches(inLiveText: segment.text)
+        let matches = segment.isCommitted
+            ? keywordReader.matches(in: segment.text, with: keywordMatcher)
+            : keywordReader.matches(inLiveText: segment.text, with: keywordMatcher)
         guard !matches.isEmpty else {
             // The finished text can take back a word a live guess had: the
             // line's bell and highlight follow what the line says now.
@@ -2164,7 +2169,7 @@ public final class CaptionPipeline {
         stats.hasOpenLine = stabilizer.hasOpenLine
     }
 
-    private func handle(token incoming: TranscriptToken) {
+    func handle(token incoming: TranscriptToken) {
         defer { finishCrossedOverlap() }
         stats.tokensReceived += 1
         // ivrit.ai's model starts some lines with an invisible direction
@@ -2196,7 +2201,7 @@ public final class CaptionPipeline {
                 // A first line of only cleared words keeps what it showed
                 // after the tap, so the next speaker's line leaves it out too.
                 var carried = Array(cleared[clearedWordsUsed...])
-                if rest == nil, let shown = stabilizer.segments.last(where: { $0.id == incoming.utteranceID }) {
+                if rest == nil, let shown = stabilizer.segment(id: incoming.utteranceID) {
                     carried += Self.comparableWords(shown.text)
                 }
                 if !carried.isEmpty { clearedTurnCarry = (incoming.timestamp, carried) }
@@ -2227,10 +2232,8 @@ public final class CaptionPipeline {
         stats.lastTokenAt = now()
         // A brand-new utterance with nothing to show yet isn't worth an
         // (empty) row on screen; wait for text before creating it.
-        // Searched from the end, where the line being written is: a phone
-        // left listening for days holds thousands of lines.
-        let isKnown = stabilizer.segments.lastIndex { $0.id == token.utteranceID } != nil
-        if !isKnown && token.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let isKnown = stabilizer.segment(id: token.utteranceID) != nil
+        if !isKnown && CaptionStabilizer.isBlank(token.text) {
             return
         }
         // "toda. toda. toda." ("thanks") invented window after window on a
@@ -2255,10 +2258,10 @@ public final class CaptionPipeline {
             }
         }
         enriched.scoredBy = activeSettings.map { CaptionConfidence.Scorer(engine: $0.engine, model: $0.whisperModelVariant) }
-        let previously = stabilizer.segments.last { $0.id == token.utteranceID }
+        let previously = stabilizer.segment(id: token.utteranceID)
         let segment = stabilizer.ingest(enriched)
         noteFinished(segment, previously: previously)
-        upsert(segment)
+        upsert(segment, isNew: previously == nil)
         stats.hasOpenLine = stabilizer.hasOpenLine
         if stats.hasOpenLine { staleCommitNap?.cancel() }
         scanForKeywords(in: withHandFixes(segment))
@@ -2402,9 +2405,14 @@ public final class CaptionPipeline {
         return fixed
     }
 
-    private func upsert(_ shown: TranscriptSegment) {
+    /// `isNew`: the stabilizer had no line with this id before. Every line
+    /// on screen came from the stabilizer, which forgets none until both
+    /// are cleared together (the screenshot lines have ids no engine
+    /// sends), so such a line isn't on screen and is added without being
+    /// looked for through every line said.
+    private func upsert(_ shown: TranscriptSegment, isNew: Bool = false) {
         let segment = withHandFixes(shown)
-        if let index = segments.lastIndex(where: { $0.id == segment.id }) {
+        if !isNew, let index = segments.lastIndex(where: { $0.id == segment.id }) {
             // The voice analysis names the speaker on the shown line only;
             // the stabilizer's copy, committed after a pause, doesn't carry it.
             var segment = segment
