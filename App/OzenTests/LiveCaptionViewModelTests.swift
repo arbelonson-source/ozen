@@ -2990,6 +2990,80 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(store.load().wordFixes == full)
     }
 
+    private func makeFixingViewModel() -> (LiveCaptionViewModel, FakeEngine, CaptionPipeline, TranscriptHistoryStore) {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        return (viewModel, engine, pipeline, history)
+    }
+
+    @Test("a word fixed in History that the line on screen no longer has is not saved or kept: the sheet closed as if it had been, since the line had changed since it opened")
+    func historyFixOfAWordTheLineOnScreenNoLongerHas() async throws {
+        let (viewModel, engine, pipeline, history) = makeFixingViewModel()
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        viewModel.persistHistory(ended: false)
+        let conversation = try #require(history.listSummaries().first)
+        let shown = try #require(history.load(id: conversation.id)?.segments.first)
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, toLine: viewModel.segments[0]))
+        let fixed = viewModel.segments[0].text
+
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(viewModel.segments[0].text == fixed)
+        #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
+        #expect(!viewModel.settings.vocabulary.contains("Avital"))
+    }
+
+    @Test("a word fixed in History while its line is being heard again is not saved, and the sheet's older words don't replace the newer ones")
+    func historyFixWhileTheLineIsHeardAgain() async throws {
+        let (viewModel, engine, pipeline, history) = makeFixingViewModel()
+        await viewModel.start()
+        let utterance = UUID()
+        engine.emit(TranscriptToken(utteranceID: utterance, text: "I saw aval", isFinal: false, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        viewModel.persistHistory(ended: false)
+        let conversation = try #require(history.listSummaries().first)
+        let shown = try #require(history.load(id: conversation.id)?.segments.first)
+        #expect(shown.isCommitted)
+        engine.emit(TranscriptToken(utteranceID: utterance, text: "I saw aval at the market", isFinal: false, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { pipeline.segments.first?.isCommitted == false })
+        viewModel.persistHistory(ended: false)
+
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw aval at the market")
+        #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avi" })
+    }
+
+    @Test("a word fixed in History in an earlier conversation is fixed in the words the line has now, and one it no longer has is not saved or kept")
+    func historyFixInAnEarlierConversation() async throws {
+        let (viewModel, engine, pipeline, history) = makeFixingViewModel()
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        viewModel.clearTranscript()
+        let conversation = try #require(history.listSummaries().first)
+        let shown = try #require(history.load(id: conversation.id)?.segments.first)
+        #expect(shown.text == "I saw aval today")
+
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(!viewModel.applyWordFix(WordFix(heard: "aval", written: "Avital"), always: true, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, lineID: shown.id, text: shown.text, sessionID: conversation.id))
+        #expect(history.load(id: conversation.id)?.segments.first?.text == "I saw Avi now")
+        #expect(!viewModel.settings.wordFixes.contains { $0.written == "Avital" })
+        #expect(!viewModel.settings.vocabulary.contains("Avital"))
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()
