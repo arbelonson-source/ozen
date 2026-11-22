@@ -158,15 +158,14 @@ object WordFixes {
     private fun isDash(c: Int) = c == '-'.code || c == MAQAF || c == 0x2010 || c == 0x2011
 
     /**
-     * Whether [text] from [from] already reads [written], case, niqqud and a
-     * maqaf against a hyphen aside, up to the end of a word: a fix that only
-     * adds words ("dana" written "Dana Cohen") would otherwise write them
-     * twice on a line that has them. The line may also differ from [written]
-     * the ways heard words may (an apostrophe, an alef's hamza, Arabic vowel
-     * marks), except for a fix that only respells ([exactly]): those
-     * differences are what it is for.
+     * Where [text] from [from] stops reading [written], when it reads all of
+     * it there, case, niqqud and a maqaf against a hyphen aside, up to the
+     * end of a word; null when it does not. The line may also differ from
+     * [written] the ways heard words may (an apostrophe, an alef's hamza,
+     * Arabic vowel marks), except for a fix that only respells ([exactly]):
+     * those differences are what it is for.
      */
-    private fun readsAlready(text: String, from: Int, written: String, exactly: Boolean): Boolean {
+    private fun readsAlready(text: String, from: Int, written: String, exactly: Boolean): Int? {
         fun skips(c: Int) = if (exactly) isHebrewMark(c) else isMark(c)
         fun same(a: Int, b: Int) = if (exactly) caseFolded(a) == caseFolded(b) else folded(a) == folded(b)
         var at = from
@@ -179,13 +178,40 @@ object WordFixes {
             next += Character.charCount(c)
             if (skips(c)) continue
             skipMarks()
-            if (at >= text.length) return false
+            if (at >= text.length) return null
             val shown = text.codePointAt(at)
-            if (!(isDash(c) && isDash(shown)) && !same(c, shown)) return false
+            if (!(isDash(c) && isDash(shown)) && !same(c, shown)) return null
             at += Character.charCount(shown)
         }
         skipMarks()
-        return at >= text.length || !isCore(text.codePointAt(at))
+        return if (at >= text.length || !isCore(text.codePointAt(at))) at else null
+    }
+
+    /** Where a written form may start in [word]: at its first letter, or past Hebrew prefix letters, as a heard word may take them. */
+    private fun readingStarts(word: Word): List<Int> {
+        val out = arrayListOf(word.start)
+        for (n in 1..3) {
+            if (word.bases.size <= n || word.bases[n - 1].first.toChar() !in PREFIX_LETTERS) break
+            out.add(word.bases[n].second)
+        }
+        return out
+    }
+
+    /**
+     * Whether the line already reads [fix]'s written form around the heard
+     * words at [index], whose letters start at [keep]: from there, or from a
+     * word before them, through the end of the last heard word. A fix that
+     * adds words after the heard one ("dana" written "Dana Cohen") or before
+     * it ("cohen" written "Avi Cohen", "Dr. Cohen") would otherwise write
+     * them twice on a line that has them. Each space or maqaf the reading
+     * crosses takes a character of the written form, so it starts no more
+     * words back than that.
+     */
+    private fun writtenAlready(text: String, all: List<Word>, index: Int, keep: Int, fix: Compiled): Boolean {
+        val end = all[index + fix.words.size - 1].end
+        return (maxOf(0, index - fix.written.length)..index).any { at ->
+            readingStarts(all[at]).any { from -> from <= keep && (readsAlready(text, from, fix.written, fix.exactly) ?: -1) >= end }
+        }
     }
 
     /**
@@ -429,7 +455,7 @@ object WordFixes {
                 index++
                 continue
             }
-            if (readsAlready(text, keep, best.written, best.exactly)) {
+            if (writtenAlready(text, all, index, keep, best)) {
                 index += best.words.size
                 continue
             }
