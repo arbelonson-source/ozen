@@ -317,6 +317,10 @@ struct WordFixesTests {
             (fix("john", "John son of John"), "john spoke"),
             (fix("כהן", "אבי כהן"), "סיפרתי לכהן"),
             (fix("שירותי בריאות", "מכבי שירותי בריאות"), "התקשרתי לשירותי בריאות"),
+            (fix("京", "北京"), "我在京"),
+            (fix("京", "北京市"), "我在京工作"),
+            (fix("王", "王医生"), "王来了"),
+            (fix("寿司", "お寿司"), "寿司を食べた"),
         ]
         for (one, line) in cases {
             let once = WordFixes.apply([one], to: line)
