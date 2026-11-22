@@ -134,12 +134,16 @@ public final class TranscriptHistoryWriter: Sendable {
     /// sheet keeps the words the line had when it opened, and writing those
     /// back with the fix replaced newer ones. A waiting text is always the
     /// newest: any later save of its conversation takes its place (see
-    /// `PendingRenames.dropTexts(of:)`). False, with nothing written, when
-    /// the line is gone or no longer has the word, and when the version of
-    /// its conversation waiting for room no longer has the line (a replay
-    /// took it off the screen before the conversation closed): the fix was
-    /// written to the file and called saved, then that version was written
-    /// over it without the line.
+    /// `PendingRenames.dropTexts(of:)`). A fix that has to wait for room is
+    /// `.saved`: it is written once there is room. `.lineChanged`, with
+    /// nothing written, when the line is gone or no longer has the word, and
+    /// when the version of its conversation waiting for room no longer has
+    /// the line (a replay took it off the screen before the conversation
+    /// closed): the fix was written to the file and called saved, then that
+    /// version was written over it without the line. `.unreadable`, with
+    /// nothing written, when the file is there but can't be read just now:
+    /// it was read as no conversation, and History said the line changed or
+    /// was gone, though the same fix went through once it could be read.
     @discardableResult
     public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> WordFixResult {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
@@ -151,7 +155,13 @@ public final class TranscriptHistoryWriter: Sendable {
             }
             let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
                 ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
-            guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return .lineChanged }
+            let read: String?
+            do {
+                read = try waiting ?? store.loadThrowing(id: sessionID)?.segments.first { $0.id == segmentID }?.text
+            } catch {
+                return .unreadable
+            }
+            guard let now = read else { return .lineChanged }
             let text = WordFixes.apply([fix], to: now)
             guard text != now else { return .lineChanged }
             lastWritten.record = nil

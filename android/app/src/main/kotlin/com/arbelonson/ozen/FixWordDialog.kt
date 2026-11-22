@@ -153,6 +153,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
                 // heard again, or no longer has the word. The caption screen
                 // said the line had left the screen while it was still there,
                 // and History said to try again when that could not help.
+                // Trying again helps only when History couldn't read the
+                // conversation just now, and that note says so.
                 refusal?.note?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

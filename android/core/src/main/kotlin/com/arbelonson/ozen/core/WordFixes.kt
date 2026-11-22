@@ -594,6 +594,7 @@ enum class WordFixResult {
     val note: String?
         get() = when (this) {
             Saved -> null
-            LineChanged, Unreadable -> tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.")
+            LineChanged -> tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.")
+            Unreadable -> tr("לא היה אפשר לקרוא את השיחה כרגע, ולכן התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The conversation couldn’t be read just now, so the fix was not saved. Try again in a moment.")
         }
 }

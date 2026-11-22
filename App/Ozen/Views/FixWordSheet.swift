@@ -20,7 +20,8 @@ struct FixWordSheet: View {
     /// again, or no longer has the word because its words changed since the
     /// sheet opened. Before, the caption screen said the line had left the
     /// screen while it was still there, and History said to try again when
-    /// trying again could not help.
+    /// trying again could not help. Trying again helps only when History
+    /// couldn't read the conversation just now, and that note says so.
     @State private var refused: WordFixResult?
     /// After a word is picked the keyboard opens on how it should be
     /// written: at large text the fields sat below the edge, and a grey

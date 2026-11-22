@@ -279,17 +279,20 @@ class TranscriptHistoryWriter(
      * version of its conversation: any later save of the conversation takes
      * its place (see [PendingRenames.dropTexts]).
      *
-     * True when it changed the line's newest words and they are kept: in
-     * the file, in the waiting version, or waiting for room by themselves,
-     * which History calls saved, as the iPhone does. False, with nothing new
-     * kept, when the line is gone, can't be read now or keeps its words:
-     * History then says the fix was not saved, and one kept waiting all the
-     * same was written once there was room, and again by the tap that tried
-     * once more. False with nothing written, too, when the version of its
+     * [WordFixResult.Saved] when it changed the line's newest words and they
+     * are kept: in the file, in the waiting version, or waiting for room by
+     * themselves, which History calls saved, as the iPhone does. Otherwise
+     * nothing new is kept, and History says the fix was not saved; one kept
+     * waiting all the same was written once there was room, and again by
+     * the tap that tried once more. [WordFixResult.LineChanged] when the
+     * line is gone or keeps its words, and when the version of its
      * conversation waiting for room no longer has the line (a replay took it
      * off the screen before the conversation closed): the fix was written to
      * the file and called saved, then that version was written over it
-     * without the line.
+     * without the line. [WordFixResult.Unreadable] when the file is there
+     * but its words couldn't be read just now: History said the line
+     * changed or was gone, though the same fix went through once the file
+     * could be read.
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): WordFixResult =
         queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
@@ -303,7 +306,7 @@ class TranscriptHistoryWriter(
         }
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
-        var changed = false
+        var changed: Boolean? = null
         val combined = { text: String ->
             val now = earlier.fold(text) { shown, older -> older.change(shown) }
             change(now).also { changed = it != now }
@@ -316,16 +319,16 @@ class TranscriptHistoryWriter(
             pendingSaves.records[sessionID] = waiting.copy(segments = segments)
             done = true
         } else if (!written) {
-            if (fromHistory && !changed) {
+            if (fromHistory && changed != true) {
                 catchUp(null)
-                return WordFixResult.LineChanged
+                return if (changed == null) WordFixResult.Unreadable else WordFixResult.LineChanged
             }
             pendingRenames.texts.add(PendingText(sessionID, segmentID, combined))
             done = fromHistory
         }
         pendingRenames.texts.removeAll(earlier)
         catchUp(null)
-        return if (done && (changed || !fromHistory)) WordFixResult.Saved else WordFixResult.LineChanged
+        return if (done && (changed == true || !fromHistory)) WordFixResult.Saved else WordFixResult.LineChanged
     }
 
     /**

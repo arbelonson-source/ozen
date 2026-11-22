@@ -798,6 +798,21 @@ public struct TranscriptHistoryStore: Sendable {
         return try? JSONDecoder().decode(TranscriptSessionRecord.self, from: data)
     }
 
+    /// As `load(id:)`, but a file that is there and can't be read right now
+    /// (a read error, or iOS keeping it locked) throws instead of reading as
+    /// no conversation: History's fix of a word then says to try again, not
+    /// that the line is gone. Nil when there is no such file, or it is
+    /// damaged for good.
+    public func loadThrowing(id: UUID) throws -> TranscriptSessionRecord? {
+        let data: Data
+        do {
+            data = try Data(contentsOf: fileURL(for: id))
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return nil
+        }
+        return try? JSONDecoder().decode(TranscriptSessionRecord.self, from: data)
+    }
+
     /// The conversation files in the directory, without reading them.
     private func recordFiles() -> [URL] {
         guard let urls = try? FileManager.default.contentsOfDirectory(

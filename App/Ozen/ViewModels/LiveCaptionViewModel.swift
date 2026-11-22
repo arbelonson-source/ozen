@@ -2237,7 +2237,9 @@ public final class LiveCaptionViewModel {
     /// screen (a replay heard that speech again and took the line off):
     /// every save of that conversation is written from the lines on screen,
     /// and the next one dropped a fix written to its file alone, with the
-    /// line.
+    /// line. The result says which: a conversation whose file couldn't be
+    /// read just now is `.unreadable`, and the sheet says to try again (see
+    /// `TranscriptHistoryWriter.fixTextNow`).
     @discardableResult
     public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, sessionID: UUID?) -> WordFixResult {
         guard let fixed = WordFixes.normalized([fix]).first else { return .lineChanged }
