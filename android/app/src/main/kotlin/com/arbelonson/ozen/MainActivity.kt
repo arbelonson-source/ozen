@@ -121,6 +121,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AwayAlertsNotice
@@ -208,6 +209,7 @@ class MainActivity : ComponentActivity() {
         notificationsAnswer.value = savedInstanceState?.takeIf { it.containsKey(NOTIFICATIONS_REFUSED) }?.let { false }
         val app = application as OzenApplication
         StartCaptionsRequest.applyAppLanguage(app.settings)
+        lifecycleScope.launch { app.settings.takenUp.collect { before -> if (before.appLanguage != app.settings.current.value.appLanguage) showAppLanguage() } }
         StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
         setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, captionsAsked, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onSoundsOnly = ::startSoundsOnly, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
@@ -343,11 +345,17 @@ class MainActivity : ComponentActivity() {
         finish = { (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true } },
     )
 
-    /** Rebuilt so every screen is drawn again in it; Settings stays open through it (see onSaveInstanceState). */
     private fun chooseAppLanguage(language: AppLanguage) {
-        val app = application as OzenApplication
-        app.settings.change { it.appLanguage = language }
-        StartCaptionsRequest.applyAppLanguage(app.settings)
+        (application as OzenApplication).settings.change { it.appLanguage = language }
+        showAppLanguage()
+    }
+
+    /**
+     * The language setting changed, chosen or with saved settings that came back once their file could be read:
+     * rebuilt so every screen is drawn again in it; Settings stays open through it (see onSaveInstanceState).
+     */
+    private fun showAppLanguage() {
+        StartCaptionsRequest.applyAppLanguage((application as OzenApplication).settings)
         NotificationChannelNames.refresh(this)
         recreate()
     }
@@ -1246,7 +1254,7 @@ private fun CaptionScreen(
                             if (index >= 0) scope.launch { list.scrollToItem(index) }
                         }
                     }
-                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(state.savingTroubleUnreadable, onDismissSavingTrouble) }
+                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(state.savingTroubleUnreadable, state.savingTroubleOnlyUnreadable, onDismissSavingTrouble) }
                     ArrivingBanner(state.dropped) { lost ->
                         MicrophoneDropBanner(
                             title = MicrophoneDropNotice.titleFor(lost),

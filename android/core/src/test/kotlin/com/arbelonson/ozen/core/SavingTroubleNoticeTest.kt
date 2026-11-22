@@ -109,6 +109,32 @@ class SavingTroubleNoticeTest {
     }
 
     @Test
+    fun `settings that can't be read, with no save refused yet, are not called a failed save, in English or Hebrew - once a save is refused the old title comes back`() {
+        Localization.withLanguage(UILanguage.English) {
+            val notice = SavingTroubleNotice()
+            notice.update(settingsFailed = false, historyFailed = false, settingsUnreadable = true)
+            assertEquals("Saved settings can’t be read right now", notice.shownTitle)
+            assertEquals(SavingTroubleNotice.unreadableSettingsDetail, notice.shownDetail)
+
+            notice.update(settingsFailed = true, historyFailed = false, settingsUnreadable = true)
+            assertEquals("Saving on the phone failed", notice.shownTitle)
+            assertEquals(SavingTroubleNotice.unreadableSettingsDetail, notice.shownDetail)
+
+            notice.update(settingsFailed = false, historyFailed = true, settingsUnreadable = true)
+            assertEquals("Saving on the phone failed", notice.shownTitle)
+            assertEquals(SavingTroubleNotice.detail, notice.shownDetail)
+
+            notice.update(settingsFailed = true, historyFailed = false)
+            assertEquals(SavingTroubleNotice.title, SavingTroubleNotice.titleFor(notice.onlyUnreadable))
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val notice = SavingTroubleNotice()
+            notice.update(settingsFailed = false, historyFailed = false, settingsUnreadable = true)
+            assertEquals("כרגע אי אפשר לקרוא את ההגדרות השמורות", notice.shownTitle)
+        }
+    }
+
+    @Test
     fun `the reason for settings that can't be read is said in Hebrew too`() {
         Localization.withLanguage(UILanguage.Hebrew) {
             assertTrue(SavingTroubleNotice.unreadableSettingsDetail.contains("לקרוא"))

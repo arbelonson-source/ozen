@@ -5,6 +5,8 @@ class SavingTroubleNotice {
         private set
     var settingsUnreadable: Boolean = false
         private set
+    var onlyUnreadable: Boolean = false
+        private set
     private var isDismissed: Boolean = false
 
     val shouldShow: Boolean get() = isFailing && !isDismissed
@@ -14,7 +16,10 @@ class SavingTroubleNotice {
         if (!failing) isDismissed = false
         isFailing = failing
         this.settingsUnreadable = settingsUnreadable && !historyFailed
+        onlyUnreadable = this.settingsUnreadable && !settingsFailed
     }
+
+    val shownTitle: String get() = titleFor(onlyUnreadable)
 
     val shownDetail: String get() = detailFor(settingsUnreadable)
 
@@ -29,6 +34,10 @@ class SavingTroubleNotice {
                 "כנראה שהטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לכם עם הטלפון לפנות מקום (הגדרות ← אחסון).",
                 "The phone is probably full. New conversations and settings won’t be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).",
             )
+
+        fun titleFor(onlyUnreadable: Boolean): String = if (onlyUnreadable) unreadableSettingsTitle else title
+
+        val unreadableSettingsTitle: String get() = tr("כרגע אי אפשר לקרוא את ההגדרות השמורות", "Saved settings can’t be read right now")
 
         fun detailFor(settingsUnreadable: Boolean): String = if (settingsUnreadable) unreadableSettingsDetail else detail
 

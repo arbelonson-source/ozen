@@ -208,4 +208,88 @@ struct SettingsStoreUnreadableTests {
         #expect(!store.isUnreadable)
         #expect(try Data(contentsOf: blocker) == Data("x".utf8))
     }
+
+    @Test("once a save reaches the file that couldn't be read, the app is handed back the file's own settings with this session's changes, as if loaded now, and later changes, removals and a new order included, are written as they are")
+    func takingUpHandsBackTheFile() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("ozen-settings.json")
+        var saved = personal()
+        saved.vocabulary = ["Noa", "Avi"]
+        saved.engine = .homeServer
+        try SettingsStore(fileURL: url).save(saved)
+        try lock(url)
+        let store = SettingsStore(fileURL: url)
+        var session = store.load()
+        session.speechRate = 0.5
+        #expect(throws: SettingsFileUnreadable.self) { try store.saveTakingUp(session) }
+        try unlock(url)
+
+        var held = try store.saveTakingUp(session)
+        #expect(held.engine == .homeServer)
+        #expect(held.speakerProfiles.map(\.name) == ["Dana"])
+        #expect(held.vocabulary == ["Noa", "Avi"])
+        #expect(held.wordFixes == [WordFix(heard: "dona", written: "Dana")])
+        #expect(held.speechRate == 0.5)
+        #expect(!store.isUnreadable)
+
+        held.vocabulary = ["Avi", "Noa"]
+        #expect(try store.saveTakingUp(held) == held)
+        held.speakerProfiles = []
+        #expect(try store.saveTakingUp(held) == held)
+
+        let back = SettingsStore(fileURL: url).load()
+        #expect(back.vocabulary == ["Avi", "Noa"])
+        #expect(back.speakerProfiles.isEmpty)
+        #expect(back.engine == .homeServer)
+        #expect(back.speechRate == 0.5)
+    }
+
+    @Test("settings taken up keep the stand-in's answers the file says no to, so the first-run guide doesn't open over the captions, and the file keeps its no until the answer changes")
+    func takingUpKeepsTheStandInAnswers() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("ozen-settings.json")
+        var unfinished = personal()
+        unfinished.hasCompletedOnboarding = false
+        try SettingsStore(fileURL: url).save(unfinished)
+        try lock(url)
+        let store = SettingsStore(fileURL: url)
+        var session = store.load()
+        try unlock(url)
+        session.speechRate = 0.5
+
+        var held = try store.saveTakingUp(session)
+        #expect(held.hasCompletedOnboarding)
+        #expect(held.nameAlertOfferDismissed)
+        #expect(held.speakerProfiles.map(\.name) == ["Dana"])
+        held.speechRate = 0.55
+        #expect(try store.saveTakingUp(held) == held)
+        var back = SettingsStore(fileURL: url).load()
+        #expect(!back.hasCompletedOnboarding)
+        #expect(!back.nameAlertOfferDismissed)
+        #expect(back.speechRate == 0.55)
+
+        held.hasCompletedOnboarding = false
+        _ = try store.saveTakingUp(held)
+        held.hasCompletedOnboarding = true
+        _ = try store.saveTakingUp(held)
+        back = SettingsStore(fileURL: url).load()
+        #expect(back.hasCompletedOnboarding)
+        #expect(!back.nameAlertOfferDismissed)
+    }
+
+    @Test("with no file that couldn't be read, a save that takes up the file hands back just what it was given")
+    func takingUpWithNothingToTakeUp() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let settings = personal()
+        let store = SettingsStore(fileURL: dir.appendingPathComponent("ozen-settings.json"))
+        _ = store.load()
+        #expect(try store.saveTakingUp(settings) == settings)
+        var changed = settings
+        changed.speechRate = 0.5
+        #expect(try store.saveTakingUp(changed) == changed)
+        #expect(SettingsStore(fileURL: dir.appendingPathComponent("ozen-settings.json")).load() == changed)
+    }
 }

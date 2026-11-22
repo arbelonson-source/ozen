@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.floor
+import kotlin.reflect.KMutableProperty1
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -874,6 +875,7 @@ class SettingsStore(private val file: File) {
     @Synchronized
     fun load(): AppSettings {
         standIn = null
+        keptNo.clear()
         isUnreadable = false
         val data = when (val read = read()) {
             FileRead.Missing -> return AppSettings.default
@@ -899,9 +901,17 @@ class SettingsStore(private val file: File) {
      * unless the person changes it. The iPhone's store does the same.
      */
     private fun unreadableStandIn(): AppSettings = AppSettings.default.apply {
-        hasCompletedOnboarding = true
-        nameAlertOfferDismissed = true
+        standInAnswers.forEach { it.set(this, true) }
     }
+
+    /** The answers [unreadableStandIn] gives in the file's place. */
+    private val standInAnswers = listOf(AppSettings::hasCompletedOnboarding, AppSettings::nameAlertOfferDismissed)
+
+    /**
+     * The stand-in's answers a caller took up in place of the file's no (see
+     * [saveTakingUp]): written as no while the caller's stay.
+     */
+    private val keptNo = mutableListOf<KMutableProperty1<AppSettings, Boolean>>()
 
     /**
      * Where a settings file that couldn't be read is kept, next to it:
@@ -924,16 +934,38 @@ class SettingsStore(private val file: File) {
      * in [settings] since the stand-in (or since the last such save) is
      * added to the file's own settings, so neither the saved voices, names
      * and alerts nor this session's changes are lost (see
-     * [mergedSettingsJson]). The caller still holds only its own settings
-     * until the next launch loads the whole file, so later saves keep
-     * adding to the file the same way. The iPhone's store does the same.
+     * [mergedSettingsJson]). A caller that goes on holding only its own
+     * settings has later saves added to the file the same way; the app takes
+     * up the whole file instead, with [saveTakingUp]. The iPhone's store does
+     * the same.
      */
     @Synchronized
     fun save(settings: AppSettings) {
+        write(settings, takingUp = false)
+    }
+
+    /**
+     * [save], for a caller that goes on with what this hands back. Once a save
+     * after a [load] that couldn't read the file reaches it, that is the
+     * file's own settings with this session's changes added, as if loaded
+     * now: the person's language, engine, voices and alert words come back
+     * without waiting for the next launch, and later saves are written as
+     * they are. The stand-in's answers the file says no to (the first-run
+     * guide finished, the name offer turned down) stay as [settings] has
+     * them, so the guide doesn't open over the captions, and the file keeps
+     * its no until the caller's answer changes. Any other time this hands
+     * back [settings]. The iPhone's store does the same.
+     */
+    @Synchronized
+    fun saveTakingUp(settings: AppSettings): AppSettings = write(settings, takingUp = true)
+
+    private fun write(settings: AppSettings, takingUp: Boolean): AppSettings {
         val base = standIn
         if (base == null) {
-            PrivateFileWrites.write(file, settings.toJson().toByteArray(Charsets.UTF_8))
-            return
+            keptNo.retainAll { it.get(settings) }
+            val written = if (keptNo.isEmpty()) settings else settings.copy().apply { keptNo.forEach { it.set(this, false) } }
+            PrivateFileWrites.write(file, written.toJson().toByteArray(Charsets.UTF_8))
+            return settings
         }
         val mine = settingsJson(settings)
         val read = read()
@@ -953,7 +985,20 @@ class SettingsStore(private val file: File) {
             }
         }
         PrivateFileWrites.write(file, written.toString().toByteArray(Charsets.UTF_8))
-        standIn = if (written == mine) null else mine
+        if (written == mine) {
+            standIn = null
+            return settings
+        }
+        if (!takingUp) {
+            standIn = mine
+            return settings
+        }
+        standIn = null
+        val held = AppSettings.fromJson(written.toString())
+        keptNo.clear()
+        keptNo += standInAnswers.filter { it.get(settings) && !it.get(held) }
+        keptNo.forEach { it.set(held, true) }
+        return held
     }
 
     private sealed interface FileRead {

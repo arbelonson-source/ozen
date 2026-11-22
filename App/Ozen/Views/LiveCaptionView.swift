@@ -373,7 +373,7 @@ struct LiveCaptionView: View {
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if viewModel.savingTrouble.shouldShow {
-                SavingTroubleBanner(detail: viewModel.savingTrouble.shownDetail) {
+                SavingTroubleBanner(title: viewModel.savingTrouble.shownTitle, detail: viewModel.savingTrouble.shownDetail) {
                     withAnimation { viewModel.dismissSavingTrouble() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))

@@ -184,4 +184,73 @@ class SettingsStoreUnreadableTest {
         assertFalse(store.isUnreadable)
         assertEquals("x", blocker.readText())
     }
+
+    @Test
+    fun `once a save reaches the file that couldn't be read, the app is handed back the file's own settings with this session's changes, as if loaded now, and later changes, removals and a new order included, are written as they are`() {
+        SettingsStore(file).save(personal().apply { vocabulary = listOf("Noa", "Avi"); engine = TranscriptionEngineKind.HomeServer })
+        lock()
+        val store = SettingsStore(file)
+        val session = store.load().copy().apply { speechRate = 0.5f }
+        assertFailsWith<SettingsFileUnreadableException> { store.saveTakingUp(session) }
+        unlock()
+
+        val held = store.saveTakingUp(session)
+        assertEquals(TranscriptionEngineKind.HomeServer, held.engine)
+        assertEquals(listOf("Dana"), held.speakerProfiles.map { it.name })
+        assertEquals(listOf("Noa", "Avi"), held.vocabulary)
+        assertEquals(listOf(WordFix("dona", "Dana")), held.wordFixes)
+        assertEquals(0.5f, held.speechRate)
+        assertFalse(store.isUnreadable)
+
+        held.vocabulary = listOf("Avi", "Noa")
+        assertEquals(held, store.saveTakingUp(held))
+        held.speakerProfiles = emptyList()
+        assertEquals(held, store.saveTakingUp(held))
+
+        val back = SettingsStore(file).load()
+        assertEquals(listOf("Avi", "Noa"), back.vocabulary)
+        assertTrue(back.speakerProfiles.isEmpty())
+        assertEquals(TranscriptionEngineKind.HomeServer, back.engine)
+        assertEquals(0.5f, back.speechRate)
+    }
+
+    @Test
+    fun `settings taken up keep the stand-in's answers the file says no to, so the first-run guide doesn't open over the captions, and the file keeps its no until the answer changes`() {
+        SettingsStore(file).save(personal().apply { hasCompletedOnboarding = false })
+        lock()
+        val store = SettingsStore(file)
+        val session = store.load().copy()
+        unlock()
+        session.speechRate = 0.5f
+
+        val held = store.saveTakingUp(session)
+        assertTrue(held.hasCompletedOnboarding)
+        assertTrue(held.nameAlertOfferDismissed)
+        assertEquals(listOf("Dana"), held.speakerProfiles.map { it.name })
+        held.speechRate = 0.55f
+        assertEquals(held, store.saveTakingUp(held))
+        var back = SettingsStore(file).load()
+        assertFalse(back.hasCompletedOnboarding)
+        assertFalse(back.nameAlertOfferDismissed)
+        assertEquals(0.55f, back.speechRate)
+
+        held.hasCompletedOnboarding = false
+        store.saveTakingUp(held)
+        held.hasCompletedOnboarding = true
+        store.saveTakingUp(held)
+        back = SettingsStore(file).load()
+        assertTrue(back.hasCompletedOnboarding)
+        assertFalse(back.nameAlertOfferDismissed)
+    }
+
+    @Test
+    fun `with no file that couldn't be read, a save that takes up the file hands back just what it was given`() {
+        val settings = personal()
+        val store = SettingsStore(file)
+        store.load()
+        assertEquals(settings, store.saveTakingUp(settings))
+        val changed = settings.copy().apply { speechRate = 0.5f }
+        assertEquals(changed, store.saveTakingUp(changed))
+        assertEquals(changed, SettingsStore(file).load())
+    }
 }
