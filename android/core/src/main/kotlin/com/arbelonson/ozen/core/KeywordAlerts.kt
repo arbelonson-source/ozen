@@ -149,17 +149,35 @@ object HebrewText {
      * a different string, so her name at the start of a line never raised its
      * alert.
      */
-    internal val directionMarks: Set<Int> = setOf(
-        0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069, 0x061C,
-    )
+    internal fun isDirectionMark(codePoint: Int): Boolean =
+        codePoint == 0x200E || codePoint == 0x200F || codePoint in 0x202A..0x202E || codePoint in 0x2066..0x2069 || codePoint == 0x061C
 
-    fun removingDirectionMarks(text: String): String {
-        if (text.codePoints().noneMatch { it in directionMarks }) return text
-        return text.filteringScalars { it !in directionMarks }
+    /**
+     * [text] without [isDirectionMark]s. Looked for one letter at a time,
+     * with no set lookup boxing every letter: each word of a live line
+     * brings the whole line here again.
+     */
+    fun removingDirectionMarks(text: String): String =
+        if (hasDirectionMark(text)) text.filteringScalars { !isDirectionMark(it) } else text
+
+    private fun hasDirectionMark(text: String): Boolean {
+        var index = 0
+        while (index < text.length) {
+            val codePoint = text.codePointAt(index)
+            if (isDirectionMark(codePoint)) return true
+            index += Character.charCount(codePoint)
+        }
+        return false
     }
 
     /** Hyphen, Hebrew maqaf, hyphen variants, en and em dashes, slash. */
     internal val wordJoiners: Set<Int> = setOf('-'.code, 0x05BE, 0x2010, 0x2011, 0x2013, 0x2014, '/'.code)
+
+    /** Whether [codePoint] is one of [wordJoiners], without boxing it. */
+    internal fun isWordJoiner(codePoint: Int): Boolean = when (codePoint) {
+        '-'.code, 0x05BE, 0x2010, 0x2011, 0x2013, 0x2014, '/'.code -> true
+        else -> false
+    }
 
     /**
      * Turns characters that join two words into spaces, so a hyphenated
@@ -170,7 +188,7 @@ object HebrewText {
      */
     fun separatingJoiners(text: String): String {
         val result = StringBuilder(text.length)
-        text.codePoints().forEach { result.appendCodePoint(if (it in wordJoiners) ' '.code else it) }
+        text.codePoints().forEach { result.appendCodePoint(if (isWordJoiner(it)) ' '.code else it) }
         return result.toString()
     }
 
@@ -709,6 +727,9 @@ object HebrewText {
  * between still does. A word said as an affectionate nickname or alternate
  * spelling of a phrase's word still matches; see
  * [HebrewText.isAffectionateVariant].
+ *
+ * Keeps the words it has read (see `CaptionWord`), so, like the pipeline
+ * that holds it, it is used from one thread at a time.
  */
 data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLanguage: String = "") {
     /**
@@ -720,70 +741,191 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
      * says the whole word; of the 16 names really said there, 15 buzzed on the
      * same pass as before and one 0.6 s later.
      */
-    fun matchesInLiveText(text: String): List<KeywordMatch> = matches(droppingCutOffWord(text))
+    fun matchesInLiveText(text: String): List<KeywordMatch> {
+        if (alerts.none { it.isEnabled }) return emptyList()
+        // The words before the stub are read where they are on the line.
+        val line = HebrewText.removingDirectionMarks(text)
+        return matching(line, if (endsInCutOffWord(line)) endBeforeCutOffWord(line) else line.length)
+    }
 
+    /**
+     * A saved phrase as matching reads it, worked out once rather than at
+     * every word of every line.
+     */
+    private class Plan(phrase: String) {
+        val words = HebrewText.phraseWords(phrase)
+        val isHan = HebrewText.containsHan(phrase)
+        val isInflectable = words.size == 1 && words[0] in HebrewText.inflectableOfferedWords
+        val variants = if (isInflectable) HebrewText.spellingVariants[words[0]] ?: emptySet() else emptySet()
+        val joined = HebrewText.foldingFinalLetters(words.joinToString(""))
+        val gluesPairs = words.size == 1 && graphemesOf(joined).size >= 4
+    }
+
+    /**
+     * One caption word, normalized once. A line still being written comes
+     * again at every word with all of its words so far, and working out
+     * every word again, for every alert, cost about a megabyte per word on a
+     * line of a hundred Hebrew words with one name saved; a cheap phone's
+     * garbage collector ran all the time someone talked without pausing.
+     * Everything kept here follows from the word itself (and the matcher's
+     * language), so keeping it changes no match.
+     */
+    private inner class CaptionWord(val raw: String) {
+        val normalized = HebrewText.normalizeCaptionWord(raw)
+        val trimmed = trimmingEdgePunctuation(raw)
+        private val readings = HashMap<String, Reading>(2)
+
+        fun readFor(phrase: String, plan: Plan): Reading = readings.getOrPut(phrase) { Reading(this, plan) }
+    }
+
+    /** A caption word as one saved phrase reads it: "l'Anne" is "Anne" for an alert on Anne. */
+    private inner class Reading(word: CaptionWord, private val plan: Plan) {
+        val raw: String
+        val normalized: String
+
+        init {
+            val rest = if (word.normalized in plan.words) null else HebrewText.withoutElidedWord(word.raw, captionLanguage)
+            raw = rest ?: word.raw
+            normalized = if (rest == null) word.normalized else HebrewText.normalizeCaptionWord(rest)
+        }
+
+        val isWholeForm: Boolean = when {
+            plan.isHan || plan.words.size != 1 -> false
+            plan.isInflectable -> normalized in plan.variants || HebrewText.isInflectedForm(normalized, plan.words[0])
+            else -> HebrewText.isNameCaseForm(normalized, plan.words[0]) || HebrewText.isLatinNameWithS(normalized, plan.words[0], captionLanguage)
+        }
+
+        val startsPhrase: Boolean = !plan.isHan && HebrewText.stripAttachedPrefixOrVariant(raw, normalized, plan.words[0])
+
+        val isJoinedPair: Boolean =
+            !plan.isHan && plan.words.size == 2 && HebrewText.stripAttachedPrefix(HebrewText.foldingFinalLetters(normalized), plan.joined)
+
+        private var continuing: Array<Boolean?>? = null
+
+        fun continuesPhrase(offset: Int): Boolean {
+            val known = continuing ?: arrayOfNulls<Boolean>(plan.words.size).also { continuing = it }
+            return known[offset] ?: HebrewText.isAffectionateVariant(raw, normalized, plan.words[offset]).also { known[offset] = it }
+        }
+
+        /**
+         * The next word this one was last glued to, as the string the answer
+         * follows from: holding that word's reading instead kept a chain of
+         * readings alive, word to word, past the words the matcher keeps.
+         */
+        private var gluedTo: String? = null
+        private var gluesName = false
+
+        fun gluesWith(next: Reading): Boolean {
+            if (gluedTo != next.normalized) {
+                gluesName = HebrewText.stripAttachedPrefix(HebrewText.foldingFinalLetters(normalized + next.normalized), plan.joined)
+                gluedTo = next.normalized
+            }
+            return gluesName
+        }
+    }
+
+    private val plans = HashMap<String, Plan>()
+    private val knownWords = HashMap<String, CaptionWord>()
+    private var lastCaption: List<CaptionWord> = emptyList()
+
+    private fun planFor(phrase: String): Plan {
+        plans[phrase]?.let { return it }
+        if (plans.size >= KNOWN_PHRASES) plans.clear()
+        return Plan(phrase).also { plans[phrase] = it }
+    }
+
+    /**
+     * The words of [text], split at spaces and word joiners, each the same
+     * object as the last call's word at that place when it reads the same,
+     * so the words a line already had cost nothing.
+     */
+    private fun captionWords(text: String, end: Int): List<CaptionWord> {
+        val words = ArrayList<CaptionWord>(lastCaption.size + 1)
+        var start = -1
+        var index = 0
+        while (index < end) {
+            val codePoint = text.codePointAt(index)
+            if (isBetweenWords(codePoint)) {
+                if (start >= 0) words.add(captionWord(text, start, index, words.size))
+                start = -1
+            } else if (start < 0) {
+                start = index
+            }
+            index += Character.charCount(codePoint)
+        }
+        if (start >= 0) words.add(captionWord(text, start, end, words.size))
+        lastCaption = words
+        return words
+    }
+
+    private fun captionWord(text: String, start: Int, end: Int, position: Int): CaptionWord {
+        val before = lastCaption.getOrNull(position)
+        if (before != null && before.raw.length == end - start && text.regionMatches(start, before.raw, 0, end - start)) return before
+        val raw = text.substring(start, end)
+        knownWords[raw]?.let { return it }
+        if (knownWords.size >= KNOWN_WORDS) knownWords.clear()
+        return CaptionWord(raw).also { knownWords[raw] = it }
+    }
+
+    /**
+     * The matches in [text]. Direction marks are invisible and no part of a
+     * word: one standing alone between the two halves of a split name was a
+     * word of its own, and "savta" written as "sav", a mark and "ta" stayed
+     * silent.
+     */
     fun matches(text: String): List<KeywordMatch> {
-        val captionRaw = splitOnKeywordWhitespace(HebrewText.separatingJoiners(text))
-        if (captionRaw.isEmpty()) return emptyList()
+        val line = HebrewText.removingDirectionMarks(text)
+        return matching(line, line.length)
+    }
+
+    /** The matches among the words of [text] before [end]. */
+    private fun matching(text: String, end: Int): List<KeywordMatch> {
+        if (alerts.none { it.isEnabled }) return emptyList()
         // Normalizing word-by-word (rather than normalizing the whole string
-        // and re-splitting) keeps this array the same length as `rawWords`, so
-        // a word's index always means the same thing on both sides even when a
-        // word is pure punctuation and normalizes to the empty string.
-        val captionNormalized = captionRaw.map { HebrewText.normalizeCaptionWord(it) }
-        val trimmedWords = captionRaw.map { trimmingEdgePunctuation(it) }
+        // and re-splitting) keeps one entry per caption word, so a word's
+        // index always means the same thing for its raw and normalized forms
+        // even when a word is pure punctuation and normalizes to the empty
+        // string.
+        val caption = captionWords(text, end)
+        if (caption.isEmpty()) return emptyList()
 
         val unordered = mutableListOf<Pair<KeywordMatch, Int>>()
         val repeatedInOneWord = HashSet<Int>()
         var sequence = 0
         for (alert in alerts) {
             if (!alert.isEnabled) continue
-            val phraseWords = HebrewText.phraseWords(alert.phrase)
+            val phrase = alert.phrase
+            val plan = planFor(phrase)
+            val phraseWords = plan.words
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             if (phraseWords.isEmpty()) continue
-
             // "l'Anne" is the article and the name: for this alert the word
             // reads as the name, unless the saved phrase itself has the fused
-            // spelling (a name like "D'Arcy").
-            val rawWords = captionRaw.toMutableList()
-            val normalizedWords = captionNormalized.toMutableList()
-            for (index in rawWords.indices) {
-                if (normalizedWords[index] in phraseWords) continue
-                val rest = HebrewText.withoutElidedWord(rawWords[index], captionLanguage) ?: continue
-                rawWords[index] = rest
-                normalizedWords[index] = HebrewText.normalizeCaptionWord(rest)
-            }
+            // spelling (a name like "D'Arcy"). See `Reading`.
+            fun read(index: Int) = caption[index].readFor(phrase, plan)
 
             // Chinese captions have no spaces: a whole sentence is one
             // "word", so a saved word is looked for inside it.
-            if (HebrewText.containsHan(alert.phrase)) {
-                for ((text, wordIndex) in substringMatches(phraseWords.joinToString(" "), normalizedWords)) {
-                    unordered.add(KeywordMatch(alert.id, alert.phrase, text, wordIndex) to sequence)
+            if (plan.isHan) {
+                for ((text, wordIndex) in substringMatches(phraseWords.joinToString(" "), caption.indices.map { read(it).normalized })) {
+                    unordered.add(KeywordMatch(alert.id, phrase, text, wordIndex) to sequence)
                     repeatedInOneWord.add(sequence)
                     sequence += 1
                 }
                 continue
             }
 
-            if (phraseWords.size == 1 && phraseWords[0] in HebrewText.inflectableOfferedWords) {
-                val variants = HebrewText.spellingVariants[phraseWords[0]] ?: emptySet()
-                for (index in normalizedWords.indices) {
-                    if (normalizedWords[index] !in variants && !HebrewText.isInflectedForm(normalizedWords[index], phraseWords[0])) continue
-                    unordered.add(KeywordMatch(alert.id, alert.phrase, trimmedWords[index], index) to sequence)
-                    sequence += 1
-                }
-            } else if (phraseWords.size == 1) {
-                for (index in normalizedWords.indices) {
-                    if (!HebrewText.isNameCaseForm(normalizedWords[index], phraseWords[0]) &&
-                        !HebrewText.isLatinNameWithS(normalizedWords[index], phraseWords[0], captionLanguage)
-                    ) continue
-                    unordered.add(KeywordMatch(alert.id, alert.phrase, trimmedWords[index], index) to sequence)
+            if (phraseWords.size == 1) {
+                for (index in caption.indices) {
+                    if (!read(index).isWholeForm) continue
+                    unordered.add(KeywordMatch(alert.id, phrase, caption[index].trimmed, index) to sequence)
                     sequence += 1
                 }
             }
 
-            for (start in normalizedWords.indices) {
-                if (!HebrewText.stripAttachedPrefixOrVariant(rawWords[start], normalizedWords[start], phraseWords[0])) continue
+            for (start in caption.indices) {
+                if (!read(start).startsPhrase) continue
                 // A caption word that is pure punctuation ("," on its own,
                 // surrounded by spaces) normalizes to the empty string; a
                 // phrase's later words must still be found consecutively past
@@ -794,46 +936,44 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
                 var isFullMatch = true
                 for (offset in 1 until phraseWords.size) {
                     cursor += 1
-                    while (cursor < normalizedWords.size && normalizedWords[cursor].isEmpty()) cursor += 1
-                    if (cursor >= normalizedWords.size ||
-                        !HebrewText.isAffectionateVariant(rawWords[cursor], normalizedWords[cursor], phraseWords[offset])
-                    ) {
+                    while (cursor < caption.size && read(cursor).normalized.isEmpty()) cursor += 1
+                    if (cursor >= caption.size || !read(cursor).continuesPhrase(offset)) {
                         isFullMatch = false
                         break
                     }
                 }
                 if (!isFullMatch) continue
 
-                val matchedText = trimmedWords.subList(start, cursor + 1).filter { it.isNotEmpty() }.joinToString(" ")
-                unordered.add(KeywordMatch(alert.id, alert.phrase, matchedText, start) to sequence)
+                val matchedText = (start..cursor).map { caption[it].trimmed }.filter { it.isNotEmpty() }.joinToString(" ")
+                unordered.add(KeywordMatch(alert.id, phrase, matchedText, start) to sequence)
                 sequence += 1
             }
 
             // A two-part name is written both as one word and as two
             // ("bentzion", "ben tzion", "ben-tzion"): whichever way it was
             // saved, the caption may use the other.
-            val joinedPhrase = HebrewText.foldingFinalLetters(phraseWords.joinToString(""))
             if (phraseWords.size == 2) {
-                for (index in normalizedWords.indices) {
-                    if (!HebrewText.stripAttachedPrefix(HebrewText.foldingFinalLetters(normalizedWords[index]), joinedPhrase)) continue
-                    unordered.add(KeywordMatch(alert.id, alert.phrase, trimmedWords[index], index) to sequence)
+                for (index in caption.indices) {
+                    if (!read(index).isJoinedPair) continue
+                    unordered.add(KeywordMatch(alert.id, phrase, caption[index].trimmed, index) to sequence)
                     sequence += 1
                 }
-            } else if (phraseWords.size == 1 && graphemesOf(joinedPhrase).size >= 4) {
+            } else if (plan.gluesPairs) {
                 // A pair is glued only when neither word was the name by
                 // itself: "shel savta" (Grandma's) also glued into a
                 // she-le-savta prefix chain, so one mention was two matches,
                 // two notifications and two buzzes on a locked phone.
-                val alone = unordered.filter { it.first.alertID == alert.id }.map { it.first.wordIndex }.toSet()
-                for (index in 0 until normalizedWords.size - 1) {
+                val alone = unordered.filter { it.first.alertID == alert.id }.map { it.first.wordIndex }.toIntArray()
+                for (index in 0 until caption.size - 1) {
                     if (index in alone || index + 1 in alone) continue
-                    if (normalizedWords[index].isEmpty() || normalizedWords[index + 1].isEmpty()) continue
-                    if (normalizedWords[index] in HebrewText.wordsThatTakeNoName) continue
-                    if (normalizedWords[index + 1] in HebrewText.wordsThatNeverEndAName) continue
-                    val glued = HebrewText.foldingFinalLetters(normalizedWords[index] + normalizedWords[index + 1])
-                    if (!HebrewText.stripAttachedPrefix(glued, joinedPhrase)) continue
-                    val matchedText = trimmedWords[index] + " " + trimmedWords[index + 1]
-                    unordered.add(KeywordMatch(alert.id, alert.phrase, matchedText, index) to sequence)
+                    val word = read(index)
+                    val next = read(index + 1)
+                    if (word.normalized.isEmpty() || next.normalized.isEmpty()) continue
+                    if (word.normalized in HebrewText.wordsThatTakeNoName) continue
+                    if (next.normalized in HebrewText.wordsThatNeverEndAName) continue
+                    if (!word.gluesWith(next)) continue
+                    val matchedText = caption[index].trimmed + " " + caption[index + 1].trimmed
+                    unordered.add(KeywordMatch(alert.id, phrase, matchedText, index) to sequence)
                     sequence += 1
                 }
             }
@@ -890,7 +1030,57 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
             return hits
         }
 
+        /** Caption words kept between calls; a line holds far fewer, and the rest are worked out again. */
+        private const val KNOWN_WORDS = 512
+        private const val KNOWN_PHRASES = 64
+
+        /**
+         * Whether the last word of [text], as [droppingCutOffWord] splits it,
+         * ends in an ellipsis, read from the end of the line without
+         * splitting all of it.
+         */
+        private fun endsInCutOffWord(text: String): Boolean {
+            var index = text.length
+            var dots = 0
+            var inWord = false
+            while (index > 0) {
+                val codePoint = text.codePointBefore(index)
+                index -= Character.charCount(codePoint)
+                if (HebrewText.isDirectionMark(codePoint)) continue
+                if (isBetweenWords(codePoint)) {
+                    if (inWord) return false
+                    continue
+                }
+                inWord = true
+                if (codePoint == '…'.code) return dots == 0
+                if (codePoint != '.'.code) return false
+                dots += 1
+                if (dots == 3) return true
+            }
+            return false
+        }
+
+        private fun isBetweenWords(codePoint: Int) = isKeywordWhitespace(codePoint) || HebrewText.isWordJoiner(codePoint)
+
+        /**
+         * Where the words [droppingCutOffWord] keeps end in [text], a line
+         * with its direction marks taken out that [endsInCutOffWord]: the
+         * start of the last word it drops, found from the end of the line.
+         */
+        private fun endBeforeCutOffWord(text: String): Int {
+            var end = text.length
+            while (true) {
+                while (end > 0 && isBetweenWords(text.codePointBefore(end))) end -= Character.charCount(text.codePointBefore(end))
+                if (end == 0) return 0
+                var start = end
+                while (start > 0 && !isBetweenWords(text.codePointBefore(start))) start -= Character.charCount(text.codePointBefore(start))
+                if (HebrewText.normalize(text.substring(start, end)).isNotEmpty()) return start
+                end = start
+            }
+        }
+
         internal fun droppingCutOffWord(text: String): String {
+            if (!endsInCutOffWord(text)) return text
             val words = splitOnKeywordWhitespace(HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))).toMutableList()
             val last = words.lastOrNull() ?: return text
             if (!(last.endsWith("...") || last.endsWith("…"))) return text

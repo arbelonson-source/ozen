@@ -716,6 +716,31 @@ class TranscriptHistoryStore(
         if (record.segments.isEmpty()) return false
         Files.createDirectories(directory.toPath())
         val file = fileFor(record.id)
+        val toSave = keepingSavedDetails(record)
+        forget(record.id)
+        PrivateFileWrites.write(file, toSave.toJson().toByteArray(Charsets.UTF_8))
+        remember(toSave, file)
+        if (!updateSearchCaches) return true
+        if (throttleCaches && !cacheRefreshDue(record.id)) return true
+        // Written after the record, so a fresh summary is never older than
+        // its conversation. If this write fails the conversation is still
+        // saved; the list just rebuilds the summary next time.
+        val written = modificationDate(file)
+        cacheRefreshes.incrementAndGet()
+        writeSummary(TranscriptSessionSummary.summarizing(toSave), file, written)
+        writeSearchText(searchableText(toSave), file, written)
+        return true
+    }
+
+    /**
+     * [record] as [save] writes it: without a title it takes the one the
+     * file has, and it takes the source, language and time zone of the
+     * file's first save. History shows a version waiting for room this way
+     * (see [TranscriptHistoryWriter.loadNow]). Throws when the file is there
+     * but can't be read right now.
+     */
+    fun keepingSavedDetails(record: TranscriptSessionRecord): TranscriptSessionRecord = synchronized(lock) {
+        val file = fileFor(record.id)
         var toSave = record
         val remembered = remembered(record.id, file)
         if (remembered != null) {
@@ -745,19 +770,7 @@ class TranscriptHistoryStore(
                 }
             }
         }
-        forget(record.id)
-        PrivateFileWrites.write(file, toSave.toJson().toByteArray(Charsets.UTF_8))
-        remember(toSave, file)
-        if (!updateSearchCaches) return true
-        if (throttleCaches && !cacheRefreshDue(record.id)) return true
-        // Written after the record, so a fresh summary is never older than
-        // its conversation. If this write fails the conversation is still
-        // saved; the list just rebuilds the summary next time.
-        val written = modificationDate(file)
-        cacheRefreshes.incrementAndGet()
-        writeSummary(TranscriptSessionSummary.summarizing(toSave), file, written)
-        writeSearchText(searchableText(toSave), file, written)
-        return true
+        toSave
     }
 
     /**
@@ -1072,9 +1085,10 @@ class TranscriptHistoryStore(
      * Stars a saved line, or takes its star away, after the conversation
      * ended: a line starred later protects its conversation from being
      * cleared out just as one starred while it was said does. Returns the
-     * line's new state, or null when the conversation or line is gone.
+     * line's new state, or null when the conversation or line is gone. With
+     * [to], the line takes that state instead of the other one.
      */
-    fun toggleStar(segmentID: UUID, inSession: UUID): Boolean? {
+    fun toggleStar(segmentID: UUID, inSession: UUID, to: Boolean? = null): Boolean? {
         val file = fileFor(inSession)
         var state: Boolean? = null
         patchRecordFile(file, writeSearchText = false) { object_ ->
@@ -1082,7 +1096,7 @@ class TranscriptHistoryStore(
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null
             val line = lines[index] as JsonObject
-            val starred = !((line["isStarred"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true")
+            val starred = to ?: !((line["isStarred"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true")
             state = starred
             JsonObject(object_ + ("segments" to JsonArray(lines.toMutableList().also { it[index] = JsonObject(line + ("isStarred" to JsonPrimitive(starred))) })))
         }

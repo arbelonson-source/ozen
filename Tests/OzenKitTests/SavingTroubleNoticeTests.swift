@@ -85,6 +85,83 @@ struct SavingTroubleNoticeTests {
         }
     }
 
+    @Test("settings that can't be read show it before anything is saved, with that reason, until a save gets through")
+    func unreadableSettingsShowBeforeAnySave() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.isFailing)
+            #expect(notice.shouldShow)
+            #expect(notice.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.dismiss()
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(!notice.shouldShow)
+
+            notice.update(settingsFailed: false, historyFailed: false)
+            #expect(!notice.isFailing)
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.shouldShow)
+
+            notice.update(settingsFailed: false, historyFailed: true, settingsUnreadable: true)
+            #expect(notice.shownDetail == SavingTroubleNotice.detail)
+        }
+    }
+
+    @Test("what VoiceOver is told follows the reason on the banner while it stays up, and there is nothing to tell while it is away")
+    func spokenFollowsTheShownReason() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            #expect(notice.spoken == nil)
+
+            notice.update(settingsFailed: true, historyFailed: false)
+            let fullPhone = SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
+            #expect(notice.spoken == fullPhone)
+
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.spoken == SavingTroubleNotice.title + ". " + SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.update(settingsFailed: true, historyFailed: false)
+            #expect(notice.spoken == fullPhone)
+
+            notice.dismiss()
+            #expect(notice.spoken == nil)
+        }
+    }
+
+    @Test("settings that can't be read, with no save refused yet, are not called a failed save, in English or Hebrew; once a save is refused the old title comes back")
+    func unreadableSettingsHaveTheirOwnTitle() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.spoken == "Saved settings can’t be read right now. " + SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.spoken == "Saving on the phone failed. " + SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.update(settingsFailed: false, historyFailed: true, settingsUnreadable: true)
+            #expect(notice.spoken == "Saving on the phone failed. " + SavingTroubleNotice.detail)
+        }
+        Localization.$override.withValue(.hebrew) {
+            var notice = SavingTroubleNotice()
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.spoken == "כרגע אי אפשר לקרוא את ההגדרות השמורות. " + SavingTroubleNotice.unreadableSettingsDetail)
+        }
+    }
+
+    @Test("the banner's title is the one VoiceOver is told, for each reason")
+    func shownTitleIsTheSpokenOne() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            for (settingsFailed, historyFailed, unreadable) in [(false, false, true), (true, false, true), (true, false, false), (false, true, true)] {
+                notice.update(settingsFailed: settingsFailed, historyFailed: historyFailed, settingsUnreadable: unreadable)
+                #expect(notice.spoken == notice.shownTitle + ". " + notice.shownDetail)
+            }
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.shownTitle == SavingTroubleNotice.unreadableSettingsTitle)
+        }
+    }
+
     @Test("the reason for settings that can't be read is said in Hebrew too")
     func unreadableSettingsInHebrew() {
         Localization.$override.withValue(.hebrew) {

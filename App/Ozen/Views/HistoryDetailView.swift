@@ -364,12 +364,12 @@ struct HistoryDetailView: View {
     /// the current search-match index, and any in-progress rename alone --
     /// only `load()` (once, at open) sets those.
     private func refresh() async {
-        let store = viewModel.historyStore
+        let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
         let loaded = await Task.detached(priority: .utility) {
-            Loaded(store: store, id: id, query: query, languageCode: language)
+            Loaded(record: read(id), query: query, languageCode: language)
         }.value
         record = loaded.record
         stats = loaded.stats
@@ -394,7 +394,10 @@ struct HistoryDetailView: View {
     }
 
     /// Everything the screen shows about one saved conversation, worked
-    /// out together off the main thread.
+    /// out together off the main thread. The conversation is read as it
+    /// will be saved: read from its file, a word fixed while the phone was
+    /// full kept its old words here though the fix sheet had said it was
+    /// done, and the person fixed the same word again.
     nonisolated private struct Loaded: Sendable {
         let record: TranscriptSessionRecord?
         let stats: ConversationStats?
@@ -402,8 +405,7 @@ struct HistoryDetailView: View {
         let timeMarks: Set<UUID>
         let numberLineIDs: [UUID]
 
-        init(store: TranscriptHistoryStore, id: UUID, query: String, languageCode: String) {
-            let loaded = store.load(id: id)
+        init(record loaded: TranscriptSessionRecord?, query: String, languageCode: String) {
             record = loaded
             stats = loaded.map(ConversationStats.compute(from:))
             guard let loaded else {
@@ -428,12 +430,12 @@ struct HistoryDetailView: View {
     /// up the screen sliding in.
     private func load() async {
         guard !hasLoaded else { return }
-        let store = viewModel.historyStore
+        let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
         let loaded = await Task.detached(priority: .userInitiated) {
-            Loaded(store: store, id: id, query: query, languageCode: language)
+            Loaded(record: read(id), query: query, languageCode: language)
         }.value
         record = loaded.record
         stats = loaded.stats

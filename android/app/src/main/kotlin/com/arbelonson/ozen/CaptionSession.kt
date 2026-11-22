@@ -137,6 +137,16 @@ class CaptionSession(
     private val awaySoundStore: AwaySoundStore = PreferencesAwaySoundStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope: CoroutineScope = errorGuardedScope { pipeline.unexpectedError(it) }
+
+    /** Asked again before it ran (settings that came back with a new engine chosen), captions start again once. */
+    private val settingsRestart = QueuedOnce(scope) {
+        when (pipeline.phase) {
+            PipelinePhase.Idle -> Unit
+            PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
+            else -> pipeline.restart(chosenSettings())
+        }
+    }
+
     private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val light = TorchRunner(CameraLight(context.applicationContext), lightScope)
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -567,7 +577,7 @@ class CaptionSession(
 
         override fun search(query: String) = historyStore.search(query)
 
-        override fun load(id: UUID) = historyStore.load(id)
+        override fun load(id: UUID) = conversations.load(id)
 
         override fun starredLines() = historyStore.starredLines()
 
@@ -609,7 +619,7 @@ class CaptionSession(
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.
-        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { starring ->
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also { starring ->
             starring?.let { CaptionState.markStarred(segmentID, it) }
             refreshSavingTrouble()
         }
@@ -695,7 +705,8 @@ class CaptionSession(
         val started = settings.current.value
         started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
-        scope.launch { combine(settings.current, settings.saveFailed, settings.saveFailedUnreadable) { _, _, _ -> }.collect { refreshSavingTrouble() } }
+        scope.launch { combine(settings.current, settings.saveFailed, settings.settingsUnreadable) { _, _, _ -> }.collect { refreshSavingTrouble() } }
+        scope.launch { settings.takenUp.collect(::settingsTakenUp) }
         scope.launch {
             settings.current.map { it.flashCameraLight }.distinctUntilChanged().collect { on ->
                 CameraLight.watch(context.applicationContext, on) { light.stop() }
@@ -948,14 +959,19 @@ class CaptionSession(
         downloadAwake.keepAwake(null)
     }
 
-    fun settingsChanged() {
-        scope.launch {
-            when (pipeline.phase) {
-                PipelinePhase.Idle -> Unit
-                PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
-                else -> pipeline.restart(chosenSettings())
-            }
-        }
+    fun settingsChanged() = settingsRestart.request()
+
+    /**
+     * The saved settings came back once their file could be read, with this
+     * session's changes ([SettingsHolder.takenUp]); [before] are the ones in
+     * use until then. As at launch, the saved voices are listened for and
+     * the sound alerts apply, paused or not, and running captions start again
+     * on the person's own language and engine, once also when the change
+     * being saved restarts them.
+     */
+    private fun settingsTakenUp(before: AppSettings) {
+        pipeline.settingsTakenUp(settings.current.value, before)
+        settingsChanged()
     }
 
     fun phoneModelChosen() {
@@ -1494,9 +1510,9 @@ class CaptionSession(
         savingTrouble.update(
             settingsFailed = settings.saveFailed.value,
             historyFailed = settings.current.value.saveHistory && conversations.lastSaveFailure != null,
-            settingsUnreadable = settings.saveFailedUnreadable.value,
+            settingsUnreadable = settings.settingsUnreadable.value,
         )
-        CaptionState.savingTrouble(savingTrouble.shouldShow, savingTrouble.settingsUnreadable)
+        CaptionState.savingTrouble(savingTrouble.shouldShow, savingTrouble.settingsUnreadable, savingTrouble.onlyUnreadable)
     }
 
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */

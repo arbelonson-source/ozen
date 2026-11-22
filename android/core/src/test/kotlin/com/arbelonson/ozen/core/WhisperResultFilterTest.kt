@@ -714,4 +714,29 @@ class UnvoicedPhraseTest {
     fun `the phrase said twice over is still the phrase`() {
         assertTrue(filter.isUnvoicedPhrase("תודה תודה", 1))
     }
+
+    @Test
+    fun `words read one at a time are the words of the whole normalized line`() {
+        val lines = listOf(
+            "",
+            "  Thank You!!  ",
+            "... — ! ♪",
+            "שָׁלוֹם־עֲלֵיכֶם, מָה נִשְׁמָע?",
+            "\u200Fתודה\u200F שצפיתם\u200E \u202Aabc\u202C",
+            "مَرْحَبـــا بِكُم، تَرْجَمَةُ",
+            "ΟΔΟΣ ΟΔΟΣ-ΟΔΟΣ Σ ΑΣ.Β ΑΣ\u00ADΒ",
+            "a \u0301b e\u0301 \u0345Σ x\u0345 Σ",
+            "a\u00A0b\u2003c\u3000d\te\nf\u0085g\u2028h\u2029i",
+            "👍🏽 ❤️ 👨\u200D👩\u200D👧 🇮🇱🇫🇷",
+            "İstanbul DİYARBAKIR",
+            "a/b–c—d\u2010e\u2011f",
+            "你好，世界 王老师",
+            "zero\u200Bwidth soft\u00ADhyphen",
+            "x\uD800y \uDC00z",
+        )
+        for (line in lines) {
+            val whole = WhisperResultFilter.normalize(line).split(" ").filter { it.isNotEmpty() }
+            assertEquals(whole, WhisperResultFilter.normalizedWords(line).asSequence().toList(), line)
+        }
+    }
 }

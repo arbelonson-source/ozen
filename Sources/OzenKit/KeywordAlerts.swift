@@ -643,8 +643,12 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         return words.joined(separator: " ")
     }
 
+    /// Direction marks are invisible and no part of a word: one standing
+    /// alone between the two halves of a split name was a word of its own,
+    /// and "savta" written as "sav", a mark and "ta" stayed silent.
     public func matches(in text: String) -> [KeywordMatch] {
-        let captionRaw = HebrewText.separatingJoiners(text).split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        let captionRaw = HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))
+            .split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard !captionRaw.isEmpty else { return [] }
         // Normalizing word-by-word (rather than normalizing the whole
         // string and re-splitting) keeps this array the same length as
