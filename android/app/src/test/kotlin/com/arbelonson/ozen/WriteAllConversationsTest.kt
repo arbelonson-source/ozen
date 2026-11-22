@@ -5,6 +5,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.io.IOException
 import java.lang.reflect.Proxy
 import java.util.UUID
 import kotlin.test.Test
@@ -32,13 +33,14 @@ class WriteAllConversationsTest {
         engine = TranscriptionEngineKind.WhisperKit,
     )
 
-    private fun saved(records: List<TranscriptSessionRecord>, unreadable: Set<UUID> = emptySet(), onLoad: (UUID) -> Unit = {}): SavedConversations =
+    private fun saved(records: List<TranscriptSessionRecord>, unreadable: Set<UUID> = emptySet(), onLoad: (UUID) -> Unit = {}, locked: Set<UUID> = emptySet()): SavedConversations =
         Proxy.newProxyInstance(javaClass.classLoader, arrayOf(SavedConversations::class.java)) { _, method, args ->
             when (method.name) {
                 "list" -> records.map(::summary)
                 "load" -> {
                     val id = args[0] as UUID
                     onLoad(id)
+                    if (id in locked) throw IOException("can't be read just now")
                     records.firstOrNull { it.id == id && id !in unreadable }
                 }
                 else -> error("unexpected ${method.name}")
@@ -74,5 +76,13 @@ class WriteAllConversationsTest {
         val none = StringBuilder()
         assertFalse(writeAllConversations(saved(emptyList()), true, "he", none))
         assertEquals("", none.toString())
+    }
+
+    @Test
+    fun `a conversation that cannot be read just now is left out, not the whole file`() {
+        val locked = newestFirst[0].id
+        val out = StringBuilder()
+        assertTrue(writeAllConversations(saved(newestFirst, locked = setOf(locked)), true, "he", out))
+        assertEquals(TranscriptHistoryStore.exportAllText(newestFirst.filter { it.id != locked }, ::localOffset, true, false), out.toString())
     }
 }
