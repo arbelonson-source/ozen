@@ -3760,6 +3760,34 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(!back.hasCompletedOnboarding)
     }
 
+    @Test("saved sound alerts that come back while captions are paused reach the sound alerts at once, the faint doorbell included, and captions stay paused")
+    func savedSoundAlertsComeBackWhilePaused() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-paused-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.soundAlerts = SoundAlertPreferences(minimumImportance: .low, mutedIdentifiers: ["door"], sensitiveIdentifiers: ["door_bell"])
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { settings in FakeEngine(kind: settings.engine) }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline)
+        await viewModel.start()
+        await viewModel.togglePause()
+        try #require(viewModel.pipeline.phase == .paused)
+        #expect(viewModel.pipeline.soundPolicy.preferences == SoundAlertPreferences())
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+
+        #expect(viewModel.settings.soundAlerts == saved.soundAlerts)
+        #expect(viewModel.pipeline.soundPolicy.preferences == saved.soundAlerts)
+        #expect(viewModel.pipeline.soundPolicy.preferences.sensitiveIdentifiers.contains("door_bell"))
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(viewModel.pipeline.phase == .paused)
+    }
+
     @Test("captions an automatic retry brought back after a failed start are saved as a conversation of their own")
     func autoRetryStartsTheHistorySession() async throws {
         let audio = FakeAudioCapturer()
