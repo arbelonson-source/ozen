@@ -188,4 +188,24 @@ struct SettingsStoreUnreadableTests {
         #expect(back.speechRate == 0.5)
         #expect(back.speakerProfiles.map(\.name) == ["Dana"])
     }
+
+    @Test("a plain file where the settings folder should be leaves no room for a settings file: that is no settings yet, not a file that can't be read, and a save there fails as on a full phone")
+    func plainFileForTheFolderIsNoSettingsYet() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let blocker = dir.appendingPathComponent("blocked")
+        try Data("x".utf8).write(to: blocker)
+        let store = SettingsStore(fileURL: blocker.appendingPathComponent("ozen-settings.json"))
+        #expect(store.load() == .default)
+        #expect(!store.isUnreadable)
+
+        do {
+            try store.save(personal())
+            Issue.record("a save under a plain file went through")
+        } catch {
+            #expect(!(error is SettingsFileUnreadable))
+        }
+        #expect(!store.isUnreadable)
+        #expect(try Data(contentsOf: blocker) == Data("x".utf8))
+    }
 }

@@ -964,14 +964,22 @@ class SettingsStore(private val file: File) {
         class Bytes(val data: ByteArray) : FileRead
     }
 
-    /** Only "no such file" counts as no settings yet; any other failure means a file may well be there. */
+    /**
+     * Only "no such file" counts as no settings yet; any other failure means a
+     * file may well be there. A plain file standing where one of its folders
+     * should be counts as none too: no file can be there then, and the read
+     * fails as "not a directory". The iPhone's store does the same.
+     */
     private fun read(): FileRead = try {
         FileRead.Bytes(Files.readAllBytes(file.toPath()))
     } catch (_: NoSuchFileException) {
         FileRead.Missing
     } catch (error: Exception) {
-        FileRead.Unreadable(error)
+        if (liesUnderAPlainFile()) FileRead.Missing else FileRead.Unreadable(error)
     }
+
+    private fun liesUnderAPlainFile(): Boolean =
+        generateSequence(file.absoluteFile.parentFile) { it.parentFile }.firstOrNull { it.exists() }?.isFile == true
 
     private fun decoded(data: ByteArray): AppSettings? = try {
         AppSettings.fromJson(String(data, Charsets.UTF_8))

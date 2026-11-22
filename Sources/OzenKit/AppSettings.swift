@@ -756,15 +756,29 @@ public struct SettingsStore: Sendable {
     }
 
     /// Only "no such file" counts as no settings yet; any other failure
-    /// means a file may well be there.
+    /// means a file may well be there. A plain file standing where one of
+    /// its folders should be counts as none too: no file can be there then.
+    /// iOS doesn't call that read "no such file", and the caption screen
+    /// said at launch that saved settings couldn't be read.
     private func read() -> FileRead {
         do {
             return .read(try Data(contentsOf: fileURL))
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
             return .missing
         } catch {
-            return .unreadable(error)
+            return liesUnderAPlainFile ? .missing : .unreadable(error)
         }
+    }
+
+    private var liesUnderAPlainFile: Bool {
+        var folder = fileURL.deletingLastPathComponent().standardizedFileURL
+        var isFolder: ObjCBool = false
+        while !FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder) {
+            let parent = folder.deletingLastPathComponent().standardizedFileURL
+            guard parent != folder else { return false }
+            folder = parent
+        }
+        return !isFolder.boolValue
     }
 
     private func decoded(_ data: Data) -> AppSettings? {

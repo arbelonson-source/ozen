@@ -171,4 +171,17 @@ class SettingsStoreUnreadableTest {
         assertEquals(0.5f, back.speechRate)
         assertEquals(listOf("Dana"), back.speakerProfiles.map { it.name })
     }
+
+    @Test
+    fun `a plain file where the settings folder should be leaves no room for a settings file - that is no settings yet, not a file that can't be read, and a save there fails as on a full phone`() {
+        val blocker = File(folder, "blocked").apply { writeText("x") }
+        val store = SettingsStore(File(blocker, "ozen-settings.json"))
+        assertEquals(AppSettings.default, store.load())
+        assertFalse(store.isUnreadable)
+
+        val refused = assertFails { store.save(personal()) }
+        assertFalse(refused is SettingsFileUnreadableException)
+        assertFalse(store.isUnreadable)
+        assertEquals("x", blocker.readText())
+    }
 }
