@@ -13,15 +13,19 @@ class SettingsHolder(private val store: SettingsStore) {
     private val oneChangeAtATime = Any()
 
     fun change(edit: (AppSettings) -> Unit) {
-        synchronized(oneChangeAtATime) {
-            val next = state.value.copy().also(edit)
-            state.value = next
-            saveFailed.value = try {
-                store.save(next)
-                false
-            } catch (_: Exception) {
-                true
-            }
+        changeAndSave(edit)
+    }
+
+    fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = synchronized(oneChangeAtATime) {
+        val next = state.value.copy().also(edit)
+        state.value = next
+        val saved = try {
+            store.save(next)
+            true
+        } catch (_: Exception) {
+            false
         }
+        saveFailed.value = !saved
+        saved
     }
 }
