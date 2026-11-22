@@ -3692,6 +3692,36 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.detail)
     }
 
+    @Test("a settings file that can't be read at launch puts the banner up at once, with that reason, before anything is saved; a save that gets through takes it down, and a first run shows nothing")
+    func unreadableAtLaunchShowsAtOnce() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-launch-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.hasCompletedOnboarding = true
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = { CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder()) }
+
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline())
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(viewModel.savingTrouble.shouldShow)
+        #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(!viewModel.savingTrouble.isFailing)
+
+        let firstRun = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: folder.appendingPathComponent("not-there.json")),
+            pipeline: pipeline()
+        )
+        #expect(!firstRun.savingTrouble.isFailing)
+    }
+
     @Test("captions an automatic retry brought back after a failed start are saved as a conversation of their own")
     func autoRetryStartsTheHistorySession() async throws {
         let audio = FakeAudioCapturer()

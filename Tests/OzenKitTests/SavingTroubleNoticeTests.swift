@@ -85,6 +85,29 @@ struct SavingTroubleNoticeTests {
         }
     }
 
+    @Test("settings that can't be read show it before anything is saved, with that reason, until a save gets through")
+    func unreadableSettingsShowBeforeAnySave() {
+        Localization.$override.withValue(.english) {
+            var notice = SavingTroubleNotice()
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.isFailing)
+            #expect(notice.shouldShow)
+            #expect(notice.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+
+            notice.dismiss()
+            notice.update(settingsFailed: true, historyFailed: false, settingsUnreadable: true)
+            #expect(!notice.shouldShow)
+
+            notice.update(settingsFailed: false, historyFailed: false)
+            #expect(!notice.isFailing)
+            notice.update(settingsFailed: false, historyFailed: false, settingsUnreadable: true)
+            #expect(notice.shouldShow)
+
+            notice.update(settingsFailed: false, historyFailed: true, settingsUnreadable: true)
+            #expect(notice.shownDetail == SavingTroubleNotice.detail)
+        }
+    }
+
     @Test("the reason for settings that can't be read is said in Hebrew too")
     func unreadableSettingsInHebrew() {
         Localization.$override.withValue(.hebrew) {

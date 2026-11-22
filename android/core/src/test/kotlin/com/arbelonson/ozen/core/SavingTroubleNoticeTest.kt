@@ -86,6 +86,29 @@ class SavingTroubleNoticeTest {
     }
 
     @Test
+    fun `settings that can't be read show it before anything is saved, with that reason, until a save gets through`() {
+        Localization.withLanguage(UILanguage.English) {
+            val notice = SavingTroubleNotice()
+            notice.update(settingsFailed = false, historyFailed = false, settingsUnreadable = true)
+            assertTrue(notice.isFailing)
+            assertTrue(notice.shouldShow)
+            assertEquals(SavingTroubleNotice.unreadableSettingsDetail, notice.shownDetail)
+
+            notice.dismiss()
+            notice.update(settingsFailed = true, historyFailed = false, settingsUnreadable = true)
+            assertFalse(notice.shouldShow)
+
+            notice.update(settingsFailed = false, historyFailed = false)
+            assertFalse(notice.isFailing)
+            notice.update(settingsFailed = false, historyFailed = false, settingsUnreadable = true)
+            assertTrue(notice.shouldShow)
+
+            notice.update(settingsFailed = false, historyFailed = true, settingsUnreadable = true)
+            assertEquals(SavingTroubleNotice.detail, notice.shownDetail)
+        }
+    }
+
+    @Test
     fun `the reason for settings that can't be read is said in Hebrew too`() {
         Localization.withLanguage(UILanguage.Hebrew) {
             assertTrue(SavingTroubleNotice.unreadableSettingsDetail.contains("לקרוא"))
