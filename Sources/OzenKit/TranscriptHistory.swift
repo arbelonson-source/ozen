@@ -1258,9 +1258,14 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     /// Names a saved conversation, or removes its name with an empty one.
-    public func rename(id: UUID, title: String) throws {
+    /// `read` runs once the file is read, before the name is written. A file
+    /// that is there but can't be read just now throws, as in `replaceText`:
+    /// taken for gone, it was named with nothing written, and History said
+    /// the name was saved.
+    public func rename(id: UUID, title: String, onRead read: () -> Void = {}) throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+        _ = try patchRecordFile(at: fileURL(for: id), throwIfUnreadable: true) { object in
+            read()
             if trimmed.isEmpty {
                 object.removeValue(forKey: "title")
             } else {

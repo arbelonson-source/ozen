@@ -578,6 +578,45 @@ struct TranscriptHistoryWriterTests {
         #expect(store.load(id: evening.id)?.title == "ערב")
     }
 
+    // Taken for gone, a file that couldn't be read just now was named with
+    // nothing written, and History said the name was saved. Its outcome,
+    // none at all, also took the place of a save that had really failed,
+    // and the warning went while the phone was still full.
+    @Test("a name given in History while its conversation can't be read just now is not saved, and is not a save that failed")
+    func nameOfAConversationThatCantBeRead() throws {
+        let (store, dir) = makeStore()
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.rename-unreadable"))
+        let evening = record(id: UUID(), lines: 1, ended: true)
+        let other = record(id: UUID(), lines: 1, ended: true)
+        writer.saveNow(evening)
+        writer.saveNow(other)
+        let file = dir.appendingPathComponent("\(evening.id.uuidString).json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        #expect(!writer.renameNow(id: evening.id, title: "Dinner"), "History says the name wasn't saved")
+        #expect(writer.lastFailure == nil, "nothing failed to save")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(!writer.renameNow(id: other.id, title: "Dinner"))
+        let full = try #require(writer.lastFailure, "a name the disk refuses is still reported")
+        #expect(!writer.renameNow(id: evening.id, title: "Dinner"))
+        #expect(writer.lastFailure == full, "the phone is still full")
+
+        writer.saveNow(record(id: UUID(), lines: 1, ended: true))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        #expect(!writer.renameNow(id: evening.id, title: "Dinner"))
+        #expect(writer.lastFailure == nil, "what waited is written, so there is room")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        #expect(writer.renameNow(id: evening.id, title: "Dinner"))
+        #expect(store.load(id: evening.id)?.title == "Dinner")
+        #expect(writer.lastFailure == nil)
+    }
+
     @Test("deleting the one conversation the disk refused takes the saving warning away with it")
     func deletingRefusedConversationClearsWarning() throws {
         let (store, dir) = makeStore()
@@ -1002,6 +1041,49 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.toggleStarNow(sessionID: early.id, segmentID: added, keepingRefused: false) == true)
         #expect(store.load(id: early.id)?.segments.map(\.isStarred) == [false, true])
         #expect(writer.lastFailure == nil)
+    }
+
+    // A star that wrote nothing put its outcome, none at all, in place of a
+    // save that had really failed, and the warning went while the phone was
+    // still full. A word fix that writes nothing leaves it.
+    @Test("a star from History that writes nothing leaves a save that failed before reported, and goes once what waited is written")
+    func historyStarThatWritesNothingKeepsTheWarning() throws {
+        let (store, dir) = makeStore()
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.history-star-writes-nothing"))
+        let evening = record(id: UUID(), lines: 1, ended: true)
+        let other = record(id: UUID(), lines: 1, ended: true)
+        writer.saveNow(evening)
+        writer.saveNow(other)
+        let line = evening.segments[0].id
+        let file = dir.appendingPathComponent("\(evening.id.uuidString).json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(!writer.renameNow(id: other.id, title: "Dinner"))
+        let full = try #require(writer.lastFailure)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        #expect(writer.toggleStarNow(sessionID: evening.id, segmentID: line, keepingRefused: false) == nil)
+        #expect(writer.lastFailure == full, "the phone is still full")
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        #expect(writer.toggleStarNow(sessionID: other.id, segmentID: UUID(), keepingRefused: false) == nil)
+        #expect(writer.lastFailure == full, "a line that is gone says nothing about room either")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        #expect(writer.toggleStarNow(sessionID: evening.id, segmentID: line, keepingRefused: false) == true)
+        #expect(writer.lastFailure == nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(writer.toggleStarNow(sessionID: evening.id, segmentID: line, keepingRefused: false) == nil)
+        #expect(writer.lastFailure != nil, "a star the disk refuses is still reported")
+
+        writer.saveNow(record(id: UUID(), lines: 1, ended: true))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        #expect(writer.toggleStarNow(sessionID: evening.id, segmentID: line, keepingRefused: false) == nil)
+        #expect(writer.lastFailure == nil, "what waited is written, so there is room")
     }
 
     @Test("once a waiting conversation is written, the warning goes even if the one on screen hasn't changed")
