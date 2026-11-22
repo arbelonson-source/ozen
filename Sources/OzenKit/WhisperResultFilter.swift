@@ -840,4 +840,83 @@ public struct WhisperResultFilter: Sendable, Equatable {
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
     }
+
+    /// The words of `normalize(text)`, read from the front and normalized
+    /// one at a time, for a caller that may need only the first few: the
+    /// line being written comes again at every word, and normalizing all
+    /// of it each time made a word cost more the longer the line was.
+    ///
+    /// `normalize` splits at spaces after it has dropped punctuation and
+    /// marks; here the line is split first, at spaces and at the word
+    /// joiners `normalize` turns into spaces, and each part is normalized
+    /// by itself. That finds the same words as long as no space shares a
+    /// character with what is next to it (`isPlainForSplitting`): a
+    /// combining mark right after a space is part of the space's
+    /// character, which `normalize` drops as a space. At the first letter
+    /// that isn't plain, the whole line is normalized after all. The words
+    /// handed out before it are already right: such a letter only changes
+    /// the word it is in, or the one after a space it follows.
+    struct NormalizedWords {
+        private let text: String
+        private var next: String.UnicodeScalarView.Index
+        private var read: [String] = []
+        private var isWhole = false
+
+        init(_ text: String) {
+            self.text = text
+            next = text.unicodeScalars.startIndex
+        }
+
+        /// Whether the line has a word at `index`.
+        mutating func has(_ index: Int) -> Bool {
+            while read.count <= index, !isWhole, readWord() {}
+            return index < read.count
+        }
+
+        subscript(index: Int) -> String { read[index] }
+
+        private mutating func readWord() -> Bool {
+            let scalars = text.unicodeScalars
+            while next < scalars.endIndex {
+                while next < scalars.endIndex, Self.separates(scalars[next]) { next = scalars.index(after: next) }
+                guard next < scalars.endIndex else { return false }
+                let start = next
+                while next < scalars.endIndex, !Self.separates(scalars[next]) {
+                    guard Self.isPlainForSplitting(scalars[next]) else {
+                        read = WhisperResultFilter.normalize(text).split(separator: " ").map(String.init)
+                        isWhole = true
+                        return false
+                    }
+                    next = scalars.index(after: next)
+                }
+                let word = WhisperResultFilter.normalize(String(scalars[start..<next]))
+                if !word.isEmpty {
+                    read.append(word)
+                    return true
+                }
+            }
+            return false
+        }
+
+        private static func separates(_ scalar: Unicode.Scalar) -> Bool {
+            scalar.properties.isWhitespace || HebrewText.wordJoiners.contains(scalar)
+        }
+
+        /// A letter that is a character of its own next to a space once
+        /// `normalize` has dropped what it drops. Marks it keeps join the
+        /// letter (or space) before them; the few letters that join a space
+        /// as marks do, or that a space joins, are listed by hand.
+        static func isPlainForSplitting(_ scalar: Unicode.Scalar) -> Bool {
+            let value = scalar.value
+            switch scalar.properties.generalCategory {
+            case .nonspacingMark, .spacingMark, .enclosingMark:
+                return (0x0591...0x05C7).contains(value) || (0x064B...0x065F).contains(value) || value == 0x0670
+            default:
+                switch value {
+                case 0x0E33, 0x0EB3, 0x0D4E, 0xFF9E, 0xFF9F, 0x11000...0x11FFF: return false
+                default: return true
+                }
+            }
+        }
+    }
 }
