@@ -7,8 +7,13 @@ struct FixWordSheet: View {
     /// The saved word fixes, so Fix it every time can tell when the list
     /// has no room left, as the Words screen does.
     let fixes: [WordFix]
-    /// What Save says when the line didn't take the fix.
-    var notSaved = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.")
+    /// What Save says when the line didn't take the fix, on the caption
+    /// screen and in History alike, as on Android: the line is gone from the
+    /// captions, is being heard again, or no longer has the word because its
+    /// words changed since the sheet opened. Before, the caption screen said
+    /// the line had left the screen while it was still there, and History
+    /// said to try again when trying again could not help.
+    private var notSaved: String { tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.") }
     /// Returns whether the line changed.
     let onSave: (WordFix, Bool) -> Bool
     @State private var picked: ClosedRange<Int>?
@@ -24,9 +29,9 @@ struct FixWordSheet: View {
     @FocusState private var writing: Bool
     @Environment(\.dismiss) private var dismiss
 
-    private var words: [String] {
-        CaptionLayout.displayText(text, languageCode: languageCode).split(whereSeparator: \.isWhitespace).map(String.init)
-    }
+    /// As on Android: a comma or full stop after a word stays off its tile,
+    /// and a name's ending geresh stays on it and in what Save keeps.
+    private var words: [String] { WordFixes.wordsOf(text) }
     private var fix: WordFix { WordFix(heard: heard, written: written) }
     /// Saving needs a fix that changes this line: a typed word the line
     /// doesn't have changed nothing, yet Save closed the sheet as if it had
@@ -133,8 +138,7 @@ struct FixWordSheet: View {
     }
 
     private func pickedText(_ range: ClosedRange<Int>) -> String {
-        let edge = CharacterSet.punctuationCharacters.union(.whitespaces)
-        return FixWordForm.cleaned(words[range].joined(separator: " ")).trimmingCharacters(in: edge)
+        FixWordForm.pickedText(range, words: words)
     }
 
     private func wordButton(_ index: Int, _ word: String) -> some View {
@@ -167,7 +171,7 @@ struct FixWordSheet: View {
     /// run, or the only word), so a neighbour joined by a near-miss can be
     /// taken off again; before, a pick could only grow or move.
     private func tap(_ index: Int) {
-        picked = FixWordForm.tapped(picked, index: index, words: words)
+        picked = FixWordForm.tapped(picked, index: index, line: text)
         if let picked {
             heard = pickedText(picked)
             if written.isEmpty { writing = true }
