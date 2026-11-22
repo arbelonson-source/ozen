@@ -578,9 +578,6 @@ struct LiveCaptionView: View {
         // something new gone wrong.
         .sensoryFeedback(.warning, trigger: battery.notice?.id) { _, id in id != nil }
         .sensoryFeedback(.selection, trigger: fontSizeTrigger)
-        .onChange(of: phoneBodySize, initial: true) { _, size in
-            viewModel.phoneBodySize = size
-        }
         .animation(.default, value: battery.notice)
         .onChange(of: scenePhase, initial: true) { _, phase in
             // Inactive is Control Center pulled down, a call banner, or the
@@ -618,8 +615,18 @@ struct LiveCaptionView: View {
         }
     }
 
-    var body: some View {
+    /// The screen, told the phone's body text size as it changes. Its own
+    /// property: one more step on `reactingScreen` was more than the
+    /// compiler could type-check in time.
+    private var followingScreen: some View {
         reactingScreen
+            .onChange(of: phoneBodySize, initial: true) { _, size in
+                viewModel.phoneBodySize = size
+            }
+    }
+
+    var body: some View {
+        followingScreen
         .sheet(item: $openedConversation) { opened in
             NavigationStack {
                 HistoryDetailView(viewModel: viewModel, sessionID: opened.id, initialLineID: opened.lineID) {
