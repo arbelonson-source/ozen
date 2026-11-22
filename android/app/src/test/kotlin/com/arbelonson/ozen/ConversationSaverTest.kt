@@ -721,6 +721,123 @@ class ConversationSaverTest {
         assertEquals(listOf(conversation), saved().map { it.id })
     }
 
+    // The screen fixed the line in its own step, and the long quiet that
+    // closed its conversation meanwhile made it look like a line of an
+    // earlier conversation afterwards: the screen was asked again and fixed
+    // the words a second time.
+    @Test
+    fun `a word fixed in History on a line a long quiet closed meanwhile is fixed on screen once`() {
+        start()
+        val quietSince = clock - 30 * 60
+        say("I saw Cohen", at = quietSince)
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val line = lines[0].id
+
+        assertTrue(
+            saver.fixLineEverywhere(conversation, line, WordFix("Cohen", "Avi Cohen")) { id, fix ->
+                if (saver.isCurrent(conversation)) assertTrue(saver.checkForConversationBreak())
+                fixOnScreen(id, fix)
+            },
+        )
+        assertEquals("I saw Avi Cohen", lines[0].text)
+        assertEquals(listOf("I saw Avi Cohen"), store.load(conversation)!!.segments.map { it.text })
+    }
+
+    @Test
+    fun `a word fixed in History on a line of an earlier conversation still on screen is fixed there too`() {
+        start()
+        say("I saw Cohen", at = clock - 30 * 60)
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        assertTrue(saver.checkForConversationBreak())
+
+        assertTrue(saver.fixLineEverywhere(conversation, lines[0].id, WordFix("Cohen", "Avi Cohen"), ::fixOnScreen))
+        assertEquals("I saw Avi Cohen", lines[0].text)
+        assertEquals(listOf("I saw Avi Cohen"), store.load(conversation)!!.segments.map { it.text })
+    }
+
+    // History asks from its own thread and the screen fixes the line in a
+    // step of the main thread. What to save was read on History's thread
+    // after that step, so captions cleared just then had the fix called not
+    // saved, and a save written after the clear's could open the ended
+    // conversation again.
+    @Test
+    fun `a word fixed in History is saved with the lines the screen fixed, whatever the main thread does next`() {
+        var next: () -> Unit = {}
+        val history = ConversationSaver(
+            writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+            speakerName = { null }, inputName = { "Wired headset" }, startNewConversation = {}, setSaveHistory = { settings.saveHistory = it },
+            scope = scope, now = { clock }, io = EmptyCoroutineContext,
+            onMainThread = { step ->
+                step()
+                next()
+            },
+        )
+        listening = true
+        history.listeningChanged()
+        say("I saw aval")
+        history.save(ended = false)
+        val conversation = saved().single().id
+        next = { history.clear { lines.clear() } }
+
+        assertTrue(history.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
+        val kept = store.load(conversation)!!
+        assertEquals(listOf("I saw Avi"), kept.segments.map { it.text })
+        assertNotNull(kept.endedAt, "the clear ended the conversation")
+        assertEquals(listOf(conversation), saved().map { it.id })
+    }
+
+    // The same for a line a long quiet closed while the screen fixed it:
+    // its conversation waited for room, and History was told the fix was
+    // not saved though it was written once there was room.
+    @Test
+    fun `a word fixed in History on a line a long quiet closed meanwhile counts as saved while it waits for room`() {
+        start()
+        say("I saw aval", at = clock - 30 * 60)
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val line = lines[0].id
+
+        assertTrue(folder.setWritable(false))
+        val kept = try {
+            saver.fixLine(conversation, line, WordFix("aval", "Avi")) { id, fix ->
+                assertTrue(saver.checkForConversationBreak())
+                fixOnScreen(id, fix)
+            }
+        } finally {
+            folder.setWritable(true)
+        }
+        say("Something else entirely")
+        saver.save(ended = false)
+        assertEquals(listOf("I saw Avi"), store.load(conversation)!!.segments.map { it.text })
+        assertTrue(kept, "History calls a fix waiting for room saved")
+    }
+
+    // History's dialog says a fix it was told was not saved can be tried
+    // again. One that had to wait for room was kept anyway and written once
+    // there was room, so the tap that tried again fixed the words twice.
+    @Test
+    fun `a word fixed in History that waits for room is called saved, so its words are fixed once`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        store.fixText(line, earlier, "I saw Cohen today")
+        val fix = WordFix("Cohen", "Avi Cohen")
+
+        assertTrue(folder.setWritable(false))
+        val kept = try {
+            saver.fixLineEverywhere(earlier, line, fix, ::fixOnScreen)
+        } finally {
+            folder.setWritable(true)
+        }
+        if (!kept) saver.fixLineEverywhere(earlier, line, fix, ::fixOnScreen)
+        start()
+        say("Something else entirely")
+        saver.save(ended = false)
+        assertEquals("I saw Avi Cohen today", store.load(earlier)!!.segments.single().text)
+        assertTrue(kept, "History calls a fix waiting for room saved")
+    }
+
     // A replay hears the same speech again and takes the lines it rewrites
     // off the screen, and every save of the conversation being captioned is
     // written from the lines on screen. A fix of such a line went to the
