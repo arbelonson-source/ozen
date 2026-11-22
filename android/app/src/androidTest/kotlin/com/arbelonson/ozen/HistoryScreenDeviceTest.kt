@@ -1684,6 +1684,143 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { shownLine("Marked as important. Unreadable star test the pharmacy closes at nine") }
     }
 
+    // A conversation whose file couldn't be read just now as it was opened
+    // showed "Conversation not found", as if it had been deleted. One no
+    // longer being captioned is never read again, so it stayed that way
+    // until the person went back and opened it again.
+    @Test
+    fun aConversationThatCannotBeReadAsItOpensSaysSoAndShowsOnceItCanBeRead() {
+        val id = seed("Unreadable open test first line" to null, "Unreadable open test the bus leaves at six" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Unreadable open test first line")
+        val file = File(app.filesDir, CaptionSession.HISTORY_FOLDER).listFiles()!!.single { it.name.equals("$id.json", ignoreCase = true) }
+        assertTrue(file.setReadable(false, false))
+        try {
+            compose.onNodeWithText("Unreadable open test first line", substring = true).performClick()
+            waitFor("The conversation can’t be read just now")
+            compose.onNodeWithText("Conversation not found").assertDoesNotExist()
+        } finally {
+            file.setReadable(true)
+        }
+        compose.mainClock.advanceTimeBy(3_500)
+        compose.waitUntil(10_000) { shownLine("Unreadable open test the bus leaves at six") }
+        compose.onNodeWithText("The conversation can’t be read just now", substring = true).assertDoesNotExist()
+    }
+
+    // History's reading of a conversation that can't be read just now, and
+    // of one that is gone, counted; it is shown on its own, as when opened.
+    private class UnreadableConversation(private val said: String) : SavedConversations {
+        val id: UUID = UUID.randomUUID()
+        private val line = UUID.randomUUID()
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val loads = AtomicInteger()
+
+        @Volatile var readable = false
+
+        @Volatile var gone = false
+
+        override fun load(id: UUID): TranscriptSessionRecord? {
+            loads.incrementAndGet()
+            if (gone) return null
+            if (!readable) throw IOException("Permission denied")
+            return TranscriptSessionRecord(
+                id = this.id,
+                startedAt = startedAt,
+                endedAt = startedAt + 30,
+                engine = TranscriptionEngineKind.HomeServer,
+                modelVariant = "home server",
+                inputName = null,
+                segments = listOf(SavedSegment(line, said, null, null, startedAt, true)),
+            )
+        }
+
+        override fun isCurrent(id: UUID) = false
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String) = WordFixResult.Unreadable
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {}
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun starredLines() = emptyList<StarredLine>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun rename(id: UUID, title: String) = false
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean? = null
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    private fun showUnreadable(conversation: UnreadableConversation, open: MutableState<Boolean> = mutableStateOf(true)) {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) {
+                    ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+                }
+            }
+        }
+    }
+
+    // Time passing on the screen's clock, and its reads given time to come
+    // back: a read the screen should not make shows up here as one more.
+    private fun letTimePass(millis: Long) {
+        compose.mainClock.advanceTimeBy(millis)
+        Thread.sleep(500)
+        compose.waitForIdle()
+    }
+
+    // Try again reads the conversation at once, not at the next read the
+    // screen makes by itself a few seconds later; once shown, a conversation
+    // no longer being captioned is not read again.
+    @Test
+    fun tryAgainReadsAConversationThatCannotBeReadAtOnceAndItIsReadByItselfOnlyUntilItShows() {
+        val conversation = UnreadableConversation("Try again test the bus leaves at six")
+        showUnreadable(conversation)
+        waitFor("The conversation can’t be read just now")
+        compose.onNodeWithText("Conversation not found").assertDoesNotExist()
+        val before = conversation.loads.get()
+        val tapped = compose.mainClock.currentTime
+        compose.onNode(hasText("Try again") and hasClickAction()).performClick()
+        compose.waitUntil(5_000) { conversation.loads.get() > before }
+        val waited = compose.mainClock.currentTime - tapped
+        assertTrue("Try again read the conversation $waited ms after the tap", waited < 1_000)
+        waitFor("The conversation can’t be read just now")
+
+        conversation.readable = true
+        compose.mainClock.advanceTimeBy(3_500)
+        compose.waitUntil(10_000) { shownLine("Try again test the bus leaves at six") }
+        val shown = conversation.loads.get()
+        letTimePass(30_000)
+        assertEquals(shown, conversation.loads.get())
+    }
+
+    // Reading again stops when the screen closes, and when the conversation
+    // turns out to be gone, which still says "Conversation not found".
+    @Test
+    fun aConversationThatCannotBeReadIsNotReadAgainOnceClosedAndOneGoneMeanwhileIsNotFound() {
+        val conversation = UnreadableConversation("Closed unreadable test the bus leaves at six")
+        val open = mutableStateOf(true)
+        showUnreadable(conversation, open)
+        waitFor("The conversation can’t be read just now")
+        compose.runOnUiThread { open.value = false }
+        compose.waitForIdle()
+        val closed = conversation.loads.get()
+        letTimePass(10_000)
+        assertEquals(closed, conversation.loads.get())
+
+        compose.runOnUiThread { open.value = true }
+        waitFor("The conversation can’t be read just now")
+        conversation.gone = true
+        compose.mainClock.advanceTimeBy(3_500)
+        waitFor("Conversation not found")
+        compose.onNodeWithText("The conversation can’t be read just now", substring = true).assertDoesNotExist()
+        val found = conversation.loads.get()
+        letTimePass(10_000)
+        assertEquals(found, conversation.loads.get())
+    }
+
     @Test
     fun aStarStarredLinesCannotTakeOffSaysSoAndTheLineComesBack() {
         val id = starredConversation("Starred list test the dentist at four", System.currentTimeMillis() / 1_000.0 - 60)

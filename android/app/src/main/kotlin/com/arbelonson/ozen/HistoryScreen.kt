@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Share
@@ -111,6 +112,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HistoryDays
+import com.arbelonson.ozen.core.HistoryReadRetry
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
@@ -133,6 +135,7 @@ import com.arbelonson.ozen.ui.SectionHeader
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
 import java.io.IOException
@@ -156,7 +159,8 @@ interface SavedConversations {
     /**
      * The conversation as History shows it, or null when it is gone. Throws
      * when its file is there but can't be read just now: the conversation
-     * open in History then stays as it is shown.
+     * open in History then stays as it is shown, and one being opened says
+     * it can't be read just now and is read again.
      */
     @Throws(IOException::class)
     fun load(id: UUID): TranscriptSessionRecord?
@@ -707,11 +711,26 @@ internal fun ConversationScreen(
     } catch (_: IOException) {
         null
     }
+    // Opened while its file is there but can't be read just now, the screen
+    // says so and reads it again every few seconds until it reads, as shown
+    // or as gone; Try again reads it at once. Taken for no conversation, it
+    // said "Conversation not found", as if it had been deleted, and one no
+    // longer being captioned is never read again.
+    var cantRead by remember { mutableStateOf(false) }
+    var readTries by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
-    LaunchedEffect(id, marksUncertain) {
+    LaunchedEffect(id, marksUncertain, readTries) {
         var jumped = false
         while (true) {
-            val now = withContext(Dispatchers.IO) { readAgain() } ?: loaded ?: opened(null, query, marksUncertain, languageCode)
+            val before = loaded
+            val now = if (before != null) {
+                withContext(Dispatchers.IO) { readAgain() } ?: before
+            } else {
+                HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
+                    withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+                }
+            }
+            cantRead = false
             show(now)
             if (!jumped && now.matches.isNotEmpty()) {
                 jumped = true
@@ -834,6 +853,13 @@ internal fun ConversationScreen(
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
+            shown == null && cantRead -> EmptyState(
+                Icons.Rounded.History,
+                tr("אי אפשר לקרוא את השיחה כרגע", "The conversation can’t be read just now"),
+                tr("השיחה עדיין שמורה בטלפון. מנסים שוב בעוד כמה שניות.", "It’s still saved on the phone. Trying again in a few seconds."),
+            ) {
+                TonalButton(tr("נסו שוב", "Try again"), onClick = { readTries++ }, icon = Icons.Rounded.Refresh)
+            }
             shown == null -> LoadingNote()
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
             else -> {
