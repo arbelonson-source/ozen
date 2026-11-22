@@ -1,8 +1,10 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.lang.ref.WeakReference
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
@@ -45,6 +47,27 @@ class KeywordAlertMatcherReuseTest {
             }
         }
         assertTrue(compared > 200)
+    }
+
+    private fun wordReadOnce(matcher: KeywordAlertMatcher): WeakReference<String> {
+        val word = StringBuilder("מילה").append(7).toString()
+        matcher.matches(word)
+        matcher.matches("שלום $word")
+        return WeakReference(word)
+    }
+
+    @Test
+    fun `a word that stays at the start of the line keeps no word gone from the line and from the kept words`() {
+        val matcher = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "סבתא")), "he")
+        val gone = wordReadOnce(matcher)
+        repeat(200) { line -> matcher.matches("שלום , " + (1..10).joinToString(" ") { "דבר${line * 10 + it}" }) }
+        repeat(20) {
+            if (gone.get() != null) {
+                System.gc()
+                Thread.sleep(20)
+            }
+        }
+        assertNull(gone.get(), "a word read 2,000 words ago is still held")
     }
 
     @Test

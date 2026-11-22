@@ -160,7 +160,7 @@ object HebrewText {
     fun removingDirectionMarks(text: String): String =
         if (hasDirectionMark(text)) text.filteringScalars { !isDirectionMark(it) } else text
 
-    internal fun hasDirectionMark(text: String): Boolean {
+    private fun hasDirectionMark(text: String): Boolean {
         var index = 0
         while (index < text.length) {
             val codePoint = text.codePointAt(index)
@@ -743,12 +743,9 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
      */
     fun matchesInLiveText(text: String): List<KeywordMatch> {
         if (alerts.none { it.isEnabled }) return emptyList()
-        if (!endsInCutOffWord(text)) return matching(text, text.length)
-        // The words before the stub are read where they are on the line;
-        // direction marks are taken out of every word first, so a line with
-        // any still goes the long way.
-        if (HebrewText.hasDirectionMark(text)) return matches(droppingCutOffWord(text))
-        return matching(text, endBeforeCutOffWord(text))
+        // The words before the stub are read where they are on the line.
+        val line = HebrewText.removingDirectionMarks(text)
+        return matching(line, if (endsInCutOffWord(line)) endBeforeCutOffWord(line) else line.length)
     }
 
     /**
@@ -810,13 +807,18 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
             return known[offset] ?: HebrewText.isAffectionateVariant(raw, normalized, plan.words[offset]).also { known[offset] = it }
         }
 
-        private var gluedTo: Reading? = null
+        /**
+         * The next word this one was last glued to, as the string the answer
+         * follows from: holding that word's reading instead kept a chain of
+         * readings alive, word to word, past the words the matcher keeps.
+         */
+        private var gluedTo: String? = null
         private var gluesName = false
 
         fun gluesWith(next: Reading): Boolean {
-            if (gluedTo !== next) {
+            if (gluedTo != next.normalized) {
                 gluesName = HebrewText.stripAttachedPrefix(HebrewText.foldingFinalLetters(normalized + next.normalized), plan.joined)
-                gluedTo = next
+                gluedTo = next.normalized
             }
             return gluesName
         }
@@ -865,7 +867,16 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
         return CaptionWord(raw).also { knownWords[raw] = it }
     }
 
-    fun matches(text: String): List<KeywordMatch> = matching(text, text.length)
+    /**
+     * The matches in [text]. Direction marks are invisible and no part of a
+     * word: one standing alone between the two halves of a split name was a
+     * word of its own, and "savta" written as "sav", a mark and "ta" stayed
+     * silent.
+     */
+    fun matches(text: String): List<KeywordMatch> {
+        val line = HebrewText.removingDirectionMarks(text)
+        return matching(line, line.length)
+    }
 
     /** The matches among the words of [text] before [end]. */
     private fun matching(text: String, end: Int): List<KeywordMatch> {
@@ -1053,8 +1064,8 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>, val captionLangua
 
         /**
          * Where the words [droppingCutOffWord] keeps end in [text], a line
-         * with no direction marks that [endsInCutOffWord]: the start of the
-         * last word it drops, found from the end of the line.
+         * with its direction marks taken out that [endsInCutOffWord]: the
+         * start of the last word it drops, found from the end of the line.
          */
         private fun endBeforeCutOffWord(text: String): Int {
             var end = text.length

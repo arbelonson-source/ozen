@@ -147,6 +147,38 @@
      "phrase": "סבתא"
     }
    ],
+   "text": "סב \u200f תא בואי",
+   "note": "a name split in two with an invisible direction mark standing between the halves still matches",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סב תא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "בואי \u200f \u202bסבתא\u202c עכשיו",
+   "note": "direction marks are no part of the words: the match shows the name without them, and a mark standing alone is no word",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
    "text": "סבתא! (סבתא)",
    "matches": [
     {
