@@ -32,6 +32,12 @@ private struct Conversation {
         return Conversation(pipeline: pipeline)
     }
 
+    /// Ends the conversation, so its pipeline and the tasks waiting for
+    /// more words don't outlive the test.
+    func stop() {
+        pipeline.stop()
+    }
+
     /// One pass of the engine, through the same path its tokens take.
     mutating func hear(_ text: String, line: UUID, final: Bool = false) {
         clock += 0.1
@@ -120,6 +126,8 @@ struct CaptionPipelineLongConversationTests {
                     long: long.bytesPerNewLine(counting: 10, from: latinWords))
         #expect(line.long - line.short <= Self.allowedExtraBytes,
                 "each new line at 10,000 lines allocated \(line.long) bytes, against \(line.short) at 10 lines: \(line.long - line.short) more")
+        short.stop()
+        long.stop()
     }
 
     private func wordCosts(settings: AppSettings, words: [String]) async -> (short: Int, long: Int) {
@@ -127,8 +135,11 @@ struct CaptionPipelineLongConversationTests {
         await short.finishedLines(10, from: words)
         var long = await Conversation.started(settings: settings)
         await long.finishedLines(10, from: words)
-        return (short.bytesPerWord(after: 6, counting: 10, from: words),
-                long.bytesPerWord(after: 100, counting: 10, from: words))
+        let costs = (short: short.bytesPerWord(after: 6, counting: 10, from: words),
+                     long: long.bytesPerWord(after: 100, counting: 10, from: words))
+        short.stop()
+        long.stop()
+        return costs
     }
 
     @Test("with no alerts or fixes, a word at the end of a 100-word line costs about what it costs after 6 words")

@@ -655,11 +655,11 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         guard hasEnabledAlert else { return [] }
         let captionRaw = HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))
             .split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        var plans: [String: Plan] = [:]
+        var plans: [ExactText: Plan] = [:]
         return matching(captionRaw.map { CaptionWord(raw: $0) }) { phrase in
-            if let plan = plans[phrase] { return plan }
+            if let plan = plans[ExactText(phrase)] { return plan }
             let plan = Plan(phrase: phrase)
-            plans[phrase] = plan
+            plans[ExactText(phrase)] = plan
             return plan
         }
     }
@@ -953,7 +953,7 @@ final class KeywordAlertReader {
     static let keptWords = 512
 
     private var language: String?
-    private var plans: [String: KeywordAlertMatcher.Plan] = [:]
+    private var plans: [ExactText: KeywordAlertMatcher.Plan] = [:]
     private var known: [ExactText: KeywordAlertMatcher.CaptionWord] = [:]
     private var lastCaption: [KeywordAlertMatcher.CaptionWord] = []
 
@@ -982,10 +982,10 @@ final class KeywordAlertReader {
     }
 
     private func plan(_ phrase: String) -> KeywordAlertMatcher.Plan {
-        if let known = plans[phrase] { return known }
+        if let known = plans[ExactText(phrase)] { return known }
         if plans.count >= Self.keptWords { plans = [:] }
         let made = KeywordAlertMatcher.Plan(phrase: phrase)
-        plans[phrase] = made
+        plans[ExactText(phrase)] = made
         return made
     }
 

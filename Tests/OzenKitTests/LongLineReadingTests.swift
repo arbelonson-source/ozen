@@ -182,6 +182,19 @@ struct LongLineReadingTests {
         let french = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "Anne")], captionLanguage: "fr")
         #expect(!reader.matches(in: "bonjour l'Anne", with: french).isEmpty)
     }
+
+    // Swift counts the compatibility character U+F914 and 樂 (U+6A02) as
+    // the same text, but only 樂 reads as a Chinese character: a phrase
+    // worked out for the first was used for the second.
+    @Test("an alert spelled with other characters that Swift counts as the same text is read anew by the keyword check that keeps words")
+    func keywordReaderKeepsPhrasesExactly() {
+        let reader = KeywordAlertReader()
+        let compatibility = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "\u{F914}")], captionLanguage: "zh")
+        _ = reader.matches(in: "小\u{F914}你好", with: compatibility)
+        let plain = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "\u{6A02}")], captionLanguage: "zh")
+        #expect(Self.same(reader.matches(in: "小樂你好", with: plain), plain.matches(in: "小樂你好")))
+        #expect(!plain.matches(in: "小樂你好").isEmpty)
+    }
 }
 
 /// `LiveAgreement.settle` as it was before it reused the words of the pass
