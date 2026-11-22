@@ -23,16 +23,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -74,23 +70,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
     val keeps = everyTime && keepNote == null
     val direction = if (CaptionLayout.readsRightToLeft(shown, languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val everyTimeLabel = tr("תיקון בכל פעם", "Fix it every time")
-    // Said as the dialog closes on a Save, as on the iPhone, not on the tap:
-    // a conversation's fix can still be refused, and then the dialog stays
-    // open with the error instead. Before, the dialog just went away.
-    val context = LocalContext.current
-    var saving by remember { mutableStateOf(false) }
-    val wasRefused by rememberUpdatedState(refusal?.note != null)
-    DisposableEffect(Unit) {
-        onDispose {
-            if (saving && !wasRefused && ScreenReader.isOn(context)) ScreenReader.announce(context, tr("השורה תוקנה", "Line fixed"))
-        }
-    }
-    val dismiss = {
-        saving = false
-        onDismiss()
-    }
     AlertDialog(
-        onDismissRequest = dismiss,
+        onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
         title = { Text(tr("תיקון מילה", "Fix a word")) },
         text = {
@@ -175,8 +156,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
                 keepNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
             }
         },
-        confirmButton = { TextButton(onClick = { saving = true; onSave(heard, written.trim(), keeps) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
-        dismissButton = { TextButton(onClick = dismiss) { Text(tr("ביטול", "Cancel")) } },
+        confirmButton = { TextButton(onClick = { onSave(heard, written.trim(), keeps) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("ביטול", "Cancel")) } },
     )
 }
 

@@ -6,6 +6,8 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
@@ -69,7 +71,10 @@ import java.time.MonthDay
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -464,6 +469,250 @@ class HistoryScreenDeviceTest {
         override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean? = null
         override fun switchSaving(on: Boolean) {}
         override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    // History saves a fix off the main thread. A fix held here stays under
+    // way until the test lets it go, then answers as it was told to, or
+    // fixes the line.
+    private class FixingConversation(vararg said: String) : SavedConversations {
+        val id: UUID = UUID.randomUUID()
+        private val lines = said.map { UUID.randomUUID() }
+        private val texts = ConcurrentHashMap(lines.zip(said).toMap())
+        private val held = ConcurrentHashMap<UUID, Pair<CountDownLatch, WordFixResult?>>()
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val tried = CopyOnWriteArrayList<String>()
+        val answered = AtomicInteger()
+        val gates = CopyOnWriteArrayList<CountDownLatch>()
+
+        fun text(line: Int): String = texts.getValue(lines[line])
+
+        fun hold(line: Int, answer: WordFixResult? = null): CountDownLatch =
+            CountDownLatch(1).also {
+                held[lines[line]] = it to answer
+                gates += it
+            }
+
+        override fun load(id: UUID) = TranscriptSessionRecord(
+            id = this.id,
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = lines.mapIndexed { index, line -> SavedSegment(line, texts.getValue(line), null, null, startedAt + index, true) },
+        )
+
+        override fun isCurrent(id: UUID) = false
+
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult {
+            tried += heard
+            val (gate, answer) = held.remove(segmentID) ?: (null to null)
+            try {
+                gate?.await(20, TimeUnit.SECONDS)
+                if (answer != null) return answer
+                val text = texts.getValue(segmentID)
+                val fixed = WordFixes.apply(listOf(WordFix(heard, written)), text)
+                if (fixed == text) return WordFixResult.LineChanged
+                texts[segmentID] = fixed
+                return WordFixResult.Saved
+            } finally {
+                answered.incrementAndGet()
+            }
+        }
+
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {}
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun starredLines() = emptyList<StarredLine>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun rename(id: UUID, title: String) = false
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean? = null
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    private fun showFixing(conversation: FixingConversation, query: String = "", open: MutableState<Boolean> = mutableStateOf(true)) {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) {
+                    ConversationScreen(conversation, conversation.id, query = query, marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+                }
+            }
+        }
+    }
+
+    private fun openFixFor(line: String) {
+        compose.waitUntil(5_000) { shownLine(line) }
+        val fix = compose.onNodeWithContentDescription(line, substring = true).fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" }
+        compose.runOnUiThread { fix.action() }
+        waitFor("Tap the words that came out wrong")
+    }
+
+    private fun saveFix(wrong: String, right: String) {
+        compose.onNode(hasContentDescription(wrong) and hasAnyAncestor(isDialog())).performClick()
+        fixField(1).performTextInput(right)
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+    }
+
+    private fun fixDialogOpen() = compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isNotEmpty()
+
+    private fun cancelFix() {
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { !fixDialogOpen() }
+    }
+
+    // What comes back on the main thread after a fix is answered, given time
+    // to arrive: a fix answers on its own, not on a tap.
+    private fun letTheAnswerArrive(conversation: FixingConversation, answers: Int) {
+        compose.waitUntil(5_000) { conversation.answered.get() == answers }
+        Thread.sleep(500)
+        compose.waitForIdle()
+    }
+
+    // A fix still being saved when its dialog was closed answered whatever
+    // dialog was open when it was done: another line's dialog, opened
+    // meanwhile, showed the old fix's "try again" though nothing had been
+    // tried in it yet.
+    @Test
+    fun aFixAnsweredAfterItsDialogClosedSaysNothingInAnotherLinesDialog() {
+        val conversation = FixingConversation("Closed fix test I spoke with Shera yesterday", "Closed fix test we meet Dan at nine")
+        val first = conversation.hold(0, WordFixResult.Unreadable)
+        try {
+            showFixing(conversation)
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(5_000) { conversation.tried.toList() == listOf("Shera") }
+            cancelFix()
+            openFixFor("Dan at nine")
+            first.countDown()
+            letTheAnswerArrive(conversation, 1)
+
+            compose.onNodeWithText("The conversation couldn’t be read just now", substring = true).assertDoesNotExist()
+            assertTrue(fixDialogOpen())
+            saveFix("Dan", "Dana")
+            compose.waitUntil(5_000) { !fixDialogOpen() }
+            assertEquals("Closed fix test we meet Dana at nine", conversation.text(1))
+            assertEquals("Closed fix test I spoke with Shera yesterday", conversation.text(0))
+        } finally {
+            conversation.gates.forEach { it.countDown() }
+        }
+    }
+
+    // A fix that went through after its dialog was closed and the same
+    // line's dialog opened again closed the new one before anything was
+    // chosen in it.
+    @Test
+    fun aFixThatGoesThroughAfterItsDialogClosedLeavesTheLinesNewDialogOpen() {
+        val conversation = FixingConversation("Reopened fix test I spoke with Shera yesterday")
+        val first = conversation.hold(0)
+        try {
+            showFixing(conversation)
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(5_000) { conversation.tried.toList() == listOf("Shera") }
+            cancelFix()
+            openFixFor("Shera yesterday")
+            first.countDown()
+            letTheAnswerArrive(conversation, 1)
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Reopened fix test I spoke with Shira yesterday", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitForIdle()
+
+            assertTrue(fixDialogOpen())
+        } finally {
+            conversation.gates.forEach { it.countDown() }
+        }
+    }
+
+    // While a fix from a closed dialog was still being saved, Save in the
+    // next dialog did nothing: that fix was never tried.
+    @Test
+    fun saveInTheNextDialogWorksWhileAFixFromAClosedOneIsStillBeingSaved() {
+        val conversation = FixingConversation("Waiting fix test I spoke with Shera yesterday", "Waiting fix test we meet Dan at nine")
+        val first = conversation.hold(0)
+        try {
+            showFixing(conversation)
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(5_000) { conversation.tried.toList() == listOf("Shera") }
+            cancelFix()
+            openFixFor("Dan at nine")
+            saveFix("Dan", "Dana")
+
+            compose.waitUntil(5_000) { conversation.text(1) == "Waiting fix test we meet Dana at nine" }
+            compose.waitUntil(5_000) { !fixDialogOpen() }
+            first.countDown()
+            letTheAnswerArrive(conversation, 2)
+            compose.waitUntil(5_000) { shownLine("Waiting fix test I spoke with Shira yesterday") }
+        } finally {
+            conversation.gates.forEach { it.countDown() }
+        }
+    }
+
+    // The dialog going away while its fix was still being saved, as when the
+    // phone turns, told TalkBack "Line fixed" before anything was known, and
+    // here the fix was then refused.
+    @Test
+    fun aFixStillBeingSavedSaysLineFixedOnlyOnceItHasGoneThrough() {
+        val conversation = FixingConversation("Pending fix test I spoke with Shera yesterday")
+        val first = conversation.hold(0, WordFixResult.Unreadable)
+        val open = mutableStateOf(true)
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val announced = CopyOnWriteArrayList<String>()
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            showFixing(conversation, open = open)
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(5_000) { conversation.tried.toList() == listOf("Shera") }
+            compose.runOnUiThread { open.value = false }
+            compose.waitUntil(5_000) { !fixDialogOpen() }
+            first.countDown()
+            letTheAnswerArrive(conversation, 1)
+            assertEquals("said $announced", 0, announced.count { it == "Line fixed" })
+
+            compose.runOnUiThread { open.value = true }
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(5_000) { "Line fixed" in announced }
+            compose.waitUntil(5_000) { !fixDialogOpen() }
+            compose.waitForIdle()
+            assertEquals("said $announced", 1, announced.count { it == "Line fixed" })
+            assertEquals("Pending fix test I spoke with Shira yesterday", conversation.text(0))
+        } finally {
+            conversation.gates.forEach { it.countDown() }
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+        }
+    }
+
+    // Opened from a search, a fix of the word searched for on the last
+    // match left the button on a match that was no longer there: "Next
+    // match (3 of 2)".
+    @Test
+    fun aFixOfTheWordSearchedForKeepsNextMatchWithinTheMatchesLeft() {
+        val conversation = FixingConversation("Search fix test aval came early", "Search fix test then aval left", "Search fix test and aval called back")
+        showFixing(conversation, query = "aval")
+        waitFor("Next match (1 of 3)")
+        compose.onNodeWithText("Next match (1 of 3)").performClick()
+        compose.onNodeWithText("Next match (2 of 3)").performClick()
+        waitFor("Next match (3 of 3)")
+
+        openFixFor("aval called back")
+        saveFix("aval", "Avi")
+        compose.waitUntil(5_000) { !fixDialogOpen() }
+        compose.waitUntil(5_000) { shownLine("Search fix test and Avi called back") }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Next match (3 of 2)").assertDoesNotExist()
+        compose.onNodeWithText("Next match (1 of 2)").assertExists()
     }
 
     @Test
