@@ -3692,6 +3692,102 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.detail)
     }
 
+    @Test("a settings file that can't be read at launch puts the banner up at once, with that reason, before anything is saved; a save that gets through takes it down, and a first run shows nothing")
+    func unreadableAtLaunchShowsAtOnce() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-launch-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.hasCompletedOnboarding = true
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = { CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder()) }
+
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline())
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(viewModel.savingTrouble.shouldShow)
+        #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(!viewModel.savingTrouble.isFailing)
+
+        let firstRun = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: folder.appendingPathComponent("not-there.json")),
+            pipeline: pipeline()
+        )
+        #expect(!firstRun.savingTrouble.isFailing)
+    }
+
+    @Test("once a save gets through to a settings file that couldn't be read at launch, the saved settings come back with this session's change, running captions start again on them, the first-run guide stays away, and a later removal reaches the file")
+    func savedSettingsComeBackOnceReadable() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-comeback-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.engine = .appleSpeech
+        saved.spokenLanguage = .english
+        saved.vocabulary = ["Noa"]
+        saved.keywordAlerts = [KeywordAlert(phrase: "Dana")]
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { settings in FakeEngine(kind: settings.engine) }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline)
+        await viewModel.start()
+        #expect(viewModel.pipeline.activeEngineKind == AppSettings.default.engine)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+
+        #expect(viewModel.settings.engine == .appleSpeech)
+        #expect(viewModel.settings.spokenLanguage == .english)
+        #expect(viewModel.settings.keywordAlerts.map(\.phrase) == ["Dana"])
+        #expect(viewModel.settings.hapticOnSpeechResume != AppSettings.default.hapticOnSpeechResume)
+        #expect(viewModel.hasCompletedOnboarding)
+        #expect(await eventually { viewModel.pipeline.activeEngineKind == .appleSpeech && viewModel.isListening })
+        try #require(viewModel.settings.vocabulary == ["Noa"])
+
+        viewModel.removeVocabulary(at: IndexSet(integer: 0))
+        let back = SettingsStore(fileURL: url).load()
+        #expect(back.vocabulary.isEmpty)
+        #expect(back.engine == .appleSpeech)
+        #expect(back.hapticOnSpeechResume != AppSettings.default.hapticOnSpeechResume)
+        #expect(!back.hasCompletedOnboarding)
+    }
+
+    @Test("saved sound alerts that come back while captions are paused reach the sound alerts at once, the faint doorbell included, and captions stay paused")
+    func savedSoundAlertsComeBackWhilePaused() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-paused-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.soundAlerts = SoundAlertPreferences(minimumImportance: .low, mutedIdentifiers: ["door"], sensitiveIdentifiers: ["door_bell"])
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { settings in FakeEngine(kind: settings.engine) }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline)
+        await viewModel.start()
+        await viewModel.togglePause()
+        try #require(viewModel.pipeline.phase == .paused)
+        #expect(viewModel.pipeline.soundPolicy.preferences == SoundAlertPreferences())
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+
+        #expect(viewModel.settings.soundAlerts == saved.soundAlerts)
+        #expect(viewModel.pipeline.soundPolicy.preferences == saved.soundAlerts)
+        #expect(viewModel.pipeline.soundPolicy.preferences.sensitiveIdentifiers.contains("door_bell"))
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(viewModel.pipeline.phase == .paused)
+    }
+
     @Test("captions an automatic retry brought back after a failed start are saved as a conversation of their own")
     func autoRetryStartsTheHistorySession() async throws {
         let audio = FakeAudioCapturer()
@@ -3812,6 +3908,45 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(!askedAgain.keepsHistory)
         #expect(viewModel.clear(after: askedAgain))
         #expect(viewModel.segments.isEmpty)
+    }
+
+    // The star was taken off on the caption screen while the phone was full,
+    // so the file kept it and the starred lines list still showed it. Its
+    // Remove the star, as a tap, put the star back on the line.
+    @Test("Remove the star from the starred lines list takes it off a line still on screen whose unstarring waited for room")
+    func unstarFromStarredLinesOnScreen() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let history = TranscriptHistoryStore(directoryURL: folder)
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "Take two pills after dinner", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+        let line = try #require(viewModel.segments.last)
+        viewModel.toggleStar(line)
+        viewModel.waitForHistorySaves()
+        let conversation = try #require(history.listSummaries().first)
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        viewModel.toggleStar(line)
+        viewModel.waitForHistorySaves()
+        #expect(!viewModel.toggleStarInHistory(sessionID: conversation.id, segmentID: line.id, to: false), "still full: not saved, and said so")
+        #expect(!viewModel.starredSegmentIDs.contains(line.id))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == true)
+
+        #expect(viewModel.toggleStarInHistory(sessionID: conversation.id, segmentID: line.id, to: false))
+        #expect(!viewModel.starredSegmentIDs.contains(line.id))
+        #expect(history.load(id: conversation.id)?.segments.last?.isStarred == false)
     }
 
     @Test("a star History can't save says so and leaves the line as it was, still on screen or long gone")

@@ -414,7 +414,7 @@ struct TranscriptHistoryWriterTests {
         #expect(saved.segments[0].isStarred)
     }
 
-    @Test("a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state")
+    @Test("a star tapped in History follows the conversation as History shows it, the version waiting for room, and the file takes the same state")
     func starFollowsHistoryWhileWaiting() throws {
         let (store, dir) = makeStore()
         defer {
@@ -431,9 +431,37 @@ struct TranscriptHistoryWriterTests {
         writer.saveNow(later)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
 
-        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id) == true)
-        #expect(store.load(id: early.id)?.segments[0].isStarred == true)
+        #expect(writer.loadNow(id: early.id)?.segments[0].isStarred == true)
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id) == false)
+        #expect(store.load(id: early.id)?.segments[0].isStarred == false)
         #expect(store.load(id: early.id)?.endedAt == 200)
+        #expect(writer.lastFailure == nil)
+    }
+
+    // The starred lines list shows the files' stars. Its Remove the star,
+    // as a tap following the waiting version (no star), put the star back.
+    @Test("Remove the star from the starred lines list takes the star off, though the version waiting for room has none")
+    func unstarFromStarredLinesWhileWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.unstar-from-list"))
+        var early = record(id: UUID(), lines: 2, ended: false)
+        early.segments[0].isStarred = true
+        writer.saveNow(early)
+        var later = early
+        later.segments[0].isStarred = false
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id, keepingRefused: false, to: false) == false)
+        #expect(store.load(id: early.id)?.segments[0].isStarred == false)
+        #expect(store.load(id: early.id)?.endedAt == 200)
+        #expect(writer.loadNow(id: early.id)?.segments[0].isStarred == false)
         #expect(writer.lastFailure == nil)
     }
 
@@ -739,6 +767,179 @@ struct TranscriptHistoryWriterTests {
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi and Dana")
         writer.saveNow(record(id: UUID(), lines: 1, ended: false))
         #expect(store.load(id: evening.id)?.segments.first?.text == "I saw Avi and Dana")
+        #expect(writer.lastFailure == nil)
+    }
+
+    // History's dialog says a fix that waits for room is done. Read from the
+    // file, History kept showing the old words, and the person fixed the
+    // same word again.
+    @Test("History shows a word fixed while the phone is full with the fix, not the older file")
+    func historyShowsTheTextWaitingForRoom() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.load-waiting-text"))
+        var evening = record(id: UUID(), lines: 2, ended: true)
+        evening.segments[0].text = "I saw Cohen today"
+        writer.saveNow(evening)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(writer.fixTextNow(sessionID: evening.id, segmentID: evening.segments[0].id, with: WordFix(heard: "Cohen", written: "Avi Cohen")))
+        #expect(writer.lastFailure != nil)
+
+        #expect(writer.loadNow(id: evening.id)?.segments.map(\.text) == ["I saw Avi Cohen today", "שורה 1"])
+        #expect(writer.loadNow(id: UUID()) == nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: evening.id)?.segments.map(\.text) == ["I saw Avi Cohen today", "שורה 1"])
+        #expect(writer.loadNow(id: evening.id) == store.load(id: evening.id))
+    }
+
+    @Test("History shows the newer version of a conversation still waiting for room, with a word fixed in it")
+    func historyShowsTheConversationWaitingForRoom() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.load-waiting-conversation"))
+        let early = record(id: UUID(), lines: 1, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.segments[0].text = "I saw aval today"
+        later.segments += record(id: early.id, lines: 1, ended: true).segments
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        #expect(writer.fixTextNow(sessionID: early.id, segmentID: early.segments[0].id, with: WordFix(heard: "aval", written: "Avi")))
+
+        let shown = try #require(writer.loadNow(id: early.id))
+        #expect(shown.endedAt == 200)
+        #expect(shown.segments.map(\.text) == ["I saw Avi today", "שורה 0"])
+    }
+
+    // Room came back before the refused fix: like every other fix, it
+    // writes what was waiting, so the newer version isn't left only in
+    // memory until the next save.
+    @Test("a refused History fix still writes the conversation waiting for room once there is room")
+    func refusedWordFixCatchesUp() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.refused-fix-catches-up"))
+        var early = record(id: UUID(), lines: 2, ended: false)
+        early.segments[1].text = "I saw aval today"
+        writer.saveNow(early)
+        let gone = early.segments[1].id
+        var later = early
+        later.segments[1] = record(id: early.id, lines: 1, ended: true).segments[0]
+        later.segments[1].text = "I saw Avi today"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(!writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(store.load(id: early.id)?.segments.map(\.text) == ["שורה 0", "I saw Avi today"])
+        #expect(writer.lastFailure == nil, "nothing is left waiting, so the warning goes")
+    }
+
+    // A replay took the line off the screen before the conversation closed,
+    // so the version waiting for room no longer has it. The fix was written
+    // to the file and called saved, then the waiting version was written
+    // over it without the line.
+    @Test("a word fixed in History on a line the conversation's version waiting for room no longer has is not saved")
+    func wordFixOfALineTheWaitingVersionLacksIsRefused() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.word-fix-line-not-waiting"))
+        var early = record(id: UUID(), lines: 2, ended: false)
+        early.segments[1].text = "I saw aval today"
+        writer.saveNow(early)
+        let gone = early.segments[1].id
+        var later = early
+        later.segments[1] = record(id: early.id, lines: 1, ended: true).segments[0]
+        later.segments[1].text = "I saw Avi today"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        #expect(!writer.fixTextNow(sessionID: early.id, segmentID: gone, with: WordFix(heard: "aval", written: "Avital")))
+        #expect(writer.loadNow(id: early.id)?.segments.contains { $0.id == gone } == false, "History doesn't show the line")
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: early.id)?.segments.map(\.text) == ["שורה 0", "I saw Avi today"])
+        #expect(writer.lastFailure == nil)
+    }
+
+    // The version waiting for room is the one the caption screen saved,
+    // which knows nothing of a name given in History or of what first wrote
+    // the conversation; its save keeps those from the file.
+    @Test("History shows a version waiting for room with the name and source its save keeps from the file")
+    func historyShowsTheWaitingVersionWithItsSavedDetails() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.load-waiting-details"))
+        var early = record(id: UUID(), lines: 1, ended: false)
+        early.inputName = "Kitchen"
+        early.languageCode = "he"
+        writer.saveNow(early)
+        #expect(writer.renameNow(id: early.id, title: "Doctor"))
+        var later = early
+        later.segments += record(id: early.id, lines: 1, ended: true).segments
+        later.title = nil
+        later.inputName = "Car"
+        later.languageCode = "en"
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+
+        let shown = try #require(writer.loadNow(id: early.id))
+        #expect(shown.title == "Doctor")
+        #expect(shown.inputName == "Kitchen")
+        #expect(shown.languageCode == "he")
+        #expect(shown.segments.count == 2)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        let saved = try #require(store.load(id: early.id))
+        #expect([saved.title, saved.inputName, saved.languageCode] == [shown.title, shown.inputName, shown.languageCode])
+        #expect(saved.segments.count == 2)
+    }
+
+    // History is told a star it can't save didn't change. A line only the
+    // waiting version has isn't in the file, so the file had nothing to
+    // refuse, and the star was called saved while it only waited.
+    @Test("a star from History on a line only the waiting version has counts once that version reaches the disk")
+    func historyStarOnALineOnlyWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.history-star-line-only-waiting"))
+        let early = record(id: UUID(), lines: 1, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.segments += record(id: early.id, lines: 1, ended: true).segments
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        let added = later.segments[1].id
+
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: added, keepingRefused: false) == nil)
+        #expect(writer.loadNow(id: early.id)?.segments.map(\.isStarred) == [false, false])
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: added, keepingRefused: false) == true)
+        #expect(store.load(id: early.id)?.segments.map(\.isStarred) == [false, true])
         #expect(writer.lastFailure == nil)
     }
 
