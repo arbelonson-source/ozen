@@ -61,7 +61,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
     var typed by rememberSaveable { mutableStateOf("") }
     var written by rememberSaveable { mutableStateOf("") }
     var everyTime by rememberSaveable { mutableStateOf(false) }
-    val picked = if (first >= 0) words.subList(first, minOf(last + 1, words.size)).joinToString(" ") else ""
+    val pick = FixWordForm.pick(first, last, words.size)
+    val picked = pick?.let { words.subList(it.first, it.last + 1).joinToString(" ") } ?: ""
     val heard = if (typed.isNotBlank()) typed.trim() else picked
     val ready = FixWordForm.changes(shown, heard, written)
     val note = FixWordForm.note(shown, typed, heard, written)
@@ -97,7 +98,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     words.forEachIndexed { index, word ->
-                        val on = typed.isBlank() && first >= 0 && index in first..last
+                        val on = typed.isBlank() && pick != null && index in pick
                         Text(
                             word,
                             style = MaterialTheme.typography.bodyLarge,
@@ -107,7 +108,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
                                 .background(if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                                 .clickable(role = Role.Checkbox) {
                                     typed = ""
-                                    val now = WordFixes.tapped(if (first >= 0) first..last else null, index) { WordFixes.joinedBySpace(shown, it) }
+                                    val now = WordFixes.tapped(pick, index) { WordFixes.joinedBySpace(shown, it) }
                                     first = now?.first ?: -1
                                     last = now?.last ?: -1
                                 }
@@ -185,6 +186,14 @@ internal object FixWordForm {
         return fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty() &&
             WordFixes.apply(listOf(WordFix(heard, written.trim())), shown) != shown
     }
+
+    /**
+     * The words picked, while all of them are still in the line. A line
+     * whose text came back shorter under the open dialog left the pick past
+     * its end, and the next redraw threw and closed the app; such a pick is
+     * dropped, and the next tap starts a new one.
+     */
+    fun pick(first: Int, last: Int, words: Int): IntRange? = if (first in 0..last && last < words) first..last else null
 
     /**
      * Why Fix it every time can't keep a fix that changes the line: the

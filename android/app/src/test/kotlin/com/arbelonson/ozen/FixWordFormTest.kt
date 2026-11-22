@@ -42,6 +42,16 @@ class FixWordFormTest {
     }
 
     @Test
+    fun aPickNoLongerAllInALineThatCameBackShorterIsDroppedWhileOneStillInItStays() {
+        assertEquals(11..11, FixWordForm.pick(11, 11, words = 12))
+        assertNull(FixWordForm.pick(11, 11, words = 6))
+        assertNull(FixWordForm.pick(5, 6, words = 6))
+        assertEquals(4..5, FixWordForm.pick(4, 5, words = 6))
+        assertNull(FixWordForm.pick(-1, -1, words = 6))
+        assertNull(FixWordForm.pick(0, 0, words = 0))
+    }
+
+    @Test
     fun fixItEveryTimeWithTheListFullSaysSoAsTheWordsScreenDoesUnlessTheFixReplacesOneAlreadyThere() {
         val full = (0 until WordFixes.MAXIMUM_FIXES).map { WordFix("word$it", "Word $it") }
         val shown = "I saw shera and word7 today"
