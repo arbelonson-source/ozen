@@ -137,6 +137,16 @@ class CaptionSession(
     private val awaySoundStore: AwaySoundStore = PreferencesAwaySoundStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope: CoroutineScope = errorGuardedScope { pipeline.unexpectedError(it) }
+
+    /** Asked again before it ran (settings that came back with a new engine chosen), captions start again once. */
+    private val settingsRestart = QueuedOnce(scope) {
+        when (pipeline.phase) {
+            PipelinePhase.Idle -> Unit
+            PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
+            else -> pipeline.restart(chosenSettings())
+        }
+    }
+
     private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val light = TorchRunner(CameraLight(context.applicationContext), lightScope)
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -949,24 +959,18 @@ class CaptionSession(
         downloadAwake.keepAwake(null)
     }
 
-    fun settingsChanged() {
-        scope.launch {
-            when (pipeline.phase) {
-                PipelinePhase.Idle -> Unit
-                PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
-                else -> pipeline.restart(chosenSettings())
-            }
-        }
-    }
+    fun settingsChanged() = settingsRestart.request()
 
     /**
      * The saved settings came back once their file could be read, with this
      * session's changes ([SettingsHolder.takenUp]); [before] are the ones in
-     * use until then. As at launch, the saved voices are listened for, and
-     * running captions start again on the person's own language and engine.
+     * use until then. As at launch, the saved voices are listened for and
+     * the sound alerts apply, paused or not, and running captions start again
+     * on the person's own language and engine, once also when the change
+     * being saved restarts them.
      */
     private fun settingsTakenUp(before: AppSettings) {
-        settings.current.value.speakerProfiles.filter { profile -> before.speakerProfiles.none { it.id == profile.id } }.forEach(pipeline::enroll)
+        pipeline.settingsTakenUp(settings.current.value, before)
         settingsChanged()
     }
 

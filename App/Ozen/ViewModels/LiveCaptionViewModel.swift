@@ -2988,9 +2988,10 @@ public final class LiveCaptionViewModel {
     /// The saved settings came back with this session's changes once their
     /// file, which couldn't be read at launch, could be read again
     /// (`SettingsStore.saveTakingUp`). As at launch, the away alerts, the
-    /// saved voices and the app's language follow them, and running
-    /// captions start again on the person's own language and engine, unless
-    /// the change being saved restarts them anyway.
+    /// saved voices, the sound alerts (paused or not) and the app's language
+    /// follow them, and running captions start again on the person's own
+    /// language and engine, unless the change being saved restarts them
+    /// anyway.
     private func takeUp(_ held: AppSettings) {
         let before = settings
         settings = held
@@ -2998,9 +2999,7 @@ public final class LiveCaptionViewModel {
         backgroundAlerts.isEnabled = settings.notifyWhenInBackground
         backgroundAlerts.quietHours = settings.quietHours
         observeWarnings()
-        for profile in settings.speakerProfiles where !before.speakerProfiles.contains(where: { $0.id == profile.id }) {
-            pipeline.enroll(profile: profile)
-        }
+        pipeline.settingsTakenUp(settings, replacing: before)
         if settings.appLanguage != before.appLanguage { applyAppLanguage() }
         refreshLockScreen()
         takenUpRestart = Task { [weak self] in
