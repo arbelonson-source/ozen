@@ -583,6 +583,39 @@ class ConversationSaverTest {
         assertEquals(listOf("Good night"), saved().map { it.preview })
     }
 
+    // History deletes everything from its own thread, after the caption
+    // screen's step that starts the next conversation. A conversation the
+    // screen started and saved right after that step, before the delete
+    // reached the disk, was deleted with the rest, and with captions stopped
+    // there no later save brought it back.
+    @Test
+    fun `a conversation started right after History deletes all is kept`() {
+        var next: () -> Unit = {}
+        val history = ConversationSaver(
+            writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+            speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = { settings.saveHistory = it },
+            scope = scope, now = { clock }, io = EmptyCoroutineContext,
+            onMainThread = { step ->
+                step()
+                next()
+            },
+        )
+        listening = true
+        history.listeningChanged()
+        say("Good evening")
+        history.save(ended = false)
+        assertEquals(1, saved().size)
+        next = {
+            next = {}
+            say("Good night")
+            listening = false
+            history.listeningChanged()
+        }
+
+        history.deleteAll()
+        assertEquals(listOf("Good night"), saved().map { it.preview })
+    }
+
     @Test
     fun `a line starred while it is said shows starred and is saved starred`() {
         start()

@@ -267,14 +267,24 @@ class ConversationSaver(
         return true
     }
 
-    /** Deletes every saved conversation; the lines on screen stay, and the next words start a new one. Asked from History's thread, as [delete] is. */
+    /**
+     * Deletes every saved conversation; the lines on screen stay, and the
+     * next words start a new one. Asked from History's thread, as [delete]
+     * is. The deletion is handed to the writer in the same main-thread step
+     * that starts the next conversation, and waited for here: handed in
+     * after that step, a save of the next conversation the main thread made
+     * meanwhile was deleted with the rest, and with captions stopped no
+     * later save brought it back.
+     */
     fun deleteAll() {
+        var deleted: () -> Unit = {}
         onMainThread {
             closed.clear()
             closedLines = null
             forgetCurrent()
+            deleted = writer.deleteAllInTurn()
         }
-        writer.deleteAllNow()
+        deleted()
     }
 
     /**
