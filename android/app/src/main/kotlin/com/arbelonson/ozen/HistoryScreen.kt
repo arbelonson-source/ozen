@@ -175,7 +175,7 @@ interface SavedConversations {
     /** Stars a saved line or takes its star away: its new state, or null when it is gone or could not be saved. */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
 
-    /** Fixes a word of a saved line, in the text it has now: false when the line could not be fixed (still being heard, or gone). */
+    /** Fixes a word of a saved line, in the text it has now: false when the line could not be fixed (still being heard, gone, or without that word now). */
     fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean
 
     fun saveWordFix(heard: String, written: String, everyTime: Boolean)
@@ -752,6 +752,11 @@ internal fun ConversationScreen(
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
     var fixingID by rememberSaveable { mutableStateOf<String?>(null) }
+    // The words the line had when the dialog opened, as the caption screen
+    // and the iPhone keep them: the conversation still being captioned is
+    // read again every twenty seconds, and its newest line, saved while it
+    // is still being said, can come back with fewer words.
+    var fixingText by rememberSaveable { mutableStateOf("") }
     var fixRejected by rememberSaveable { mutableStateOf(false) }
     var fixSaving by remember { mutableStateOf(false) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
@@ -759,7 +764,7 @@ internal fun ConversationScreen(
     val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
     fixingLine?.let { line ->
         FixWordDialog(
-            line.text,
+            fixingText,
             languageCode = line.languageCode,
             fixes = conversations.wordFixes(),
             error = tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.").takeIf { fixRejected },
@@ -867,7 +872,7 @@ internal fun ConversationScreen(
                                 }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
-                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixingID = line.id.toString(); fixingText = line.text; fixRejected = false }) {
                                     scope.launch {
                                         if (conversations.toggleStar(id, line.id) == null) starRefused = true
                                         show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })

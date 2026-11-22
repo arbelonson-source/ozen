@@ -646,6 +646,30 @@ class ConversationSaverTest {
         assertFalse(saver.fixLine(earlier, UUID.randomUUID(), WordFix("aval", "Avi")) { _, _ -> true })
     }
 
+    // Fix a word in History keeps the words the line had when it opened,
+    // and the line can be heard again meanwhile. A fix of a word it no
+    // longer has changed nothing, yet it was taken as done: the dialog
+    // closed and the fix was kept for next time.
+    @Test
+    fun `a word fixed in History that a line still being captioned no longer has is refused`() {
+        start()
+        say("I saw Avi today")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+
+        assertFalse(saver.fixLine(conversation, lines[0].id, WordFix("aval", "Avi")) { _, _ -> true })
+        assertEquals("I saw Avi today", store.load(conversation)!!.segments.single().text)
+    }
+
+    @Test
+    fun `a word fixed in History that a line of an earlier conversation no longer has is refused`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+
+        assertFalse(saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> true })
+        assertEquals("Long gone", store.load(earlier)!!.segments.single().text)
+    }
+
     @Test
     fun `a star given to a line of an earlier conversation is written to that conversation`() {
         val earlier = oldConversation(clock - 3_600)

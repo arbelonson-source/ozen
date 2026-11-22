@@ -304,14 +304,20 @@ class ConversationSaver(
      * [onScreen], and a screen that refuses (the line is still being heard)
      * leaves the line as it was. A line of an earlier conversation is
      * changed in its file, whether or not its lines are still on screen.
+     * A line that no longer has the word is refused too: History's dialog
+     * keeps the words the line had when it opened, and such a fix changed
+     * nothing yet closed the dialog as done and was kept for next time.
      */
     fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
         if (sessionID == id && currentLines.any { it.id == segmentID }) {
-            if (!onScreen(segmentID, fix)) return false
+            val before = currentLines.lastOrNull { it.id == segmentID }?.text
+            if (!onScreen(segmentID, fix) || currentLines.lastOrNull { it.id == segmentID }?.text == before) return false
             save(ended = false)
             return true
         }
-        return writer.fixTextNow(sessionID, segmentID) { WordFixes.apply(listOf(fix), it) }
+        var changed = false
+        val saved = writer.fixTextNow(sessionID, segmentID) { text -> WordFixes.apply(listOf(fix), text).also { if (it != text) changed = true } }
+        return saved && changed
     }
 
     /**
