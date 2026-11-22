@@ -28,7 +28,7 @@ struct HistoryDetailView: View {
     @State private var cantRead = false
     @State private var readTries = 0
     /// This conversation's readings once it is shown, numbered as each
-    /// begins (see `refresh()`).
+    /// reads the file (see `refresh()`).
     @State private var rereads = HistoryRereads()
     /// The reading after a star, a fix or a name, read again every few
     /// seconds while it can't be read just now.
@@ -397,12 +397,17 @@ struct HistoryDetailView: View {
     /// after the fix sheet said to try again in a moment, and there was
     /// nothing left to try again from without leaving the screen.
     ///
-    /// Each reading is numbered as it begins, and one is shown only when no
-    /// reading begun after it has been shown. Shown as each came back, a
-    /// reading of the file made just before a star, a name or a fix was
-    /// saved could come back after that change's own reading: the star went
-    /// away (and the next tap starred the line again), or the name or the
-    /// fix seemed to vanish, until the next reading.
+    /// Each reading is numbered as it reads the file, and one is shown only
+    /// when no reading that read the file after it has been shown. Shown as
+    /// each came back, a reading of the file made just before a star, a name
+    /// or a fix was saved could come back after that change's own reading:
+    /// the star went away (and the next tap starred the line again), or the
+    /// name or the fix seemed to vanish, until the next reading. Numbered as
+    /// each began, one begun later that read the file first, before a star
+    /// was saved, could come back after one that waited for a free thread
+    /// and read the star, and take it away again. A reading that comes back
+    /// after the screen closed, or after a newer change took its place, is
+    /// not shown.
     private func refresh() async {
         await rereads.read(reread, show: show)
     }
@@ -417,12 +422,13 @@ struct HistoryDetailView: View {
         rereading = Task { await rereads.afterChange(reread, show: show) }
     }
 
-    private func reread() async -> Loaded? {
+    private func reread(_ reads: @escaping @Sendable () -> Void) async -> Loaded? {
         let read = viewModel.savedConversation
         let id = sessionID
         let query = searchQuery
         let language = viewModel.settings.languageCode
         return await Task.detached(priority: .utility) { () -> Loaded? in
+            reads()
             do {
                 return try Loaded(record: read(id), query: query, languageCode: language)
             } catch {
