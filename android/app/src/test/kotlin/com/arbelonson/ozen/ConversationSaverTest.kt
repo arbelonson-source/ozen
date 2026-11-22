@@ -18,6 +18,12 @@ import java.io.File
 import java.nio.file.Files
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -1102,6 +1108,136 @@ class ConversationSaverTest {
         folder.writeText("not a folder")
         assertEquals(HistorySave.Failed, saver.saveRecording(recording()))
         assertNotNull(saver.lastSaveFailure)
+    }
+
+    /**
+     * The caption screen's main thread, and History's own thread, which
+     * hands the main thread a step and waits for it, as `CaptionSession`
+     * does. [fromHistory] returns once History's work is done or waits for
+     * the main thread, so History can act in the middle of a step of the
+     * main thread wherever the saver does that work.
+     */
+    private class Threads : AutoCloseable {
+        private val onScreen = ThreadLocal.withInitial { false }
+        private val screen = Executors.newSingleThreadExecutor { work -> Thread({ onScreen.set(true); work.run() }, "caption screen") }
+        private val historyWaits = CountDownLatch(1)
+        private var history: Thread? = null
+        private var historyFailure: Throwable? = null
+
+        fun mainThread(step: () -> Unit) {
+            if (onScreen.get()) return step()
+            historyWaits.countDown()
+            screen.submit(Runnable { step() }).get()
+        }
+
+        fun <T> onMain(work: () -> T): T = try {
+            screen.submit(Callable { work() }).get()
+        } catch (failure: ExecutionException) {
+            throw failure.cause ?: failure
+        }
+
+        fun fromHistory(work: () -> Unit) {
+            history = thread(name = "history") {
+                try {
+                    work()
+                } catch (failure: Throwable) {
+                    historyFailure = failure
+                } finally {
+                    historyWaits.countDown()
+                }
+            }
+            assertTrue(historyWaits.await(10, TimeUnit.SECONDS), "History's delete neither finished nor asked the main thread")
+        }
+
+        fun historyDone() {
+            val asked = assertNotNull(history, "History was never asked")
+            asked.join(10_000)
+            assertFalse(asked.isAlive, "History's delete never finished")
+            historyFailure?.let { throw it }
+        }
+
+        override fun close() {
+            screen.shutdownNow()
+        }
+    }
+
+    private fun savingOn(threads: Threads) = ConversationSaver(
+        writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
+        speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = { settings.saveHistory = it },
+        scope = scope, now = { clock }, io = EmptyCoroutineContext, onMainThread = threads::mainThread,
+    )
+
+    /** Captions running all day: the conversations a long quiet closed this morning and this afternoon, their lines still on screen. */
+    private fun closedToday(history: ConversationSaver, afternoon: Boolean): List<UUID> {
+        listening = true
+        history.listeningChanged()
+        val closed = mutableListOf<UUID>()
+        for ((text, at) in listOf("Good morning" to clock - 60 * 60, "Good afternoon" to clock - 30 * 60).take(if (afternoon) 2 else 1)) {
+            say(text, at = at)
+            closed += history.currentId
+            assertTrue(history.checkForConversationBreak())
+        }
+        say("Good evening")
+        return closed
+    }
+
+    /** History deletes as the caption screen reads, at a word, the conversations a long quiet closed, in the middle of reading them. */
+    private fun deleteWhileTheScreenReads(threads: Threads, history: ConversationSaver, delete: () -> Unit) {
+        var asked = false
+        history.whileReadingClosed = {
+            if (!asked) {
+                asked = true
+                threads.fromHistory(delete)
+            }
+        }
+        threads.onMain { history.savedConversation(0) }
+        threads.historyDone()
+        history.whileReadingClosed = null
+    }
+
+    // History deletes on its own thread while the caption screen reads, at
+    // every word on the main thread, the conversations a long quiet closed
+    // to know which one each line belongs to. A delete landing as it read
+    // them threw on the main thread and closed the app, so the captions and
+    // sound alerts stopped with it.
+    @Test
+    fun `a conversation deleted in History while the caption screen reads the closed ones does not stop the captions`() {
+        Threads().use { threads ->
+            val history = savingOn(threads)
+            val (morning, afternoon) = closedToday(history, afternoon = true)
+
+            deleteWhileTheScreenReads(threads, history) { history.delete(morning) }
+            assertEquals(listOf(null, afternoon), threads.onMain { (0..1).map(history::savedConversation) })
+            assertEquals(listOf("Good afternoon"), saved().map { it.preview })
+        }
+    }
+
+    @Test
+    fun `deleting all in History while the caption screen reads the closed conversations does not stop the captions`() {
+        Threads().use { threads ->
+            val history = savingOn(threads)
+            closedToday(history, afternoon = true)
+
+            deleteWhileTheScreenReads(threads, history) { history.deleteAll() }
+            assertEquals(listOf(null, null, null), threads.onMain { (0..2).map(history::savedConversation) })
+            assertTrue(saved().isEmpty())
+        }
+    }
+
+    // A table read from the closed conversations just before History's
+    // delete and kept just after it went on naming the deleted conversation
+    // for its lines until the next one closed: holding one of them opened
+    // nothing, and a marked problem named a conversation that was gone.
+    @Test
+    fun `lines of a conversation deleted in History while the caption screen read them belong to no conversation afterwards`() {
+        Threads().use { threads ->
+            val history = savingOn(threads)
+            val (morning) = closedToday(history, afternoon = false)
+
+            deleteWhileTheScreenReads(threads, history) { history.delete(morning) }
+            assertNull(threads.onMain { history.conversationOfLine(0) })
+            assertTrue(saved().isEmpty())
+        }
     }
 
     private fun oldConversation(at: Double): UUID {
