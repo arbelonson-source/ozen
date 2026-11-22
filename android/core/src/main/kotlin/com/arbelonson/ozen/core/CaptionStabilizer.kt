@@ -219,6 +219,19 @@ class CaptionStabilizer(
     val segments: List<TranscriptSegment> get() = ArrayList(stored)
 
     /**
+     * The line with [id], looked up from the end without the copy of every
+     * line [segments] makes: the pipeline asks at every word, and a phone
+     * left listening for days holds thousands of lines.
+     */
+    fun line(id: UUID): TranscriptSegment? = lastIndexOf(id).let { if (it >= 0) stored[it] else null }
+
+    /** The newest line, without copying the others. */
+    val lastLine: TranscriptSegment? get() = stored.lastOrNull()
+
+    /** The newest line still being written, without copying the others. */
+    val lastOpenLine: TranscriptSegment? get() = stored.lastOrNull { !it.isCommitted }
+
+    /**
      * Lines committed by the safety net rather than by the engine. That
      * commit is a guess that nothing more is coming; if the engine turns
      * out to be merely slow, its next update proves the guess wrong.
