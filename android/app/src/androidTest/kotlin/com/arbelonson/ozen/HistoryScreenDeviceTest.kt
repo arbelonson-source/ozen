@@ -1780,6 +1780,10 @@ class HistoryScreenDeviceTest {
         showUnreadable(conversation)
         waitFor("The conversation can’t be read just now")
         compose.onNodeWithText("Conversation not found").assertDoesNotExist()
+        // Tapped right after a read the screen made by itself, so the next
+        // one is a whole wait away and only Try again can read it sooner.
+        val earlier = conversation.loads.get()
+        compose.waitUntil(10_000) { conversation.loads.get() > earlier }
         val before = conversation.loads.get()
         val tapped = compose.mainClock.currentTime
         compose.onNode(hasText("Try again") and hasClickAction()).performClick()
