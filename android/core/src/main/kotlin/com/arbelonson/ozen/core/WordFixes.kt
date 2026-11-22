@@ -20,8 +20,19 @@ object WordFixes {
      * The closing quote of a quoted word (‘שלום’) is no geresh, and stays.
      * [letters] are the folded characters [key] is made of, without the marks it looks past, and [at] where each one is in the
      * line: two plain arrays rather than a boxed pair per character, since a line still being written is taken apart at every word.
+     * [openAfter] is which single quotes are still open past it, as [openQuote] bits, so the next words can be read from there.
      */
-    private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val letters: IntArray, val at: IntArray, val replacedEnd: Int)
+    private class Word(
+        val tokenStart: Int,
+        val tokenEnd: Int,
+        val start: Int,
+        val end: Int,
+        val key: String,
+        val letters: IntArray,
+        val at: IntArray,
+        val replacedEnd: Int,
+        val openAfter: Int,
+    )
     /** [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't". */
     private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean)
 
@@ -77,8 +88,24 @@ object WordFixes {
         return if (core.isBlank()) text.filterNot { isHebrewMark(it.code) }.trim().map { folded(it.code).toChar() }.joinToString("") else core
     }
 
-    /** The closing mark each opening single quote waits for. */
-    private val closingQuote = mapOf(0x2018 to 0x2019, 0x27 to 0x27)
+    /**
+     * The bit of a quote left open that [c] closes: an apostrophe closes one
+     * opened by an apostrophe, a right single quote one opened by a left
+     * single quote. Two bits in place of a set of the closing marks, so no
+     * mark is boxed.
+     */
+    private fun openQuote(c: Int) = when (c) {
+        0x27 -> 1
+        0x2019 -> 2
+        else -> 0
+    }
+
+    /** The [openQuote] bit [c] sets when it opens a quote before a word's first letter. */
+    private fun opensQuote(c: Int) = when (c) {
+        0x27 -> 1
+        0x2018 -> 2
+        else -> 0
+    }
 
     /**
      * The words of [text], split only at spaces and, when [atMaqaf], at a
@@ -90,11 +117,14 @@ object WordFixes {
      * geresh, unless another apostrophe-like mark follows it to close the
      * quote ('ג'ורג''); the Hebrew geresh is never a quote.
      */
-    private fun words(text: String, bare: Boolean = false, atMaqaf: Boolean = true): List<Word> {
+    private fun words(text: String, bare: Boolean = false, atMaqaf: Boolean = true): List<Word> =
+        ArrayList<Word>().also { readWords(text, bare, atMaqaf, it, from = 0, quotes = 0) }
+
+    /** [words] of [text] from [from] on, with [quotes] still open there (see [Word.openAfter]), added to [out]. */
+    private fun readWords(text: String, bare: Boolean, atMaqaf: Boolean, out: ArrayList<Word>, from: Int, quotes: Int) {
         fun isBreak(c: Int) = isSpace(c) || (atMaqaf && c == MAQAF)
-        val out = ArrayList<Word>()
-        val open = HashSet<Int>()
-        var i = 0
+        var open = quotes
+        var i = from
         while (i < text.length) {
             val head = text.codePointAt(i)
             if (isBreak(head)) { i += Character.charCount(head); continue }
@@ -136,23 +166,67 @@ object WordFixes {
             var at = i
             while (at < start) {
                 val c = text.codePointAt(at)
-                if (marksOnly) open.remove(c) else closingQuote[c]?.let { open.add(it) }
+                open = if (marksOnly) open and openQuote(c).inv() else open or opensQuote(c)
                 at += Character.charCount(c)
             }
             val after = if (end < j) text.codePointAt(end) else -1
             val geresh = after >= 0 && folded(after) == 0x27 && letters.lastOrNull() in 0x05D0..0x05EA
             val past = if (after >= 0) end + Character.charCount(after) else end
             val doubled = past < j && folded(text.codePointAt(past)) == 0x27
-            val replacedEnd = if (geresh && (after !in open || doubled)) past else end
+            val replacedEnd = if (geresh && ((open and openQuote(after)) == 0 || doubled)) past else end
             at = replacedEnd
             while (at < j) {
                 val c = text.codePointAt(at)
-                open.remove(c)
+                open = open and openQuote(c).inv()
                 at += Character.charCount(c)
             }
-            if (bare || start < end) out.add(Word(i, j, start, end, String(letters, 0, letters.size), letters, places, replacedEnd))
+            if (bare || start < end) out.add(Word(i, j, start, end, String(letters, 0, letters.size), letters, places, replacedEnd, open))
             i = j
         }
+    }
+
+    private class LineWords(val text: String, val words: List<Word>)
+
+    /** The two lines [lineWords] read last, newest first, read and replaced whole like [lastCompiled]. */
+    private class RecentLines(val newest: LineWords, val older: LineWords?)
+
+    @Volatile
+    private var recentLines: RecentLines? = null
+
+    /** How many of [line]'s first words [text] has as they are: each word, and the space after it, before the first change. */
+    private fun keptWords(line: LineWords?, text: String): Int {
+        if (line == null) return 0
+        val shown = line.text
+        val limit = minOf(shown.length, text.length)
+        var same = 0
+        while (same < limit && shown[same] == text[same]) same++
+        var kept = 0
+        while (kept < line.words.size && line.words[kept].tokenEnd < same) kept++
+        return kept
+    }
+
+    /**
+     * [words] of [text], reusing the words of the line read just before
+     * when [text] begins the same way. A line still being written comes
+     * again at every word with all of its words so far, and when a fix's
+     * heard word is on it, taking all of it apart again cost about 35 KB
+     * per word on a line of a hundred Hebrew words. Each word follows only
+     * from the text up to the space after it and the quotes left open
+     * before it, so a reused word is the word reading the line again
+     * finds. Two lines are kept: the line as heard and the line as shown
+     * with the fixes made on it come in turn.
+     */
+    private fun lineWords(text: String): List<Word> {
+        val recent = recentLines
+        val newestKept = keptWords(recent?.newest, text)
+        val olderKept = keptWords(recent?.older, text)
+        val line = if (olderKept > newestKept) recent?.older else recent?.newest
+        val kept = maxOf(newestKept, olderKept)
+        val out = ArrayList<Word>(kept + 8)
+        for (index in 0 until kept) out.add(line!!.words[index])
+        val last = if (kept > 0) line!!.words[kept - 1] else null
+        readWords(text, bare = false, atMaqaf = true, out, from = last?.tokenEnd ?: 0, quotes = last?.openAfter ?: 0)
+        recentLines = RecentLines(LineWords(text, out), recent?.newest)
         return out
     }
 
@@ -268,7 +342,7 @@ object WordFixes {
         for (n in 1..3) {
             if (word.letters.size <= n) return null
             if (word.letters[n - 1].toChar() !in PREFIX_LETTERS) return null
-            if (word.key.substring(n) != heard) continue
+            if (word.key.length - n != heard.length || !word.key.regionMatches(n, heard, 0, heard.length)) continue
             // A short name hides in everyday words ("full" holds Lea), also behind a prefix of their own ("when full").
             return if ((0 until n).any { word.key.substring(it) in everyday }) null else word.at[n]
         }
@@ -428,7 +502,7 @@ object WordFixes {
     fun apply(fixes: List<WordFix>, text: String): String {
         if (fixes.isEmpty() || text.isEmpty()) return text
         val compiled = compile(fixes)
-        if (compiled.none { mayFix(text, it) }) return text
+        if (compiled.compiled.none { mayFix(text, it) }) return text
         return rewrite(fixes, text, compiled).text
     }
 
@@ -503,7 +577,8 @@ object WordFixes {
         return out
     }
 
-    private class CompiledFixes(val fixes: List<WordFix>, val compiled: List<Compiled>)
+    /** [han] are the one-word Chinese or Japanese fixes, longest first, looked for inside a word. */
+    private class CompiledFixes(val fixes: List<WordFix>, val compiled: List<Compiled>, val han: List<Compiled>)
 
     /**
      * The fixes compiled last, kept for the next word: the same list comes
@@ -514,23 +589,24 @@ object WordFixes {
     @Volatile
     private var lastCompiled: CompiledFixes? = null
 
-    private fun compile(fixes: List<WordFix>): List<Compiled> {
-        lastCompiled?.let { if (it.fixes == fixes) return it.compiled }
+    private fun compile(fixes: List<WordFix>): CompiledFixes {
+        lastCompiled?.let { if (it.fixes == fixes) return it }
         val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
             else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written, keyOf(fix.heard) == keyOf(fix.written))
         }
-        lastCompiled = CompiledFixes(fixes.toList(), compiled)
-        return compiled
+        val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
+        return CompiledFixes(fixes.toList(), compiled, han).also { lastCompiled = it }
     }
 
-    private fun rewrite(fixes: List<WordFix>, text: String, compiledFixes: List<Compiled>? = null): Rewrite {
-        if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, words(text), emptyList())
-        val compiled = compiledFixes ?: compile(fixes)
-        if (compiled.isEmpty()) return Rewrite(text, words(text), emptyList())
-        val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
-        val all = words(text)
+    private fun rewrite(fixes: List<WordFix>, text: String, compiledFixes: CompiledFixes? = null): Rewrite {
+        if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, lineWords(text), emptyList())
+        val prepared = compiledFixes ?: compile(fixes)
+        val compiled = prepared.compiled
+        if (compiled.isEmpty()) return Rewrite(text, lineWords(text), emptyList())
+        val han = prepared.han
+        val all = lineWords(text)
         val sb = StringBuilder(text.length + 16)
         val spans = ArrayList<Span>()
         var copied = 0
@@ -538,7 +614,8 @@ object WordFixes {
         while (index < all.size) {
             var best: Compiled? = null
             var keep = 0
-            for (c in compiled) {
+            for (n in compiled.indices) {
+                val c = compiled[n]
                 if (best != null && c.words.size < best.words.size) continue
                 if (index + c.words.size > all.size) continue
                 val first = prefixEnd(all[index], c.words[0], lone = c.words.size == 1) ?: continue
