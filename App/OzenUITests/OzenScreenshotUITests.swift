@@ -239,6 +239,16 @@ final class OzenScreenshotUITests: XCTestCase {
         let word = app.buttons.matching(NSPredicate(format: "label == %@", wordButton)).firstMatch
         if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(word.exists, "\(name): no word button reads exactly \(wordButton), without the punctuation after it")
+        // The sheet slides up and grows as it appears: measured on the way,
+        // the button read 42 points at y 430 though it settles at 44 near
+        // the top. Its size is read once it stops moving.
+        var settled = word.frame
+        for _ in 0..<20 {
+            Thread.sleep(forTimeInterval: 0.25)
+            let now = word.frame
+            if now == settled { break }
+            settled = now
+        }
         XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
         word.tap()
         Thread.sleep(forTimeInterval: 0.5)
