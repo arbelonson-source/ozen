@@ -148,9 +148,13 @@ struct FixWordSheet: View {
                 .font(selected ? .body.weight(.bold) : .body)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
-                // 44 points: the smallest target a shaky finger hits
-                // reliably; the padding alone left about 34.
-                .frame(minWidth: 44, minHeight: 44)
+                // 44 points is the smallest target a shaky finger hits
+                // reliably; the padding alone left about 34. iOS 26 draws
+                // the sheet at its seven-tenths height floating inside the
+                // screen's edges, scaled to 96%: a 44-point word came out
+                // 42.25 points under the finger. At 48, as Android's words
+                // to tap, it stays above 44 on every iPhone.
+                .frame(minWidth: 48, minHeight: 48)
                 .background(selected ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 // The tint alone was hard to see with low vision or in a
                 // bright room.

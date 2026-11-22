@@ -239,20 +239,32 @@ final class OzenScreenshotUITests: XCTestCase {
         let word = app.buttons.matching(NSPredicate(format: "label == %@", wordButton)).firstMatch
         if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(word.exists, "\(name): no word button reads exactly \(wordButton), without the punctuation after it")
-        // The sheet slides up and grows as it appears: measured on the way,
-        // the button read 42 points at y 430 though it settles at 44 near
-        // the top. Its size is read once it stops moving.
-        var settled = word.frame
+        // The sheet slides up as it appears, so its size is read once it
+        // stops moving. Settled, a 44-point word still read 42.25 by 75.86
+        // (79 by 44 drawn at 386/402): iOS 26 draws the sheet at its
+        // seven-tenths height floating inside the screen's edges, scaled
+        // down, so the target is checked where the finger lands, again once
+        // the keyboard has moved the sheet.
+        settle(word)
+        print("FIX-WORD-FRAMES \(name) open: word \(word.frame), save \(app.buttons[saveTitle].frame)")
+        XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
+        XCTAssertGreaterThanOrEqual(word.frame.width, 44, "\(name): the word button is \(word.frame.width) pt wide, under the 44-point touch target (\(word.frame))")
+        word.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        settle(word)
+        print("FIX-WORD-FRAMES \(name) typing: word \(word.frame), save \(app.buttons[saveTitle].frame)")
+        XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): with the keyboard up the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
+        capture(app, name: name)
+    }
+
+    private func settle(_ element: XCUIElement) {
+        var settled = element.frame
         for _ in 0..<20 {
             Thread.sleep(forTimeInterval: 0.25)
-            let now = word.frame
+            let now = element.frame
             if now == settled { break }
             settled = now
         }
-        XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
-        word.tap()
-        Thread.sleep(forTimeInterval: 0.5)
-        capture(app, name: name)
     }
 
     func testFixWordSheetHebrew() throws {
