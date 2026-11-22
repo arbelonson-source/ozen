@@ -543,6 +543,75 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // The read was kept as the last save's error, so the caption screen said
+    // the phone was probably full, though nothing had failed to save. The
+    // iPhone keeps a read out of it.
+    @Test
+    fun `a word fixed in History while its conversation cannot be read just now is not a save that failed`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unreadable-not-full"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+        assertNull(writer.lastFailure, "nothing failed to save")
+        permissions(file, "rw-------")
+    }
+
+    // A fix that only read the file put its own outcome in place of a save
+    // that had really failed: a read error, or none at all for a line that
+    // was gone, and the warning went while the phone was still full.
+    @Test
+    fun `a word fixed in History that only reads its conversation leaves a save that failed before reported`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-read-keeps-failure"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        val other = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(other)
+        val fix = { text: String -> WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), text) }
+        permissions(dir, "r-x------")
+        assertFalse(writer.renameNow(other.id, "Dinner"))
+        val full = assertNotNull(writer.lastFailure)
+
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line, fix))
+        assertEquals(full, writer.lastFailure, "the phone is still full")
+        permissions(file, "rw-------")
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(other.id, UUID.randomUUID(), fix))
+        assertEquals(full, writer.lastFailure, "a line that is gone says nothing about room either")
+        permissions(dir, "rwx------")
+    }
+
+    // The iPhone fixes the words a fix still waiting for room left. Android
+    // worked them out from the file again, so a second fix of the line while
+    // the file couldn't be read just now said to try again, though it could
+    // be saved like the first.
+    @Test
+    fun `a word fixed in History on a line whose earlier fix waits for room fixes those words, even while the file cannot be read`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-after-waiting-fix"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval and Dan", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(dir, "r-x------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("aval", "Avi") })
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line) { it.replace("Dan", "Dana") })
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(old.id, line) { it.replace("aval", "Avital") }, "the waiting words no longer have it")
+
+        permissions(dir, "rwx------")
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi and Dana", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
     // History's dialog says a fix that waits for room is done. Read from the
     // file, History kept showing the old words, and the person fixed the
     // same word again.

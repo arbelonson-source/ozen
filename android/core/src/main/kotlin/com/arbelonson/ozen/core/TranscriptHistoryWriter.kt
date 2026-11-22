@@ -178,7 +178,7 @@ class TranscriptHistoryWriter(
         }
         val record = waiting ?: store.load(id) ?: return@sync null
         val texts = pendingRenames.texts.filter { it.sessionID == id }
-        record.copy(segments = record.segments.map { line -> texts.filter { it.segmentID == line.id }.fold(line) { shown, next -> shown.copy(text = next.change(shown.text)) } })
+        record.copy(segments = record.segments.map { line -> texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line })
     }
 
     /**
@@ -215,7 +215,7 @@ class TranscriptHistoryWriter(
         }
         for (next in pendingRenames.texts.toList()) {
             try {
-                store.fixText(next.segmentID, next.sessionID, next.change)
+                store.fixText(next.segmentID, next.sessionID, next.text)
                 pendingRenames.texts.remove(next)
             } catch (error: Exception) {
                 failure.record(error.toString())
@@ -268,16 +268,19 @@ class TranscriptHistoryWriter(
      * refused stays waiting, is tried again after every later write, and
      * until it goes through its error is the one reported.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean =
-        queue.sync { fixText(sessionID, segmentID, { text }, fromHistory = false) == WordFixResult.Saved }
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
+        lastWritten.record = null
+        write(text, sessionID, segmentID)
+    }
 
     /**
-     * History's fix of a word, changing the line's text as it is when the
-     * write happens. An older change of that line still waiting goes first
-     * and is dropped from the queue, so it is neither written after this one
-     * nor lost. A change still waiting is always newer than the waiting
-     * version of its conversation: any later save of the conversation takes
-     * its place (see [PendingRenames.dropTexts]).
+     * History's fix of a word, changing the line's words as they are when
+     * the write happens. A text of that line still waiting for room has its
+     * newest words: any later save of the conversation takes its place (see
+     * [PendingRenames.dropTexts]). The fix changes that text, as on the
+     * iPhone, and needs nothing from the file: worked out from the file's
+     * words, a fix made while the file couldn't be read just now was
+     * refused, though it could wait for room like the one before it.
      *
      * [WordFixResult.Saved] when it changed the line's newest words and they
      * are kept: in the file, in the waiting version, or waiting for room by
@@ -289,46 +292,81 @@ class TranscriptHistoryWriter(
      * conversation waiting for room no longer has the line (a replay took it
      * off the screen before the conversation closed): the fix was written to
      * the file and called saved, then that version was written over it
-     * without the line. [WordFixResult.Unreadable] when the file is there
-     * but its words couldn't be read just now: History said the line
-     * changed or was gone, though the same fix went through once the file
-     * could be read.
+     * without the line. [WordFixResult.Unreadable] when no text of the line
+     * waits and the file is there but its words couldn't be read just now:
+     * History said the line changed or was gone, though the same fix went
+     * through once the file could be read.
+     *
+     * A fix that wrote nothing (the file couldn't be read just now, or has
+     * no such line) leaves [lastFailure] as it was, as on the iPhone. Kept
+     * as the last save's error, that read made the caption screen say the
+     * phone was probably full though nothing had failed to save, and a line
+     * that was gone took away the warning of a save that really had failed.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): WordFixResult =
-        queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
-
-    private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): WordFixResult {
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): WordFixResult = queue.sync {
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
-        if (fromHistory && waiting != null && index < 0) {
+        if (waiting != null && index < 0) {
             if (catchUp(null)) failure.clear()
-            return WordFixResult.LineChanged
+            return@sync WordFixResult.LineChanged
         }
         lastWritten.record = null
-        val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
-        var changed: Boolean? = null
-        val combined = { text: String ->
-            val now = earlier.fold(text) { shown, older -> older.change(shown) }
-            change(now).also { changed = it != now }
+        val newest = pendingRenames.texts.lastOrNull { it.sessionID == sessionID && it.segmentID == segmentID }?.text
+        if (newest != null) {
+            val text = change(newest)
+            if (text == newest) {
+                catchUp(null)
+                return@sync WordFixResult.LineChanged
+            }
+            write(text, sessionID, segmentID)
+            return@sync WordFixResult.Saved
         }
+        var fixed: String? = null
+        var changed: Boolean? = null
+        val fix = { now: String -> change(now).also { fixed = it; changed = it != now } }
         var done = false
-        val written = failure.capture { done = store.fixText(segmentID, sessionID, combined) }
-        if (waiting != null && index >= 0) {
+        val written = failure.capture(counts = { changed != null }) { done = store.fixText(segmentID, sessionID, fix) }
+        if (waiting != null) {
             val segments = waiting.segments.toMutableList()
-            segments[index] = segments[index].copy(text = combined(segments[index].text))
+            segments[index] = segments[index].copy(text = fix(segments[index].text))
             pendingSaves.records[sessionID] = waiting.copy(segments = segments)
             done = true
         } else if (!written) {
-            if (fromHistory && changed != true) {
+            if (changed != true) {
                 catchUp(null)
-                return if (changed == null) WordFixResult.Unreadable else WordFixResult.LineChanged
+                return@sync if (changed == null) WordFixResult.Unreadable else WordFixResult.LineChanged
             }
-            pendingRenames.texts.add(PendingText(sessionID, segmentID, combined))
-            done = fromHistory
+            fixed?.let { pendingRenames.texts.add(PendingText(sessionID, segmentID, it)) }
+            done = true
         }
-        pendingRenames.texts.removeAll(earlier)
         catchUp(null)
-        return if (done && (changed == true || !fromHistory)) WordFixResult.Saved else WordFixResult.LineChanged
+        if (done && changed == true) WordFixResult.Saved else WordFixResult.LineChanged
+    }
+
+    /**
+     * A line's new words, in the file and in the version of its
+     * conversation waiting for room when that has the line; refused with
+     * neither, they wait for room by themselves. An older text of the line
+     * still waiting goes either way: once there was room it was written
+     * after this one and brought the old words back. Whether the line was
+     * found, in the file or in the waiting version.
+     */
+    private fun write(text: String, sessionID: UUID, segmentID: UUID): Boolean {
+        var found = false
+        val written = failure.capture { found = store.fixText(segmentID, sessionID, text) }
+        pendingRenames.texts.removeAll { it.sessionID == sessionID && it.segmentID == segmentID }
+        val waiting = pendingSaves.records[sessionID]
+        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
+        if (waiting != null && index >= 0) {
+            val segments = waiting.segments.toMutableList()
+            segments[index] = segments[index].copy(text = text)
+            pendingSaves.records[sessionID] = waiting.copy(segments = segments)
+            found = true
+        } else if (!written) {
+            pendingRenames.texts.add(PendingText(sessionID, segmentID, text))
+        }
+        catchUp(null)
+        return found
     }
 
     /**
@@ -444,22 +482,26 @@ class TranscriptHistoryWriter(
             synchronized(lock) { stored = null }
         }
 
-        /** Runs [work], keeps its error (or that there was none), and returns whether it succeeded. */
-        fun capture(work: () -> Any?): Boolean {
+        /**
+         * Runs [work], keeps its error (or that there was none), and returns
+         * whether it succeeded. When [counts], asked once [work] is done,
+         * says it only read, the error kept before stays as it was.
+         */
+        fun capture(counts: () -> Boolean = { true }, work: () -> Any?): Boolean {
             val outcome: String? = try {
                 work()
                 null
             } catch (error: Exception) {
                 error.toString()
             }
-            synchronized(lock) { stored = outcome }
+            if (counts()) synchronized(lock) { stored = outcome }
             return outcome == null
         }
     }
 
     private class PendingRename(val from: String, val to: String)
 
-    private class PendingText(val sessionID: UUID, val segmentID: UUID, val change: (String) -> String)
+    private class PendingText(val sessionID: UUID, val segmentID: UUID, val text: String)
 
     /** Voice renames and line-text fixes not yet written to every saved conversation. Only touched on the writer's queue. */
     private class PendingRenames {
@@ -468,7 +510,7 @@ class TranscriptHistoryWriter(
 
         /**
          * A save of a conversation, written or left waiting, is newer than any
-         * change of its lines still waiting: that change was written after it
+         * text of its lines still waiting: that text was written after it
          * once there was room, and History's next fix started from the older
          * words.
          */

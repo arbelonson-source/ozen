@@ -906,6 +906,59 @@ class ConversationSaverTest {
         assertEquals("I saw Avi today", store.load(earlier)!!.segments.single().text)
     }
 
+    // That read counted as a save that failed: the caption screen said the
+    // phone was probably full, and its lines no longer opened their
+    // conversation, though nothing had failed to save.
+    @Test
+    fun `a word fixed in History on an earlier conversation that cannot be read just now is not taken for a full phone`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        store.fixText(line, earlier, "I saw aval today")
+        val file = folder.listFiles()!!.single { it.name.equals("$earlier.json", ignoreCase = true) }
+        start()
+        say("Something else entirely")
+        saver.save(ended = false)
+        writer.waitUntilIdle()
+
+        assertTrue(file.setReadable(false, false))
+        val refused = try {
+            saver.fixLineEverywhere(earlier, line, WordFix("aval", "Avi"), ::fixOnScreen)
+        } finally {
+            file.setReadable(true)
+        }
+        assertEquals(WordFixResult.Unreadable, refused)
+        assertNull(saver.lastSaveFailure)
+        assertEquals(saver.currentId, saver.savedConversation(0))
+    }
+
+    // The iPhone fixes the words a fix still waiting for room left. Here a
+    // second fix of that line, while its conversation couldn't be read just
+    // now, said to try again, though it could wait for room like the first.
+    @Test
+    fun `a word fixed in History on a line whose earlier fix waits for room is saved, even while its conversation cannot be read just now`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        store.fixText(line, earlier, "I saw aval and Dan")
+        val file = folder.listFiles()!!.single { it.name.equals("$earlier.json", ignoreCase = true) }
+
+        assertTrue(folder.setWritable(false))
+        val kept = try {
+            val first = saver.fixLineEverywhere(earlier, line, WordFix("aval", "Avi"), ::fixOnScreen)
+            assertTrue(file.setReadable(false, false))
+            listOf(first, saver.fixLineEverywhere(earlier, line, WordFix("Dan", "Dana"), ::fixOnScreen))
+        } finally {
+            file.setReadable(true)
+            folder.setWritable(true)
+        }
+        assertEquals(listOf(WordFixResult.Saved, WordFixResult.Saved), kept)
+        start()
+        say("Something else entirely")
+        saver.save(ended = false)
+        writer.waitUntilIdle()
+        assertEquals("I saw Avi and Dana", store.load(earlier)!!.segments.single().text)
+        assertNull(saver.lastSaveFailure)
+    }
+
     @Test
     fun `a word fixed in History that a line of an earlier conversation no longer has is refused`() {
         val earlier = oldConversation(clock - 3_600)
