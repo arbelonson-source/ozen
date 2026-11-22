@@ -19,9 +19,9 @@ public struct SilencePhraseGuard: Sendable {
     }
 
     public mutating func admits(_ token: TranscriptToken, at time: TimeInterval) -> Bool {
-        let words = WhisperResultFilter.normalize(token.text).split(separator: " ")
-        guard !words.isEmpty else { return true }
-        guard let matched = phrases(in: words), Set(matched.map(Self.soundTags.contains)).count == 1 else {
+        var words = WhisperResultFilter.NormalizedWords(token.text)
+        guard words.has(0) else { return true }
+        guard let matched = phrases(in: &words), Set(matched.map(Self.soundTags.contains)).count == 1 else {
             lastPhraseAt = nil
             shownPhraseLine = nil
             waitingForVoice = nil
@@ -54,14 +54,18 @@ public struct SilencePhraseGuard: Sendable {
         return voicedChunks >= minimumVoicedChunksPerPhrase * matched.count
     }
 
-    private func phrases(in words: [Substring]) -> [String]? {
+    private func phrases(in words: inout WhisperResultFilter.NormalizedWords) -> [String]? {
         var index = 0
         var matched: [String] = []
-        while index < words.count {
-            guard let phrase = phrases.first(where: { words[index...].starts(with: $0) }) else { return nil }
+        while words.has(index) {
+            guard let phrase = phrases.first(where: { Self.starts(&words, at: index, with: $0) }) else { return nil }
             index += phrase.count
             matched.append(phrase.joined(separator: " "))
         }
         return matched
+    }
+
+    private static func starts(_ words: inout WhisperResultFilter.NormalizedWords, at start: Int, with phrase: [Substring]) -> Bool {
+        phrase.indices.allSatisfy { words.has(start + $0) && words[start + $0] == phrase[$0] }
     }
 }

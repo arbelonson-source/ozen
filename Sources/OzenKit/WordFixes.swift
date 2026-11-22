@@ -132,8 +132,73 @@ public enum WordFixes {
         return canJoin(String(String.UnicodeScalarView(scalars[..<end])), String(String.UnicodeScalarView(tokens[right].scalars)))
     }
 
+    /// `text` with `fixes` written in. The line being written comes again
+    /// at every word with all of its words so far, so a line that none of
+    /// the fixes' first heard words are on is given back as it is, found
+    /// by reading its letters in place (see `mayChange`) rather than taking
+    /// it apart into words.
     public static func apply(_ fixes: [WordFix], to text: String) -> String {
+        guard !fixes.isEmpty, !text.isEmpty else { return text }
+        let prepared = prepare(fixes)
+        guard prepared.contains(where: { mayChange(text, $0) }) else { return text }
+        return rewrite(fixes, text, prepared: prepared).text
+    }
+
+    /// `apply` taking every line apart, for tests that hold the two to the
+    /// same answers.
+    static func applyReadingEveryWord(_ fixes: [WordFix], to text: String) -> String {
         rewrite(fixes, text).text
+    }
+
+    /// Whether `fix` could change `text`. A word `match` takes for it has
+    /// the fix's first heard word at its end, as `Token.key` reads it:
+    /// folded, without the marks the key leaves out. So does a Chinese
+    /// word `replacingHan` finds it in, its characters being their own
+    /// folded form. A line on which that run of folded letters is nowhere
+    /// is one `rewrite` gives back unchanged.
+    ///
+    /// Words are compared as strings, which treats a letter written with
+    /// its accent as one character and as two alike. The letters are read
+    /// one at a time here, so this is only trusted when both the heard word
+    /// and the line are made of letters that have one way of being written
+    /// (`isPlainLetter`); anything else is taken the long way.
+    private static func mayChange(_ text: String, _ fix: Prepared) -> Bool {
+        let heard = Array(fix.words[0].unicodeScalars)
+        guard !heard.isEmpty, heard.allSatisfy(isPlainLetter), text.unicodeScalars.allSatisfy(isPlainLetter) else { return true }
+        let line = text.unicodeScalars
+        var from = line.startIndex
+        while from < line.endIndex {
+            if !Token.isMark(line[from]), reads(line, from: from, heard) { return true }
+            from = line.index(after: from)
+        }
+        return false
+    }
+
+    private static func reads(_ line: String.UnicodeScalarView, from start: String.UnicodeScalarView.Index, _ heard: [Unicode.Scalar]) -> Bool {
+        var at = start
+        for wanted in heard {
+            while at < line.endIndex, Token.isMark(line[at]) { at = line.index(after: at) }
+            guard at < line.endIndex, plainFolded(line[at]) == wanted else { return false }
+            at = line.index(after: at)
+        }
+        return true
+    }
+
+    /// Basic Latin and the punctuation below the accented letters, Hebrew,
+    /// Arabic without the marks a key keeps, and the dashes, quotes and
+    /// spaces of General Punctuation: none has another way of being written
+    /// that compares equal, and each folds to one letter of its own.
+    private static func isPlainLetter(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x00...0xBF, 0x0590...0x05FF, 0x2002...0x205F: return true
+        case 0x0610...0x061A, 0x06D6...0x06ED: return false
+        case 0x0600...0x06FF: return true
+        default: return false
+        }
+    }
+
+    private static func plainFolded(_ scalar: Unicode.Scalar) -> Unicode.Scalar {
+        foldedScalar((0x41...0x5A).contains(scalar.value) ? Unicode.Scalar(scalar.value + 0x20)! : scalar)
     }
 
     /// The text after `fixes`, its words as they were heard, and which of
@@ -144,13 +209,17 @@ public enum WordFixes {
         let spans: [(first: Int, last: Int, replacement: String)]
     }
 
-    private static func rewrite(_ fixes: [WordFix], _ text: String) -> Rewrite {
-        guard !fixes.isEmpty, !text.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
-        let prepared = normalized(fixes).compactMap { fix -> Prepared? in
+    private static func prepare(_ fixes: [WordFix]) -> [Prepared] {
+        normalized(fixes).compactMap { fix -> Prepared? in
             let words = Token.split(Array(fix.heard.unicodeScalars))
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
             return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written, exactly: key(fix.heard) == key(fix.written))
         }.sorted { $0.words.count > $1.words.count }
+    }
+
+    private static func rewrite(_ fixes: [WordFix], _ text: String, prepared ready: [Prepared]? = nil) -> Rewrite {
+        guard !fixes.isEmpty, !text.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
+        let prepared = ready ?? prepare(fixes)
         let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
             .map { HanFix(heard: Array($0.words[0].unicodeScalars), written: $0.written, exactly: $0.exactly) }
             .sorted { $0.heard.count > $1.heard.count }
