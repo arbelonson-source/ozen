@@ -94,6 +94,8 @@ data class CaptionScreenState(
     val recentlyHeardBy: Map<UUID, String> = emptyMap(),
     val speaking: Boolean = false,
     val savingTrouble: Boolean = false,
+    /** The failed save is of settings whose file can't be read right now, not a full phone; see `SavingTroubleNotice`. */
+    val savingTroubleUnreadable: Boolean = false,
     val inputs: List<AudioInputDescriptor> = emptyList(),
     val selectedInput: AudioInputDescriptor? = null,
     /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
@@ -429,9 +431,9 @@ object CaptionState {
         state.value = state.value.copy(recentConversation = summary)
     }
 
-    /** Saving on the phone failed: the caption screen says so until she taps it away. */
-    fun savingTrouble(show: Boolean) {
-        state.value = state.value.copy(savingTrouble = show)
+    /** Saving on the phone failed: the caption screen says so, and why, until it is tapped away. */
+    fun savingTrouble(show: Boolean, settingsUnreadable: Boolean = false) {
+        state.value = state.value.copy(savingTrouble = show, savingTroubleUnreadable = settingsUnreadable)
     }
 
     /** A star given or taken away shows on the line at once, before the next captions. */

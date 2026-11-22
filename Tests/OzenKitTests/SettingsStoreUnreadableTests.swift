@@ -99,4 +99,43 @@ struct SettingsStoreUnreadableTests {
         #expect(back.speechRate == AppSettings.default.speechRate)
         #expect(back.wordFixes == [WordFix(heard: "dona", written: "Dana"), WordFix(heard: "abby", written: "Avi")])
     }
+
+    @Test("while the file can't be read, the app counts as set up: no first-run guide over the captions, and no offer resting on the stand-in")
+    func standInCountsAsSetUp() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("ozen-settings.json")
+        try SettingsStore(fileURL: url).save(personal())
+        try lock(url)
+        defer { try? unlock(url) }
+
+        let standIn = SettingsStore(fileURL: url).load()
+        #expect(standIn.hasCompletedOnboarding)
+        #expect(!standIn.offersNameAlert)
+        #expect(!standIn.offersBetterModel())
+        #expect(!SettingsStore(fileURL: dir.appendingPathComponent("not-there.json")).load().hasCompletedOnboarding)
+    }
+
+    @Test("the stand-in's own answers never reach the file: a guide not finished and a name offer not turned down stay so")
+    func standInAnswersStayOutOfTheFile() throws {
+        let dir = try folder()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("ozen-settings.json")
+        var unfinished = personal()
+        unfinished.hasCompletedOnboarding = false
+        try SettingsStore(fileURL: url).save(unfinished)
+        try lock(url)
+
+        let store = SettingsStore(fileURL: url)
+        var session = store.load()
+        try unlock(url)
+        session.speechRate = 0.5
+        try store.save(session)
+
+        let back = SettingsStore(fileURL: url).load()
+        #expect(!back.hasCompletedOnboarding)
+        #expect(!back.nameAlertOfferDismissed)
+        #expect(back.speechRate == 0.5)
+        #expect(back.speakerProfiles.map(\.name) == ["Dana"])
+    }
 }

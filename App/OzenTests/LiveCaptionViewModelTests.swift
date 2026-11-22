@@ -3653,6 +3653,45 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(!viewModel.savingTrouble.isFailing)
     }
 
+    @Test("a settings file that is there but can't be read (locked after a restart) brings up the captions, not the first-run guide, and its failed saves aren't blamed on a full phone")
+    func unreadableSettingsFile() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.hasCompletedOnboarding = true
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline)
+        #expect(viewModel.hasCompletedOnboarding)
+
+        viewModel.hapticOnSpeechResume.toggle()
+        #expect(viewModel.savingTrouble.shouldShow)
+        #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+    }
+
+    @Test("a save the disk refuses still says the phone is probably full")
+    func fullPhoneKeepsItsReason() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-read-only-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: folder.appendingPathComponent("settings.json")),
+            pipeline: pipeline
+        )
+        viewModel.hapticOnSpeechResume.toggle()
+        #expect(viewModel.savingTrouble.shouldShow)
+        #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.detail)
+    }
+
     @Test("captions an automatic retry brought back after a failed start are saved as a conversation of their own")
     func autoRetryStartsTheHistorySession() async throws {
         let audio = FakeAudioCapturer()
