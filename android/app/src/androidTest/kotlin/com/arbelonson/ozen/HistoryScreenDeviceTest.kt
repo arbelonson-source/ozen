@@ -5,6 +5,7 @@ import android.app.Instrumentation
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.setContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
@@ -52,9 +53,13 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SessionJournal
+import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
+import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.deleteConversations
 import java.io.File
 import java.io.IOException
@@ -64,6 +69,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -352,6 +358,90 @@ class HistoryScreenDeviceTest {
     }
 
     private fun fixField(index: Int) = compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(isDialog()))[index]
+
+    // The conversation still being captioned is read again every twenty
+    // seconds, and its newest line, saved while it is still being said, can
+    // come back shorter. With its last word picked in Fix a word, the next
+    // redraw threw and the app closed, and the captions and sound alerts
+    // stopped with it. The dialog now keeps the words it opened with, and a
+    // fix of a word the line no longer has is refused, not taken as done.
+    @Test
+    fun fixAWordKeepsItsWordsWhileTheNewestLineComesBackShorterAndSaysAFixOfAWordNoLongerThereWasNotSaved() {
+        val conversation = NewestLineConversation("we will meet at the station at nine and then go home")
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("then go home") }
+        val fix = compose.onNodeWithContentDescription("then go home", substring = true).fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" }
+        compose.runOnUiThread { fix.action() }
+        waitFor("Tap the words that came out wrong")
+        val home = compose.onNode(hasContentDescription("home") and hasAnyAncestor(isDialog()))
+        home.performClick()
+        home.assertIsSelected()
+
+        val loads = conversation.loads.get()
+        conversation.text = "we will meet at the station"
+        compose.mainClock.advanceTimeBy(21_000)
+        compose.waitUntil(10_000) { conversation.loads.get() > loads }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("then go home", substring = true).fetchSemanticsNodes().isEmpty() }
+
+        home.assertIsSelected()
+        fixField(1).performTextInput("Rome")
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+        waitFor("The fix was not saved. Try again in a moment.")
+        compose.onNodeWithText("Tap the words that came out wrong").assertExists()
+        assertEquals(listOf("home"), conversation.tried.toList())
+        assertTrue(conversation.kept.isEmpty())
+    }
+
+    private class NewestLineConversation(@Volatile var text: String) : SavedConversations {
+        val id: UUID = UUID.randomUUID()
+        private val line = UUID.randomUUID()
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val loads = AtomicInteger()
+        val tried = CopyOnWriteArrayList<String>()
+        val kept = CopyOnWriteArrayList<String>()
+
+        override fun load(id: UUID) = TranscriptSessionRecord(
+            id = this.id,
+            startedAt = startedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(SavedSegment(line, text, null, null, startedAt, false)),
+        ).also { loads.incrementAndGet() }
+
+        override fun isCurrent(id: UUID) = true
+
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
+            tried += heard
+            val fixed = WordFixes.apply(listOf(WordFix(heard, written)), text)
+            if (fixed == text) return false
+            text = fixed
+            return true
+        }
+
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {
+            kept += heard
+        }
+
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun starredLines() = emptyList<StarredLine>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun rename(id: UUID, title: String) = false
+        override fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? = null
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
 
     @Test
     fun aNumberMentionedCopiesFromItsRowWhichSaysWhenItMayHaveBeenMisheard() {
