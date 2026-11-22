@@ -3,6 +3,7 @@ import Foundation
 public struct SavingTroubleNotice: Sendable, Equatable {
     public private(set) var isFailing = false
     public private(set) var settingsUnreadable = false
+    public private(set) var onlyUnreadable = false
     private var isDismissed = false
 
     public init() {}
@@ -10,13 +11,18 @@ public struct SavingTroubleNotice: Sendable, Equatable {
     public var shouldShow: Bool { isFailing && !isDismissed }
 
     public mutating func update(settingsFailed: Bool, historyFailed: Bool, settingsUnreadable: Bool = false) {
-        let failing = settingsFailed || historyFailed
+        let failing = settingsFailed || historyFailed || settingsUnreadable
         if !failing { isDismissed = false }
         isFailing = failing
-        self.settingsUnreadable = settingsFailed && settingsUnreadable && !historyFailed
+        self.settingsUnreadable = settingsUnreadable && !historyFailed
+        onlyUnreadable = self.settingsUnreadable && !settingsFailed
     }
 
+    public var shownTitle: String { onlyUnreadable ? Self.unreadableSettingsTitle : Self.title }
+
     public var shownDetail: String { settingsUnreadable ? Self.unreadableSettingsDetail : Self.detail }
+
+    public var spoken: String? { shouldShow ? shownTitle + ". " + shownDetail : nil }
 
     public mutating func dismiss() {
         isDismissed = true
@@ -30,6 +36,8 @@ public struct SavingTroubleNotice: Sendable, Equatable {
             args: ["\(DeviceWord.brand)"]
         )
     }
+
+    public static var unreadableSettingsTitle: String { tr("כרגע אי אפשר לקרוא את ההגדרות השמורות", "Saved settings can’t be read right now") }
 
     public static var unreadableSettingsDetail: String {
         tr(

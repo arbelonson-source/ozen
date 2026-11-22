@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.floor
+import kotlin.reflect.KMutableProperty1
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -849,6 +850,18 @@ class SettingsStore(private val file: File) {
     private var standIn: JsonObject? = null
 
     /**
+     * Whether the file is there but couldn't be read at the last [load], or
+     * at the last [save] that had to read it first: the settings in use then
+     * stand in for it, and the caption screen says so before anything is
+     * saved. A missing file (a first run) or a damaged one is not that. It
+     * stays so until a later [save] or [load] finds the file readable. The
+     * iPhone's store says the same.
+     */
+    @Volatile
+    var isUnreadable: Boolean = false
+        private set
+
+    /**
      * The saved settings, or the defaults when there are none or the file
      * can't be read as settings at all. A damaged file is moved aside
      * first (see [damagedCopy]): the next save would otherwise write
@@ -862,9 +875,12 @@ class SettingsStore(private val file: File) {
     @Synchronized
     fun load(): AppSettings {
         standIn = null
+        keptNo.clear()
+        isUnreadable = false
         val data = when (val read = read()) {
             FileRead.Missing -> return AppSettings.default
             is FileRead.Unreadable -> {
+                isUnreadable = true
                 standIn = settingsJson(unreadableStandIn())
                 return unreadableStandIn()
             }
@@ -885,9 +901,17 @@ class SettingsStore(private val file: File) {
      * unless the person changes it. The iPhone's store does the same.
      */
     private fun unreadableStandIn(): AppSettings = AppSettings.default.apply {
-        hasCompletedOnboarding = true
-        nameAlertOfferDismissed = true
+        standInAnswers.forEach { it.set(this, true) }
     }
+
+    /** The answers [unreadableStandIn] gives in the file's place. */
+    private val standInAnswers = listOf(AppSettings::hasCompletedOnboarding, AppSettings::nameAlertOfferDismissed)
+
+    /**
+     * The stand-in's answers a caller took up in place of the file's no (see
+     * [saveTakingUp]): written as no while the caller's stay.
+     */
+    private val keptNo = mutableListOf<KMutableProperty1<AppSettings, Boolean>>()
 
     /**
      * Where a settings file that couldn't be read is kept, next to it:
@@ -910,19 +934,43 @@ class SettingsStore(private val file: File) {
      * in [settings] since the stand-in (or since the last such save) is
      * added to the file's own settings, so neither the saved voices, names
      * and alerts nor this session's changes are lost (see
-     * [mergedSettingsJson]). The caller still holds only its own settings
-     * until the next launch loads the whole file, so later saves keep
-     * adding to the file the same way. The iPhone's store does the same.
+     * [mergedSettingsJson]). A caller that goes on holding only its own
+     * settings has later saves added to the file the same way; the app takes
+     * up the whole file instead, with [saveTakingUp]. The iPhone's store does
+     * the same.
      */
     @Synchronized
     fun save(settings: AppSettings) {
+        write(settings, takingUp = false)
+    }
+
+    /**
+     * [save], for a caller that goes on with what this hands back. Once a save
+     * after a [load] that couldn't read the file reaches it, that is the
+     * file's own settings with this session's changes added, as if loaded
+     * now: the person's language, engine, voices and alert words come back
+     * without waiting for the next launch, and later saves are written as
+     * they are. The stand-in's answers the file says no to (the first-run
+     * guide finished, the name offer turned down) stay as [settings] has
+     * them, so the guide doesn't open over the captions, and the file keeps
+     * its no until the caller's answer changes. Any other time this hands
+     * back [settings]. The iPhone's store does the same.
+     */
+    @Synchronized
+    fun saveTakingUp(settings: AppSettings): AppSettings = write(settings, takingUp = true)
+
+    private fun write(settings: AppSettings, takingUp: Boolean): AppSettings {
         val base = standIn
         if (base == null) {
-            PrivateFileWrites.write(file, settings.toJson().toByteArray(Charsets.UTF_8))
-            return
+            keptNo.retainAll { it.get(settings) }
+            val written = if (keptNo.isEmpty()) settings else settings.copy().apply { keptNo.forEach { it.set(this, false) } }
+            PrivateFileWrites.write(file, written.toJson().toByteArray(Charsets.UTF_8))
+            return settings
         }
         val mine = settingsJson(settings)
-        val written = when (val read = read()) {
+        val read = read()
+        isUnreadable = read is FileRead.Unreadable
+        val written = when (read) {
             FileRead.Missing -> mine
             is FileRead.Unreadable -> throw SettingsFileUnreadableException(read.error)
             is FileRead.Bytes -> {
@@ -937,7 +985,20 @@ class SettingsStore(private val file: File) {
             }
         }
         PrivateFileWrites.write(file, written.toString().toByteArray(Charsets.UTF_8))
-        standIn = if (written == mine) null else mine
+        if (written == mine) {
+            standIn = null
+            return settings
+        }
+        if (!takingUp) {
+            standIn = mine
+            return settings
+        }
+        standIn = null
+        val held = AppSettings.fromJson(written.toString())
+        keptNo.clear()
+        keptNo += standInAnswers.filter { it.get(settings) && !it.get(held) }
+        keptNo.forEach { it.set(held, true) }
+        return held
     }
 
     private sealed interface FileRead {
@@ -948,14 +1009,22 @@ class SettingsStore(private val file: File) {
         class Bytes(val data: ByteArray) : FileRead
     }
 
-    /** Only "no such file" counts as no settings yet; any other failure means a file may well be there. */
+    /**
+     * Only "no such file" counts as no settings yet; any other failure means a
+     * file may well be there. A plain file standing where one of its folders
+     * should be counts as none too: no file can be there then, and the read
+     * fails as "not a directory". The iPhone's store does the same.
+     */
     private fun read(): FileRead = try {
         FileRead.Bytes(Files.readAllBytes(file.toPath()))
     } catch (_: NoSuchFileException) {
         FileRead.Missing
     } catch (error: Exception) {
-        FileRead.Unreadable(error)
+        if (liesUnderAPlainFile()) FileRead.Missing else FileRead.Unreadable(error)
     }
+
+    private fun liesUnderAPlainFile(): Boolean =
+        generateSequence(file.absoluteFile.parentFile) { it.parentFile }.firstOrNull { it.exists() }?.isFile == true
 
     private fun decoded(data: ByteArray): AppSettings? = try {
         AppSettings.fromJson(String(data, Charsets.UTF_8))

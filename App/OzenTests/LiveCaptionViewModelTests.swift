@@ -3692,6 +3692,74 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.detail)
     }
 
+    @Test("a settings file that can't be read at launch puts the banner up at once, with that reason, before anything is saved; a save that gets through takes it down, and a first run shows nothing")
+    func unreadableAtLaunchShowsAtOnce() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-launch-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.hasCompletedOnboarding = true
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = { CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder()) }
+
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline())
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(viewModel.savingTrouble.shouldShow)
+        #expect(viewModel.savingTrouble.shownDetail == SavingTroubleNotice.unreadableSettingsDetail)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+        #expect(viewModel.settingsSaveError == nil)
+        #expect(!viewModel.savingTrouble.isFailing)
+
+        let firstRun = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: folder.appendingPathComponent("not-there.json")),
+            pipeline: pipeline()
+        )
+        #expect(!firstRun.savingTrouble.isFailing)
+    }
+
+    @Test("once a save gets through to a settings file that couldn't be read at launch, the saved settings come back with this session's change, running captions start again on them, the first-run guide stays away, and a later removal reaches the file")
+    func savedSettingsComeBackOnceReadable() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unreadable-comeback-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("settings.json")
+        var saved = AppSettings.default
+        saved.engine = .appleSpeech
+        saved.spokenLanguage = .english
+        saved.vocabulary = ["Noa"]
+        saved.keywordAlerts = [KeywordAlert(phrase: "Dana")]
+        try SettingsStore(fileURL: url).save(saved)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { settings in FakeEngine(kind: settings.engine) }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url), pipeline: pipeline)
+        await viewModel.start()
+        #expect(viewModel.pipeline.activeEngineKind == AppSettings.default.engine)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        viewModel.hapticOnSpeechResume.toggle()
+
+        #expect(viewModel.settings.engine == .appleSpeech)
+        #expect(viewModel.settings.spokenLanguage == .english)
+        #expect(viewModel.settings.keywordAlerts.map(\.phrase) == ["Dana"])
+        #expect(viewModel.settings.hapticOnSpeechResume != AppSettings.default.hapticOnSpeechResume)
+        #expect(viewModel.hasCompletedOnboarding)
+        #expect(await eventually { viewModel.pipeline.activeEngineKind == .appleSpeech && viewModel.isListening })
+        try #require(viewModel.settings.vocabulary == ["Noa"])
+
+        viewModel.removeVocabulary(at: IndexSet(integer: 0))
+        let back = SettingsStore(fileURL: url).load()
+        #expect(back.vocabulary.isEmpty)
+        #expect(back.engine == .appleSpeech)
+        #expect(back.hapticOnSpeechResume != AppSettings.default.hapticOnSpeechResume)
+        #expect(!back.hasCompletedOnboarding)
+    }
+
     @Test("captions an automatic retry brought back after a failed start are saved as a conversation of their own")
     func autoRetryStartsTheHistorySession() async throws {
         let audio = FakeAudioCapturer()

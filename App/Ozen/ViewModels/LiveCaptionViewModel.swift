@@ -33,12 +33,12 @@ public final class LiveCaptionViewModel {
     /// Why the last settings save failed, for the diagnostics screen; nil
     /// when the last save worked.
     public private(set) var settingsSaveError: String?
-    /// The last settings save failed because the settings file is there
-    /// but can't be read right now (`SettingsFileUnreadable`), not for want
-    /// of space, so the banner doesn't send anyone off to free some.
-    private var settingsSaveUnreadable = false
     /// Whether the caption screen says saving is failing (a full phone, or
-    /// settings that can't be read right now).
+    /// settings that can't be read right now). The second is said from
+    /// launch on, before anything is saved: the captions then run on the
+    /// standard settings, maybe in another language or with another engine
+    /// than the person chose, and nothing else would explain why. Its text
+    /// doesn't send anyone off to free space (`SettingsStore.isUnreadable`).
     public private(set) var savingTrouble = SavingTroubleNotice()
     #if DEBUG
     /// A screenshot fixture's full phone: every save counts as failed, so
@@ -379,6 +379,7 @@ public final class LiveCaptionViewModel {
         }
         self.settings = settingsStore.load()
         refreshPreviewDemand()
+        refreshSavingTrouble()
         backgroundAlerts.isEnabled = settings.notifyWhenInBackground
         backgroundAlerts.quietHours = settings.quietHours
         for profile in settings.speakerProfiles {
@@ -1733,6 +1734,8 @@ public final class LiveCaptionViewModel {
     }
 
     private func restartIfRunning() async {
+        takenUpRestart?.cancel()
+        takenUpRestart = nil
         switch pipeline.phase {
         case .idle:
             return
@@ -2814,7 +2817,7 @@ public final class LiveCaptionViewModel {
         next.update(
             settingsFailed: settingsFailed,
             historyFailed: settings.saveHistory && historySaveFailure != nil,
-            settingsUnreadable: settingsSaveUnreadable
+            settingsUnreadable: settingsStore.isUnreadable
         )
         // Only a real change redraws the caption screen.
         if next != savingTrouble { savingTrouble = next }
@@ -2982,17 +2985,43 @@ public final class LiveCaptionViewModel {
         refreshPreviewDemand()
         var written = true
         do {
-            try settingsStore.save(settings)
+            let held = try settingsStore.saveTakingUp(settings)
             if settingsSaveError != nil { settingsSaveError = nil }
-            settingsSaveUnreadable = false
+            if held != settings { takeUp(held) }
         } catch {
             settingsSaveError = String(describing: error)
-            settingsSaveUnreadable = error is SettingsFileUnreadable
             written = false
         }
         refreshSavingTrouble()
         return written
     }
+
+    /// The saved settings came back with this session's changes once their
+    /// file, which couldn't be read at launch, could be read again
+    /// (`SettingsStore.saveTakingUp`). As at launch, the away alerts, the
+    /// saved voices and the app's language follow them, and running
+    /// captions start again on the person's own language and engine, unless
+    /// the change being saved restarts them anyway.
+    private func takeUp(_ held: AppSettings) {
+        let before = settings
+        settings = held
+        refreshPreviewDemand()
+        backgroundAlerts.isEnabled = settings.notifyWhenInBackground
+        backgroundAlerts.quietHours = settings.quietHours
+        observeWarnings()
+        for profile in settings.speakerProfiles where !before.speakerProfiles.contains(where: { $0.id == profile.id }) {
+            pipeline.enroll(profile: profile)
+        }
+        if settings.appLanguage != before.appLanguage { applyAppLanguage() }
+        refreshLockScreen()
+        takenUpRestart = Task { [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            self.takenUpRestart = nil
+            await self.restartIfRunning()
+        }
+    }
+
+    @ObservationIgnored private var takenUpRestart: Task<Void, Never>?
 
     /// Coalesces rapid-fire settings changes into one write instead of
     /// many: a Slider fires its binding's setter at every step while

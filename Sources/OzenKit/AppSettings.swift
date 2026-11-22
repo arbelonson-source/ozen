@@ -660,13 +660,13 @@ public struct SettingsStore: Sendable {
     /// damaged and stays where it is: `unreadableStandIn` only stands in
     /// for it, and `save` never writes that over it.
     public func load() -> AppSettings {
-        standInBox.withLock { (standIn: inout AppSettings?) -> AppSettings in
-            standIn = nil
+        standInBox.withLock { (state: inout StandInBox.State) -> AppSettings in
+            state = StandInBox.State()
             switch read() {
             case .missing:
                 return .default
             case .unreadable:
-                standIn = Self.unreadableStandIn
+                state = StandInBox.State(settings: Self.unreadableStandIn, unreadable: true)
                 return Self.unreadableStandIn
             case .read(let data):
                 if let settings = decoded(data) { return settings }
@@ -674,6 +674,15 @@ public struct SettingsStore: Sendable {
                 return .default
             }
         }
+    }
+
+    /// Whether the file is there but couldn't be read at the last `load`,
+    /// or at the last `save` that had to read it first: the settings in use
+    /// then stand in for it, and the caption screen says so before anything
+    /// is saved. A missing file (a first run) or a damaged one is not that.
+    /// It stays so until a later `save` or `load` finds the file readable.
+    public var isUnreadable: Bool {
+        standInBox.withLock { $0.unreadable }
     }
 
     /// What stands in for a file that is there but can't be read: the
@@ -686,9 +695,13 @@ public struct SettingsStore: Sendable {
     /// changes it.
     private static var unreadableStandIn: AppSettings {
         var settings = AppSettings.default
-        settings.hasCompletedOnboarding = true
-        settings.nameAlertOfferDismissed = true
+        for answer in standInAnswers { settings[keyPath: answer] = true }
         return settings
+    }
+
+    /// The answers `unreadableStandIn` gives in the file's place.
+    private static var standInAnswers: [WritableKeyPath<AppSettings, Bool>] {
+        [\.hasCompletedOnboarding, \.nameAlertOfferDismissed]
     }
 
     /// Where a settings file that couldn't be read is kept, next to it:
@@ -711,30 +724,66 @@ public struct SettingsStore: Sendable {
     /// `settings` since the stand-in (or since the last such save) is
     /// added to the file's own settings, so neither the saved voices,
     /// names and alerts nor this session's changes are lost (see
-    /// `SettingsJSON.merged`). The caller still holds only its own
-    /// settings until the next launch loads the whole file, so later saves
-    /// keep adding to the file the same way.
+    /// `SettingsJSON.merged`). A caller that goes on holding only its own
+    /// settings has later saves added to the file the same way; the app
+    /// takes up the whole file instead, with `saveTakingUp`.
     public func save(_ settings: AppSettings) throws {
-        try standInBox.withLock { (standIn: inout AppSettings?) throws -> Void in
+        _ = try write(settings, takingUp: false)
+    }
+
+    /// `save`, for a caller that goes on with what this hands back. Once a
+    /// save after a `load` that couldn't read the file reaches it, that is
+    /// the file's own settings with this session's changes added, as if
+    /// loaded now: the person's language, engine, voices and alert words
+    /// come back without waiting for the next launch, and later saves are
+    /// written as they are. The stand-in's answers the file says no to (the
+    /// first-run guide finished, the name offer turned down) stay as
+    /// `settings` has them, so the guide doesn't open over the captions,
+    /// and the file keeps its no until the caller's answer changes. Any
+    /// other time this hands back `settings`.
+    public func saveTakingUp(_ settings: AppSettings) throws -> AppSettings {
+        try write(settings, takingUp: true)
+    }
+
+    private func write(_ settings: AppSettings, takingUp: Bool) throws -> AppSettings {
+        try standInBox.withLock { (state: inout StandInBox.State) throws -> AppSettings in
             var written = settings
-            if let base = standIn {
+            if let base = state.settings {
                 switch read() {
                 case .unreadable(let error):
+                    state.unreadable = true
                     throw SettingsFileUnreadable(underlying: error)
                 case .missing:
-                    break
+                    state.unreadable = false
                 case .read(let data):
+                    state.unreadable = false
                     if let saved = decoded(data) {
                         written = try SettingsJSON.merged(base: base, mine: settings, theirs: saved)
                     } else {
                         setAside()
                     }
                 }
+            } else {
+                state.keptNo.removeAll { !settings[keyPath: $0] }
+                for answer in state.keptNo { written[keyPath: answer] = false }
             }
             let data = try JSONEncoder().encode(written)
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: fileURL, options: .privateFile)
-            if standIn != nil { standIn = written == settings ? nil : settings }
+            guard state.settings != nil else { return settings }
+            guard written != settings else {
+                state.settings = nil
+                return settings
+            }
+            guard takingUp else {
+                state.settings = settings
+                return settings
+            }
+            state.settings = nil
+            state.keptNo = Self.standInAnswers.filter { settings[keyPath: $0] && !written[keyPath: $0] }
+            var held = written
+            for answer in state.keptNo { held[keyPath: answer] = true }
+            return held
         }
     }
 
@@ -745,15 +794,29 @@ public struct SettingsStore: Sendable {
     }
 
     /// Only "no such file" counts as no settings yet; any other failure
-    /// means a file may well be there.
+    /// means a file may well be there. A plain file standing where one of
+    /// its folders should be counts as none too: no file can be there then.
+    /// iOS doesn't call that read "no such file", and the caption screen
+    /// said at launch that saved settings couldn't be read.
     private func read() -> FileRead {
         do {
             return .read(try Data(contentsOf: fileURL))
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
             return .missing
         } catch {
-            return .unreadable(error)
+            return liesUnderAPlainFile ? .missing : .unreadable(error)
         }
+    }
+
+    private var liesUnderAPlainFile: Bool {
+        var folder = fileURL.deletingLastPathComponent().standardizedFileURL
+        var isFolder: ObjCBool = false
+        while !FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder) {
+            let parent = folder.deletingLastPathComponent().standardizedFileURL
+            guard parent != folder else { return false }
+            folder = parent
+        }
+        return !isFolder.boolValue
     }
 
     private func decoded(_ data: Data) -> AppSettings? {
@@ -776,16 +839,26 @@ public struct SettingsFileUnreadable: Error, CustomStringConvertible {
     }
 }
 
-/// The settings a `SettingsStore` handed out or was last given in place of
-/// a file it couldn't read; nil when the caller holds what the file holds.
+/// What a `SettingsStore` keeps about a file it couldn't read.
 private final class StandInBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var settings: AppSettings?
+    struct State {
+        /// The settings the store handed out or was last given in place of
+        /// the file; nil when the caller holds what the file holds.
+        var settings: AppSettings?
+        /// The file couldn't be read the last time it was tried.
+        var unreadable = false
+        /// The stand-in's answers a caller took up in place of the file's
+        /// no (see `saveTakingUp`): written as no while the caller's stay.
+        var keptNo: [WritableKeyPath<AppSettings, Bool>] = []
+    }
 
-    func withLock<T>(_ body: (inout AppSettings?) throws -> T) rethrows -> T {
+    private let lock = NSLock()
+    private var state = State()
+
+    func withLock<T>(_ body: (inout State) throws -> T) rethrows -> T {
         lock.lock()
         defer { lock.unlock() }
-        return try body(&settings)
+        return try body(&state)
     }
 }
 

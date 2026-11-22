@@ -20,4 +20,11 @@ extension View {
             Announcement.post(text)
         }
     }
+
+    func announcingEachChange(of text: String?, alsoWhenFirstShown: Bool = false) -> some View {
+        onChange(of: text, initial: alsoWhenFirstShown) { _, text in
+            guard let text else { return }
+            Announcement.post(text)
+        }
+    }
 }
