@@ -59,6 +59,7 @@ import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.deleteConversations
 import java.io.File
@@ -346,6 +347,28 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Now type how it should be written").assertDoesNotExist()
     }
 
+    // A conversation that couldn't be read just now said the line changed
+    // or was gone, though the line was fine and trying again could help.
+    @Test
+    fun fixAWordSaysToTryAgainWhenTheConversationCannotBeReadJustNowAndSavesWhenTriedAgain() {
+        openFixAWord("Unreadable test I spoke with Shera yesterday")
+        val id = seeded.last()
+        val file = File(app.filesDir, CaptionSession.HISTORY_FOLDER).listFiles()!!.single { it.name.equals("$id.json", ignoreCase = true) }
+        compose.onNode(hasContentDescription("Shera") and hasAnyAncestor(isDialog())).performClick()
+        fixField(1).performTextInput("Shira")
+        assertTrue(file.setReadable(false, false))
+        try {
+            compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+            waitFor("The conversation couldn’t be read just now, so the fix was not saved. Try again in a moment.")
+        } finally {
+            file.setReadable(true)
+        }
+        compose.onNodeWithText("The line changed or is gone, so the fix was not saved.").assertDoesNotExist()
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
+        assertEquals("Unreadable test I spoke with Shira yesterday", store.load(id)?.segments?.single()?.text)
+    }
+
     private fun openFixAWord(line: String) {
         seed(line to null)
         compose.onNodeWithText("History").performClick()
@@ -415,12 +438,12 @@ class HistoryScreenDeviceTest {
 
         override fun isCurrent(id: UUID) = true
 
-        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult {
             tried += heard
             val fixed = WordFixes.apply(listOf(WordFix(heard, written)), text)
-            if (fixed == text) return false
+            if (fixed == text) return WordFixResult.LineChanged
             text = fixed
-            return true
+            return WordFixResult.Saved
         }
 
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {

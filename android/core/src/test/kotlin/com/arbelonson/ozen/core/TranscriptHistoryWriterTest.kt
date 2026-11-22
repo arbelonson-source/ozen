@@ -498,10 +498,10 @@ class TranscriptHistoryWriterTest {
         assertNotNull(writer.lastFailure)
 
         permissions(dir, "rwx------")
-        if (!kept) writer.fixTextNow(old.id, line, fix)
+        if (kept != WordFixResult.Saved) writer.fixTextNow(old.id, line, fix)
         writer.saveNow(record(UUID.randomUUID(), 1, true))
         assertEquals("I saw Avi Cohen today", store.load(old.id)?.segments?.first()?.text)
-        assertTrue(kept, "kept waiting for room, so History calls it saved")
+        assertEquals(WordFixResult.Saved, kept, "kept waiting for room, so History calls it saved")
         assertNull(writer.lastFailure)
     }
 
@@ -514,11 +514,32 @@ class TranscriptHistoryWriterTest {
         writer.saveNow(old)
         val file = dir.listFiles()!!.single { it.extension == "json" }
         permissions(file, "---------")
-        assertFalse(writer.fixTextNow(old.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
 
         permissions(file, "rw-------")
         writer.saveNow(record(UUID.randomUUID(), 1, true))
         assertEquals("I saw Cohen today", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
+    // History said the line changed or was gone, though the line was fine
+    // and the same fix went through once the file could be read.
+    @Test
+    fun `a word fixed in History while its conversation cannot be read says so, and goes through when tried once it can`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-unreadable-try-again"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        val fix = { text: String -> WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), text) }
+        permissions(file, "---------")
+        assertEquals(WordFixResult.Unreadable, writer.fixTextNow(old.id, line, fix))
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(UUID.randomUUID(), line, fix), "no file at all is a conversation that is gone")
+
+        permissions(file, "rw-------")
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(old.id, line, fix))
+        assertEquals("I saw Avi Cohen today", store.load(old.id)?.segments?.first()?.text)
         assertNull(writer.lastFailure)
     }
 
@@ -533,7 +554,7 @@ class TranscriptHistoryWriterTest {
         val evening = record(UUID.randomUUID(), 1, true).let { it.copy(segments = listOf(SavedSegment(line, "I saw Cohen today", null, null, 100.0, true)) + it.segments) }
         writer.saveNow(evening)
         permissions(dir, "r-x------")
-        assertTrue(writer.fixTextNow(evening.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(evening.id, line) { WordFixes.apply(listOf(WordFix("Cohen", "Avi Cohen")), it) })
         assertNotNull(writer.lastFailure)
 
         assertEquals(listOf("I saw Avi Cohen today", "שורה 0"), writer.loadNow(evening.id)?.segments?.map { it.text })
@@ -553,7 +574,7 @@ class TranscriptHistoryWriterTest {
         val later = early.copy(segments = listOf(early.segments[0].copy(text = "I saw aval today")) + record(early.id, 1, true).segments, endedAt = 200.0)
         permissions(dir, "r-x------")
         writer.saveNow(later)
-        assertTrue(writer.fixTextNow(early.id, early.segments[0].id) { it.replace("aval", "Avi") })
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(early.id, early.segments[0].id) { it.replace("aval", "Avi") })
 
         val shown = writer.loadNow(early.id)
         assertEquals(200.0, shown?.endedAt)
@@ -575,7 +596,7 @@ class TranscriptHistoryWriterTest {
         writer.saveNow(later)
         permissions(dir, "rwx------")
 
-        assertFalse(writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
         assertEquals(listOf("שורה 0", "I saw Avi today"), store.load(early.id)?.segments?.map { it.text })
         assertNull(writer.lastFailure, "nothing is left waiting, so the warning goes")
     }
@@ -596,7 +617,7 @@ class TranscriptHistoryWriterTest {
         writer.saveNow(later)
         permissions(dir, "rwx------")
 
-        assertFalse(writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
+        assertEquals(WordFixResult.LineChanged, writer.fixTextNow(early.id, gone) { it.replace("aval", "Avital") })
         assertEquals(false, writer.loadNow(early.id)?.segments?.any { it.id == gone }, "History doesn't show the line")
         writer.saveNow(record(UUID.randomUUID(), 1, true))
         assertEquals(listOf("שורה 0", "I saw Avi today"), store.load(early.id)?.segments?.map { it.text })
@@ -614,7 +635,7 @@ class TranscriptHistoryWriterTest {
         writer.fixTextNow(evening.id, line, "I saw Dan today")
         writer.saveNow(evening.copy(segments = listOf(evening.segments[0].copy(text = "I saw Dan at the market")), endedAt = 200.0))
 
-        assertTrue(writer.fixTextNow(evening.id, line) { it.replace("Dan", "Dana") })
+        assertEquals(WordFixResult.Saved, writer.fixTextNow(evening.id, line) { it.replace("Dan", "Dana") })
         permissions(dir, "rwx------")
         writer.saveNow(record(UUID.randomUUID(), 1, true))
         assertEquals("I saw Dana at the market", store.load(evening.id)?.segments?.first()?.text)

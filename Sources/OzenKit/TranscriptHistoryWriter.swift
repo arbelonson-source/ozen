@@ -141,22 +141,22 @@ public final class TranscriptHistoryWriter: Sendable {
     /// written to the file and called saved, then that version was written
     /// over it without the line.
     @discardableResult
-    public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> Bool {
+    public func fixTextNow(sessionID: UUID, segmentID: UUID, with fix: WordFix) -> WordFixResult {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             if let version = pendingSaves.records[sessionID], !version.segments.contains(where: { $0.id == segmentID }) {
                 if Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure) {
                     failure.clear()
                 }
-                return false
+                return .lineChanged
             }
             let waiting = pendingRenames.texts.last { $0.sessionID == sessionID && $0.segmentID == segmentID }?.text
                 ?? pendingSaves.records[sessionID]?.segments.first { $0.id == segmentID }?.text
-            guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return false }
+            guard let now = waiting ?? store.load(id: sessionID)?.segments.first(where: { $0.id == segmentID })?.text else { return .lineChanged }
             let text = WordFixes.apply([fix], to: now)
-            guard text != now else { return false }
+            guard text != now else { return .lineChanged }
             lastWritten.record = nil
             Self.write(text, sessionID: sessionID, segmentID: segmentID, store: store, failure: failure, renames: pendingRenames, saves: pendingSaves)
-            return true
+            return .saved
         }
     }
 

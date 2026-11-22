@@ -145,6 +145,7 @@ import com.arbelonson.ozen.core.RecordingIntent
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
@@ -1062,7 +1063,7 @@ private fun CaptionScreen(
             text,
             languageCode = languageCode,
             fixes = wordFixes,
-            refused = fixRefused,
+            refusal = WordFixResult.LineChanged.takeIf { fixRefused },
             onSave = { heard, written, everyTime ->
                 if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {
                     fixing = null

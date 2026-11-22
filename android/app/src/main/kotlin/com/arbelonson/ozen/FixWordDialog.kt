@@ -49,12 +49,13 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<WordFix>, refused: Boolean = false, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
+internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<WordFix>, refusal: WordFixResult? = null, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
     val words = WordFixes.wordsOf(shown)
     var first by rememberSaveable { mutableStateOf(-1) }
     var last by rememberSaveable { mutableStateOf(-1) }
@@ -78,7 +79,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
     // open with the error instead. Before, the dialog just went away.
     val context = LocalContext.current
     var saving by remember { mutableStateOf(false) }
-    val wasRefused by rememberUpdatedState(refused)
+    val wasRefused by rememberUpdatedState(refusal?.note != null)
     DisposableEffect(Unit) {
         onDispose {
             if (saving && !wasRefused && ScreenReader.isOn(context)) ScreenReader.announce(context, tr("השורה תוקנה", "Line fixed"))
@@ -152,7 +153,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, fixes: List<Word
                 // heard again, or no longer has the word. The caption screen
                 // said the line had left the screen while it was still there,
                 // and History said to try again when that could not help.
-                if (refused) Text(tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved."), color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                refusal?.note?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier

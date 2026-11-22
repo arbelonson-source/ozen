@@ -2225,7 +2225,7 @@ public final class LiveCaptionViewModel {
     /// tell VoiceOver it was.
     @discardableResult
     public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) -> Bool {
-        applyWordFix(fix, always: always, lineID: segment.id, sessionID: nil)
+        applyWordFix(fix, always: always, lineID: segment.id, sessionID: nil) == .saved
     }
 
     /// History's sheet keeps the words the line had when it opened, so the
@@ -2239,22 +2239,23 @@ public final class LiveCaptionViewModel {
     /// and the next one dropped a fix written to its file alone, with the
     /// line.
     @discardableResult
-    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, sessionID: UUID?) -> Bool {
-        guard let fixed = WordFixes.normalized([fix]).first else { return false }
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, sessionID: UUID?) -> WordFixResult {
+        guard let fixed = WordFixes.normalized([fix]).first else { return .lineChanged }
         defer { refreshSavingTrouble() }
         if pipeline.segments.contains(where: { $0.id == lineID }) {
-            guard let text = pipeline.correctWord(inSegment: lineID, with: fixed) else { return false }
+            guard let text = pipeline.correctWord(inSegment: lineID, with: fixed) else { return .lineChanged }
             correctedLine(lineID, text: text)
             if let sessionID {
                 historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
             }
         } else {
-            guard let sessionID, sessionID != historySessionID,
-                  historyWriter.fixTextNow(sessionID: sessionID, segmentID: lineID, with: fixed) else { return false }
+            guard let sessionID, sessionID != historySessionID else { return .lineChanged }
+            let saved = historyWriter.fixTextNow(sessionID: sessionID, segmentID: lineID, with: fixed)
+            guard saved == .saved else { return saved }
         }
         addVocabularyTerm(fixed.written)
         if always { addWordFix(fixed) }
-        return true
+        return .saved
     }
 
     private func correctedLine(_ id: UUID, text: String) {

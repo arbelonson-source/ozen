@@ -269,7 +269,7 @@ class TranscriptHistoryWriter(
      * until it goes through its error is the one reported.
      */
     fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean =
-        queue.sync { fixText(sessionID, segmentID, { text }, fromHistory = false) }
+        queue.sync { fixText(sessionID, segmentID, { text }, fromHistory = false) == WordFixResult.Saved }
 
     /**
      * History's fix of a word, changing the line's text as it is when the
@@ -291,15 +291,15 @@ class TranscriptHistoryWriter(
      * the file and called saved, then that version was written over it
      * without the line.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean =
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): WordFixResult =
         queue.sync { fixText(sessionID, segmentID, change, fromHistory = true) }
 
-    private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): Boolean {
+    private fun fixText(sessionID: UUID, segmentID: UUID, change: (String) -> String, fromHistory: Boolean): WordFixResult {
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (fromHistory && waiting != null && index < 0) {
             if (catchUp(null)) failure.clear()
-            return false
+            return WordFixResult.LineChanged
         }
         lastWritten.record = null
         val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
@@ -318,14 +318,14 @@ class TranscriptHistoryWriter(
         } else if (!written) {
             if (fromHistory && !changed) {
                 catchUp(null)
-                return false
+                return WordFixResult.LineChanged
             }
             pendingRenames.texts.add(PendingText(sessionID, segmentID, combined))
             done = fromHistory
         }
         pendingRenames.texts.removeAll(earlier)
         catchUp(null)
-        return done && (changed || !fromHistory)
+        return if (done && (changed || !fromHistory)) WordFixResult.Saved else WordFixResult.LineChanged
     }
 
     /**

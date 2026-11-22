@@ -302,10 +302,10 @@ struct HistoryDetailView: View {
         }
         .sheet(item: $fixingLine) { line in
             FixWordSheet(text: line.text, languageCode: record?.languageCode(orCurrent: viewModel.settings.languageCode) ?? viewModel.settings.languageCode, fixes: viewModel.wordFixes) { fix, always in
-                let changed = viewModel.applyWordFix(fix, always: always, lineID: line.id, sessionID: sessionID)
+                let result = viewModel.applyWordFix(fix, always: always, lineID: line.id, sessionID: sessionID)
                 onHistoryChanged()
                 Task { await refresh() }
-                return changed
+                return result
             }
             .alertOverlay(for: viewModel)
         }

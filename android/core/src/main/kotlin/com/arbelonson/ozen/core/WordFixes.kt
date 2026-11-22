@@ -574,3 +574,26 @@ object WordFixes {
         return Rewrite(sb.append(text, copied, text.length).toString(), all, spans)
     }
 }
+
+/**
+ * What became of a word fixed in History, so the dialog can say why a fix
+ * was not saved. A fix that waits for room on a full phone is [Saved]: it
+ * is written once there is room.
+ */
+enum class WordFixResult {
+    Saved,
+
+    /** The line is gone, is being heard again, or no longer has the word. */
+    LineChanged,
+
+    /** The conversation's file is there but couldn't be read just now. */
+    Unreadable,
+    ;
+
+    /** Said in the dialog when the fix was not saved; null when it was. */
+    val note: String?
+        get() = when (this) {
+            Saved -> null
+            LineChanged, Unreadable -> tr("השורה השתנתה או נעלמה, ולכן התיקון לא נשמר.", "The line changed or is gone, so the fix was not saved.")
+        }
+}

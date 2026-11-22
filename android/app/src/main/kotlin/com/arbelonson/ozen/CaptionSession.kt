@@ -84,6 +84,7 @@ import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.core.PrivatePath
 import com.arbelonson.ozen.core.PrivateRoute
@@ -631,7 +632,7 @@ class CaptionSession(
         // Whether the line on screen changed, decided in the one main-thread
         // step that reads and fixes it: History asks from its own thread,
         // and the engine can rewrite the line before the fix gets there.
-        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean =
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult =
             conversations.fixLineEverywhere(sessionID, segmentID, WordFix(heard, written)) { line, change -> pipeline.correctWord(line, change) != null }
 
         override fun switchSaving(on: Boolean) {

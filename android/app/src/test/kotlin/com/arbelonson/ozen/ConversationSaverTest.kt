@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixResult
 import com.arbelonson.ozen.core.WordFixes
 import java.io.File
 import java.nio.file.Files
@@ -629,10 +630,11 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         val line = lines[0].id
 
-        assertFalse(saver.fixLine(conversation, line, WordFix("aval", "Avi")) { _, _ -> false })
+        assertEquals(WordFixResult.LineChanged, saver.fixLine(conversation, line, WordFix("aval", "Avi")) { _, _ -> false })
         assertEquals("I saw aval", store.load(conversation)!!.segments.single().text)
 
-        assertTrue(
+        assertEquals(
+            WordFixResult.Saved,
             saver.fixLine(conversation, line, WordFix("aval", "Avi")) { _, _ ->
                 lines[0] = lines[0].copy(text = "I saw Avi")
                 true
@@ -651,10 +653,10 @@ class ConversationSaverTest {
         saver.save(ended = false)
 
         var asked = false
-        assertTrue(saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> asked = true; false })
+        assertEquals(WordFixResult.Saved, saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> asked = true; false })
         assertFalse(asked)
         assertEquals("I saw Avi today", store.load(earlier)!!.segments.single().text)
-        assertFalse(saver.fixLine(earlier, UUID.randomUUID(), WordFix("aval", "Avi")) { _, _ -> true })
+        assertEquals(WordFixResult.LineChanged, saver.fixLine(earlier, UUID.randomUUID(), WordFix("aval", "Avi")) { _, _ -> true })
     }
 
     // Fix a word in History keeps the words the line had when it opened,
@@ -668,7 +670,7 @@ class ConversationSaverTest {
         saver.save(ended = false)
         val conversation = saved().single().id
 
-        assertFalse(saver.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
+        assertEquals(WordFixResult.LineChanged, saver.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
         assertEquals("I saw Avi today", store.load(conversation)!!.segments.single().text)
     }
 
@@ -685,7 +687,8 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         val line = lines[0].id
 
-        assertTrue(
+        assertEquals(
+            WordFixResult.Saved,
             saver.fixLine(conversation, line, WordFix("aval", "Avi")) { id, fix ->
                 lines[0] = lines[0].copy(text = "I saw aval")
                 fixOnScreen(id, fix)
@@ -708,7 +711,8 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         val line = lines[0].id
 
-        assertTrue(
+        assertEquals(
+            WordFixResult.Saved,
             saver.fixLine(conversation, line, WordFix("aval", "Avi")) { id, fix ->
                 assertTrue(saver.checkForConversationBreak())
                 fixOnScreen(id, fix)
@@ -734,7 +738,8 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         val line = lines[0].id
 
-        assertTrue(
+        assertEquals(
+            WordFixResult.Saved,
             saver.fixLineEverywhere(conversation, line, WordFix("Cohen", "Avi Cohen")) { id, fix ->
                 if (saver.isCurrent(conversation)) assertTrue(saver.checkForConversationBreak())
                 fixOnScreen(id, fix)
@@ -752,7 +757,7 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         assertTrue(saver.checkForConversationBreak())
 
-        assertTrue(saver.fixLineEverywhere(conversation, lines[0].id, WordFix("Cohen", "Avi Cohen"), ::fixOnScreen))
+        assertEquals(WordFixResult.Saved, saver.fixLineEverywhere(conversation, lines[0].id, WordFix("Cohen", "Avi Cohen"), ::fixOnScreen))
         assertEquals("I saw Avi Cohen", lines[0].text)
         assertEquals(listOf("I saw Avi Cohen"), store.load(conversation)!!.segments.map { it.text })
     }
@@ -781,7 +786,7 @@ class ConversationSaverTest {
         val conversation = saved().single().id
         next = { history.clear { lines.clear() } }
 
-        assertTrue(history.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
+        assertEquals(WordFixResult.Saved, history.fixLine(conversation, lines[0].id, WordFix("aval", "Avi"), ::fixOnScreen))
         val kept = store.load(conversation)!!
         assertEquals(listOf("I saw Avi"), kept.segments.map { it.text })
         assertNotNull(kept.endedAt, "the clear ended the conversation")
@@ -811,7 +816,7 @@ class ConversationSaverTest {
         say("Something else entirely")
         saver.save(ended = false)
         assertEquals(listOf("I saw Avi"), store.load(conversation)!!.segments.map { it.text })
-        assertTrue(kept, "History calls a fix waiting for room saved")
+        assertEquals(WordFixResult.Saved, kept, "History calls a fix waiting for room saved")
     }
 
     // History's dialog says a fix it was told was not saved can be tried
@@ -830,12 +835,12 @@ class ConversationSaverTest {
         } finally {
             folder.setWritable(true)
         }
-        if (!kept) saver.fixLineEverywhere(earlier, line, fix, ::fixOnScreen)
+        if (kept != WordFixResult.Saved) saver.fixLineEverywhere(earlier, line, fix, ::fixOnScreen)
         start()
         say("Something else entirely")
         saver.save(ended = false)
         assertEquals("I saw Avi Cohen today", store.load(earlier)!!.segments.single().text)
-        assertTrue(kept, "History calls a fix waiting for room saved")
+        assertEquals(WordFixResult.Saved, kept, "History calls a fix waiting for room saved")
     }
 
     // A replay hears the same speech again and takes the lines it rewrites
@@ -853,7 +858,7 @@ class ConversationSaverTest {
         lines.clear()
         say("I saw aval today")
 
-        assertFalse(saver.fixLine(conversation, gone, WordFix("aval", "Avi"), ::fixOnScreen))
+        assertEquals(WordFixResult.LineChanged, saver.fixLine(conversation, gone, WordFix("aval", "Avi"), ::fixOnScreen))
         assertEquals(listOf("I saw aval"), store.load(conversation)!!.segments.map { it.text })
         saver.save(ended = false)
         assertEquals(listOf("I saw aval today"), store.load(conversation)!!.segments.map { it.text })
@@ -880,12 +885,33 @@ class ConversationSaverTest {
         assertEquals(0, saved().single().starredCount)
     }
 
+    // History said the line changed or was gone, though the line was fine
+    // and the same fix went through once the file could be read.
+    @Test
+    fun `a word fixed in History on an earlier conversation that cannot be read just now says so, and goes through when tried again`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        store.fixText(line, earlier, "I saw aval today")
+        val file = folder.listFiles()!!.single { it.name.equals("$earlier.json", ignoreCase = true) }
+
+        assertTrue(file.setReadable(false, false))
+        val refused = try {
+            saver.fixLineEverywhere(earlier, line, WordFix("aval", "Avi"), ::fixOnScreen)
+        } finally {
+            file.setReadable(true)
+        }
+        assertEquals(WordFixResult.Unreadable, refused)
+        assertEquals("I saw aval today", store.load(earlier)!!.segments.single().text)
+        assertEquals(WordFixResult.Saved, saver.fixLineEverywhere(earlier, line, WordFix("aval", "Avi"), ::fixOnScreen))
+        assertEquals("I saw Avi today", store.load(earlier)!!.segments.single().text)
+    }
+
     @Test
     fun `a word fixed in History that a line of an earlier conversation no longer has is refused`() {
         val earlier = oldConversation(clock - 3_600)
         val line = store.load(earlier)!!.segments.single().id
 
-        assertFalse(saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> true })
+        assertEquals(WordFixResult.LineChanged, saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> true })
         assertEquals("Long gone", store.load(earlier)!!.segments.single().text)
     }
 

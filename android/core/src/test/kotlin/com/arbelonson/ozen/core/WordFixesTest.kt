@@ -31,6 +31,19 @@ class WordFixesTest {
         assertNull(WordFixes.refusalNote(null))
     }
 
+    // A conversation that couldn't be read just now said the line changed
+    // or was gone, though the line was fine and trying again could help.
+    @Test fun aFixThatWasNotSavedSaysWhyTheLineChangedOrTheConversationCouldNotBeReadJustNow() {
+        Localization.withLanguage(UILanguage.English) {
+            assertNull(WordFixResult.Saved.note)
+            assertEquals("The line changed or is gone, so the fix was not saved.", WordFixResult.LineChanged.note)
+            assertEquals("The conversation couldn’t be read just now, so the fix was not saved. Try again in a moment.", WordFixResult.Unreadable.note)
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("לא היה אפשר לקרוא את השיחה כרגע, ולכן התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", WordFixResult.Unreadable.note)
+        }
+    }
+
     @Test fun rule1WholeWordsIgnoringLatinCase() {
         val avi = fix("aval", "Avi")
         assertEquals("I saw Avi today", run("I saw aval today", avi))
