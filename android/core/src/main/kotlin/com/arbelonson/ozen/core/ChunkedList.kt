@@ -1,6 +1,6 @@
 package com.arbelonson.ozen.core
 
-internal class ChunkedList<T> private constructor(
+class ChunkedList<T> private constructor(
     private val chunks: Array<Array<Any?>>,
     override val size: Int,
 ) : AbstractList<T>(), RandomAccess {
@@ -31,6 +31,15 @@ internal class ChunkedList<T> private constructor(
         return ChunkedList(outer, size + 1)
     }
 
+    fun leadingSameAs(before: ChunkedList<T>): Int {
+        val shorter = minOf(size, before.size)
+        var chunk = 0
+        while (chunk < chunks.size && chunk < before.chunks.size && chunks[chunk] === before.chunks[chunk]) chunk++
+        var index = minOf(chunk shl SHIFT, shorter)
+        while (index < shorter && chunks[index ushr SHIFT][index and MASK] === before.chunks[index ushr SHIFT][index and MASK]) index++
+        return index
+    }
+
     private fun checkIndex(index: Int) {
         if (index < 0 || index >= size) throw IndexOutOfBoundsException("index $index, size $size")
     }
@@ -52,3 +61,6 @@ internal class ChunkedList<T> private constructor(
         }
     }
 }
+
+fun <T> unchangedLeadingCount(before: List<T>, now: List<T>): Int =
+    if (before is ChunkedList<T> && now is ChunkedList<T>) now.leadingSameAs(before) else 0

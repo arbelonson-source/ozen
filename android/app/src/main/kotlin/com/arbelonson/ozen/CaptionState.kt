@@ -11,7 +11,6 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.LockScreenCaptionLine
 import com.arbelonson.ozen.core.LockScreenCaptions
 import com.arbelonson.ozen.core.LockScreenTextSize
-import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
@@ -24,6 +23,7 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.unchangedLeadingCount
 import com.arbelonson.ozen.core.tr
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -211,7 +211,13 @@ object CaptionState {
     private var speechResume = SpeechResume()
     private var awayCatchUp = AwayCatchUp()
     private var segmentsShown: List<TranscriptSegment> = emptyList()
+    private var firstShownBefore = 0
     private val shapes = CaptionLineShapes()
+    private var shapedLanguage: String? = null
+    private var shapedEngine: TranscriptionEngineKind? = null
+    private var shapedModel: String? = null
+    private val voices = CaptionVoices()
+    private var heardLines: Map<UUID, Int> = emptyMap()
     private var heldFirstLine: Int? = null
 
     fun show(
@@ -251,20 +257,26 @@ object CaptionState {
         // Cleared captions come as an empty list, not through clear(): no
         // hold from the lines before may keep the next ones past the limit.
         if (segments.isEmpty()) heldFirstLine = null
+        // A word changes the newest line, and the lines before it are the
+        // very objects shown last time: the pipeline's lists say how many
+        // at a look per 64 lines. Only the rest are looked at again for who
+        // spoke first, a line said while away or a word heard lately;
+        // passing over all of an evening's lines at every word grew with
+        // the conversation. Any other list counts as all new.
+        val unchanged = unchangedLeadingCount(segmentsShown, segments)
+        val countBefore = segmentsShown.size
         segmentsShown = segments
         val firstShown = firstDrawn(segments.size)
-        val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
         // Everyone in the captions, in order of first appearance, as on the
-        // iPhone; a name follows its voice, so one look per voice will do.
-        val slots = SpeakerColorSlots.of(segments.distinctBy { it.speakerClusterID }.map { it.speakerClusterID to named(it) })
+        // iPhone; a name follows its voice, so one look per voice will do,
+        // for the colours and for every line's name.
+        voices.update(segments, unchanged, speakerName)
         val recent = recentlyHeard.takeLast(10).reversed()
-        // Only a changed line is shaped again, and an unchanged one keeps
-        // its object so the list skips redrawing it: rebuilding all 200
-        // lines at every word took 13 ms on a desktop computer, close to a
-        // whole 16 ms frame, and a phone is slower.
-        val shown = segments.drop(firstShown)
-        val shaped = shapes.shape(shown, languageCode, scoringEngine, scoringModel)
-        val before = state.value.lines.associateBy { it.id }
+        val lines = shownLines(segments, unchanged, countBefore, firstShown, languageCode, scoringEngine, scoringModel, starred, conversation, keywordHits)
+        firstShownBefore = firstShown
+        shapedLanguage = languageCode
+        shapedEngine = scoringEngine
+        shapedModel = scoringModel
         // A copy, so what the captions don't set (a sound alert, the battery,
         // a banner) stays: a rebuilt state once dropped the smoke alarm's
         // banner at the next word.
@@ -290,34 +302,10 @@ object CaptionState {
             modelJustReady = modelJustReady,
             spokenLanguage = spokenLanguage,
             lineCount = segments.size,
-            lines = shown.mapIndexed { at, it ->
-                val shape = shaped[at]
-                CaptionLine(
-                    id = it.id,
-                    text = shape.text,
-                    isFinal = it.isCommitted,
-                    unsure = shape.unsure,
-                    doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
-                    starred = starred(it.id),
-                    copied = shape.copied,
-                    spoken = it.text,
-                    phones = shape.phones,
-                    conversation = conversation(firstShown + at),
-                    important = it.id in keywordHits,
-                    afterQuiet = segments.getOrNull(firstShown + at - 1)
-                        ?.takeIf { previous -> CaptionLayout.startsAfterQuiet(it, previous) }
-                        ?.let { previous -> QuietGap(previous.lastUpdateTimestamp, it.startTimestamp) },
-                    speaker = named(it),
-                    speakerCluster = it.speakerClusterID,
-                    speakerSlot = slots.slot(it.speakerClusterID, named(it)),
-                    showsSpeaker = named(it) != null &&
-                        CaptionLayout.showsSpeakerLabel(it, segments.getOrNull(firstShown + at - 1)) { other -> named(other) ?: "" },
-                    rightToLeft = shape.rightToLeft,
-                ).let { line -> before[line.id]?.takeIf { it == line } ?: line }
-            },
+            lines = lines,
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
             recentlyHeard = recent,
-            recentlyHeardBy = recent.mapNotNull { hit -> segments.firstOrNull { it.id == hit.segmentID }?.let(named)?.let { hit.id to it } }.toMap(),
+            recentlyHeardBy = heardBy(recent, segments, unchanged),
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
@@ -331,8 +319,133 @@ object CaptionState {
      * screen leaves them out as it draws.
      */
     fun lockScreenLines(count: Int, textSize: LockScreenTextSize, namesShown: Boolean, languageCode: String): List<LockScreenCaptionLine> {
-        val names = state.value.lines.associate { it.id to it.speaker }
-        return LockScreenCaptions.lines(segmentsShown, languageCode, count, textSize) { names[it.id]?.takeIf { namesShown } }
+        // The lines it takes are the newest, found at once from the end: a
+        // map of every line drawn was made for them at each word.
+        val lines = state.value.lines
+        return LockScreenCaptions.lines(segmentsShown, languageCode, count, textSize) { segment ->
+            lines.lastOrNull { it.id == segment.id }?.speaker?.takeIf { namesShown }
+        }
+    }
+
+    /**
+     * The lines to draw. Only a changed line is shaped again, and an
+     * unchanged one keeps its object so the list skips redrawing it:
+     * rebuilding all 200 lines at every word took 13 ms on a desktop
+     * computer, close to a whole 16 ms frame, and a phone is slower. A line
+     * whose words and the line above are as last time keeps its shape and
+     * quiet gap; its star, saved conversation, highlight and speaker are
+     * asked again, as they change without the line changing, and its
+     * object is made again only when one of them did.
+     */
+    private fun shownLines(
+        segments: List<TranscriptSegment>,
+        unchanged: Int,
+        countBefore: Int,
+        firstShown: Int,
+        languageCode: String,
+        scoringEngine: TranscriptionEngineKind,
+        scoringModel: String?,
+        starred: (UUID) -> Boolean,
+        conversation: (Int) -> UUID?,
+        keywordHits: Set<UUID>,
+    ): List<CaptionLine> {
+        val before = state.value.lines
+        val sameShaping = languageCode == shapedLanguage && scoringEngine == shapedEngine && scoringModel == shapedModel
+        val fresh = ArrayList<TranscriptSegment>()
+        for (index in firstShown until segments.size) {
+            if (!keeps(before, index, segments[index], sameShaping, unchanged)) fresh.add(segments[index])
+        }
+        val shaped = shapes.shape(fresh, languageCode, scoringEngine, scoringModel)
+        // Lines that moved (some went from between them) are found by id.
+        var byId: Map<UUID, CaptionLine>? = null
+        val moved = unchanged < countBefore
+        val nameOrBlank = { other: TranscriptSegment -> voices.name(other.speakerClusterID) ?: "" }
+        val lines = ArrayList<CaptionLine>(segments.size - firstShown)
+        var shapedAt = 0
+        var previous = segments.getOrNull(firstShown - 1)
+        for (index in firstShown until segments.size) {
+            val segment = segments[index]
+            val speaker = voices.name(segment.speakerClusterID)
+            val isStarred = starred(segment.id)
+            val savedIn = conversation(index)
+            val important = segment.id in keywordHits
+            val slot = voices.slot(segment.speakerClusterID)
+            val showsSpeaker = speaker != null && CaptionLayout.showsSpeakerLabel(segment, previous, nameOrBlank)
+            val old = drawnBefore(before, index, segment)
+            val line = if (old != null && keeps(before, index, segment, sameShaping, unchanged)) {
+                if (old.starred == isStarred && old.conversation == savedIn && old.important == important &&
+                    old.speaker == speaker && old.speakerSlot == slot && old.showsSpeaker == showsSpeaker
+                ) {
+                    old
+                } else {
+                    old.copy(starred = isStarred, conversation = savedIn, important = important, speaker = speaker, speakerSlot = slot, showsSpeaker = showsSpeaker)
+                }
+            } else {
+                val shape = shaped[shapedAt++]
+                val made = CaptionLine(
+                    id = segment.id,
+                    text = shape.text,
+                    isFinal = segment.isCommitted,
+                    unsure = shape.unsure,
+                    doubtfulWords = if (segment.isCommitted) segment.uncertainWords else emptyList(),
+                    starred = isStarred,
+                    copied = shape.copied,
+                    spoken = segment.text,
+                    phones = shape.phones,
+                    conversation = savedIn,
+                    important = important,
+                    afterQuiet = previous
+                        ?.takeIf { CaptionLayout.startsAfterQuiet(segment, it) }
+                        ?.let { QuietGap(it.lastUpdateTimestamp, segment.startTimestamp) },
+                    speaker = speaker,
+                    speakerCluster = segment.speakerClusterID,
+                    speakerSlot = slot,
+                    showsSpeaker = showsSpeaker,
+                    rightToLeft = shape.rightToLeft,
+                )
+                val earlier = old ?: if (moved) (byId ?: before.associateBy { it.id }.also { byId = it })[segment.id] else null
+                earlier?.takeIf { it == made } ?: made
+            }
+            lines.add(line)
+            previous = segment
+        }
+        return lines
+    }
+
+    private fun drawnBefore(before: List<CaptionLine>, index: Int, segment: TranscriptSegment): CaptionLine? =
+        before.getOrNull(index - firstShownBefore)?.takeIf { it.id == segment.id }
+
+    /** The line is drawn as last time, its words and the line above it the same objects, so its shape and gap hold. */
+    private fun keeps(before: List<CaptionLine>, index: Int, segment: TranscriptSegment, sameShaping: Boolean, unchanged: Int): Boolean =
+        sameShaping && index < unchanged && drawnBefore(before, index, segment) != null
+
+    /**
+     * Who said each important word heard lately. Where its line was last
+     * time still holds while the lines up to it are unchanged; otherwise
+     * only the lines after those are looked through.
+     */
+    private fun heardBy(recent: List<KeywordHit>, segments: List<TranscriptSegment>, unchanged: Int): Map<UUID, String> {
+        val found = HashMap<UUID, Int>()
+        val said = LinkedHashMap<UUID, String>()
+        for (hit in recent) {
+            val known = heardLines[hit.segmentID]
+            val index = if (known == null) {
+                indexOf(hit.segmentID, segments, from = 0)
+            } else if (known in 0 until unchanged) {
+                known
+            } else {
+                indexOf(hit.segmentID, segments, from = unchanged)
+            }
+            found[hit.segmentID] = index
+            if (index >= 0) voices.name(segments[index].speakerClusterID)?.let { said[hit.id] = it }
+        }
+        heardLines = found
+        return if (said.isEmpty()) emptyMap() else said
+    }
+
+    private fun indexOf(id: UUID, segments: List<TranscriptSegment>, from: Int): Int {
+        for (index in from until segments.size) if (segments[index].id == id) return index
+        return -1
     }
 
     /**
@@ -445,8 +558,11 @@ object CaptionState {
         speechResume = SpeechResume()
         awayCatchUp = AwayCatchUp()
         segmentsShown = emptyList()
+        firstShownBefore = 0
         heldFirstLine = null
         shapes.clear()
+        voices.clear()
+        heardLines = emptyMap()
         state.value = CaptionScreenState(speechResumed = state.value.speechResumed)
     }
 

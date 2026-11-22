@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.util.UUID
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -104,5 +105,33 @@ class AwayCatchUpTest {
         shorter.screenLeft(100.0)
         shorter.screenReturned(114.0)
         assertNull(shorter.away)
+    }
+
+    @Test
+    fun `counted again only past the lines left as they were, the pipeline's lists mark what plain copies mark`() {
+        val random = Random(5)
+        fun line(at: Double) = TranscriptSegment(id = UUID.randomUUID(), text = "line", isCommitted = true, startTimestamp = at, lastUpdateTimestamp = at)
+        val counted = AwayCatchUp()
+        val plain = AwayCatchUp()
+        var lines = ChunkedList.of((0 until 100).map { line(random.nextDouble(0.0, 600.0)) })
+        repeat(1_000) { step ->
+            if (step == 0 || step == 500) {
+                for (catchUp in listOf(counted, plain)) {
+                    catchUp.screenLeft(100.0 + step / 5)
+                    catchUp.screenReturned(400.0 + step / 5)
+                }
+            }
+            lines = when (if (lines.size < 2) 0 else random.nextInt(4)) {
+                0 -> lines.adding(line(random.nextDouble(0.0, 600.0)))
+                1 -> lines.replacing(lines.size - 1, line(random.nextDouble(0.0, 600.0)))
+                2 -> lines.replacing(random.nextInt(lines.size), line(random.nextDouble(0.0, 600.0)))
+                else -> random.nextInt(lines.size).let { gone -> ChunkedList.of(lines.filterIndexed { index, _ -> index != gone }) }
+            }
+            val copy = ArrayList(lines)
+            assertEquals(plain.missedLineCount(copy), counted.missedLineCount(lines), "step $step")
+            assertEquals(plain.firstMissedIndex(copy), counted.firstMissedIndex(lines), "step $step")
+            assertEquals(plain.drawnMarkIndex(copy, 40), counted.drawnMarkIndex(lines, 40), "step $step")
+            assertEquals(plain.offersJump(copy), counted.offersJump(lines), "step $step")
+        }
     }
 }

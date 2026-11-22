@@ -52,4 +52,31 @@ class ChunkedListTest {
         assertFailsWith<IndexOutOfBoundsException> { ChunkedList.empty<Int>()[0] }
         assertTrue(ChunkedList.empty<Int>().isEmpty())
     }
+
+    @Test
+    fun `how many first elements two versions share is what comparing them one by one says, and other lists count as all new`() {
+        val random = Random(11)
+        var list = ChunkedList.of((0 until 300).map { Any() })
+        val versions = arrayListOf(list)
+        repeat(2_000) {
+            list = when (if (list.size < 2) 0 else random.nextInt(4)) {
+                0 -> list.adding(Any())
+                1 -> list.replacing(list.size - 1, Any())
+                2 -> list.replacing(random.nextInt(list.size), Any())
+                else -> random.nextInt(list.size).let { gone -> ChunkedList.of(list.filterIndexed { index, _ -> index != gone }) }
+            }
+            versions.add(list)
+        }
+        for (step in versions.indices) {
+            for (back in listOf(0, 1, 2, 9)) {
+                val before = versions.getOrNull(step - back) ?: continue
+                val now = versions[step]
+                val shorter = minOf(before.size, now.size)
+                val expected = (0 until shorter).firstOrNull { before[it] !== now[it] } ?: shorter
+                assertEquals(expected, unchangedLeadingCount(before, now))
+            }
+        }
+        assertEquals(0, unchangedLeadingCount(listOf(1, 2), listOf(1, 2)))
+        assertEquals(0, unchangedLeadingCount(list.toList(), list))
+    }
 }
