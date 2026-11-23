@@ -195,11 +195,6 @@ class CaptionSession(
     /** Asks the system to clear cache for a download about to write that many bytes; blocks, so not for the main thread. */
     var makeRoom: (Long) -> Unit = { storage.makeRoom(it) }
 
-    /** The phone's free memory as Android counts it for apps, which a model is checked against before it loads; a seam for tests. */
-    internal var freeMemory: () -> Long? = {
-        ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.availMem.takeIf { it > 0 }
-    }
-
     // With the screen off and the microphone off, nothing kept the
     // processor up while captions waited to try again, and a retry due in
     // seconds came minutes late (see `RetryWait`). A model downloading for
@@ -2000,8 +1995,8 @@ class CaptionSession(
                 variant = settings.phoneModel.variant,
                 marker = loadMarker,
                 keepAwake = downloadAwake::keepAwake,
-                needsBytes = settings.phoneModel.workingBytes,
-                freeMemory = { freeMemory() },
+                leastMemoryBytes = settings.phoneModel.leastRamBytes,
+                totalMemory = { totalMemory() },
             ),
             voiceScorerFactory = ::voiceScore,
             previewDemand = ::previewDemand,

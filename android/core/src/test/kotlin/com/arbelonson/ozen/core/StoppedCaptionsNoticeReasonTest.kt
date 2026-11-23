@@ -47,9 +47,9 @@ class StoppedCaptionsNoticeReasonTest {
     }
 
     @Test
-    fun `a model the phone had too little free memory for is named as that, not as a failed load`() {
+    fun `a model the phone has too little memory for is named as that, not as a failed load`() {
         assertNamed(
-            tr("אין בטלפון מספיק זיכרון פנוי למודל הזה", "Not enough free memory on the phone for this model"),
+            tr("אין בטלפון הזה מספיק זיכרון למודל הזה", "This phone doesn’t have enough memory for this model"),
             body(engineFailure(EngineUnavailability.Kind.NotEnoughMemory)),
         )
     }

@@ -241,7 +241,7 @@ class FileTranscriber(
         val loader = ModelFileLoader(
             file, context.applicationInfo.nativeLibraryDir, PhoneSpeedMeter.engineThreads(),
             download = downloader, network = { captions.networkNow() }, freeBytes = { captions.freeSpace() }, makeRoom = { captions.makeRoom(it) }, variant = model.variant,
-            needsBytes = model.workingBytes, freeMemory = { captions.freeMemory() },
+            leastMemoryBytes = model.leastRamBytes, totalMemory = { totalMemory() },
         )
         val loaded = try {
             loader.load(ready.language.languageCode, current.allowCellularModelDownload) { progress -> showPreparing(model, progress) }

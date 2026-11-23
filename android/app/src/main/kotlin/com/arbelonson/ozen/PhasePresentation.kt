@@ -675,7 +675,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.NotEnoughMemory -> PhasePresentation(
                     title = CaptionProblemText.notEnoughMemory(),
-                    detail = tr("הקישו כדי לבחור מודל קל יותר, או סגרו אפליקציות אחרות והפעילו שוב", "Tap to choose a lighter model, or close other apps and start again"),
+                    detail = tr("הקישו כדי לבחור מודל קל יותר", "Tap to choose a lighter model"),
                     systemImage = "cpu",
                     tint = PhaseTint.Problem,
                     action = Action.OpenEngineSettings,

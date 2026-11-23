@@ -1223,8 +1223,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ቀድሞ ተቀምጧል። ሁለቱም ድምፆች ባለፉ ንግግሮች ውስጥም ጭምር በዚያ አንድ ስም ይታያሉ።",
   "Merge": "አዋህድ",
   "No voice reads this writing, so the text can’t be played aloud.": "ይህን ጽሑፍ የሚያነብ ድምጽ ስለሌለ ጽሑፉን ጮኽ ብሎ ማጫወት አይቻልም።",
-  "Not enough free memory on the phone for this model": "በስልኩ ላይ ለዚህ ሞዴል በቂ ነፃ ማህደረ ትውስታ የለም",
-  "Tap to choose a lighter model, or close other apps and start again": "ቀለል ያለ ሞዴል ለመምረጥ ይንኩ፣ ወይም ሌሎች መተግበሪያዎችን ዘግተው እንደገና ያስጀምሩ"
+  "This phone doesn’t have enough memory for this model": "ይህ ስልክ ለዚህ ሞዴል በቂ ማህደረ ትውስታ የለውም",
+  "Tap to choose a lighter model": "ቀለል ያለ ሞዴል ለመምረጥ ይንኩ"
  },
  "arabic": {
   "Notifications are off": "الإشعارات متوقفة",
@@ -2450,8 +2450,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 محفوظ بالفعل. سيظهر الصوتان باسم واحد هو هذا الاسم، بما في ذلك في المحادثات السابقة.",
   "Merge": "دمج",
   "No voice reads this writing, so the text can’t be played aloud.": "لا يوجد صوت يقرأ هذه الكتابة، لذا لا يمكن تشغيل النص بصوت عالٍ.",
-  "Not enough free memory on the phone for this model": "لا توجد على الهاتف ذاكرة فارغة كافية لهذا النموذج",
-  "Tap to choose a lighter model, or close other apps and start again": "المسوا لاختيار نموذج أخف، أو أغلقوا التطبيقات الأخرى وشغّلوا من جديد"
+  "This phone doesn’t have enough memory for this model": "لا توجد في هذا الهاتف ذاكرة كافية لهذا النموذج",
+  "Tap to choose a lighter model": "المسوا لاختيار نموذج أخف"
  },
  "chineseSimplified": {
   "Notifications are off": "通知已关闭",
@@ -3677,8 +3677,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 已经保存过了。之后两个声音都会以这一个名字显示，包括以往的对话。",
   "Merge": "合并",
   "No voice reads this writing, so the text can’t be played aloud.": "没有可朗读这种文字的语音，因此无法朗读该文本。",
-  "Not enough free memory on the phone for this model": "手机上没有足够的可用内存来运行此模型",
-  "Tap to choose a lighter model, or close other apps and start again": "点按选择更轻量的模型，或关闭其他应用后重新开始"
+  "This phone doesn’t have enough memory for this model": "这部手机的内存不足以运行此模型",
+  "Tap to choose a lighter model": "点按选择更轻量的模型"
  },
  "french": {
   "Notifications are off": "Les notifications sont désactivées",
@@ -4904,8 +4904,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 est déjà enregistré. Les deux voix seront alors affichées sous ce seul nom, y compris dans les conversations passées.",
   "Merge": "Fusionner",
   "No voice reads this writing, so the text can’t be played aloud.": "Aucune voix ne lit cette écriture, le texte ne peut donc pas être lu à voix haute.",
-  "Not enough free memory on the phone for this model": "Pas assez de mémoire libre sur le téléphone pour ce modèle",
-  "Tap to choose a lighter model, or close other apps and start again": "Touchez pour choisir un modèle plus léger, ou fermez les autres applications et relancez"
+  "This phone doesn’t have enough memory for this model": "Ce téléphone n’a pas assez de mémoire pour ce modèle",
+  "Tap to choose a lighter model": "Touchez pour choisir un modèle plus léger"
  },
  "german": {
   "Notifications are off": "Benachrichtigungen sind aus",
@@ -6131,8 +6131,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ist bereits gespeichert. Beide Stimmen werden dann unter diesem einen Namen angezeigt, auch in früheren Gesprächen.",
   "Merge": "Zusammenführen",
   "No voice reads this writing, so the text can’t be played aloud.": "Keine Stimme liest diese Schrift, deshalb kann der Text nicht vorgelesen werden.",
-  "Not enough free memory on the phone for this model": "Nicht genug freier Arbeitsspeicher auf dem Telefon für dieses Modell",
-  "Tap to choose a lighter model, or close other apps and start again": "Tippen, um ein leichteres Modell zu wählen, oder andere Apps schließen und neu starten"
+  "This phone doesn’t have enough memory for this model": "Dieses Telefon hat nicht genug Arbeitsspeicher für dieses Modell",
+  "Tap to choose a lighter model": "Tippen, um ein leichteres Modell zu wählen"
  },
  "hindi": {
   "Notifications are off": "सूचनाएँ बंद हैं",
@@ -7358,8 +7358,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 पहले से सहेजा हुआ है। इसके बाद दोनों आवाज़ें इसी एक नाम से दिखेंगी, पिछली बातचीत में भी।",
   "Merge": "मिलाएं",
   "No voice reads this writing, so the text can’t be played aloud.": "इस लिपि को पढ़ने वाली कोई आवाज़ नहीं है, इसलिए यह टेक्स्ट बोलकर नहीं सुनाया जा सकता।",
-  "Not enough free memory on the phone for this model": "इस मॉडल के लिए फ़ोन में पर्याप्त खाली मेमोरी नहीं",
-  "Tap to choose a lighter model, or close other apps and start again": "हल्का मॉडल चुनने के लिए टैप करें, या दूसरे ऐप बंद करके फिर से शुरू करें"
+  "This phone doesn’t have enough memory for this model": "इस फ़ोन में इस मॉडल के लिए पर्याप्त मेमोरी नहीं है",
+  "Tap to choose a lighter model": "हल्का मॉडल चुनने के लिए टैप करें"
  },
  "portuguese": {
   "Notifications are off": "As notificações estão desativadas",
@@ -8585,8 +8585,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 já está guardado. As duas vozes passarão a aparecer com esse único nome, incluindo nas conversas anteriores.",
   "Merge": "Unir",
   "No voice reads this writing, so the text can’t be played aloud.": "Nenhuma voz lê esta escrita, por isso o texto não pode ser lido em voz alta.",
-  "Not enough free memory on the phone for this model": "Não há memória livre suficiente no telemóvel para este modelo",
-  "Tap to choose a lighter model, or close other apps and start again": "Toque para escolher um modelo mais leve, ou feche outras aplicações e comece de novo"
+  "This phone doesn’t have enough memory for this model": "Este telemóvel não tem memória suficiente para este modelo",
+  "Tap to choose a lighter model": "Toque para escolher um modelo mais leve"
  },
  "russian": {
   "Notifications are off": "Уведомления отключены",
@@ -9812,8 +9812,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже сохранён. Оба голоса будут показываться под одним этим именем, в том числе в прошлых разговорах.",
   "Merge": "Объединить",
   "No voice reads this writing, so the text can’t be played aloud.": "Нет голоса, который читает это письмо, поэтому текст нельзя озвучить.",
-  "Not enough free memory on the phone for this model": "На телефоне недостаточно свободной памяти для этой модели",
-  "Tap to choose a lighter model, or close other apps and start again": "Нажмите, чтобы выбрать модель полегче, или закройте другие приложения и запустите снова"
+  "This phone doesn’t have enough memory for this model": "На этом телефоне недостаточно памяти для этой модели",
+  "Tap to choose a lighter model": "Нажмите, чтобы выбрать модель полегче"
  },
  "spanish": {
   "Notifications are off": "Las notificaciones están desactivadas",
@@ -11039,8 +11039,8 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "%1 ya está guardado. Las dos voces se mostrarán entonces con ese único nombre, también en conversaciones anteriores.",
   "Merge": "Combinar",
   "No voice reads this writing, so the text can’t be played aloud.": "Ninguna voz lee esta escritura, así que el texto no se puede leer en voz alta.",
-  "Not enough free memory on the phone for this model": "No hay suficiente memoria libre en el teléfono para este modelo",
-  "Tap to choose a lighter model, or close other apps and start again": "Toca para elegir un modelo más ligero, o cierra otras aplicaciones y vuelve a empezar"
+  "This phone doesn’t have enough memory for this model": "Este teléfono no tiene suficiente memoria para este modelo",
+  "Tap to choose a lighter model": "Toca para elegir un modelo más ligero"
  },
  "ukrainian": {
   "Notifications are off": "Сповіщення вимкнено",
@@ -12266,7 +12266,7 @@
   "%1 is already saved. Both voices will then be shown under that one name, including in past conversations.": "«%1» уже збережено. Обидва голоси показуватимуться під цим одним іменем, зокрема в минулих розмовах.",
   "Merge": "Об’єднати",
   "No voice reads this writing, so the text can’t be played aloud.": "Немає голосу, який читає це письмо, тому текст не можна озвучити.",
-  "Not enough free memory on the phone for this model": "На телефоні недостатньо вільної пам’яті для цієї моделі",
-  "Tap to choose a lighter model, or close other apps and start again": "Натисніть, щоб вибрати легшу модель, або закрийте інші застосунки й запустіть знову"
+  "This phone doesn’t have enough memory for this model": "На цьому телефоні недостатньо пам’яті для цієї моделі",
+  "Tap to choose a lighter model": "Натисніть, щоб вибрати легшу модель"
  }
 }

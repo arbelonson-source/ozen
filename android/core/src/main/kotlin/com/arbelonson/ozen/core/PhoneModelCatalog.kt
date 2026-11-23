@@ -25,6 +25,16 @@ data class PhoneModel(
     /** What whisper.cpp holds in memory once this model is loaded and has made a pass: the weights it reads in whole, and [stateBytes]. */
     val workingBytes: Long get() = source.bytes + stateBytes
 
+    /**
+     * The least total memory this model can run in at all: what makes it
+     * comfortable, or its [workingBytes] with
+     * [PhoneModelCatalog.RESERVE_BESIDE_MODEL_BYTES] beside it, whichever
+     * is less. A phone the recommendation would give it is never below.
+     */
+    val leastRamBytes: Long get() = minOf(comfortableRamBytes, workingBytes + PhoneModelCatalog.RESERVE_BESIDE_MODEL_BYTES)
+
+    fun runsIn(totalMemoryBytes: Long?): Boolean = totalMemoryBytes == null || totalMemoryBytes >= leastRamBytes
+
     val megabytes: Int get() = ((source.bytes + 999_999) / 1_000_000).toInt()
 
     fun quality(language: UILanguage): Int = if (language == UILanguage.Hebrew) hebrewQuality else otherQuality
@@ -56,6 +66,20 @@ object PhoneModelCatalog {
      * has left.
      */
     const val RAM_PER_FILE_BYTE = 3L
+
+    /**
+     * What Android and the rest of the app need beside a loaded model, at
+     * the least. The 2.5 GB test emulator was ended loading the 1.62 GB
+     * file, which takes 1.82 GB: 0.68 GB beside it was too little. The 2 GB
+     * one runs the 574 MB files, which take 761 MB, with about 1.2 GB
+     * beside them. A phone with less than 0.7 GB beside a model cannot run
+     * it; one with more may, and is let try: Android ends background apps
+     * to make room for the app in front before it ends that one, and the
+     * caption screen offers a lighter model after a load that ended the
+     * app. On the phones it matters for, the 1.62 GB file needs 2.52 GB
+     * and the 574 MB files 1.46 GB.
+     */
+    const val RESERVE_BESIDE_MODEL_BYTES = 700_000_000L
 
     /**
      * whisper.cpp's caches and working buffers besides the weights, by the
