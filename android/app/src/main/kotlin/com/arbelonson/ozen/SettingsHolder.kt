@@ -34,12 +34,16 @@ class SettingsHolder(
 
     fun change(edit: (AppSettings) -> Unit) {
         changeInTurn(edit)
-        if (writeAsked.compareAndSet(false, true)) writer.execute { waitForWrites() }
+        if (writeAsked.compareAndSet(false, true)) writer.execute(::writeIfAsked)
     }
 
     fun waitForWrites(): Boolean = synchronized(oneWriteAtATime) {
         val waiting = synchronized(oneChangeAtATime) { unwritten.isNotEmpty() }
         if (writeAsked.getAndSet(false) || waiting) written() else lastSaved
+    }
+
+    private fun writeIfAsked() {
+        synchronized(oneWriteAtATime) { if (writeAsked.getAndSet(false)) written() }
     }
 
     fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = changeInTurn(edit)()
