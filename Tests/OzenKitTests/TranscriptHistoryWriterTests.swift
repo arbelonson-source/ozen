@@ -6,10 +6,25 @@ import Testing
 /// A call made on a thread of its own, checked on without holding one of
 /// the few threads every test shares: a semaphore wait held one for as long
 /// as it waited, while all the other tests waited for a turn.
-private final class OffThreadCall: @unchecked Sendable {
+final class OffThreadCall: @unchecked Sendable {
     private let lock = NSLock()
     private var started = false
     private var returned = false
+
+    /// Runs `work` on a thread of its own, so a call that wrongly blocks
+    /// shows up as a failed expectation instead of hanging the whole test
+    /// run. Not the shared global queue: on a one-core runner its threads
+    /// were all taken by other tests, and the work did not even start
+    /// within a second.
+    static func start(_ work: @escaping @Sendable () -> Void) -> OffThreadCall {
+        let call = OffThreadCall()
+        Thread {
+            call.markStarted()
+            work()
+            call.markReturned()
+        }.start()
+        return call
+    }
 
     func markStarted() { lock.withLock { started = true } }
 
@@ -55,19 +70,8 @@ struct TranscriptHistoryWriterTests {
         )
     }
 
-    /// Runs `work` on a thread of its own, so a call that wrongly blocks
-    /// shows up as a failed expectation instead of hanging the whole test
-    /// run. Not the shared global queue: on a one-core runner its threads
-    /// were all taken by other tests, and the work did not even start
-    /// within a second.
     private func offThread(_ work: @escaping @Sendable () -> Void) -> OffThreadCall {
-        let call = OffThreadCall()
-        Thread {
-            call.markStarted()
-            work()
-            call.markReturned()
-        }.start()
-        return call
+        OffThreadCall.start(work)
     }
 
     private func makeStore() -> (TranscriptHistoryStore, URL) {

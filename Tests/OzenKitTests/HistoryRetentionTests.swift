@@ -99,7 +99,7 @@ struct HistoryRetentionTests {
     }
 
     @Test("the writer does nothing when set to keep forever, and prunes behind queued saves otherwise")
-    func writerPrunes() throws {
+    func writerPrunes() async throws {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.retention")
@@ -114,15 +114,18 @@ struct HistoryRetentionTests {
         // written; pruning must run after it, not before.
         queue.suspend()
         writer.saveInBackground(old)
-        let pruned = DispatchSemaphore(value: 0)
         let count = LockedCount()
-        DispatchQueue.global().async {
+        let pruned = OffThreadCall.start {
             count.set(writer.deleteExpiredNow(retention: .year, now: self.now, protecting: []))
-            pruned.signal()
         }
-        let returnedEarly = pruned.wait(timeout: .now() + .milliseconds(200)) == .success
+        // Waited for without holding one of the few threads every test
+        // shares (a semaphore wait held one for at least the 200 ms), and
+        // counted from when the side thread starts the call: a busy machine
+        // can start it late, and a call that has not begun has not been
+        // held up behind the autosave.
+        let returnedEarly = await pruned.hasReturned(within: .milliseconds(200))
         queue.resume()
-        if !returnedEarly { pruned.wait() }
+        await pruned.finish()
         writer.waitUntilIdle()
 
         #expect(returnedEarly == false)
