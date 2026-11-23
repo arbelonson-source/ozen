@@ -572,6 +572,7 @@ class CaptionSession(
         problemAudio = problemAudio,
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
         onMainThread = ::onMainThread,
+        speakerNames = pipeline::speakerNames,
     )
 
     /** Runs a step on the main thread and waits for it: History asks from a thread of its own. */

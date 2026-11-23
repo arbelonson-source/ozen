@@ -499,4 +499,22 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.clusters.count == 2)
         #expect(clusterer.clusters.first?.name == nil)
     }
+
+    @Test("the names a save reads on another thread are each voice's name at that moment, and stay so as voices are named after")
+    func displayNamesStayAsTheyWere() {
+        var clusterer = EmbeddingClusterer()
+        let first = clusterer.assign(embedding: [1, 0, 0, 0])
+        clusterer.startNewConversation()
+        let second = clusterer.assign(embedding: [0, 1, 0, 0])
+        let third = clusterer.assign(embedding: [0, 0, 1, 0])
+        clusterer.nameCluster(id: third, name: "Dana")
+        let voices: [Int?] = [first, second, third, nil, 999]
+        let before = voices.map { clusterer.displayName(forClusterID: $0) }
+        let names = clusterer.displayNames()
+        clusterer.nameCluster(id: second, name: "Avi")
+        clusterer.forgetName("Dana")
+        #expect(voices.map(names) == before)
+        #expect(voices.map { clusterer.displayName(forClusterID: $0) } != before)
+        #expect(Array(before[1...2]) == [before[0], "Dana"])
+    }
 }

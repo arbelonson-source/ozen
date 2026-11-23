@@ -245,6 +245,25 @@ public struct EmbeddingClusterer: Sendable {
         return cluster.name ?? Self.genericName(number: cluster.number)
     }
 
+    /// `displayName(forClusterID:)` as every voice is named at this moment,
+    /// to be read on another thread while voices are named and heard here.
+    public func displayNames() -> @Sendable (Int?) -> String {
+        var generic: [Int: String] = [:]
+        var names: [Int: String] = [:]
+        func label(_ cluster: SpeakerCluster) -> String {
+            if let name = cluster.name { return name }
+            if let known = generic[cluster.number] { return known }
+            let name = Self.genericName(number: cluster.number)
+            generic[cluster.number] = name
+            return name
+        }
+        for cluster in retired { names[cluster.id] = label(cluster) }
+        for cluster in clusters.reversed() { names[cluster.id] = label(cluster) }
+        let unknown = Self.unknownSpeakerName
+        let fixed = names
+        return { id in id.flatMap { fixed[$0] } ?? unknown }
+    }
+
     /// A saved profile was renamed: every cluster showing the old name
     /// shows the new one from now on.
     public mutating func renameClusters(named oldName: String, to newName: String) {

@@ -991,6 +991,45 @@ struct LiveCaptionViewModelAlertTests {
         #expect(sessions.first?.endedAt != nil)
     }
 
+    // A long day's conversation was made into its record on the main actor
+    // at every twenty-second autosave, and the captions stuttered on a
+    // slower phone. The autosave now only reads what the record is made of
+    // and leaves the making to the writer's queue, so it takes a small part
+    // of the time making that record takes.
+    @Test("an autosave of a long conversation leaves making its record to the writer, not the caption screen")
+    func autosaveMakesTheRecordOffTheMainActor() async {
+        let store = SettingsStore(fileURL: temporaryURL("vm").appendingPathExtension("json"))
+        let history = TranscriptHistoryStore(directoryURL: temporaryURL("history"))
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, historyStore: history)
+        await viewModel.start()
+        let count = 2_000
+        let now = Date().timeIntervalSince1970
+        for line in 0..<count {
+            let text = "take three pills every morning with a glass of water, line \(line)"
+            engine.emit(TranscriptToken(utteranceID: UUID(), text: text, isFinal: true, timestamp: now - 60 + Double(line) / 100))
+        }
+        #expect(await eventually(within: .seconds(120)) { viewModel.segments.count == count })
+
+        let clock = ContinuousClock()
+        var autosave = Duration.seconds(60)
+        var making = Duration.seconds(60)
+        for _ in 0..<5 {
+            autosave = min(autosave, clock.measure { viewModel.persistHistory(ended: false, inBackground: true) })
+            viewModel.waitForHistorySaves()
+            let lines = viewModel.segments
+            making = min(making, clock.measure {
+                _ = TranscriptSessionRecord.make(
+                    from: lines, speakerName: { viewModel.displayName(for: $0) }, id: UUID(),
+                    startedAt: now, endedAt: nil, engine: .whisperKit, modelVariant: nil, inputName: nil
+                )
+            })
+        }
+        #expect(autosave * 4 < making, "the autosave took \(autosave) on the main actor; making its record takes \(making)")
+        #expect(history.listSummaries().map(\.segmentCount) == [count])
+    }
+
     @Test("history is not written when saving is switched off")
     func historyOff() async {
         let store = SettingsStore(fileURL: temporaryURL("vm").appendingPathExtension("json"))
