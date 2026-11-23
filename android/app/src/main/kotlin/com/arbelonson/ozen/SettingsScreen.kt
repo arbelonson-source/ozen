@@ -171,6 +171,7 @@ import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModel
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.CaptionProblemText
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.SliderSpeech
@@ -1022,6 +1023,7 @@ private fun backupMessage(status: BackupModelStatus): String? = when (status) {
     BackupModelStatus.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את הגיבוי עכשיו.", "There’s no internet, so the backup can’t be downloaded now.")
     is BackupModelStatus.NotEnoughRoom -> tr("אין מספיק מקום בטלפון לגיבוי. צריך לפנות עוד %1.", "Not enough room on the phone for the backup. %1 more needs to be freed up.", listOf(PhasePresentation.sizeText(status.megabytes)))
     BackupModelStatus.Failed -> tr("הורדת הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again.")
+    BackupModelStatus.TooLittleMemory -> CaptionProblemText.notEnoughMemory()
 }
 
 @Composable
@@ -1043,6 +1045,10 @@ private fun PhoneBackupContent(status: BackupModelStatus, onDownload: () -> Unit
         BackupModelStatus.Failed -> {
             BackupDownloadButton(null, onDownload)
             Text(tr("הורדת הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again."), color = cautionOrange())
+        }
+        BackupModelStatus.TooLittleMemory -> {
+            Text(CaptionProblemText.notEnoughMemory(), color = cautionOrange())
+            BackupNote(tr("בלי הגיבוי, הכתוביות נעצרות כשאין חיבור למחשב.", "Without the backup, captions stop when the computer can’t be reached."))
         }
     }
 }
