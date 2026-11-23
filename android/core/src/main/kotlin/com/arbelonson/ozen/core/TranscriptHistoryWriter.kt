@@ -130,16 +130,21 @@ class TranscriptHistoryWriter(
      * the one write that must not be lost, not for the whole
      * conversation's search index too.
      */
-    fun saveNow(record: TranscriptSessionRecord): Boolean {
-        var saved = false
-        queue.sync {
-            saved = failure.capture { store.save(record, updateSearchCaches = false) }
-            lastWritten.record = if (saved) record else null
-            if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
-            pendingRenames.dropTexts(record)
-            catchUp(record.id)
-        }
-        return saved
+    fun saveNow(record: TranscriptSessionRecord): Boolean = saveInTurn(record)()
+
+    /**
+     * [saveNow] handed in now, so every save asked after this call lands
+     * after it; the function returned waits for it and says whether it
+     * reached the disk. History's star is handed in by the main thread,
+     * which must not wait for a slow disk, and waited for on its own thread.
+     */
+    fun saveInTurn(record: TranscriptSessionRecord): () -> Boolean = queue.queued {
+        val saved = failure.capture { store.save(record, updateSearchCaches = false) }
+        lastWritten.record = if (saved) record else null
+        if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
+        pendingRenames.dropTexts(record)
+        catchUp(record.id)
+        saved
     }
 
     /**

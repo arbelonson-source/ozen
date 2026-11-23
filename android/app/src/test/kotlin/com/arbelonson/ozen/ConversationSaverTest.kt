@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SerialQueue
 import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
@@ -23,7 +24,9 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
+import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
@@ -1310,7 +1313,7 @@ class ConversationSaverTest {
         }
     }
 
-    private fun savingOn(threads: Threads) = ConversationSaver(
+    private fun savingOn(threads: Threads, writer: TranscriptHistoryWriter = this.writer) = ConversationSaver(
         writer = writer, lines = { lines.toList() }, isListening = { listening }, settings = { settings }, transcribing = { settings },
         speakerName = { null }, inputName = { null }, startNewConversation = {}, setSaveHistory = { settings.saveHistory = it },
         scope = scope, now = { clock }, io = EmptyCoroutineContext, onMainThread = threads::mainThread,
@@ -1386,6 +1389,77 @@ class ConversationSaverTest {
             deleteWhileTheScreenReads(threads, history) { history.delete(morning) }
             assertNull(threads.onMain { history.conversationOfLine(0) })
             assertTrue(saved().isEmpty())
+        }
+    }
+
+    /** Asked of the main thread, which must answer within a few seconds: it is not to wait for the disk. */
+    private fun <T> Threads.answersAtOnce(work: () -> T): T {
+        val asked = FutureTask { onMain(work) }
+        thread(name = "asking the caption screen") { asked.run() }
+        return try {
+            asked.get(5, TimeUnit.SECONDS)
+        } catch (failure: ExecutionException) {
+            throw failure.cause ?: failure
+        }
+    }
+
+    // History stars from its own thread, and a phone can be slow to write.
+    // Saved where History asked, a line of the conversation still being
+    // captioned had its star read and changed off the main thread, which
+    // changes the lines at every word; saved on the main thread, the write
+    // froze the screen. The star is given, and its save queued, in a step
+    // of the main thread, and History alone waits for the disk.
+    @Test
+    fun `a star History gives a line still being captioned is given on the main thread and only History waits for the disk`() {
+        val disk = SerialQueue("slow disk")
+        Threads().use { threads ->
+            val history = savingOn(threads, TranscriptHistoryWriter(store, disk))
+            listening = true
+            history.listeningChanged()
+            say("Take two pills after dinner")
+            val conversation = history.currentId
+            val pills = lines[0].id
+            disk.suspend()
+            val starring = AtomicReference<Boolean?>()
+            try {
+                threads.fromHistory { starring.set(history.toggleStar(conversation, pills)) }
+                val deadline = System.nanoTime() + 5_000_000_000
+                while (!threads.answersAtOnce { history.isStarred(pills) }) {
+                    assertTrue(System.nanoTime() < deadline, "the star never showed while it was being saved")
+                    Thread.sleep(10)
+                }
+                assertNull(starring.get(), "History was told before the disk had the star")
+            } finally {
+                disk.resume()
+            }
+            threads.historyDone()
+            assertEquals(true, starring.get())
+            assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+        }
+    }
+
+    @Test
+    fun `a star History gives a line of an earlier conversation leaves the main thread free while it is written`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        val disk = SerialQueue("slow disk")
+        Threads().use { threads ->
+            val history = savingOn(threads, TranscriptHistoryWriter(store, disk))
+            disk.suspend()
+            val starring = AtomicReference<Boolean?>()
+            try {
+                threads.fromHistory { starring.set(history.toggleStar(earlier, line)) }
+                // History hands the main thread its step just after asking.
+                Thread.sleep(100)
+                assertFalse(threads.answersAtOnce { history.isStarred(line) })
+                assertNull(starring.get(), "History was told before the disk had the star")
+            } finally {
+                disk.resume()
+            }
+            threads.historyDone()
+            assertEquals(true, starring.get())
+            assertTrue(threads.onMain { history.isStarred(line) })
+            assertTrue(store.load(earlier)!!.segments.single().isStarred)
         }
     }
 

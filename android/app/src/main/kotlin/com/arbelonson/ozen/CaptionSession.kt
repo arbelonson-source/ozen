@@ -631,9 +631,13 @@ class CaptionSession(
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.
+        // History stars from its own thread; the caption screen and its
+        // warning are the main thread's, which changes them at every word.
         override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also { starring ->
-            starring?.let { CaptionState.markStarred(segmentID, it) }
-            refreshSavingTrouble()
+            onMainThread {
+                starring?.let { CaptionState.markStarred(segmentID, it) }
+                refreshSavingTrouble()
+            }
         }
 
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
