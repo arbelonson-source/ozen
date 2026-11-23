@@ -713,9 +713,24 @@ object HebrewText {
      * A word with each final letter written as its ordinary form, the shape
      * it takes inside a longer word: "ben" + "tzion" joined is "bentzion",
      * with the nun in its ordinary form.
+     *
+     * Each saved name folds every new word, or pair of words, on a line, so
+     * a word whose characters are each one unit
+     * ([Graphemes.splitsAtEveryUnit]), as caption words almost always are,
+     * is folded a unit at a time: starting a character splitter for it made
+     * about a kilobyte a word.
      */
-    internal fun foldingFinalLetters(word: String): String =
-        graphemesOf(word).joinToString("") { finalLetters[it] ?: it }
+    internal fun foldingFinalLetters(word: String): String {
+        if (!Graphemes.splitsAtEveryUnit(word)) return graphemesOf(word).joinToString("") { finalLetters[it] ?: it }
+        var folded: CharArray? = null
+        for (index in word.indices) {
+            val letter = word[index]
+            if (letter !in '\u05DA'..'\u05E5') continue
+            val ordinary = finalLetters[Graphemes.unit(letter)] ?: continue
+            (folded ?: word.toCharArray().also { folded = it })[index] = ordinary[0]
+        }
+        return folded?.let { String(it) } ?: word
+    }
 
     internal fun alternateForms(stem: String): Set<String> =
         (affectionateVariants[stem] ?: emptySet()) + (otherForms[stem] ?: emptySet())
