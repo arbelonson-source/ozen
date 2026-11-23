@@ -27,6 +27,7 @@ private suspend fun TestScope.waitingFor(
     retryWait: RetryWait,
     network: NetworkMonitoring? = null,
     watched: Boolean = false,
+    onNote: (String) -> Unit = {},
 ): SleepWaiting {
     val unavailable = if (kind == homeKind) EngineUnavailability.Kind.HomeServerUnreachable else EngineUnavailability.Kind.TemporarilyUnavailable
     val engine = FakeEngine(kind = kind, availability = EngineAvailability.unavailable(unavailable, "asleep"))
@@ -41,7 +42,10 @@ private suspend fun TestScope.waitingFor(
     )
     captions.watched = watched
     val notes = ArrayList<String>()
-    captions.onEvent = { event -> notes.add(event.description) }
+    captions.onEvent = { event ->
+        notes.add(event.description)
+        onNote(event.description)
+    }
     val settings = AppSettings.default
     settings.engine = kind
     if (kind == homeKind) settings.homeServerAddress = "10.0.0.5"
@@ -118,6 +122,55 @@ private suspend fun TestScope.askedAtOnceOnANewNetwork(kind: TranscriptionEngine
     waiting.engine.availability = EngineAvailability.Available
     network.change(NetworkConditions.wifi)
     assertTrue(eventually(2.seconds) { waiting.captions.phase == PipelinePhase.Listening && waiting.captions.activeEngineKind == kind })
+}
+
+/**
+ * Waiting an hour for [kind] while [startOver] starts the wait again every
+ * four minutes (the network dropping and coming back, a call ending): the
+ * processor is still kept up for about the first ten minutes only. Each
+ * new wait was given the ten minutes again, so a connection that kept
+ * dropping kept the phone from sleeping all day.
+ */
+private suspend fun TestScope.keptUpOnceThroughRestarts(kind: TranscriptionEngineKind, startOver: suspend (CaptionPipeline, FakeNetworkMonitor) -> Unit) {
+    val phone = SleepingPhone(this)
+    val asked = mutableListOf<Pair<Long, Duration?>>()
+    val network = FakeNetworkMonitor(NetworkConditions.wifi)
+    val notes = ArrayList<String>()
+    val waiting = waitingFor(kind, RetryWait(sinceBoot = phone.sinceBoot) { asked += phone.sinceBoot() to it }, network, onNote = { notes += it })
+    repeat(15) {
+        delay(4.minutes)
+        startOver(waiting.captions, network)
+    }
+    delay(4.minutes)
+    val waitNote = if (kind == homeKind) "waiting for the home computer" else "waiting for the cloud"
+    assertTrue(notes.count { it.startsWith(waitNote) } >= 15, "the wait never started again: $notes")
+    assertTrue(waiting.captions.phase is PipelinePhase.Failed, "${waiting.captions.phase}")
+    var held = Duration.ZERO
+    asked.zipWithNext { (at, ask), (next, _) -> if (ask != null) held += (next - at).milliseconds }
+    assertTrue(held <= 11.minutes, "kept up for $held of the hour")
+}
+
+/**
+ * The phone joins a network just as captions stop for [kind], before the
+ * wait for it has begun: it is asked at once, as for a network joined
+ * during the wait. That join was missed, and the first check came a whole
+ * quick step later.
+ */
+private suspend fun TestScope.askedAtOnceOnANewNetworkAsTheWaitBegins(kind: TranscriptionEngineKind) {
+    val phone = SleepingPhone(this)
+    val network = FakeNetworkMonitor(NetworkConditions.cellular)
+    val waitNote = if (kind == homeKind) "waiting for the home computer" else "waiting for the cloud"
+    var joinedAt: Long? = null
+    var askedAt: Long? = null
+    waitingFor(kind, RetryWait(sinceBoot = phone.sinceBoot), network, onNote = { note ->
+        if (note.startsWith(waitNote) && joinedAt == null) {
+            joinedAt = phone.sinceBoot()
+            network.change(NetworkConditions.wifi)
+        }
+        if (note.startsWith("a new connection") && askedAt == null) askedAt = phone.sinceBoot()
+    })
+    assertTrue(eventually(2.seconds) { askedAt != null }, "not asked when the phone joined Wi-Fi")
+    assertTrue(askedAt!! - joinedAt!! <= 1_000, "asked ${askedAt!! - joinedAt!!} ms after joining")
 }
 
 /**
@@ -310,6 +363,34 @@ class CaptionPipelineSleepTest {
         val whileWaiting = asked.dropWhile { it != 15.seconds + RetryWait.AFTERWARDS }
         assertTrue(whileWaiting.size >= 3, "$asked")
         assertFalse(null in whileWaiting, "let go between checks: $asked")
+    }
+
+    @Test
+    fun `the network dropping and coming back while captions wait for the computer does not keep the processor up for ten more minutes each time`() = runTest {
+        keptUpOnceThroughRestarts(homeKind) { _, network ->
+            network.change(NetworkConditions.offline)
+            delay(1.seconds)
+            network.change(NetworkConditions.wifi)
+        }
+    }
+
+    @Test
+    fun `calls ending while captions wait for the cloud do not keep the processor up for ten more minutes each time`() = runTest {
+        keptUpOnceThroughRestarts(cloudKind) { captions, _ ->
+            captions.systemInterruptionChanged(true)
+            delay(1.seconds)
+            captions.systemInterruptionChanged(false)
+        }
+    }
+
+    @Test
+    fun `a network joined just as captions stop for the computer asks it at once`() = runTest {
+        askedAtOnceOnANewNetworkAsTheWaitBegins(homeKind)
+    }
+
+    @Test
+    fun `a network joined just as captions stop for the cloud asks it at once`() = runTest {
+        askedAtOnceOnANewNetworkAsTheWaitBegins(cloudKind)
     }
 
     @Test

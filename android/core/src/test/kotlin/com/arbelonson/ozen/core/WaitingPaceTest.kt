@@ -69,4 +69,16 @@ class WaitingPaceTest {
         assertEquals(List(8) { 15.0 } + listOf(30.0, 60.0, 120.0, 240.0, 300.0), away.map { it.seconds })
         assertEquals(List(12) { true } + false, away.map { it.keptUp })
     }
+
+    @Test
+    fun `a pace started again goes on from the waits already counted, and says it lets go only if no earlier one did`() {
+        val first = WaitingPace(15.0)
+        val before = first.take(12)
+        val again = WaitingPace(15.0, alreadyWaited = first.waited)
+        val after = again.take(30)
+        assertEquals(15.0, after.first().seconds)
+        assertTrue((before + after).filter { it.keptUp }.sumOf { it.seconds } <= 600.0, "$before $after")
+        assertEquals(1, (before + after).count { it.letsGo }, "$before $after")
+        assertTrue(WaitingPace(15.0, alreadyWaited = 700.0).take(10).none { it.keptUp || it.letsGo })
+    }
 }

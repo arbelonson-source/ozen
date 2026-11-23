@@ -5,13 +5,15 @@ class WaitingPace(
     private val steadySeconds: Double = STEADY_SECONDS,
     private val longestSeconds: Double = LONGEST_SECONDS,
     private val keptUpSeconds: Double = KEPT_UP_SECONDS,
+    alreadyWaited: Double = 0.0,
 ) {
     data class Step(val seconds: Double, val keptUp: Boolean, val letsGo: Boolean)
 
     private var paced = 0.0
-    private var waited = 0.0
+    var waited = alreadyWaited
+        private set
     private var last = 0.0
-    private var letGo = false
+    private var letGo = alreadyWaited > keptUpSeconds
 
     fun next(watched: Boolean = false): Step {
         if (watched) return Step(firstSeconds, keptUp = true, letsGo = false)
