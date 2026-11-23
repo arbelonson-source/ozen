@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.speech.tts.TextToSpeech
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.UILanguage
@@ -22,11 +23,13 @@ class PhoneVoiceDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val voices = CopyOnWriteArrayList<PhoneVoice>()
+    private val probes = CopyOnWriteArrayList<TextToSpeech>()
 
     @After
     fun letGo() {
         instrumentation.runOnMainSync {
             voices.forEach { it.shutdown() }
+            probes.forEach { it.shutdown() }
             (context.applicationContext as OzenApplication).captions.refreshVoice()
         }
     }
@@ -172,6 +175,28 @@ class PhoneVoiceDeviceTest {
         assertFalse("still listed with an Amharic voice", UILanguage.Amharic in voice.installed.value!!)
     }
 
+    // A reply replaced by one in a language with no voice on the phone is
+    // stopped all the same: captions come back once the phone goes quiet,
+    // and must not hear the rest of the first reply.
+    @Test
+    fun aReplyReplacedByOneWithNoVoiceStopsThePhoneSpeaking() {
+        val voice = connected()
+        assumeFalse("the phone has an Amharic voice", UILanguage.Amharic in voice.installed.value!!)
+        val engine = listening()
+        val events = CopyOnWriteArrayList<Boolean>()
+        instrumentation.runOnMainSync {
+            voice.onSpeakingChanged = { events += it }
+            voice.speak("Please read this sentence aloud slowly. ".repeat(20).trim(), 0.5f)
+        }
+        assertTrue("never spoke", within(10_000) { engine.isSpeaking })
+        instrumentation.runOnMainSync {
+            voice.installed.value = voice.installed.value!! + UILanguage.Amharic
+            voice.speak(AMHARIC, 0.5f)
+        }
+        assertWithin(10_000, { "never finished: $events" }) { !voice.isBusy && events.lastOrNull() == false }
+        assertWithin(1_000, { "the first reply was still being said after going quiet: $events" }) { !engine.isSpeaking }
+    }
+
     private fun connected(): PhoneVoice {
         lateinit var voice: PhoneVoice
         instrumentation.runOnMainSync {
@@ -182,6 +207,18 @@ class PhoneVoiceDeviceTest {
         assertTrue("the speech engine never answered", within(10_000) { voice.installed.value != null })
         assertTrue("no English voice: ${voice.installed.value}", UILanguage.English in voice.installed.value!!)
         return voice
+    }
+
+    // A second connection to the speech engine, whose answer to isSpeaking
+    // covers everything the engine is saying, for any connection.
+    private fun listening(): TextToSpeech {
+        val ready = AtomicInteger(Int.MIN_VALUE)
+        lateinit var engine: TextToSpeech
+        instrumentation.runOnMainSync { engine = TextToSpeech(context) { ready.set(it) } }
+        probes += engine
+        assertTrue("the second connection never answered", within(10_000) { ready.get() != Int.MIN_VALUE })
+        assertEquals(TextToSpeech.SUCCESS, ready.get())
+        return engine
     }
 
     // Each voice's connection to the phone's speech engine. Since Android 11

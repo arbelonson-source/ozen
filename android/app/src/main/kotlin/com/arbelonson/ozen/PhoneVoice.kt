@@ -347,7 +347,11 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     // language's voice; an engine that let go of the app answers no voices.
     private fun say(engine: TextToSpeech, language: UILanguage, rate: Float, pieces: List<String>, ids: List<String>): Said {
         if (engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode)) < TextToSpeech.LANG_AVAILABLE) {
-            return if (engine.voices == null) Said.Refused else Said.NoVoice
+            if (engine.voices == null) return Said.Refused
+            // Not said, and the reply it replaces is not said either: it
+            // would go on over the captions that come back.
+            engine.stop()
+            return Said.NoVoice
         }
         engine.setSpeechRate(rate / NORMAL_RATE)
         SpeakerChoice.beforeSpeaking(appContext, engine)
