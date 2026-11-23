@@ -2700,10 +2700,12 @@ public final class LiveCaptionViewModel {
     }
 
     public func persistHistory(ended: Bool, endedAt: TimeInterval? = nil, inBackground: Bool = false) {
+        guard settings.saveHistory else { return }
+        let lines = pipeline.segments
+        let offset = min(historySegmentOffset, lines.count)
         // After a conversation break the next conversation starts at its
         // first line, not at the moment the break was noticed.
-        guard settings.saveHistory,
-              let startedAt = historyConversationStart
+        guard let startedAt = ConversationBreak.start(listeningSince: historySessionStartedAt, firstLineAt: lines[offset...].first?.startTimestamp)
         else { return }
         // A save after captions stopped (going to the background, a star,
         // a name, Clear, a start that failed) keeps the end the stop wrote.
@@ -2718,25 +2720,41 @@ public final class LiveCaptionViewModel {
         } else {
             end = kept
         }
-        let record = TranscriptSessionRecord.make(
-            from: currentHistorySegments,
-            speakerName: { [pipeline] in pipeline.displayName(for: $0) },
-            id: historySessionID,
-            startedAt: startedAt,
-            endedAt: end,
-            engine: transcribingSettings.engine,
-            modelVariant: transcribingSettings.modelDescription,
-            inputName: selectedInput?.portName,
-            starred: starredSegmentIDs,
-            languageCode: spokenLanguageCode,
-            utcOffsetSeconds: HistoryDays.localOffset(at: startedAt),
-            timeZoneIdentifier: TimeZone.current.identifier
-        )
+        // What the record is made of is read here; the record itself is
+        // made from it later, on the writer's queue for an autosave. Made
+        // here, a whole day's lines held up the captions every twenty
+        // seconds on a slower phone.
+        let names = pipeline.speakerNames()
+        let id = historySessionID
+        let using = transcribingSettings
+        let engine = using.engine
+        let model = using.modelDescription
+        let input = selectedInput?.portName
+        let starred = starredSegmentIDs
+        let language = spokenLanguageCode
+        let utcOffset = HistoryDays.localOffset(at: startedAt)
+        let zone = TimeZone.current.identifier
+        let record: @Sendable () -> TranscriptSessionRecord = {
+            TranscriptSessionRecord.make(
+                from: offset == 0 ? lines : Array(lines[offset...]),
+                speakerName: { names($0) },
+                id: id,
+                startedAt: startedAt,
+                endedAt: end,
+                engine: engine,
+                modelVariant: model,
+                inputName: input,
+                starred: starred,
+                languageCode: language,
+                utcOffsetSeconds: utcOffset,
+                timeZoneIdentifier: zone
+            )
+        }
         defer { deleteExpiredHistoryIfDue() }
         if inBackground {
-            saveInBackground(record)
+            saveInBackground(making: record)
         } else {
-            historyWriter.saveNow(record)
+            historyWriter.saveNow(record())
             refreshSavingTrouble()
         }
     }
@@ -2744,7 +2762,11 @@ public final class LiveCaptionViewModel {
     /// Saves without holding up the captions, and has the saving-failed
     /// banner reflect this save as soon as it lands, not at the next one.
     private func saveInBackground(_ record: TranscriptSessionRecord) {
-        historyWriter.saveInBackground(record) { [weak self] in
+        saveInBackground(making: { record })
+    }
+
+    private func saveInBackground(making record: @escaping @Sendable () -> TranscriptSessionRecord) {
+        historyWriter.saveInBackground(making: record) { [weak self] in
             Task { @MainActor [weak self] in self?.refreshSavingTrouble() }
         }
     }

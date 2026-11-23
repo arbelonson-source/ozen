@@ -1933,6 +1933,13 @@ public final class CaptionPipeline {
         clusterer.displayName(forClusterID: segment.speakerClusterID)
     }
 
+    /// `displayName(for:)` as the voices are named now, for a save made on
+    /// another thread (see `EmbeddingClusterer.displayNames()`).
+    public func speakerNames() -> @Sendable (TranscriptSegment) -> String {
+        let names = clusterer.displayNames()
+        return { names($0.speakerClusterID) }
+    }
+
     /// A conversation ended: the next one's unnamed voices are numbered
     /// from 1 again (see `EmbeddingClusterer.startNewConversation`), and the
     /// record of which finished line belongs to whom is let go.

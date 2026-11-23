@@ -397,4 +397,22 @@ class EmbeddingClustererTest {
         assertTrue(clusterer.clusters.any { it.id == steady })
         assertTrue(duplicated.isEmpty(), "duplicate speaker numbers on screen: $duplicated")
     }
+
+    @Test
+    fun `the names a save reads on another thread are each voice's name at that moment, and stay so as voices are named after`() {
+        val clusterer = EmbeddingClusterer()
+        val first = clusterer.assign(oneHot(0, 4))
+        clusterer.startNewConversation()
+        val second = clusterer.assign(oneHot(1, 4))
+        val third = clusterer.assign(oneHot(2, 4))
+        clusterer.nameCluster(id = third, name = "Dana")
+        val voices = listOf(first, second, third, null, 999)
+        val before = voices.map(clusterer::displayName)
+        val names = clusterer.displayNames()
+        clusterer.nameCluster(id = second, name = "Avi")
+        clusterer.forgetName("Dana")
+        assertEquals(before, voices.map(names))
+        assertNotEquals(before, voices.map(clusterer::displayName))
+        assertEquals(listOf(before[0], "Dana"), before.drop(1).take(2))
+    }
 }

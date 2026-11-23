@@ -104,21 +104,32 @@ class TranscriptHistoryWriter(
      * saying how it went.
      */
     fun saveInBackground(record: TranscriptSessionRecord, finished: (() -> Unit)? = null) {
-        queue.async {
-            var saved = true
-            if (lastWritten.record != record) {
-                saved = failure.capture { store.save(record, throttleCaches = record.endedAt == null) }
-                lastWritten.record = if (saved) record else null
-                if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
-                pendingRenames.dropTexts(record)
-            }
-            // Unchanged, this one wasn't written again, so nothing cleared
-            // the error of a waiting one that has now gone through.
-            if (catchUp(record.id) && saved) {
-                failure.clear()
-            }
-            finished?.invoke()
+        queue.async { saveOnQueue(record, finished) }
+    }
+
+    /**
+     * [saveInBackground] of a record [make] makes on the writer's queue, in
+     * turn with the rest, so a long conversation's record is not made on the
+     * thread that asks. [make] reads only what can't change meanwhile.
+     */
+    fun saveInBackground(make: () -> TranscriptSessionRecord) {
+        queue.async { saveOnQueue(make(), finished = null) }
+    }
+
+    private fun saveOnQueue(record: TranscriptSessionRecord, finished: (() -> Unit)?) {
+        var saved = true
+        if (lastWritten.record != record) {
+            saved = failure.capture { store.save(record, throttleCaches = record.endedAt == null) }
+            lastWritten.record = if (saved) record else null
+            if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
+            pendingRenames.dropTexts(record)
         }
+        // Unchanged, this one wasn't written again, so nothing cleared
+        // the error of a waiting one that has now gone through.
+        if (catchUp(record.id) && saved) {
+            failure.clear()
+        }
+        finished?.invoke()
     }
 
     /**

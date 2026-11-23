@@ -1146,4 +1146,28 @@ class TranscriptHistoryWriterTest {
         assertEquals(3, store.load(refused.id)?.segments?.size)
         assertNull(writer.lastFailure)
     }
+
+    @Test
+    fun `an autosave's record is made on the writer's thread, in turn with the saves before it, not by the caller`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val queue = SerialQueue("test.writer")
+        val writer = TranscriptHistoryWriter(store, queue)
+        val first = record(UUID.randomUUID(), 1, false)
+        val later = record(first.id, 3, false)
+        val madeOn = java.util.Collections.synchronizedList(mutableListOf<Thread>())
+
+        queue.suspend()
+        writer.saveInBackground(first)
+        writer.saveInBackground {
+            madeOn += Thread.currentThread()
+            later
+        }
+        assertTrue(madeOn.isEmpty())
+        queue.resume()
+        writer.waitUntilIdle()
+
+        assertEquals(1, madeOn.size)
+        assertTrue(Thread.currentThread() !in madeOn)
+        assertEquals(3, store.load(first.id)?.segments?.size)
+    }
 }

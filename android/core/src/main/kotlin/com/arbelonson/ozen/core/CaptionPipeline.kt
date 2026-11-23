@@ -2268,6 +2268,12 @@ class CaptionPipeline(
 
     fun displayName(forSegment: TranscriptSegment): String = clusterer.displayName(forSegment.speakerClusterID)
 
+    /** [displayName] as the voices are named now, for a save made on another thread (see [EmbeddingClusterer.displayNames]). */
+    fun speakerNames(): (TranscriptSegment) -> String {
+        val names = clusterer.displayNames()
+        return { names(it.speakerClusterID) }
+    }
+
     /**
      * A conversation ended: the next one's unnamed voices are numbered
      * from 1 again (see `EmbeddingClusterer.startNewConversation`), and the

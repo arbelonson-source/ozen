@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.ChunkedList
 import com.arbelonson.ozen.core.ConversationBreak
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HistorySave
@@ -31,6 +32,11 @@ import kotlinx.coroutines.withContext
  */
 class ConversationSaver(
     private val writer: TranscriptHistoryWriter,
+    /**
+     * The lines on screen. The autosave makes its record from them on the
+     * writer's thread, so a list that may change later is copied first; the
+     * caption pipeline's never changes once given out, and is taken as it is.
+     */
     private val lines: () -> List<TranscriptSegment>,
     private val isListening: () -> Boolean,
     private val settings: () -> AppSettings,
@@ -53,6 +59,12 @@ class ConversationSaver(
     private val utcOffsetAt: (Double) -> Int = { at -> java.util.TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000 },
     /** Runs a step on the main thread, where the lines on screen change; History asks from a thread of its own. */
     private val onMainThread: (() -> Unit) -> Unit = { it() },
+    /**
+     * [speakerName] as the voices are named at this moment, for the autosave
+     * to read on the writer's thread while the screen names voices on the
+     * main thread. [speakerName] itself when its names never change.
+     */
+    private val speakerNames: () -> (TranscriptSegment) -> String? = { speakerName },
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -72,10 +84,10 @@ class ConversationSaver(
     private var lastRetentionCheck = 0.0
 
     private val currentLines: List<TranscriptSegment>
-        get() = lines().let { if (offset == 0) it else it.drop(minOf(offset, it.size)) }
+        get() = shownSince(lines())
 
-    private val conversationStart: Double?
-        get() = ConversationBreak.start(listeningSince = startedAt, firstLineAt = currentLines.firstOrNull()?.startTimestamp)
+    private fun shownSince(all: List<TranscriptSegment>): List<TranscriptSegment> =
+        if (offset == 0) all else all.subList(minOf(offset, all.size), all.size)
 
     fun listeningChanged() {
         val listening = isListening()
@@ -89,7 +101,7 @@ class ConversationSaver(
                 autosave = scope.launch {
                     while (true) {
                         delay(AUTOSAVE_MILLIS)
-                        if (!checkForConversationBreak()) save(ended = false, inBackground = true)
+                        if (!checkForConversationBreak()) saveInBackground()
                     }
                 }
             }
@@ -104,38 +116,64 @@ class ConversationSaver(
      * A save after captions stopped keeps the end the stop wrote; without
      * it the conversation turned open again, or ended at that later save.
      */
-    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false): TranscriptSessionRecord? =
-        write(ended, endedAt, inBackground)?.first
+    fun save(ended: Boolean, endedAt: Double? = null): TranscriptSessionRecord? = write(ended, endedAt)?.first
 
     /** [save], and whether this conversation reached the disk: another one still waiting for room may fail meanwhile. */
-    private fun write(ended: Boolean, endedAt: Double?, inBackground: Boolean): Pair<TranscriptSessionRecord, Boolean>? {
+    private fun write(ended: Boolean, endedAt: Double?): Pair<TranscriptSessionRecord, Boolean>? {
+        val record = recording(ended, endedAt, speakerName)?.invoke() ?: return null
+        val written = writer.saveNow(record)
+        deleteExpiredIfDue()
+        return record to written
+    }
+
+    /**
+     * Saves the conversation being captioned without holding up the screen:
+     * what it is made of is read here, and its record is made on the
+     * writer's thread, in turn with the other saves. Made here, a whole
+     * day's lines held up the captions on a slow phone every twenty seconds.
+     */
+    private fun saveInBackground() {
+        val record = recording(ended = false, endedAt = null, names = speakerNames()) ?: return
+        writer.saveInBackground(record)
+        deleteExpiredIfDue()
+    }
+
+    /**
+     * What a save of the conversation being captioned is made of, read now:
+     * the record is made when the function returned is called, on any
+     * thread, from nothing that can change meanwhile.
+     */
+    private fun recording(ended: Boolean, endedAt: Double?, names: (TranscriptSegment) -> String?): (() -> TranscriptSessionRecord)? {
         if (!settings().saveHistory) return null
-        val startedAt = conversationStart ?: return null
+        val shown = shownSince(lines().let { if (it is ChunkedList<TranscriptSegment>) it else it.toList() })
+        val startedAt = ConversationBreak.start(listeningSince = this.startedAt, firstLineAt = shown.firstOrNull()?.startTimestamp) ?: return null
         val kept = end?.takeIf { it.first == id && !isListening() }?.second
         val endsAt = if (ended) (endedAt ?: kept ?: now()).also { end = id to it } else kept
         val using = transcribing()
-        val record = TranscriptSessionRecord.make(
-            from = currentLines,
-            speakerName = speakerName,
-            id = id,
-            startedAt = startedAt,
-            endedAt = endsAt,
-            engine = using.engine,
-            modelVariant = using.modelDescription,
-            inputName = inputName(),
-            starred = starred.toSet(),
-            languageCode = spokenLanguage?.invoke() ?: using.languageCode,
-            utcOffsetSeconds = utcOffsetAt(startedAt),
-            timeZoneId = java.time.ZoneId.systemDefault().id,
-        )
-        val written = if (inBackground) {
-            writer.saveInBackground(record)
-            true
-        } else {
-            writer.saveNow(record)
+        val conversation = id
+        val engine = using.engine
+        val model = using.modelDescription
+        val input = inputName()
+        val stars = starred.toSet()
+        val language = spokenLanguage?.invoke() ?: using.languageCode
+        val utcOffset = utcOffsetAt(startedAt)
+        val zone = java.time.ZoneId.systemDefault().id
+        return {
+            TranscriptSessionRecord.make(
+                from = shown,
+                speakerName = names,
+                id = conversation,
+                startedAt = startedAt,
+                endedAt = endsAt,
+                engine = engine,
+                modelVariant = model,
+                inputName = input,
+                starred = stars,
+                languageCode = language,
+                utcOffsetSeconds = utcOffset,
+                timeZoneId = zone,
+            )
         }
-        deleteExpiredIfDue()
-        return record to written
     }
 
     /**
@@ -148,7 +186,7 @@ class ConversationSaver(
         if (!settings().saveHistory) return
         val all = lines()
         for (conversation in closed.values) writer.saveInBackground(closedRecord(conversation, all) ?: continue)
-        save(ended = false, inBackground = true)
+        saveInBackground()
     }
 
     /** A conversation a long quiet closed, as its lines still on screen show it now, with the times and labels it was closed with. */
@@ -338,7 +376,7 @@ class ConversationSaver(
     /** Gives a line of the conversation being captioned [starring] and saves it: its new state, and whether the save reached the disk. */
     private fun starCurrentLine(segmentID: UUID, starring: Boolean = segmentID !in starred): Pair<Boolean, Boolean> {
         mark(segmentID, starring)
-        return starring to (write(ended = false, endedAt = null, inBackground = false)?.second ?: true)
+        return starring to (write(ended = false, endedAt = null)?.second ?: true)
     }
 
     fun fixLiveLine(segmentID: UUID, text: String) {
@@ -392,7 +430,7 @@ class ConversationSaver(
         if (sessionID != id) return null
         if (currentLines.none { it.id == segmentID } || !onScreen(segmentID, fix)) return false
         if (sessionID == id) {
-            write(ended = false, endedAt = null, inBackground = true)
+            saveInBackground()
             return true
         }
         writer.saveInBackground(closed[sessionID]?.let { closedRecord(it) } ?: return false)

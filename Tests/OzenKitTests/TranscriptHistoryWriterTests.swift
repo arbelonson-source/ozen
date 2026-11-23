@@ -1148,4 +1148,36 @@ struct TranscriptHistoryWriterTests {
         #expect(store.load(id: refused.id)?.segments.count == 3)
         #expect(writer.lastFailure == nil)
     }
+
+    final class MadeOn: @unchecked Sendable {
+        private let lock = NSLock()
+        private var threads: [Thread] = []
+        func note() { lock.withLock { threads.append(Thread.current) } }
+        var all: [Thread] { lock.withLock { threads } }
+    }
+
+    @Test("an autosave's record is made on the writer's queue, in turn with the saves before it, not by the caller")
+    func autosaveMakesItsRecordOnTheQueue() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let queue = DispatchQueue(label: "test.writer")
+        let writer = TranscriptHistoryWriter(store: store, queue: queue)
+        let first = record(id: UUID(), lines: 1, ended: false)
+        let later = record(id: first.id, lines: 3, ended: false)
+        let made = MadeOn()
+
+        queue.suspend()
+        writer.saveInBackground(first)
+        writer.saveInBackground(making: {
+            made.note()
+            return later
+        })
+        #expect(made.all.isEmpty)
+        queue.resume()
+        writer.waitUntilIdle()
+
+        #expect(made.all.count == 1)
+        #expect(!made.all.contains { $0 === Thread.current })
+        #expect(store.load(id: first.id)?.segments.count == 3)
+    }
 }

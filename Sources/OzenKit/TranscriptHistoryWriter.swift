@@ -43,7 +43,16 @@ public final class TranscriptHistoryWriter: Sendable {
     /// writer's queue once the save is done, with `lastFailure` already
     /// saying how it went.
     public func saveInBackground(_ record: TranscriptSessionRecord, finished: (@Sendable () -> Void)? = nil) {
+        saveInBackground(making: { record }, finished: finished)
+    }
+
+    /// `saveInBackground(_:finished:)` of a record `make` makes on the
+    /// writer's queue, in turn with the rest, so a long conversation's
+    /// record is not made on the thread that asks. `make` reads only what
+    /// can't change meanwhile.
+    public func saveInBackground(making make: @escaping @Sendable () -> TranscriptSessionRecord, finished: (@Sendable () -> Void)? = nil) {
         queue.async { [store, failure, lastWritten, pendingRenames, pendingSaves] in
+            let record = make()
             var saved = true
             if lastWritten.record != record {
                 saved = failure.capture { try store.save(record, throttleCaches: record.endedAt == nil) }

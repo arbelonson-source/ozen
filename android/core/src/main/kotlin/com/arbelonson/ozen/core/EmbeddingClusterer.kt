@@ -252,6 +252,20 @@ class EmbeddingClusterer(
         return cluster.name ?: genericName(cluster.number)
     }
 
+    /**
+     * [displayName] as every voice is named at this moment, to be read on
+     * another thread while voices are named and heard on this one.
+     */
+    fun displayNames(): (Int?) -> String {
+        val generic = HashMap<Int, String>()
+        val names = HashMap<Int, String>()
+        val label = { cluster: SpeakerCluster -> cluster.name ?: generic.getOrPut(cluster.number) { genericName(cluster.number) } }
+        for (cluster in retired) names[cluster.id] = label(cluster)
+        for (cluster in clusterList.asReversed()) names[cluster.id] = label(cluster)
+        val unknown = unknownSpeakerName
+        return { id -> id?.let(names::get) ?: unknown }
+    }
+
     /** A saved profile was renamed: every cluster showing the old name shows the new one from now on. */
     fun renameClusters(named: String, to: String) {
         for (index in clusterList.indices) {
