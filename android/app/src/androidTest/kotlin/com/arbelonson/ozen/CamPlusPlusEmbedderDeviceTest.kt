@@ -83,7 +83,13 @@ class CamPlusPlusEmbedderDeviceTest {
     fun theModelReadInPlaceGivesTheSamePrintsAsACopyOfIt() {
         val inPlace = CamPlusPlusEmbedder(instrumentation.targetContext, readModel = ModelAssets::mapped)
         val copy = CamPlusPlusEmbedder(instrumentation.targetContext, readModel = ModelAssets::copied)
-        for (name in clips) assertArrayEquals(name, copy.embed(clip(name), 16_000.0), inPlace.embed(clip(name), 16_000.0), 0f)
+        for (name in clips) {
+            val copied = copy.embed(clip(name), 16_000.0)
+            val mapped = inPlace.embed(clip(name), 16_000.0)
+            assertNotNull("no print from the copied model for $name", copied)
+            assertNotNull("no print from the model read in place for $name", mapped)
+            assertArrayEquals(name, copied, mapped, 0f)
+        }
     }
 
     @Test
