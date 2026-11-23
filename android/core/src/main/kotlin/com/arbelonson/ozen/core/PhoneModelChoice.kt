@@ -7,6 +7,8 @@ sealed class PhoneModelSwitch {
 
     data class NotEnoughRoom(val file: String, val megabytes: Int) : PhoneModelSwitch()
 
+    data class TooLittleMemory(val file: String) : PhoneModelSwitch()
+
     data class WaitingForWiFi(val file: String) : PhoneModelSwitch()
 
     data class Offline(val file: String) : PhoneModelSwitch()

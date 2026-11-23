@@ -172,6 +172,14 @@ data class EngineUnavailability(
         ModelDamaged("modelDamaged"),
 
         /**
+         * Android only: the phone has too little memory in all for the
+         * model (see `PhoneModel.leastRamBytes`), so it was neither
+         * downloaded nor loaded. Loaded anyway, it got the app ended by
+         * Android, the captions gone until the app was opened again.
+         */
+        NotEnoughMemory("notEnoughMemory"),
+
+        /**
          * Android only: the phone's own model file isn't on the phone, and
          * the app has nowhere to download it from yet. Not a failed
          * download, so nothing about the internet is to blame.

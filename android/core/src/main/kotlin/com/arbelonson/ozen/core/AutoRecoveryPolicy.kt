@@ -169,6 +169,8 @@ class AutoRecoveryPolicy(
                 EngineUnavailability.Kind.ModelNotOnDevice -> Schedule.Never
                 EngineUnavailability.Kind.ModelDownloadFailed -> Schedule.Download
                 EngineUnavailability.Kind.ModelLoadFailed -> Schedule.LoadFailure
+                // A timer can't add memory; only a lighter model helps.
+                EngineUnavailability.Kind.NotEnoughMemory -> Schedule.Never
                 // The damaged file is gone; the next try downloads it again.
                 EngineUnavailability.Kind.ModelDamaged -> Schedule.Glitch
                 EngineUnavailability.Kind.HomeServerUnreachable ->

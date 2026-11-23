@@ -60,6 +60,13 @@ interface PhoneModels {
     suspend fun delete(file: String): PhoneModelDeletion.Result
 
     fun runCheck(thenChooseBest: Boolean)
+
+    /**
+     * "Keep the recommended model" while the phone test runs: the model the
+     * test recommends is chosen when it lands, even over one picked before,
+     * and true is returned. False when no test runs.
+     */
+    fun followTheTest(): Boolean
 }
 
 class PhoneModelChooser(
@@ -97,6 +104,8 @@ class PhoneModelChooser(
 
     private var picks = 0
 
+    private var following = false
+
     private var stopDownload: AtomicBoolean? = null
 
     private var replaced: String? = null
@@ -129,6 +138,7 @@ class PhoneModelChooser(
     override fun choose(file: String, byHand: Boolean) {
         if (byHand) rememberChoiceAgainstWarning(file)
         picks += 1
+        following = false
         failures = 0
         synchronized(lock) {
             replaced = null
@@ -139,6 +149,7 @@ class PhoneModelChooser(
 
     override fun replaceWith(file: String) {
         picks += 1
+        following = false
         failures = 0
         synchronized(lock) {
             replaced = settings.current.value.phoneModel.file.takeIf { it != file }
@@ -166,6 +177,13 @@ class PhoneModelChooser(
             retryJob = null
             brokeOff = null
             switchState.value = PhoneModelSwitch.Idle
+            // Fetched, a model the phone cannot run took the download and
+            // was then refused as captions started; it stays unchosen, and
+            // the model in use stays.
+            if (!model.runsIn(totalMemory())) {
+                switchState.value = PhoneModelSwitch.TooLittleMemory(model.file)
+                return
+            }
             when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
                 PhoneModelChoice.Plan.UseNow -> {
                     use(model)
@@ -350,12 +368,17 @@ class PhoneModelChooser(
     override fun runCheck(thenChooseBest: Boolean) {
         if (checkState.value is PhoneCheckState.Running || captionsBusy.value) return
         checkState.value = PhoneCheckState.Running(0f)
+        following = false
         val before = settings.current.value
         val picksBefore = picks
         val job = scope.launch {
             val speed = measure { checkState.value = PhoneCheckState.Running(it) }
             if (speed == null) {
                 checkState.value = PhoneCheckState.Failed
+                // Kept during a test that could not measure: the model this
+                // phone's own speed, if any, and memory recommend. A speed
+                // brought over from another phone would say nothing of this one.
+                if (following) settings.current.value.let { choose(PhoneModelEstimate.recommend(it.spokenLanguage, it.gflopsOn(device), totalMemory()).file) }
                 return@launch
             }
             if (captionsBusy.value) {
@@ -366,13 +389,22 @@ class PhoneModelChooser(
             checkState.value = PhoneCheckState.Idle
             val now = settings.current.value
             val untouched = picks == picksBefore && now.phoneModelFile == before.phoneModelFile && now.spokenLanguage == before.spokenLanguage
-            if (thenChooseBest && untouched) choose(PhoneModelEstimate.recommend(now.spokenLanguage, speed.gflops, totalMemory()).file)
+            if ((thenChooseBest && untouched) || following) choose(PhoneModelEstimate.recommend(now.spokenLanguage, speed.gflops, totalMemory()).file)
         }
         val watcher = scope.launch { captionsBusy.first { it }; job.cancel() }
         job.invokeOnCompletion {
             watcher.cancel()
             if (it != null && checkState.value is PhoneCheckState.Running) checkState.value = PhoneCheckState.Idle
         }
+    }
+
+    // Before the test lands there is no speed figure, and "Keep" chose by
+    // memory alone and counted as the person's own pick, so the test's
+    // answer was dropped: a slow 2 GB phone kept a 574 MB model.
+    override fun followTheTest(): Boolean {
+        if (checkState.value !is PhoneCheckState.Running) return false
+        following = true
+        return true
     }
 }
 

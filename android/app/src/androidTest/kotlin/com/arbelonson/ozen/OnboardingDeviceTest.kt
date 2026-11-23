@@ -753,6 +753,22 @@ class OnboardingDeviceTest {
         compose.onNodeWithContentDescription("5 of 7").assertDoesNotExist()
     }
 
+    // Before the test lands there is no speed figure, and the tap used to
+    // choose by memory alone and count as the person's own pick: a slow
+    // 2 GB phone then kept a 574 MB model the test would have ruled out.
+    @Test
+    fun keepTheRecommendedModelDuringThePhoneTestLeavesTheChoiceToTheTestAndMovesOn() {
+        compose.runOnUiThread { app.settings.change { it.phoneSpeed = null } }
+        val models = FakePhoneModels(app.settings)
+        models.checkRuns = true
+        showTheWalkthroughWith(models)
+        toTheModelPage()
+        compose.waitUntil(5_000) { models.check.value is PhoneCheckState.Running }
+        compose.onNodeWithTag("model-page-keep").performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("5 of 7").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals("Keep chose a model before the phone test said which", emptyList<Pair<String, Boolean>>(), models.chosen.toList())
+    }
+
     @Test
     fun keepTheRecommendedModelChoosesItAgainAndMovesToTheNextPage() {
         val models = FakePhoneModels(app.settings)

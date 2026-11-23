@@ -407,6 +407,7 @@ class StoppedCaptionsNotice {
                 EngineUnavailability.Kind.ModelDamaged -> sentence(DamagedModelNotice.text())
                 EngineUnavailability.Kind.ModelNotOnDevice -> titled(CaptionProblemText.modelNotOnDevice())
                 EngineUnavailability.Kind.ModelLoadFailed -> titled(CaptionProblemText.modelLoadFailed())
+                EngineUnavailability.Kind.NotEnoughMemory -> titled(CaptionProblemText.notEnoughMemory())
                 EngineUnavailability.Kind.TemporarilyUnavailable -> titled(CaptionProblemText.temporarilyUnavailable(cause.engine))
                 EngineUnavailability.Kind.Other, null -> titled(CaptionProblemText.unavailable(cause.engine))
                 else -> null

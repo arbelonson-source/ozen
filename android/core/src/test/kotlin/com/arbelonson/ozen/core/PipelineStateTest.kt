@@ -53,6 +53,12 @@ class PipelineStateTest {
     }
 
     @Test
+    fun `a phone model refused for lack of free memory suggests the other engine, as a failed load does`() {
+        val failure = PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.NotEnoughMemory, ""))
+        assertTrue(failure.suggestsOtherEngine)
+    }
+
+    @Test
     fun `suggesting the other engine only makes sense for engine-specific gaps`() {
         fun failure(kind: EngineUnavailability.Kind) =
             PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(kind, ""))

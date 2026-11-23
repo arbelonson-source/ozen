@@ -399,6 +399,7 @@ private fun LoadCrashSwitchStatus(switching: PhoneModelSwitch) {
             tr("מורידים… %1%", "Downloading… %1%", listOf("${(switching.fraction * 100).toInt()}"))
         }
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
+        is PhoneModelSwitch.TooLittleMemory -> CaptionProblemText.notEnoughMemory()
         is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.")
         is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
         is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")
