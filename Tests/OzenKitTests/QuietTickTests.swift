@@ -75,6 +75,10 @@ struct QuietTickTests {
         let opened = clock.now
         engine.emit(TranscriptToken(utteranceID: UUID(), text: "hello", isFinal: false, timestamp: opened))
         #expect(await eventually { pipeline.stats.hasOpenLine })
+        // Once the line commits the loop goes back to one second sleeps;
+        // held, the clock stays at the tick that committed it however late
+        // a busy machine lets this test look (it read 7 s, one idle second on).
+        clock.holdsIdleSleeps = true
         let sleepsBefore = clock.sleeps.count
         #expect(await eventually { pipeline.segments.first?.isCommitted == true })
         let committedAt = clock.now
