@@ -33,8 +33,11 @@ object WordFixes {
         val replacedEnd: Int,
         val openAfter: Int,
     )
-    /** [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't". */
-    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean)
+    /**
+     * [exactly] when the fix only respells its own words in ways matching looks past: an alef given its hamza, "don’t" written "don't".
+     * [inside] when its one heard word is looked for inside words too ([readsInsideWords]).
+     */
+    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean, val inside: Boolean)
 
     private fun isHebrewMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
 
@@ -314,13 +317,30 @@ object WordFixes {
      * it ("cohen" written "Avi Cohen", "Dr. Cohen") would otherwise write
      * them twice on a line that has them. Each space or maqaf the reading
      * crosses takes a character of the written form, so it starts no more
-     * words back than that.
+     * words back than that. A Chinese or Japanese fix's reading may stop
+     * inside the next word (see [endsReading]).
      */
     private fun writtenAlready(text: String, all: List<Word>, index: Int, keep: Int, fix: Compiled): Boolean {
         val end = all[index + fix.words.size - 1].end
         return (maxOf(0, index - fix.written.length)..index).any { at ->
-            readingStarts(all[at]).any { from -> from <= keep && (readsAlready(text, from, fix.written, fix.exactly, keep, end) ?: -1) >= end }
+            readingStarts(all[at]).any { from ->
+                val stop = if (from <= keep) readsAlready(text, from, fix.written, fix.exactly, keep, end, toWordEnd = !fix.inside) else null
+                stop != null && stop >= end && (!fix.inside || endsReading(text, stop))
+            }
         }
+    }
+
+    /**
+     * Whether a reading of a Chinese or Japanese fix's written form that
+     * stops at [stop] ends there as a word: at a word's end, or before a
+     * Chinese or Japanese character the line runs on into with no space
+     * ("トム ハンクス" on "トム ハンクスが来た", "王 医生" on "王 医生来了"),
+     * though not inside a katakana run ("トム ハンクスソン" is another name).
+     */
+    private fun endsReading(text: String, stop: Int): Boolean {
+        if (stop >= text.length || !isCore(text.codePointAt(stop))) return true
+        val next = text.codePointAt(stop)
+        return isJapanese(next) && !(stop > 0 && isKatakana(next) && isKatakana(text.codePointBefore(stop)))
     }
 
     /**
@@ -642,9 +662,12 @@ object WordFixes {
         val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
-            else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written, keyOf(fix.heard) == keyOf(fix.written))
+            else Compiled(
+                parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written,
+                keyOf(fix.heard) == keyOf(fix.written), parts.size == 1 && readsInsideWords(parts[0].key),
+            )
         }
-        val inside = compiled.filter { it.words.size == 1 && readsInsideWords(it.words[0]) }.sortedByDescending { it.words[0].length }
+        val inside = compiled.filter { it.inside }.sortedByDescending { it.words[0].length }
         return CompiledFixes(fixes.toList(), compiled, inside).also { lastCompiled = it }
     }
 

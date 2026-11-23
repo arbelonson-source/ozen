@@ -213,14 +213,15 @@ public enum WordFixes {
         normalized(fixes).compactMap { fix -> Prepared? in
             let words = Token.split(Array(fix.heard.unicodeScalars))
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
-            return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written, exactly: key(fix.heard) == key(fix.written))
+            let keys = words.map { key(String(String.UnicodeScalarView($0.scalars))) }
+            return Prepared(words: keys, joints: words.dropLast().map(\.gap), written: fix.written, exactly: key(fix.heard) == key(fix.written), inside: keys.count == 1 && readsInsideWords(keys[0]))
         }.sorted { $0.words.count > $1.words.count }
     }
 
     private static func rewrite(_ fixes: [WordFix], _ text: String, prepared ready: [Prepared]? = nil) -> Rewrite {
         guard !fixes.isEmpty, !text.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
         let prepared = ready ?? prepare(fixes)
-        let inside = prepared.filter { $0.words.count == 1 && readsInsideWords($0.words[0]) }
+        let inside = prepared.filter(\.inside)
             .map { InsideFix(heard: Array($0.words[0].unicodeScalars), written: $0.written, exactly: $0.exactly) }
             .sorted { $0.heard.count > $1.heard.count }
         guard !prepared.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
@@ -334,12 +335,15 @@ public enum WordFixes {
     }
 
     /// `exactly` when the fix only respells its own words in ways matching
-    /// looks past: an alef given its hamza, "don’t" written "don't".
+    /// looks past: an alef given its hamza, "don’t" written "don't";
+    /// `inside` when its one heard word is looked for inside words too
+    /// (`readsInsideWords`).
     private struct Prepared {
         let words: [String]
         let joints: [[Unicode.Scalar]]
         let written: String
         let exactly: Bool
+        let inside: Bool
     }
 
     /// Whether the line already reads `hit`'s written form around the heard
@@ -349,17 +353,29 @@ public enum WordFixes {
     /// ("cohen" written "Avi Cohen", "Dr. Cohen") would otherwise write them
     /// twice on a line that has them. Each space or maqaf the reading
     /// crosses takes a character of the written form, so it starts no more
-    /// words back than that.
+    /// words back than that. A Chinese or Japanese fix's reading may stop
+    /// inside the next word (see `endsReading`).
     private static func writtenAlready(_ text: [Unicode.Scalar], _ tokens: [Token], _ starts: [Int], at index: Int, _ hit: Hit) -> Bool {
         let keep = starts[index] + hit.prefixEnd
         let last = index + hit.count - 1
         let end = starts[last] + tokens[last].coreEnd
         for word in max(0, index - hit.written.unicodeScalars.count)...index where tokens[word].coreStart < tokens[word].coreEnd {
             for from in tokens[word].readingStarts.map({ starts[word] + $0 }) where from <= keep {
-                if let stop = readsAlready(text, from: from, hit.written, exactly: hit.exactly, heard: keep..<end), stop >= end { return true }
+                if let stop = readsAlready(text, from: from, hit.written, exactly: hit.exactly, heard: keep..<end, toWordEnd: !hit.inside), stop >= end,
+                   !hit.inside || endsReading(text, at: stop) { return true }
             }
         }
         return false
+    }
+
+    /// Whether a reading of a Chinese or Japanese fix's written form that
+    /// stops at `stop` ends there as a word: at a word's end, or before a
+    /// Chinese or Japanese character the line runs on into with no space
+    /// ("トム ハンクス" on "トム ハンクスが来た", "王 医生" on "王 医生来了"),
+    /// though not inside a katakana run ("トム ハンクスソン" is another name).
+    private static func endsReading(_ text: [Unicode.Scalar], at stop: Int) -> Bool {
+        guard stop < text.count, Token.isCore(text[stop]) else { return true }
+        return isJapanese(text[stop]) && !(stop > 0 && isKatakana(text[stop]) && isKatakana(text[stop - 1]))
     }
 
     /// Where `text` from `start` stops reading `written`, when it reads all
@@ -414,6 +430,7 @@ public enum WordFixes {
         let prefixEnd: Int
         let written: String
         let exactly: Bool
+        let inside: Bool
     }
 
     private static func isHan(_ scalar: Unicode.Scalar) -> Bool {
@@ -533,7 +550,7 @@ public enum WordFixes {
         }
         for offset in 1..<max(count, 1) where tokens[index + offset].key != fix.words[offset] { return nil }
         let first = tokens[index]
-        if first.key == fix.words[0] { return Hit(count: count, prefixEnd: first.coreStart, written: fix.written, exactly: fix.exactly) }
+        if first.key == fix.words[0] { return Hit(count: count, prefixEnd: first.coreStart, written: fix.written, exactly: fix.exactly, inside: fix.inside) }
         guard let heard = fix.words[0].unicodeScalars.first, (0x5D0...0x5EA).contains(heard.value) else { return nil }
         // A lone two-letter word takes no prefix: it ends too many other words.
         guard count > 1 || fix.words[0].unicodeScalars.count >= minimumPrefixedLetters else { return nil }
@@ -544,7 +561,7 @@ public enum WordFixes {
             // A short name hides in everyday words ("full" holds Lea), also
             // behind a prefix of their own ("when full").
             if (0..<length).contains(where: { everyday.contains(String(first.key.dropFirst($0))) }) { return nil }
-            return Hit(count: count, prefixEnd: first.endOfLetters(length), written: fix.written, exactly: fix.exactly)
+            return Hit(count: count, prefixEnd: first.endOfLetters(length), written: fix.written, exactly: fix.exactly, inside: fix.inside)
         }
         return nil
     }

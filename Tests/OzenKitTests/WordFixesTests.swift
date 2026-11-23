@@ -471,12 +471,16 @@ struct WordFixesTests {
             (fix("トム", "トムさん"), "トムが来た"),
             (fix("トム", "トム・ハンクス"), "昨日トムに会った"),
             (fix("ジョン", "ジョン・スミス"), "ジョンが来た"),
+            (fix("トム", "トム ハンクス"), "トムが来た"),
+            (fix("トム", "山田 トム"), "トムが来た"),
+            (fix("王", "王 医生"), "王来了"),
         ]
         for (one, line) in cases {
             let once = WordFixes.apply([one], to: line)
             #expect(once != line, "\(one.heard) on \(line)")
             #expect(WordFixes.apply([one], to: once) == once, "\(one.heard) on \(line)")
         }
+        #expect(WordFixes.apply([fix("トム", "トム ハンクス")], to: "トム ハンクスソンが来た") == "トム ハンクス ハンクスソンが来た")
     }
 
     @Test("a doubtful word in a Japanese line keeps its doubt on what a kana fix wrote there")

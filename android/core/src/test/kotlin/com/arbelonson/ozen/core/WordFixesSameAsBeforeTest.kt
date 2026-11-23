@@ -30,7 +30,7 @@ private object FixesBefore {
     private const val DOTTED_CAPITAL_I = 0x0130
 
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val letters: IntArray, val at: IntArray, val replacedEnd: Int)
-    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean)
+    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean, val inside: Boolean)
 
     private fun isHebrewMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
 
@@ -191,8 +191,17 @@ private object FixesBefore {
     private fun writtenAlready(text: String, all: List<Word>, index: Int, keep: Int, fix: Compiled): Boolean {
         val end = all[index + fix.words.size - 1].end
         return (maxOf(0, index - fix.written.length)..index).any { at ->
-            readingStarts(all[at]).any { from -> from <= keep && (readsAlready(text, from, fix.written, fix.exactly, keep, end) ?: -1) >= end }
+            readingStarts(all[at]).any { from ->
+                val stop = if (from <= keep) readsAlready(text, from, fix.written, fix.exactly, keep, end, toWordEnd = !fix.inside) else null
+                stop != null && stop >= end && (!fix.inside || endsReading(text, stop))
+            }
         }
+    }
+
+    private fun endsReading(text: String, stop: Int): Boolean {
+        if (stop >= text.length || !isCore(text.codePointAt(stop))) return true
+        val next = text.codePointAt(stop)
+        return isJapanese(next) && !(stop > 0 && isKatakana(next) && isKatakana(text.codePointBefore(stop)))
     }
 
     private fun writtenAlreadyInside(text: String, at: Int, fix: Compiled): Boolean {
@@ -373,7 +382,10 @@ private object FixesBefore {
         val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
-            else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written, keyOf(fix.heard) == keyOf(fix.written))
+            else Compiled(
+                parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written,
+                keyOf(fix.heard) == keyOf(fix.written), parts.size == 1 && readsInsideWords(parts[0].key),
+            )
         }
         lastCompiled = CompiledFixes(fixes.toList(), compiled)
         return compiled
@@ -383,7 +395,7 @@ private object FixesBefore {
         if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, words(text), emptyList())
         val compiled = compiledFixes ?: compile(fixes)
         if (compiled.isEmpty()) return Rewrite(text, words(text), emptyList())
-        val inside = compiled.filter { it.words.size == 1 && readsInsideWords(it.words[0]) }.sortedByDescending { it.words[0].length }
+        val inside = compiled.filter { it.inside }.sortedByDescending { it.words[0].length }
         val all = words(text)
         val sb = StringBuilder(text.length + 16)
         val spans = ArrayList<Span>()

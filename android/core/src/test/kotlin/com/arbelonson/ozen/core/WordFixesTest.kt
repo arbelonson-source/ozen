@@ -267,12 +267,16 @@ class WordFixesTest {
             fix("トム", "トムさん") to "トムが来た",
             fix("トム", "トム・ハンクス") to "昨日トムに会った",
             fix("ジョン", "ジョン・スミス") to "ジョンが来た",
+            fix("トム", "トム ハンクス") to "トムが来た",
+            fix("トム", "山田 トム") to "トムが来た",
+            fix("王", "王 医生") to "王来了",
         )
         for ((one, line) in cases) {
             val once = run(line, one)
             assertNotEquals(line, once, "${one.heard} on $line")
             assertEquals(once, run(once, one), "${one.heard} on $line")
         }
+        assertEquals("トム ハンクス ハンクスソンが来た", run("トム ハンクスソンが来た", fix("トム", "トム ハンクス")))
     }
 
     @Test fun aDoubtfulWordInAJapaneseLineKeepsItsDoubtOnWhatAKanaFixWroteThere() {
