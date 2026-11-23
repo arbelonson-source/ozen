@@ -1298,13 +1298,19 @@ public struct TranscriptHistoryStore: Sendable {
         return state
     }
 
-    /// Replaces the text of one saved line (a word fixed by hand).
-    public func replaceText(segmentID: UUID, inSession id: UUID, with text: String) throws {
+    /// Replaces the text of one saved line (a word fixed by hand), and
+    /// writes nothing when the line has those words already. `tried` runs
+    /// once the line is found and its words are about to change, before the
+    /// write, which can still be refused: a write that wasn't tried says
+    /// nothing about room on the phone (see `TranscriptHistoryWriter`).
+    public func replaceText(segmentID: UUID, inSession id: UUID, with text: String, onTried tried: () -> Void = {}) throws {
         _ = try patchRecordFile(at: fileURL(for: id), throwIfUnreadable: true) { object in
             guard var entries = object["segments"] as? [Any],
                   let index = entries.firstIndex(where: { (($0 as? [String: Any])?["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID }),
-                  var line = entries[index] as? [String: Any]
+                  var line = entries[index] as? [String: Any],
+                  line["text"] as? String != text
             else { return false }
+            tried()
             line["text"] = text
             entries[index] = line
             object["segments"] = entries

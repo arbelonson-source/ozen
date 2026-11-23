@@ -192,8 +192,17 @@ public final class TranscriptHistoryWriter: Sendable {
     /// conversation; refused with neither, it waits for room by itself.
     /// An older text of the line still waiting goes either way: once there
     /// was room it was written after this one and brought the old words back.
+    ///
+    /// Words that wrote nothing (no such conversation or line, or the line
+    /// has them already) leave `lastFailure` as it was, as a star or a name
+    /// does. Kept as the last save's outcome, a fix on the caption screen of
+    /// a line its saved conversation doesn't have took away the warning of a
+    /// write that had really been refused, while the phone was still full.
     private static func write(_ text: String, sessionID: UUID, segmentID: UUID, store: TranscriptHistoryStore, failure: FailureBox, renames: PendingRenames, saves: PendingSaves) {
-        let patched = failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
+        var tried = false
+        let patched = failure.capture(counts: { _ in tried }) {
+            try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) { tried = true }
+        }
         renames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
         if var waiting = saves.records[sessionID],
            let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
@@ -202,7 +211,11 @@ public final class TranscriptHistoryWriter: Sendable {
         } else if !patched {
             renames.texts.append((sessionID, segmentID, text))
         }
-        catchUp(saves, other: nil, renames, store: store, failure: failure)
+        if tried {
+            catchUp(saves, other: nil, renames, store: store, failure: failure)
+        } else {
+            catchUpAfterNothingWritten(saves, renames, store: store, failure: failure)
+        }
     }
 
     /// Renames a voice across every saved conversation, queued behind the

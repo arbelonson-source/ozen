@@ -1124,6 +1124,48 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil, "what waited is written, so there is room")
     }
 
+    // A word fixed on the caption screen is written to the line's saved
+    // conversation too. Words that wrote nothing (no such conversation, no
+    // such line, or the line had those words already) counted as a save
+    // that worked, and took away the warning of a write that had really been
+    // refused, while the phone was still full.
+    @Test("a line's words that write nothing leave a save that failed before reported, and go once what waited is written")
+    func lineWordsThatWriteNothingKeepTheWarning() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.line-words-write-nothing"))
+        var old = record(id: UUID(), lines: 1, ended: true)
+        old.segments[0].text = "I saw Avi"
+        let line = old.segments[0].id
+        let other = record(id: UUID(), lines: 1, ended: true)
+        writer.saveNow(old)
+        writer.saveNow(other)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        #expect(!writer.renameNow(id: other.id, title: "Dinner"))
+        let full = try #require(writer.lastFailure)
+
+        writer.replaceTextNow(sessionID: UUID(), segmentID: line, text: "I saw Avital")
+        #expect(writer.lastFailure == full, "there is no such conversation, so nothing was written")
+        writer.replaceTextNow(sessionID: other.id, segmentID: line, text: "I saw Avital")
+        #expect(writer.lastFailure == full, "a conversation without the line says nothing about room either")
+        writer.replaceTextNow(sessionID: old.id, segmentID: line, text: "I saw Avi")
+        #expect(writer.lastFailure == full, "the line has those words already, so nothing was written")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.replaceTextNow(sessionID: old.id, segmentID: line, text: "I saw Avital")
+        #expect(writer.lastFailure == nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.replaceTextNow(sessionID: old.id, segmentID: line, text: "I saw Avi Cohen")
+        #expect(writer.lastFailure != nil, "words the disk refuses are still reported")
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.replaceTextNow(sessionID: other.id, segmentID: line, text: "I saw Dana")
+        #expect(writer.lastFailure == nil, "what waited is written, so there is room")
+        #expect(store.load(id: old.id)?.segments.first?.text == "I saw Avi Cohen")
+    }
+
     @Test("once a waiting conversation is written, the warning goes even if the one on screen hasn't changed")
     func warningClearsWhenRefusedWritten() throws {
         let (store, dir) = makeStore()
