@@ -32,6 +32,16 @@ class KeywordAlertMatcherCostTest {
     }
 
     @Test
+    fun `two words said apart are compared with a name written as one without starting a character splitter`() {
+        val pairs = (1..400).map { "שלום" + "מילה$it" } + (1..400).map { "סבתא" + "word$it" }
+        pairs.take(100).forEach { HebrewText.foldingFinalLetters(it) }
+        val before = threadMemory.currentThreadAllocatedBytes
+        pairs.forEach { HebrewText.foldingFinalLetters(it) }
+        val each = (threadMemory.currentThreadAllocatedBytes - before) / pairs.size
+        assertTrue(each < FOLDING_BYTES_ALLOWED, "folding the final letters of a new pair of words allocated $each bytes")
+    }
+
+    @Test
     fun `a live line with a direction mark costs a word about what a short one does`() {
         val matcher = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "נועה")), "he")
         fun line(words: Int) = "\u200F" + (1..words).joinToString(" ") { "מילה$it" } + " הטל..."
@@ -93,5 +103,6 @@ class KeywordAlertMatcherCostTest {
 
     private companion object {
         const val BYTES_PER_NAME_ALLOWED = 3_072L
+        const val FOLDING_BYTES_ALLOWED = 256L
     }
 }

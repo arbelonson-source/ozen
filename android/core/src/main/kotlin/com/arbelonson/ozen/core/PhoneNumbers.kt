@@ -32,7 +32,18 @@ object PhoneNumbers {
     private fun spokenGroups(run: String): List<String> =
         if (run.length <= 4) listOf(run) else listOf(run.take(3)) + spokenGroups(run.drop(3))
 
+    /**
+     * The text searched last and what was found in it. The line still being
+     * said is searched at every word for how it is drawn, copied and
+     * dialled, mostly as the very same text, and each search made about a
+     * kilobyte. What a text holds never changes, so a later search of the
+     * same text, from any thread, takes this answer.
+     */
+    @Volatile
+    private var lastSearch: Pair<String, List<Match>>? = null
+
     fun matches(text: String): List<Match> {
+        lastSearch?.let { (searched, found) -> if (searched == text) return found }
         val found = ArrayList<Match>()
         val read = asciiDigits(text)
         val services = servicePattern.matcher(read)
@@ -52,7 +63,7 @@ object PhoneNumbers {
         for (item in abroad(read)) {
             if (found.none { it.start < item.end && item.start < it.end }) found.add(item)
         }
-        return found.sortedBy { it.start }
+        return found.sortedBy { it.start }.also { lastSearch = text to it }
     }
 
     /**

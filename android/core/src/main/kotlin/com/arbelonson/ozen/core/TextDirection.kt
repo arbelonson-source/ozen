@@ -19,8 +19,9 @@ object TextDirection {
     fun marked(text: String): String =
         if (opensLeftToRight(text) && containsRightToLeftLetter(text)) RIGHT_TO_LEFT_MARK + text else text
 
-    fun isRightToLeft(languageCode: String): Boolean =
-        languageCode.split("-").first().lowercase() in setOf("he", "iw", "yi", "ar", "fa", "ur")
+    fun isRightToLeft(languageCode: String): Boolean = languageCode.substringBefore('-').lowercase() in rightToLeftLanguages
+
+    private val rightToLeftLanguages = setOf("he", "iw", "yi", "ar", "fa", "ur")
 
     internal fun isRightToLeftLetter(codePoint: Int): Boolean =
         codePoint in 0x0590..0x08FF || codePoint in 0xFB1D..0xFDFF || codePoint in 0xFE70..0xFEFF

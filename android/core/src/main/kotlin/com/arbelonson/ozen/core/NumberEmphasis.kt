@@ -35,15 +35,55 @@ private inline fun NumberEmphasisLine.lastAt(from: Int, to: Int, matches: (Strin
     return -1
 }
 
+/**
+ * A word of [line], from character [start] until [end], its letters from
+ * [coreStart] until [coreEnd] (both -1 when it has none).
+ *
+ * The line still being said is looked through again at every word, and
+ * cutting each of its words out of it made most of the 200 or so bytes
+ * each of them cost: [core] is cut out only when asked for, and
+ * [mayCount] says, without cutting, which words could be a number at all.
+ */
 private class NumberEmphasisWord(
+    private val line: NumberEmphasisLine,
     val start: Int,
     val end: Int,
     val coreStart: Int,
     val coreEnd: Int,
-    val core: String?,
 ) {
-    val hasCore: Boolean get() = core != null
+    val hasCore: Boolean get() = coreStart >= 0
+
+    private var cut: String? = null
+
+    /** The word's letters without vowel points, or null when it has none. */
+    val core: String?
+        get() {
+            if (coreStart < 0) return null
+            return cut ?: HebrewText.stripNiqqud(line.slice(coreStart, coreEnd)).also { cut = it }
+        }
+
+    /**
+     * False when [core] ends as no counting word and no "pa'am" ("once")
+     * does: with or without prefixes, it is then neither. Vowel points
+     * would change its end, so a word with any is cut out to be asked.
+     */
+    val mayCount: Boolean
+        get() {
+            if (coreStart < 0) return false
+            val from = line.offset(coreStart)
+            val to = line.offset(coreEnd)
+            for (index in from until to) {
+                if (line.text[index] in '\u0591'..'\u05C7') return core!!.let { endsAsACount(it, it.length) }
+            }
+            return to - from >= 2 && endsAsACount(line.text, to)
+        }
 }
+
+private fun lastTwoUnits(text: String, end: Int): Int = (text[end - 2].code shl 16) or text[end - 1].code
+
+/** Whether the two units before [end] in [text] end a counting word or "pa'am". */
+private fun endsAsACount(text: String, end: Int): Boolean =
+    end >= 2 && NumberEmphasis.countEndings.binarySearch(lastTwoUnits(text, end)) >= 0
 
 private class NumberEmphasisReading(val number: String, val prefixes: String)
 
@@ -95,9 +135,12 @@ object NumberEmphasis {
      */
     fun ranges(text: String, languageCode: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
         if (UILanguage.match(languageCode) == UILanguage.ChineseSimplified) return ChineseNumberEmphasis.ranges(text)
-        val profile = NumberWordProfile.profile(languageCode) ?: return hebrewRanges(text, decimalComma)
+        // Both passes split the same words, so they are split once.
+        val line = NumberEmphasisLine(text)
+        val words = emphasisWords(line, decimalComma)
+        val profile = NumberWordProfile.profile(languageCode) ?: return hebrewRanges(line, words, decimalComma)
         val merged = mutableListOf<OpenEndRange<Int>>()
-        for (range in (spelledRanges(text, decimalComma, profile) + hebrewRanges(text, decimalComma)).sortedBy { it.start }) {
+        for (range in (spelledRanges(line, words, decimalComma, profile) + hebrewRanges(line, words, decimalComma)).sortedBy { it.start }) {
             val last = merged.lastOrNull()
             if (last != null && range.start < last.endExclusive) {
                 merged[merged.size - 1] = last.start until maxOf(last.endExclusive, range.endExclusive)
@@ -110,7 +153,10 @@ object NumberEmphasis {
 
     private fun hebrewRanges(text: String, decimalComma: Boolean): List<OpenEndRange<Int>> {
         val line = NumberEmphasisLine(text)
-        val words = emphasisWords(line, decimalComma)
+        return hebrewRanges(line, emphasisWords(line, decimalComma), decimalComma)
+    }
+
+    private fun hebrewRanges(line: NumberEmphasisLine, words: List<NumberEmphasisWord>, decimalComma: Boolean): List<OpenEndRange<Int>> {
         val result = mutableListOf<OpenEndRange<Int>>()
         var lastJoined = -1
         for ((position, word) in words.withIndex()) {
@@ -255,6 +301,13 @@ object NumberEmphasis {
         // appointment are said this way.
         "פעמיים", "שעתיים", "יומיים", "שבועיים", "חודשיים", "שנתיים",
     )
+
+    /**
+     * The last two units of each of [numberWords] and [onceWords], sorted,
+     * for [NumberEmphasisWord.mayCount]: a prefix only goes in front, so a
+     * word ending otherwise is none of them. Each is at least two units.
+     */
+    internal val countEndings: IntArray = (numberWords + onceWords).map { lastTwoUnits(it, it.length) }.distinct().sorted().toIntArray()
 }
 
 /**
@@ -311,6 +364,7 @@ private fun emphasisNumberRange(
         if (end < word.end && line.graphemes[end] in emphasisGluedUnitSigns) end += 1
         return firstDigit to end
     }
+    if (!word.mayCount) return null
     val core = word.core ?: return null
     if (isOncePerPeriod(core, position, words)) return word.coreStart to word.coreEnd
     val reading = emphasisReading(core) ?: return null
@@ -377,10 +431,9 @@ private fun emphasisWords(line: NumberEmphasisLine, decimalComma: Boolean): List
                 val first = line.firstAt(wordStart, index, ::isEmphasisLetter)
                 val last = line.lastAt(wordStart, index, ::isEmphasisLetter)
                 if (first >= 0) {
-                    val core = HebrewText.stripNiqqud(line.slice(first, last + 1))
-                    words.add(NumberEmphasisWord(wordStart, index, first, last + 1, core))
+                    words.add(NumberEmphasisWord(line, wordStart, index, first, last + 1))
                 } else {
-                    words.add(NumberEmphasisWord(wordStart, index, -1, -1, null))
+                    words.add(NumberEmphasisWord(line, wordStart, index, -1, -1))
                 }
                 start = -1
             }
@@ -513,7 +566,15 @@ private val sentenceOpenersAfter = listOf(".", "!", "?", "।", "…", "\n", "�
  */
 internal fun spelledRanges(text: String, decimalComma: Boolean, profile: NumberWordProfile): List<OpenEndRange<Int>> {
     val line = NumberEmphasisLine(text)
-    val words = emphasisWords(line, decimalComma)
+    return spelledRanges(line, emphasisWords(line, decimalComma), decimalComma, profile)
+}
+
+private fun spelledRanges(
+    line: NumberEmphasisLine,
+    words: List<NumberEmphasisWord>,
+    decimalComma: Boolean,
+    profile: NumberWordProfile,
+): List<OpenEndRange<Int>> {
     val lowered = words.map { it.core?.let(profile::normalize) }
     fun coreEnd(index: Int): Int = if (words[index].hasCore) words[index].coreEnd else words[index].end
     fun joinsNext(index: Int, end: Int): Boolean =
