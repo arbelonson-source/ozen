@@ -55,6 +55,30 @@ internal class NumberWordProfile(entry: JsonObject) {
         return if (foldsArabic) stripPrefixes(foldArabicLetters(word), 0) else word
     }
 
+    /** The hash of each word a number starts at in this language ([numbers], [onceWords], [clockOrdinals], [fractions]), sorted. */
+    private val startHashes: IntArray = (numbers + onceWords + clockOrdinals + fractions).map { it.hashCode() }.distinct().sorted().toIntArray()
+
+    /**
+     * False when the word of [text] from [from] until [to], once [normalize]d,
+     * is none of the words a number starts at, told without making that form.
+     * A word whose every unit is a character by itself ([Graphemes.standsAlone])
+     * normalizes unit by unit: each made lower case, a right single quote an
+     * apostrophe, and nothing composed. A word with any other unit or with
+     * one of [OTHERWISE_NORMALIZED], and a language whose letters are
+     * folded, all say true, to be asked the long way.
+     */
+    fun mayStartANumber(text: String, from: Int, to: Int): Boolean {
+        if (foldsArabic) return true
+        var hash = 0
+        for (index in from until to) {
+            val unit = text[index]
+            if (!Graphemes.standsAlone(unit) || unit in OTHERWISE_NORMALIZED) return true
+            val lower = Character.toLowerCase(unit)
+            hash = 31 * hash + (if (lower == '’') '\'' else lower).code
+        }
+        return startHashes.binarySearch(hash) >= 0
+    }
+
     private fun stripPrefixes(word: String, depth: Int): String {
         if (word in known || word in plainWords || depth == 3) return word
         for (prefix in attachedPrefixes) {
@@ -66,6 +90,13 @@ internal class NumberWordProfile(entry: JsonObject) {
     }
 
     companion object {
+        /**
+         * The characters that stand alone but do not normalize as above: the
+         * dotted capital I, two units in lower case, and two spaces made
+         * other spaces.
+         */
+        internal const val OTHERWISE_NORMALIZED = "\u0130\u2000\u2001"
+
         private val byLanguage: Map<String, NumberWordProfile> by lazy { load() }
 
         /**

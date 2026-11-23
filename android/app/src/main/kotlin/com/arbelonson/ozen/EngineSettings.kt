@@ -178,6 +178,9 @@ class EngineSettings(
 
     private fun storeHomeComputerAddress(draft: String): AddressStored {
         val address = draft.trim()
+        // A switch or slider's change may still be on its way to the disk;
+        // the last write's answer is only known once it lands.
+        settings.waitForWrites()
         if (settings.current.value.homeServerAddress == address) {
             if (!settings.saveFailed.value) return AddressStored(written = true, changed = false)
             return AddressStored(written = reachedDisk(settings.changeAndSave {}), changed = false)
@@ -191,8 +194,13 @@ class EngineSettings(
 
     // Its own save, or one another change made right after it: that one
     // wrote all the settings, this address with them. The shared flag alone
-    // could be another change's failure after this save went through.
-    private fun reachedDisk(saved: Boolean) = saved || !settings.saveFailed.value
+    // could be another change's failure after this save went through. That
+    // other change's write may still be on its way, so it is waited for.
+    private fun reachedDisk(saved: Boolean): Boolean {
+        if (saved) return true
+        settings.waitForWrites()
+        return !settings.saveFailed.value
+    }
 
     fun hasPairingCode(): Boolean = pairingCodeHeld.value
 
@@ -272,10 +280,14 @@ class EngineSettings(
         withContext(NonCancellable) {
             val address = HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)
             // An address kept only in memory by a failed write is written again, not taken for saved.
-            val addressStored = when {
-                address != null -> storeHomeComputerAddress(address)
-                settings.saveFailed.value -> storeHomeComputerAddress(settings.current.value.homeServerAddress)
-                else -> AddressStored(written = true, changed = false)
+            // Off the main thread: it waits for the disk, as do the writes still on their way.
+            val addressStored = withContext(io) {
+                settings.waitForWrites()
+                when {
+                    address != null -> storeHomeComputerAddress(address)
+                    settings.saveFailed.value -> storeHomeComputerAddress(settings.current.value.homeServerAddress)
+                    else -> AddressStored(written = true, changed = false)
+                }
             }
             val addressChanged = addressStored.changed
             val codeStored = storePairingCode(pairingCodeDraft)

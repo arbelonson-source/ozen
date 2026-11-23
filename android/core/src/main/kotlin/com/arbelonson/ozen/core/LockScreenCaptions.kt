@@ -85,12 +85,28 @@ object LockScreenCaptions {
                 speaker = speakers[offset],
                 // Without the mark, a line ending in a Latin brand or
                 // medication name reorders instead of reading right to left.
-                text = CaptionLayout.directed(tail(segment.text, room), languageCode),
+                text = if (isNewest) CaptionLayout.directed(tail(segment.text, room), languageCode) else earlier(segment.text, room, languageCode),
                 isFinal = segment.isCommitted,
                 lastUpdate = segment.lastUpdateTimestamp,
                 sameSpeakerAsAbove = sameSpeakerAsAbove[offset],
             )
         }
+    }
+
+    /**
+     * An earlier line as it was last shown, with what it was made from. It
+     * stays the same while the newest line grows below it, and cutting it
+     * and marking it again at every word made 2 to 3 KB in Hebrew; it is
+     * made again only when its text, its room or the language changes.
+     */
+    private class Shown(val text: String, val room: Int, val languageCode: String, val shown: String)
+
+    @Volatile
+    private var lastEarlier: Shown? = null
+
+    private fun earlier(text: String, room: Int, languageCode: String): String {
+        lastEarlier?.let { if (it.room == room && it.text == text && it.languageCode == languageCode) return it.shown }
+        return CaptionLayout.directed(tail(text, room), languageCode).also { lastEarlier = Shown(text, room, languageCode, it) }
     }
 
     /** A line's character budget once its speaker's name ("Speaker 2: ") has taken its share. */

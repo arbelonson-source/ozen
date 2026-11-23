@@ -36,11 +36,13 @@ class SettingsHolderUnreadableTest {
         assertTrue(holder.current.value.hasCompletedOnboarding)
 
         holder.change { it.speechRate = 0.5f }
+        holder.waitForWrites()
         assertTrue(holder.saveFailed.value)
         assertTrue(holder.settingsUnreadable.value)
 
         assertTrue(file.setReadable(true, true))
         holder.change { it.vocabulary = it.vocabulary + "Avi" }
+        holder.waitForWrites()
         assertFalse(holder.saveFailed.value)
         assertFalse(holder.settingsUnreadable.value)
         val back = SettingsStore(file).load()
@@ -58,6 +60,7 @@ class SettingsHolderUnreadableTest {
 
         assertTrue(file.setReadable(true, true))
         holder.change { it.speechRate = 0.5f }
+        holder.waitForWrites()
         assertFalse(holder.settingsUnreadable.value)
         assertFalse(holder.saveFailed.value)
 
@@ -80,6 +83,7 @@ class SettingsHolderUnreadableTest {
 
         assertTrue(file.setReadable(true, true))
         holder.change { it.speechRate = 0.5f }
+        holder.waitForWrites()
         assertEquals(TranscriptionEngineKind.HomeServer, holder.current.value.engine)
         assertEquals(UILanguage.English, holder.current.value.spokenLanguage)
         assertEquals(listOf("Noa"), holder.current.value.vocabulary)
@@ -88,6 +92,7 @@ class SettingsHolderUnreadableTest {
         assertTrue(holder.current.value.hasCompletedOnboarding)
 
         holder.change { it.vocabulary = emptyList() }
+        holder.waitForWrites()
         val back = SettingsStore(file).load()
         assertEquals(emptyList(), back.vocabulary)
         assertEquals(TranscriptionEngineKind.HomeServer, back.engine)
@@ -104,10 +109,13 @@ class SettingsHolderUnreadableTest {
         val listening = launch(Dispatchers.Unconfined) { holder.takenUp.collect { heard += it } }
 
         holder.change { it.speechRate = 0.5f }
+        holder.waitForWrites()
         assertTrue(heard.isEmpty())
         assertTrue(file.setReadable(true, true))
         holder.change { it.speechRate = 0.55f }
+        holder.waitForWrites()
         holder.change { it.speechRate = 0.6f }
+        holder.waitForWrites()
         listening.cancel()
 
         assertEquals(1, heard.size)
@@ -122,6 +130,7 @@ class SettingsHolderUnreadableTest {
         val holder = SettingsHolder(SettingsStore(File(readOnly, "ozen-settings.json")))
 
         holder.change { it.speechRate = 0.5f }
+        holder.waitForWrites()
         assertTrue(holder.saveFailed.value)
         assertFalse(holder.settingsUnreadable.value)
     }

@@ -589,7 +589,7 @@ private fun OzenApp(
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
                             settingsAtBackup.value = false
-                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, onSoundsOnly = { showingSettings.value = false; settingsAtBackup.value = false; onSoundsOnly() }, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, onTryLight = app.captions::tryCameraLight, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        }, onClearCaptions = { keepingHistory -> app.captions.clearCaptions(keepingHistory, this::askAgain); true }, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, onSoundsOnly = { showingSettings.value = false; settingsAtBackup.value = false; onSoundsOnly() }, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, onTryLight = app.captions::tryCameraLight, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
                         Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
@@ -739,7 +739,7 @@ private fun OzenApp(
                                 onOpenConversation = { reading = it to null },
                                 onDismissRecent = app.captions::dismissRecentConversation,
                                 onDismissBattery = app.captions::dismissBatteryWarning,
-                                onClear = app.captions::clearCaptions,
+                                onClear = { keepingHistory -> app.captions.clearCaptions(keepingHistory, this::askAgain); true },
                                 clearQuestion = { HistoryTexts.clearQuestion(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
                                 awayAlertsOn = current.notifyWhenInBackground,
                                 soundAlertsOn = current.soundAlerts.isEnabled,
@@ -973,7 +973,7 @@ private fun CaptionScreen(
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
     onDismissBattery: () -> Unit,
-    onClear: (keepingHistory: Boolean) -> Boolean,
+    onClear: ClearAgain.(keepingHistory: Boolean) -> Boolean,
     clearQuestion: () -> ClearQuestion,
     awayAlertsOn: Boolean,
     soundAlertsOn: Boolean,
@@ -1444,10 +1444,15 @@ private fun CaptionScreen(
                 title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
                 text = { Text(question.text) },
                 confirmButton = {
-                    // A save that fails now asks again, saying the lines won't be kept.
+                    // A save that fails asks again, saying the lines won't be kept:
+                    // at once, or once the phone has refused it.
                     TextButton(
                         onClick = {
-                            askingToClear = !onClear(question.keepsHistory)
+                            val again = ClearAgain {
+                                askingToClear = true
+                                clearTries += 1
+                            }
+                            askingToClear = !onClear(again, question.keepsHistory)
                             if (askingToClear) clearTries += 1
                         },
                     ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }

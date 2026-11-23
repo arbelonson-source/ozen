@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.lang.management.ManagementFactory
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -126,10 +127,63 @@ class LineShapingCostTest {
         assertTrue(each < ASKING_BYTES_ALLOWED, "asking whether a line has a right-to-left letter allocated $each bytes each time")
     }
 
+    @Test
+    fun `finding the numbers on a growing line with no number in it makes nothing for each of its words`() {
+        val failures = ArrayList<String>()
+        for ((language, words) in listOf("he" to hebrew, "en" to english)) {
+            val perWord = bytesPerWord(line(words, SHORT_LINE), line(words, LONG_LINE)) { NumberEmphasis.ranges(it, language) }
+            if (perWord >= NO_NUMBER_BYTES_PER_WORD_ALLOWED) {
+                failures += "in \"$language\", a line with no number made $perWord bytes for each word of it, $NO_NUMBER_BYTES_PER_WORD_ALLOWED allowed"
+            }
+        }
+        assertEquals(emptyList(), failures, failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `a growing line with a number said at its start keeps each of its words in a few bytes`() {
+        val failures = ArrayList<String>()
+        for ((language, words, number) in listOf(Triple("he", hebrew, "שלוש"), Triple("en", english, "three"))) {
+            val long = "$number ${line(words, LONG_LINE)}"
+            assertEquals(listOf(0 until number.length), NumberEmphasis.ranges(long, language))
+            val perWord = bytesPerWord("$number ${line(words, SHORT_LINE)}", long) { NumberEmphasis.ranges(it, language) }
+            if (perWord >= NUMBER_BYTES_PER_WORD_ALLOWED) {
+                failures += "in \"$language\", a line with a number made $perWord bytes for each word of it, $NUMBER_BYTES_PER_WORD_ALLOWED allowed"
+            }
+        }
+        assertEquals(emptyList(), failures, failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `a growing line with too few digits for a phone number is not searched for one`() {
+        val growing = (SHORT_LINE..LONG_LINE).flatMap { listOf(line(hebrew, it), line(hebrew, it) + " בשעה 10:30, 3 כדורים") }
+        val each = bytesEach(growing.size) { for (text in growing) PhoneNumbers.matches(text) }
+        assertTrue(each < NOT_SEARCHED_BYTES_ALLOWED, "searching a line with fewer digits than any phone number has allocated $each bytes each time")
+        assertEquals(listOf("050-1234567"), PhoneNumbers.matches(growing.last() + " 050-1234567").map { it.textIn(growing.last() + " 050-1234567") })
+    }
+
+    @Test
+    fun `an earlier line on the lock screen is not cut and marked again at every word of the newest`() {
+        val earlier = TranscriptSegment(id = UUID.randomUUID(), text = line(hebrew, 30), isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 5.0)
+        val id = UUID.randomUUID()
+        val growing = (SHORT_LINE..LONG_LINE).map {
+            TranscriptSegment(id = id, text = line(hebrew, it), isCommitted = false, startTimestamp = 6.0, lastUpdateTimestamp = 7.0)
+        }
+        val both = bytesEach(growing.size) { for (newest in growing) LockScreenCaptions.lines(listOf(earlier, newest), "he") { null } }
+        val alone = bytesEach(growing.size) { for (newest in growing) LockScreenCaptions.lines(listOf(newest), "he") { null } }
+        assertTrue(
+            both - alone < EARLIER_LINE_BYTES_ALLOWED,
+            "the lock screen made ${both - alone} bytes more at each word with an earlier line above the newest, $EARLIER_LINE_BYTES_ALLOWED allowed",
+        )
+    }
+
     private companion object {
         const val SHORT_LINE = 6
         const val LONG_LINE = 100
         const val TIMES = 50
+        const val NO_NUMBER_BYTES_PER_WORD_ALLOWED = 8L
+        const val NUMBER_BYTES_PER_WORD_ALLOWED = 24L
+        const val NOT_SEARCHED_BYTES_ALLOWED = 16L
+        const val EARLIER_LINE_BYTES_ALLOWED = 400L
         const val HEBREW_BYTES_PER_WORD_ALLOWED = 100L
         const val ENGLISH_BYTES_PER_WORD_ALLOWED = 150L
         const val AGAIN_BYTES_ALLOWED = 64L

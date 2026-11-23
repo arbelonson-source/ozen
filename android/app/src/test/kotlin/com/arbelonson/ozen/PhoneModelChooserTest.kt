@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
@@ -40,7 +41,12 @@ import kotlinx.coroutines.test.runCurrent
 class PhoneModelChooserTest {
     private val folder = Files.createTempDirectory("ozen-chooser").toFile()
     private val models = File(folder, "models").also { it.mkdirs() }
-    private val settings = SettingsHolder(SettingsStore(File(folder, "ozen-settings.json")))
+    private var savesRefused = false
+    private val settingsStore = SettingsStore(File(folder, "ozen-settings.json"))
+    private val settings = SettingsHolder(settingsStore) { next ->
+        if (savesRefused) throw IOException("No space left on device")
+        settingsStore.saveTakingUp(next)
+    }
     private val scope = TestScope()
     private var applied = 0
     private var network: NetworkConditions? = NetworkConditions.wifi
@@ -119,7 +125,10 @@ class PhoneModelChooserTest {
 
     private fun have(file: String) = File(models, file).writeBytes(ByteArray(4))
 
-    private fun saved() = SettingsHolder(SettingsStore(File(folder, "ozen-settings.json"))).current.value
+    private fun saved(): AppSettings {
+        settings.waitForWrites()
+        return SettingsHolder(SettingsStore(File(folder, "ozen-settings.json"))).current.value
+    }
 
     @Test
     fun `before anything is on the phone a choice is made at once, with nothing downloaded until captions start`() {
@@ -843,6 +852,40 @@ class PhoneModelChooserTest {
         assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
         assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
         assertEquals(setOf("ggml-small-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `replacing the model in use keeps the old one while the new choice cannot be written`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        savesRefused = true
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        assertTrue(settings.saveFailed.value)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"), "the settings file still names the old model")
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+        savesRefused = false
+        settings.change {}
+        settings.waitForWrites()
+        scope.runCurrent()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"), "once a later write lands the old model goes")
+    }
+
+    @Test
+    fun `an old model kept by a failed write stays when another model is chosen before a write lands`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        have("ggml-base-q5_1.bin")
+        savesRefused = true
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        savesRefused = false
+        settings.change {}
+        settings.waitForWrites()
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
     }
 
     @Test

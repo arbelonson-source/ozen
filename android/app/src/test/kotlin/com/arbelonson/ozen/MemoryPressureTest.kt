@@ -19,4 +19,16 @@ class MemoryPressureTest {
         )
         assertEquals(levels, levels.mapValues { (level, _) -> MemoryPressure.isWarning(level) })
     }
+
+    @Test
+    fun `a warning for an app out of sight is one whose save is waited for`() {
+        val levels = mapOf(
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW to false,
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL to false,
+            ComponentCallbacks2.TRIM_MEMORY_BACKGROUND to true,
+            ComponentCallbacks2.TRIM_MEMORY_MODERATE to true,
+            ComponentCallbacks2.TRIM_MEMORY_COMPLETE to true,
+        )
+        assertEquals(levels, levels.mapValues { (level, _) -> MemoryPressure.outOfSight(level) })
+    }
 }

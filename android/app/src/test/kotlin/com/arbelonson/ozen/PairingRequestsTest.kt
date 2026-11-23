@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -65,6 +66,16 @@ class PairingRequestsTest {
         assertEquals("wss://desktop.tail.ts.net", settings.current.value.homeServerAddress)
         assertNull(settings.current.value.homeServerCertificatePin)
         assertNull(SettingsStore(settingsFile).load().homeServerCertificatePin)
+    }
+
+    @Test
+    fun `a pairing whose settings cannot be written says so and is not counted as paired`() = runBlocking<Unit> {
+        val refusing = SettingsHolder(SettingsStore(settingsFile)) { throw IOException("No space left on device") }
+        val pairing = PairingRequests(refusing, codes::save)
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        assertFalse(pairing.acceptPending())
+        assertTrue(pairing.saveFailed.value)
+        assertFalse(pairing.paired.value)
     }
 
     @Test

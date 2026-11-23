@@ -51,6 +51,11 @@ public actor HomeServerEngine: TranscriptionEngine {
     private let approvalSeconds: Double
     public static let defaultApprovalSeconds: Double = 30
     private var endSent = false
+    /// The clock the approval and the ping checks read, and the heartbeat's
+    /// wait between checks: the real ones, but a test can hold time still
+    /// and step it, so a busy machine can't make an answer look late.
+    private let now: @Sendable () -> ContinuousClock.Instant
+    private let heartbeatSleep: @Sendable (Duration) async throws -> Void
 
     public init(
         address: String,
@@ -63,8 +68,12 @@ public actor HomeServerEngine: TranscriptionEngine {
         pongSeconds: Double = 8,
         beam: Int? = nil,
         approvalSeconds: Double = HomeServerEngine.defaultApprovalSeconds,
-        certificatePin: String? = nil
+        certificatePin: String? = nil,
+        now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
+        self.now = now
+        self.heartbeatSleep = heartbeatSleep
         self.certificatePin = certificatePin
         self.approvalSeconds = approvalSeconds
         self.address = address
@@ -98,7 +107,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         case .failure(let why): return .unavailable(why)
         }
         if let verified, verified.url == target.url, verified.token == target.token, verifiedPin == certificatePin,
-           let lastHeardAt, ContinuousClock.now - lastHeardAt < .seconds(approvalSeconds) {
+           let lastHeardAt, now() - lastHeardAt < .seconds(approvalSeconds) {
             return .available
         }
         do {
@@ -106,7 +115,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             await socket.close()
             verified = target
             verifiedPin = certificatePin
-            lastHeardAt = .now
+            lastHeardAt = now()
             return .available
         } catch let why as EngineUnavailability {
             return .unavailable(why)
@@ -169,7 +178,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         let run = UUID()
         liveSocket = socket
         liveSocketRun = run
-        lastHeardAt = .now
+        lastHeardAt = now()
         // A name added while the hello waited for its answer found no live
         // socket to send on; the server would keep the old list all session.
         if vocabulary != helloVocabulary {
@@ -201,7 +210,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         let heartbeat = Task {
             var nextCheck = Duration.seconds(self.pingSeconds)
             while !Task.isCancelled {
-                try? await Task.sleep(for: nextCheck)
+                try? await self.heartbeatSleep(nextCheck)
                 if Task.isCancelled { return }
                 nextCheck = .seconds(self.pingSeconds)
                 switch self.heartbeatStep() {
@@ -365,7 +374,7 @@ public actor HomeServerEngine: TranscriptionEngine {
 
     private func noteReply() {
         speechSinceReply = nil
-        lastHeardAt = .now
+        lastHeardAt = now()
     }
 
     /// A connection that died without closing (Wi-Fi dropped under a
@@ -376,12 +385,12 @@ public actor HomeServerEngine: TranscriptionEngine {
     /// phone's own model takes over. A ping is only sent once the last
     /// one was answered.
     private func heartbeatStep() -> HeartbeatStep {
-        let now = ContinuousClock.now
+        let current = now()
         guard let sent = pingSentAt else {
-            pingSentAt = now
+            pingSentAt = current
             return .ping
         }
-        let overdueIn = Duration.seconds(pongSeconds) - sent.duration(to: now)
+        let overdueIn = Duration.seconds(pongSeconds) - sent.duration(to: current)
         guard overdueIn <= .zero else { return .wait(overdueIn) }
         pongLost = true
         return .lost
@@ -389,9 +398,13 @@ public actor HomeServerEngine: TranscriptionEngine {
 
     private enum HeartbeatStep { case ping, wait(Duration), lost }
 
+    /// Whether the last ping sent still waits for its answer to be taken
+    /// in, so a test moving its own clock can wait until it has been.
+    var pingOutstanding: Bool { pingSentAt != nil }
+
     private func notePong() {
         pingSentAt = nil
-        lastHeardAt = .now
+        lastHeardAt = now()
     }
 
     // MARK: - Connecting

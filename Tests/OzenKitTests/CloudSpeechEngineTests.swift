@@ -485,7 +485,14 @@ struct CloudSpeechEngineTests {
         let tokens = engine(http).stream(languageCode: "he", audio: audio)
         for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
         #expect(await eventually { http.transcriptionRequests.count == failedTries + 1 })
-        for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
+        // Short enough that no live request can go out for it: even with the
+        // half second kept ahead of it and all but the end of its pause, it
+        // stays under livePassSeconds. With a whole second of speech, a busy
+        // machine could let the engine look while the pause was still coming
+        // in; that live request failed and counted as one of the four (14
+        // requests, not 15). The first sentence, with nothing kept ahead of
+        // it, is short enough already.
+        for chunk in speech(seconds: 0.5) + silence(seconds: 1) { input.yield(chunk) }
         input.finish()
         await #expect(throws: CloudSpeechError.offline) {
             for try await _ in tokens {}

@@ -17,7 +17,6 @@ private actor ScriptedSocket: HomeServerSocket {
     var hangsOnHello = false
     private var helloSends: [CheckedContinuation<Void, Error>] = []
     private(set) var pings = 0
-    private(set) var firstPingAt: ContinuousClock.Instant?
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
     private var queue: [String] = []
     private var waiters: [CheckedContinuation<String, Error>] = []
@@ -47,7 +46,6 @@ private actor ScriptedSocket: HomeServerSocket {
     func ping() async throws {
         if isClosed { throw Closed() }
         pings += 1
-        if firstPingAt == nil { firstPingAt = .now }
         if answersPings { return }
         try await withCheckedThrowingContinuation { pingWaiters.append($0) }
     }
@@ -114,6 +112,65 @@ private func text(_ utterance: Int, _ words: String, final: Bool) -> String {
 /// that never answers passes `unansweredSeconds`, so it isn't kept waiting.
 private func engine(_ socket: ScriptedSocket?, address: String = "10.0.0.5", token: String? = "1234", beam: Int? = nil, handshakeSeconds: Double = answeredSeconds) -> HomeServerEngine {
     HomeServerEngine(address: address, token: { token }, connector: Connector(socket: socket), handshakeSeconds: handshakeSeconds, client: "Ozen 36, iOS 18.2", beam: beam)
+}
+
+/// The engine's clock for its approval and its ping checks, which moves
+/// only when the test moves it: however late a busy machine runs the
+/// engine or the test, a check is due at the moment set for it and an
+/// answer that came back before the test moved on is never late.
+private final class SteppedClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private let start = ContinuousClock.now
+    private var elapsed = Duration.zero
+    private var sleepers: [UUID: (until: Duration, wake: CheckedContinuation<Void, Never>)] = [:]
+
+    var now: ContinuousClock.Instant { lock.withLock { start + elapsed } }
+    var time: Duration { lock.withLock { elapsed } }
+    private var nextWake: Duration? { lock.withLock { sleepers.values.map(\.until).min() } }
+
+    func sleep(_ duration: Duration) async throws {
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (wake: CheckedContinuation<Void, Never>) in
+                let waiting = lock.withLock {
+                    guard !Task.isCancelled, duration > .zero else { return false }
+                    sleepers[id] = (elapsed + duration, wake)
+                    return true
+                }
+                if !waiting { wake.resume() }
+            }
+        } onCancel: {
+            lock.withLock { sleepers.removeValue(forKey: id) }?.wake.resume()
+        }
+        try Task.checkCancellation()
+    }
+
+    func advance(by duration: Duration) {
+        let woken = lock.withLock {
+            elapsed += duration
+            let due = sleepers.filter { $0.value.until <= elapsed }
+            for id in due.keys { sleepers[id] = nil }
+            return due.values.map(\.wake)
+        }
+        woken.forEach { $0.resume() }
+    }
+
+    /// Once the engine waits for its next check and `ready` holds, moves
+    /// time on to that check and says true; says false, leaving time where
+    /// it is, once `stop` holds instead, or after a minute of neither.
+    func step(until stop: () async -> Bool, when ready: () async -> Bool = { true }) async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(60)
+        while ContinuousClock.now < deadline {
+            if await stop() { return false }
+            if let wake = nextWake, await ready() {
+                advance(by: wake - time)
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        Issue.record("within a minute the engine neither came to wait, ready, for its next check nor stopped")
+        return false
+    }
 }
 
 @Suite("Home server")
@@ -459,24 +516,41 @@ struct HomeServerEngineTests {
         func run(answering: Bool) async throws -> (Error?, Int) {
             let socket = ScriptedSocket(helloReply: ready)
             await socket.setAnswersPings(answering)
-            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, pingSeconds: 0.05, pongSeconds: 1)
+            // Pinged every 0.05 s and given 1 s to answer, by a clock that
+            // moves only when the test moves it, so a ping answered at once
+            // can't be taken for a lost one however late a busy machine
+            // hands the answer back (it was given 1 s of real time).
+            let clock = SteppedClock()
+            let server = HomeServerEngine(
+                address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds,
+                pingSeconds: 0.05, pongSeconds: 1, now: { clock.now }, heartbeatSleep: { try await clock.sleep($0) }
+            )
             let (audio, feed) = AsyncStream<[Float]>.makeStream()
             let tokens = server.stream(languageCode: "he", audio: audio)
-            let quiet = [Float](repeating: 0.0005, count: 1600)
-            let feeding = Task {
-                for _ in 0..<120 {
-                    feed.yield(quiet)
-                    try? await Task.sleep(for: .milliseconds(25))
+            let ended = Task { () -> Error? in
+                do {
+                    for try await _ in tokens {}
+                    return nil
+                } catch {
+                    return error
                 }
-                feed.finish()
             }
-            defer { feeding.cancel() }
-            do {
-                for try await _ in tokens {}
-                return (nil, await socket.pings)
-            } catch {
-                return (error, await socket.pings)
+            // Three seconds of quiet sound, a twentieth of a second with
+            // each check. Time moves on only once the engine has taken in
+            // the answer to its last ping (the computer answers at once),
+            // or, from the silent computer, once the first ping has reached
+            // it.
+            let quiet = [Float](repeating: 0.0005, count: 800)
+            while clock.time < .seconds(3) {
+                feed.yield(quiet)
+                let stepped = await clock.step(until: { await socket.isClosed }, when: {
+                    if answering { return await !server.pingOutstanding }
+                    return await socket.pings > 0 || clock.time == .zero
+                })
+                guard stepped else { break }
             }
+            feed.finish()
+            return (await ended.value, await socket.pings)
         }
         let (dead, deadPings) = try await run(answering: false)
         #expect((dead as? EngineUnavailability)?.kind == .homeServerUnreachable)
@@ -492,20 +566,37 @@ struct HomeServerEngineTests {
         let socket = ScriptedSocket(helloReply: ready)
         await socket.setAnswersPings(false)
         // A ping every 2 s, overdue after 2.05 s: given up 2.05 s after the
-        // ping, where waiting for the next ping's turn made it 4 s. Timed
-        // from the ping: with every test starting at once, a test run can
-        // hold everything up for most of a second (CI, 4 cores).
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, pingSeconds: 2, pongSeconds: 2.05)
+        // ping, where waiting for the next ping's turn made it 4 s. Timed by
+        // a clock that moves only when the test moves it: in real time a
+        // busy machine woke the engine, or let the test look, a second and
+        // more late (CI, 4 cores).
+        let clock = SteppedClock()
+        let server = HomeServerEngine(
+            address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds,
+            pingSeconds: 2, pongSeconds: 2.05, now: { clock.now }, heartbeatSleep: { try await clock.sleep($0) }
+        )
         let (audio, feed) = AsyncStream<[Float]>.makeStream()
         defer { feed.finish() }
-        do {
-            for try await _ in server.stream(languageCode: "he", audio: audio) {}
-            Issue.record("the connection was kept")
-        } catch {
-            #expect((error as? EngineUnavailability)?.kind == .homeServerUnreachable)
+        let ended = Task { () -> Error? in
+            do {
+                for try await _ in server.stream(languageCode: "he", audio: audio) {}
+                return nil
+            } catch {
+                return error
+            }
         }
-        let waited = try #require(await socket.firstPingAt).duration(to: .now)
-        #expect(waited >= .seconds(1) && waited < .seconds(3.3), "\(waited)")
+        // The first check sends the ping; time moves on only once it is out.
+        #expect(await clock.step(until: { await socket.isClosed }))
+        let pingedAt = clock.time
+        while clock.time < .seconds(60) {
+            guard await clock.step(until: { await socket.isClosed }, when: { await socket.pings == 1 }) else { break }
+        }
+        let error = await ended.value
+        if error == nil { Issue.record("the connection was kept") }
+        #expect((error as? EngineUnavailability)?.kind == .homeServerUnreachable)
+        #expect(await socket.isClosed)
+        let waited = clock.time - pingedAt
+        #expect(waited >= .seconds(2.05) && waited < .seconds(3.3), "\(waited)")
     }
 
     @Test("a pairing link that lost its slashes on the way is still recognised as one, so the phone can say it's damaged")
@@ -768,11 +859,18 @@ struct HomeServerEngineTests {
     @Test("an approval is trusted for a quick restart, but a start long after the computer was last heard checks it again")
     func staleApprovalCheckedAgain() async throws {
         let socket = ScriptedSocket(helloReply: ready)
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, approvalSeconds: 0.3)
+        // A clock the test moves: in real time a busy machine let more than
+        // the 0.3 s pass between the first check and the quick restart.
+        let clock = SteppedClock()
+        let server = HomeServerEngine(
+            address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds,
+            approvalSeconds: 0.3, now: { clock.now }
+        )
         #expect(await server.checkAvailability(languageCode: "he") == .available)
         #expect(await socket.isClosed)
+        clock.advance(by: .milliseconds(200))
         #expect(await server.checkAvailability(languageCode: "he") == .available)
-        try await Task.sleep(for: .milliseconds(400))
+        clock.advance(by: .milliseconds(200))
         #expect(await server.checkAvailability(languageCode: "he").unavailability?.kind == .homeServerUnreachable)
     }
 
