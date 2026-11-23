@@ -13,7 +13,8 @@ class WaitingPace(
     private var last = 0.0
     private var letGo = false
 
-    fun next(): Step {
+    fun next(watched: Boolean = false): Step {
+        if (watched) return Step(firstSeconds, keptUp = true, letsGo = false)
         val seconds = if (paced < steadySeconds || last <= 0.0) firstSeconds else minOf(last * 2, maxOf(longestSeconds, firstSeconds))
         val keptUp = waited + seconds <= keptUpSeconds
         val letsGo = !keptUp && !letGo

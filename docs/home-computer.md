@@ -198,11 +198,12 @@ then depends on whether the phone has its own model downloaded as a backup:
 - **Without the backup.** Captions stop and wait. The phone asks the
   computer again every 15 seconds and starts captions once it answers. The
   status line offers to add the backup. A backup that finishes downloading
-  during the wait takes over by itself. An Android phone asks less often
-  after two minutes, up to every five minutes, and at once when it joins a
-  network; after about ten minutes it no longer stays awake just to ask,
-  so with the screen off and sound alerts off it asks the next time the
-  phone wakes.
+  during the wait takes over by itself. With Ozen out of sight or the
+  screen off, an Android phone asks less often after two minutes, up to
+  every five minutes, and asks at once when it joins a network or Ozen is
+  back on screen; after about ten minutes of that it no longer stays awake
+  just to ask, so with the screen off and sound alerts off it asks the
+  next time the phone wakes.
 
 While captions wait, the microphone stays on for sound alerts only, so a
 doorbell or smoke alarm still alerts you. Nothing is captioned or sent.

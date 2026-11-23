@@ -22,7 +22,12 @@ private fun oneQuickRetry() = AutoRecoveryPolicy(glitchDelays = listOf(0.01), do
 private class SleepWaiting(val captions: CaptionPipeline, val engine: FakeEngine)
 
 /** Captions on a phone with no backup model, the quick retries spent, waiting on a timer for [kind] to answer. */
-private suspend fun TestScope.waitingFor(kind: TranscriptionEngineKind, retryWait: RetryWait, network: NetworkMonitoring? = null): SleepWaiting {
+private suspend fun TestScope.waitingFor(
+    kind: TranscriptionEngineKind,
+    retryWait: RetryWait,
+    network: NetworkMonitoring? = null,
+    watched: Boolean = false,
+): SleepWaiting {
     val unavailable = if (kind == homeKind) EngineUnavailability.Kind.HomeServerUnreachable else EngineUnavailability.Kind.TemporarilyUnavailable
     val engine = FakeEngine(kind = kind, availability = EngineAvailability.unavailable(unavailable, "asleep"))
     val phone = FakeEngine(kind = phoneKind)
@@ -34,6 +39,7 @@ private suspend fun TestScope.waitingFor(kind: TranscriptionEngineKind, retryWai
         network = network,
         retryWait = retryWait,
     )
+    captions.watched = watched
     val notes = ArrayList<String>()
     captions.onEvent = { event -> notes.add(event.description) }
     val settings = AppSettings.default
@@ -112,6 +118,55 @@ private suspend fun TestScope.askedAtOnceOnANewNetwork(kind: TranscriptionEngine
     waiting.engine.availability = EngineAvailability.Available
     network.change(NetworkConditions.wifi)
     assertTrue(eventually(2.seconds) { waiting.captions.phase == PipelinePhase.Listening && waiting.captions.activeEngineKind == kind })
+}
+
+/**
+ * Someone looking at the captions for the whole hour: the checks keep the
+ * first, quick pace and the processor stays up. A computer restarting
+ * for an update was back for minutes before a slowed check noticed, with
+ * the person watching the screen.
+ */
+private suspend fun TestScope.quickWhileWatched(kind: TranscriptionEngineKind, every: Duration) {
+    val phone = SleepingPhone(this)
+    val asked = mutableListOf<Duration?>()
+    val waiting = waitingFor(kind, RetryWait(sinceBoot = phone.sinceBoot) { asked += it }, watched = true)
+    val checks = mutableListOf<Long>()
+    waiting.engine.duringPrepare = { checks += phone.sinceBoot() }
+    delay(1.hours)
+    val gaps = checks.zipWithNext { a, b -> (b - a).milliseconds }
+    assertTrue(gaps.all { it in every..every + 1.seconds }, "$gaps")
+    assertTrue(checks.size >= (1.hours / every).toInt() - 2, "asked ${checks.size} times")
+    assertFalse(null in asked.dropWhile { it != every + RetryWait.AFTERWARDS }, "let go while watched: $asked")
+}
+
+/**
+ * Out of sight long enough that the checks are five minutes apart and the
+ * processor is let go: the captions back in sight ask at once and keep
+ * the quick pace while they are watched; out of sight again, the checks
+ * slow down again, and the processor, its ten minutes used up, stays let go.
+ */
+private suspend fun TestScope.askedAtOnceBackInSight(kind: TranscriptionEngineKind, every: Duration) {
+    val phone = SleepingPhone(this)
+    val asked = mutableListOf<Duration?>()
+    val waiting = waitingFor(kind, RetryWait(sinceBoot = phone.sinceBoot) { asked += it })
+    delay(30.minutes)
+    val checks = mutableListOf<Long>()
+    waiting.engine.duringPrepare = { checks += phone.sinceBoot() }
+    assertTrue(eventually(6.minutes) { checks.isNotEmpty() })
+    delay(1.seconds)
+    waiting.captions.watched = true
+    assertTrue(eventually(1.seconds) { checks.size == 2 }, "not asked when the captions came back in sight")
+    delay(5.minutes)
+    val watchedGaps = checks.zipWithNext { a, b -> (b - a).milliseconds }.drop(1)
+    assertTrue(watchedGaps.size >= (5.minutes / every).toInt() - 1, "$watchedGaps")
+    assertTrue(watchedGaps.all { it in every..every + 1.seconds }, "slowed down while watched: $watchedGaps")
+    assertTrue(asked.last() != null, "let go while watched: $asked")
+    val seen = checks.size
+    waiting.captions.watched = false
+    delay(10.minutes)
+    val awayGaps = checks.drop(seen - 1).zipWithNext { a, b -> (b - a).milliseconds }
+    assertTrue(awayGaps.last() >= every * 4, "the same quick pace out of sight: $awayGaps")
+    assertTrue(eventually(2.seconds) { asked.last() == null }, "kept up out of sight again: ${asked.takeLast(5)}")
 }
 
 class CaptionPipelineSleepTest {
@@ -255,5 +310,25 @@ class CaptionPipelineSleepTest {
         val whileWaiting = asked.dropWhile { it != 15.seconds + RetryWait.AFTERWARDS }
         assertTrue(whileWaiting.size >= 3, "$asked")
         assertFalse(null in whileWaiting, "let go between checks: $asked")
+    }
+
+    @Test
+    fun `while someone watches the captions, the computer is asked every 15 s for an hour with the processor kept up`() = runTest {
+        quickWhileWatched(homeKind, 15.seconds)
+    }
+
+    @Test
+    fun `while someone watches the captions, the cloud is asked every 30 s for an hour with the processor kept up`() = runTest {
+        quickWhileWatched(cloudKind, 30.seconds)
+    }
+
+    @Test
+    fun `captions back in sight during a long wait for the computer ask it at once, keep the quick pace, and slow down again out of sight`() = runTest {
+        askedAtOnceBackInSight(homeKind, 15.seconds)
+    }
+
+    @Test
+    fun `captions back in sight during a long wait for the cloud ask it at once, keep the quick pace, and slow down again out of sight`() = runTest {
+        askedAtOnceBackInSight(cloudKind, 30.seconds)
     }
 }

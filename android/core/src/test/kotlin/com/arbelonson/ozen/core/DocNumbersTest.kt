@@ -38,12 +38,13 @@ class DocNumbersTest {
         assertTrue(readme.contains("within about $wait seconds of it answering"))
         assertTrue(guide.contains("within about $wait seconds of it answering"))
         assertTrue(doc("server/README.md").contains("within about $wait seconds of the server answering"))
-        val pace = "asks less often after ${word((WaitingPace.STEADY_SECONDS / 60).toInt())} minutes, " +
-            "up to every ${word((WaitingPace.LONGEST_SECONDS / 60).toInt())} minutes, and at once when it joins a"
-        val awake = "after about ${word((WaitingPace.KEPT_UP_SECONDS / 60).toInt())} minutes it no longer stays awake just to ask"
+        val pace = "Ozen out of sight or the screen off,"
+        val slower = "asks less often after ${word((WaitingPace.STEADY_SECONDS / 60).toInt())} minutes, " +
+            "up to every ${word((WaitingPace.LONGEST_SECONDS / 60).toInt())} minutes, and asks at once when it joins a network or Ozen is back on screen"
+        val awake = "after about ${word((WaitingPace.KEPT_UP_SECONDS / 60).toInt())} minutes of that it no longer stays awake just to ask"
         val home = doc("docs/home-computer.md")
         for ((name, text) in listOf("README.md" to readme, "troubleshooting" to guide, "server/README.md" to doc("server/README.md"), "home-computer" to home)) {
-            assertTrue(text.contains(pace), name)
+            assertTrue(text.contains(pace) && text.contains(slower), name)
         }
         assertTrue(guide.contains(awake))
         assertTrue(home.contains(awake))

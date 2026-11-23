@@ -281,6 +281,22 @@ class CaptionPipeline(
      */
     var cloudWaitSeconds: Double = 30.0
 
+    /**
+     * Someone is looking at the captions: the caption screen in front with
+     * the screen on, as the app reports it. Captions waiting for the
+     * computer or the cloud then keep asking at their first, quick pace
+     * (see [nextCheckWait]): with the waits slowed down regardless, a
+     * computer back from an update was found minutes late while the person
+     * watched the screen. Coming back in sight asks at once.
+     */
+    @Volatile
+    var watched: Boolean = false
+        set(value) {
+            val back = value && !field
+            field = value
+            if (back) retryWait.nudge()
+        }
+
     private val cloudProblemsForAPerson = setOf(
         EngineUnavailability.Kind.CloudKeyNeeded,
         EngineUnavailability.Kind.CloudOutOfCredit,
@@ -4214,25 +4230,28 @@ class CaptionPipeline(
      * [waitForCloud]. Asked every 15 s (or 30 s) for as long as it took,
      * with the processor kept up all the while, a computer left off at
      * home or a cloud that stayed down kept the phone from sleeping all
-     * day. Now the checks keep their first pace for two minutes, then come
-     * further apart, up to five minutes; the processor is kept up only for
-     * the waits that end within the first ten minutes. After that a check
+     * day. While someone watches the captions ([watched]) that pace stays:
+     * the screen keeps the phone up anyway. Out of sight the checks keep
+     * their first pace for two minutes, then come further apart, up to
+     * five minutes; the processor is kept up only for the waits out of
+     * sight that end within the first ten minutes of them. After that a check
      * comes due on a clock that goes on while the phone sleeps, and runs
      * as soon as the phone is awake again for anything (the screen turned
      * on, sound alerts listening, another app): no alarm wakes it just for
      * this. A new connection ([nudge][RetryWait.nudge] from
-     * [networkConditionsChanged]) cuts the wait short, so joining home
-     * Wi-Fi asks at once, and the pace starts over from the first, quick
-     * one; the ten minutes kept up are not given again, or a connection
-     * that keeps changing would keep the phone up all day once more.
+     * [networkConditionsChanged]) or the captions coming back in sight cut
+     * the wait short, so joining home Wi-Fi or opening the app asks at
+     * once, and the pace starts over from the first, quick one; the ten
+     * minutes kept up are not given again, or a connection that keeps
+     * changing would keep the phone up all day once more.
      * Captions coming back end the wait; the next one starts afresh.
      */
     private suspend fun nextCheckWait(pace: WaitingPace, seen: Long, asked: String) {
-        val step = pace.next()
+        val step = pace.next(watched)
         if (step.letsGo) logEvent(PipelineEvent.Kind.Note("still no answer from $asked, the phone may sleep between checks now"))
         if (retryWait.wait(step.seconds.seconds, keepUp = step.keptUp, nudgedSince = seen)) {
             pace.startOver()
-            logEvent(PipelineEvent.Kind.Note("the connection changed, asking $asked again now"))
+            logEvent(PipelineEvent.Kind.Note("a new connection or the captions back in sight, asking $asked again now"))
         }
     }
 

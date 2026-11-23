@@ -59,4 +59,14 @@ class WaitingPaceTest {
         assertTrue(steps.all { it.seconds == 600.0 }, "$steps")
         assertEquals(listOf(true, false, false, false, false), steps.map { it.keptUp })
     }
+
+    @Test
+    fun `watched, the pace stays at the first and uses up nothing, and out of sight it goes on from where it was`() {
+        val pace = WaitingPace(15.0)
+        val watched = List(300) { pace.next(watched = true) }
+        assertTrue(watched.all { it.seconds == 15.0 && it.keptUp && !it.letsGo }, "${watched.distinct()}")
+        val away = pace.take(13)
+        assertEquals(List(8) { 15.0 } + listOf(30.0, 60.0, 120.0, 240.0, 300.0), away.map { it.seconds })
+        assertEquals(List(12) { true } + false, away.map { it.keptUp })
+    }
 }
