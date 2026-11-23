@@ -1559,6 +1559,12 @@ class CaptionSessionDeviceTest {
     @Test
     fun aMemoryWarningWhileThePhoneSaysAReplyKeepsTheSpeechModel(): Unit = runBlocking {
         withLoadedModel("memory-warning-reply-test", delaySeconds = 600) { session ->
+            withContext(Dispatchers.Main) { session.refreshVoice() }
+            val answered = withTimeoutOrNull(10_000) {
+                while (session.voice.installed.value == null) delay(100)
+                true
+            }
+            assertNotNull("the phone's speech engine never answered", answered)
             withContext(Dispatchers.Main) {
                 assertTrue("the phone could not say the reply", session.speak("Yes, thank you"))
                 assertEquals(PipelinePhase.Paused, session.pipeline.phase)
@@ -1641,6 +1647,7 @@ class CaptionSessionDeviceTest {
             ).also {
                 it.appIsActive = true
                 it.backgroundReleaseDelaySeconds = { 1 }
+                it.refreshVoice()
             }
         }
         try {

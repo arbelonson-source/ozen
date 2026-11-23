@@ -12,9 +12,9 @@ import com.arbelonson.ozen.core.SpeakingOutput
 
 internal object SpeakerChoice {
     @Volatile internal var chosen = false
-    private var routed = false
-    private var callAttributes = false
-    private var devicesSeen: Set<Int>? = null
+    @Volatile private var routed = false
+    @Volatile private var callAttributes = false
+    @Volatile private var devicesSeen: Set<Int>? = null
 
     val canChoose: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 

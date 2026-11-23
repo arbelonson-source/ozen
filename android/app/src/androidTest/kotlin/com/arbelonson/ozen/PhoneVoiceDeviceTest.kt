@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -78,9 +79,51 @@ class PhoneVoiceDeviceTest {
         assertEquals(false, events.last())
     }
 
-    private fun connected(): PhoneVoice {
+    // The phone's speech engine runs as an app of its own, tens of megabytes
+    // held for as long as Ozen is connected to it: nothing connects it
+    // before a reply or a screen that speaks needs it.
+    @Test
+    fun aNewVoiceLeavesThePhonesSpeechEngineAloneUntilAReplyNeedsItAndThenSaysIt() {
         lateinit var voice: PhoneVoice
         instrumentation.runOnMainSync { voice = PhoneVoice(context) }
+        voices += voice
+        Thread.sleep(3_000)
+        assertNull("the speech engine was connected before anything needed it", voice.installed.value)
+        assertTrue(voice.isResting)
+        assertEquals("the reply asked for before the speech engine was connected was not said", listOf(true, false), said(voice))
+    }
+
+    // Coming back to the app looks again for the phone's voices; asking the
+    // speech engine took a tenth of a second on the screen's own thread.
+    @Test
+    fun comingBackLooksForThePhonesVoicesOffTheScreensThread() {
+        val voice = connected()
+        val real = voice.installed.value
+        val stale = setOf(UILanguage.Amharic)
+        var seen: Set<UILanguage>? = null
+        instrumentation.runOnMainSync {
+            voice.installed.value = stale
+            voice.refreshVoice()
+            seen = voice.installed.value
+        }
+        assertEquals("the voices were looked for on the screen's own thread", stale, seen)
+        assertWithin(10_000, { "voices after coming back: ${voice.installed.value}" }) { voice.installed.value == real }
+    }
+
+    @Test
+    fun thePhonesSpeechEngineIsLetGoOfOnceNothingHasNeededItForAWhile() {
+        val voice = connected()
+        assertEquals("the reply was not said", listOf(true, false), said(voice))
+        assertWithin(40_000, { "the speech engine was still held after the reply" }) { voice.isResting }
+        assertEquals("the reply after letting go was not said", listOf(true, false), said(voice))
+    }
+
+    private fun connected(): PhoneVoice {
+        lateinit var voice: PhoneVoice
+        instrumentation.runOnMainSync {
+            voice = PhoneVoice(context)
+            voice.refreshVoice()
+        }
         voices += voice
         assertTrue("the speech engine never answered", within(10_000) { voice.installed.value != null })
         assertTrue("no English voice: ${voice.installed.value}", UILanguage.English in voice.installed.value!!)

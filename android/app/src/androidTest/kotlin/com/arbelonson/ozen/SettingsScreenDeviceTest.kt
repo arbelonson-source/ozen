@@ -2838,6 +2838,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Settings").performClick()
             app.settings.change { it.appLanguage = AppLanguage.Hebrew }
             compose.activityRule.scenario.recreate()
+            assertTrue("the phone's voices were never looked for again", within(15_000) { !app.captions.voice.isLooking })
             compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English) }
             val notice = VoiceNotice.forSettings(UILanguage.Hebrew, setOf(UILanguage.English))!!
             compose.onNodeWithText(notice).performScrollTo().assertIsDisplayed()
