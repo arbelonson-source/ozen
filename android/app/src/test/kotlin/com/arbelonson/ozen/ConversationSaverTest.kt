@@ -1103,6 +1103,7 @@ class ConversationSaverTest {
         try {
             assertEquals(false, saver.toggleLiveStar(lines[0].id))
             assertTrue(saver.checkForConversationBreak())
+            writer.waitUntilIdle()
         } finally {
             folder.setWritable(true)
         }
@@ -1659,6 +1660,7 @@ class ConversationSaverTest {
                 threads.historyWaitsForTheDisk()
                 clearing = thread(name = "clear captions") { threads.onMain { history.clear { lines.clear() } } }
                 clearing.join(10_000)
+                assertFalse(clearing.isAlive, "Clear captions waited for the held disk")
                 assertTrue(folder.setWritable(false))
             } finally {
                 disk.resume()
@@ -1904,8 +1906,7 @@ class ConversationSaverTest {
             } finally {
                 disk.resume()
             }
-            slow.waitUntilIdle()
-            threads.onMain { scope.runCurrent() }
+            threads.settle(slow)
             assertTrue(lines.isEmpty(), "the lines stayed though their save was in")
             clock += 5
             say("New topic")
@@ -2102,6 +2103,79 @@ class ConversationSaverTest {
             assertNotNull(history.lastSaveFailure)
             assertTrue(threads.onMain { history.clear { lines.clear() } })
             assertTrue(lines.isEmpty())
+        }
+    }
+
+    /** Lets every save handed in be written and every answer waiting for the main thread run, until none is left. */
+    private fun Threads.settle(writer: TranscriptHistoryWriter) {
+        repeat(4) {
+            writer.waitUntilIdle()
+            onMain { scope.runCurrent() }
+        }
+    }
+
+    // A promised Clear took the lines away once the first save was in, with
+    // the save of a line said meanwhile only handed in. Refused, that line
+    // was gone from the screen and never reached History.
+    @Test
+    fun `a clear that promised to keep the lines keeps them when the save of a line said meanwhile is refused`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val history = savingOn(threads, slow)
+            listening = true
+            history.listeningChanged()
+            say("Hello", at = clock - 60)
+            val answers = mutableListOf<Boolean>()
+            disk.suspend()
+            try {
+                assertFalse(threads.answersAtOnce { history.clear(keepingHistory = true, answered = { answers += it }) { lines.clear() } })
+                say("One more thing")
+            } finally {
+                disk.resume()
+            }
+            slow.waitUntilIdle()
+            assertTrue(folder.setWritable(false))
+            try {
+                threads.settle(slow)
+            } finally {
+                folder.setWritable(true)
+            }
+            assertEquals(listOf("Hello", "One more thing"), lines.map { it.text }, "the lines went though the save of the one said meanwhile was refused")
+            assertEquals(listOf(false), answers)
+        }
+    }
+
+    @Test
+    fun `a clear that promised to keep the lines also keeps a line said while the line before it was being saved`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val history = savingOn(threads, slow)
+            listening = true
+            history.listeningChanged()
+            say("Hello", at = clock - 60)
+            val conversation = history.currentId
+            val answers = mutableListOf<Boolean>()
+            disk.suspend()
+            try {
+                assertFalse(threads.answersAtOnce { history.clear(keepingHistory = true, answered = { answers += it }) { lines.clear() } })
+                say("One more thing")
+            } finally {
+                disk.resume()
+            }
+            slow.waitUntilIdle()
+            disk.suspend()
+            try {
+                threads.onMain { scope.runCurrent() }
+                say("And another")
+            } finally {
+                disk.resume()
+            }
+            threads.settle(slow)
+            assertTrue(lines.isEmpty(), "the lines stayed though every one was saved: ${lines.map { it.text }}")
+            assertEquals(listOf("Hello", "One more thing", "And another"), store.load(conversation)!!.segments.map { it.text })
+            assertEquals(listOf(true), answers)
         }
     }
 

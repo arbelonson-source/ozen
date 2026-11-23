@@ -373,7 +373,8 @@ class ConversationSaver(
      * lines go at once and true comes back. With one,
      * false comes back, the lines stay until the save is in, and [answered]
      * then runs on the main thread: true once the lines went, with any line
-     * said meanwhile saved with the rest, false when they stay. Should
+     * said meanwhile saved with the rest first (see [clearOnceKept]), false
+     * when they stay. Should
      * another clear empty the screen first, this one has nothing left to
      * clear and answers nothing: a second Delete tapped while the first was
      * written took away, once answered, the lines said after the first.
@@ -385,17 +386,32 @@ class ConversationSaver(
             saving?.let { whenWritten(it.second) }
             return true
         }
-        val asked = clears
-        whenWritten(saving.second) { kept ->
-            if (asked != clears) return@whenWritten
-            if (kept) {
-                val endedAt = end?.takeIf { it.first == id }?.second
-                recording(ended = true, endedAt = endedAt, names = speakerNames())?.let { writer.saveInBackground(it) }
-                cleared(clearLines)
-            }
-            answered(kept)
-        }
+        clearOnceKept(clears, saving.first, saving.second, answered, clearLines)
         return false
+    }
+
+    /**
+     * A promised clear's wait for [written], the save of [saved]: once it is
+     * in, the lines go if the screen shows nothing [saved] lacks. A line said
+     * or changed meanwhile is saved too and waited for the same way, as many
+     * times as it takes, so no line leaves the screen before it is on the
+     * disk; one refused keeps the lines. Cleared after the first save with
+     * the next only handed in, a line said meanwhile was lost when the phone
+     * refused it. [asked] is how many clears there were when it was asked.
+     */
+    private fun clearOnceKept(asked: Int, saved: TranscriptSessionRecord, written: () -> Boolean, answered: (Boolean) -> Unit, clearLines: () -> Unit) {
+        whenWritten(written) { kept ->
+            if (asked != clears) return@whenWritten
+            if (!kept) return@whenWritten answered(false)
+            val endedAt = end?.takeIf { it.first == id }?.second
+            val now = recording(ended = true, endedAt = endedAt, names = speakerName)?.invoke()
+            if (now == null || now == saved) {
+                cleared(clearLines)
+                answered(true)
+                return@whenWritten
+            }
+            clearOnceKept(asked, now, writer.saveInTurn(now), answered, clearLines)
+        }
     }
 
     /** The lines go, and the next words start a new conversation from the top of the screen. */
