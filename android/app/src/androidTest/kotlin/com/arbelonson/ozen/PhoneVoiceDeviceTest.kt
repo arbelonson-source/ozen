@@ -1,16 +1,19 @@
 package com.arbelonson.ozen
 
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.UILanguage
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Assume.assumeFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -85,11 +88,16 @@ class PhoneVoiceDeviceTest {
     @Test
     fun aNewVoiceLeavesThePhonesSpeechEngineAloneUntilAReplyNeedsItAndThenSaysIt() {
         lateinit var voice: PhoneVoice
-        instrumentation.runOnMainSync { voice = PhoneVoice(context) }
+        val tries = AtomicInteger()
+        instrumentation.runOnMainSync {
+            voice = PhoneVoice(context)
+            voice.onReconnect = { tries.incrementAndGet() }
+        }
         voices += voice
-        Thread.sleep(3_000)
-        assertNull("the speech engine was connected before anything needed it", voice.installed.value)
-        assertTrue(voice.isResting)
+        instrumentation.waitForIdleSync()
+        assertTrue("the speech engine was connected as the voice was made", voice.isResting)
+        assertEquals("the speech engine was connected before anything needed it", 0, tries.get())
+        assertNull(voice.installed.value)
         assertEquals("the reply asked for before the speech engine was connected was not said", listOf(true, false), said(voice))
     }
 
@@ -101,6 +109,8 @@ class PhoneVoiceDeviceTest {
         val real = voice.installed.value
         val stale = setOf(UILanguage.Amharic)
         var seen: Set<UILanguage>? = null
+        val lookedOn = CopyOnWriteArrayList<Thread>()
+        voice.onLookup = { lookedOn += Thread.currentThread() }
         instrumentation.runOnMainSync {
             voice.installed.value = stale
             voice.refreshVoice()
@@ -108,6 +118,8 @@ class PhoneVoiceDeviceTest {
         }
         assertEquals("the voices were looked for on the screen's own thread", stale, seen)
         assertWithin(10_000, { "voices after coming back: ${voice.installed.value}" }) { voice.installed.value == real }
+        assertTrue("never looked: $lookedOn", lookedOn.isNotEmpty())
+        assertTrue("looked on the screen's own thread", lookedOn.none { it === Looper.getMainLooper().thread })
     }
 
     @Test
@@ -116,6 +128,48 @@ class PhoneVoiceDeviceTest {
         assertEquals("the reply was not said", listOf(true, false), said(voice))
         assertWithin(40_000, { "the speech engine was still held after the reply" }) { voice.isResting }
         assertEquals("the reply after letting go was not said", listOf(true, false), said(voice))
+    }
+
+    // Captions come back once the phone has gone quiet: a reply that is
+    // stopped goes quiet only once the speech engine has stopped saying it,
+    // even with a look for the voices ahead of the stop on its thread, or the
+    // microphone would caption the phone's own voice.
+    @Test
+    fun aStoppedReplyGoesQuietOnlyOnceTheSpeechEngineHasStoppedIt() {
+        val voice = connected()
+        val events = CopyOnWriteArrayList<Boolean>()
+        instrumentation.runOnMainSync {
+            voice.onSpeakingChanged = { events += it }
+            voice.speak("Please read this sentence aloud slowly. ".repeat(20).trim(), 0.5f)
+        }
+        assertTrue("never spoke", within(10_000) { voice.isSpeaking })
+        var heldAfterStop = false
+        instrumentation.runOnMainSync {
+            voice.refreshVoice()
+            voice.stop()
+            heldAfterStop = voice.isBusy && voice.isSpeaking
+        }
+        assertTrue("went quiet before the speech engine had stopped: $events", heldAfterStop)
+        assertWithin(5_000, { "never went quiet after stopping: $events" }) { !voice.isBusy && !voice.isSpeaking }
+        assertEquals(false, events.last())
+    }
+
+    // The voices looked for as the app came back may be out of date: a reply
+    // in a language the speech engine has no voice for is not said in another
+    // language's voice, and the list is put right for the notices.
+    @Test
+    fun aReplyInALanguageTheSpeechEngineHasNoVoiceForIsNotSaidInAnotherVoice() {
+        val voice = connected()
+        assumeFalse("the phone has an Amharic voice", UILanguage.Amharic in voice.installed.value!!)
+        val events = CopyOnWriteArrayList<Boolean>()
+        instrumentation.runOnMainSync {
+            voice.installed.value = voice.installed.value!! + UILanguage.Amharic
+            voice.onSpeakingChanged = { events += it }
+            voice.speak(AMHARIC, 0.5f)
+        }
+        assertWithin(10_000, { "never finished: $events" }) { !voice.isBusy && events.lastOrNull() == false }
+        assertFalse("said in another language's voice: $events", true in events)
+        assertFalse("still listed with an Amharic voice", UILanguage.Amharic in voice.installed.value!!)
     }
 
     private fun connected(): PhoneVoice {
@@ -165,5 +219,9 @@ class PhoneVoiceDeviceTest {
 
     private fun assertWithin(millis: Long, message: () -> String, condition: () -> Boolean) {
         if (!within(millis, condition)) fail(message())
+    }
+
+    private companion object {
+        const val AMHARIC = "\u1230\u120B\u121D \u12A5\u1295\u12F4\u1275 \u1290\u1205"
     }
 }

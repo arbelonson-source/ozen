@@ -109,10 +109,14 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         val ready = made.ready
         engineThread.execute {
             val engine = made.engine
+            onLookup?.invoke()
             val found = if (ready && engine != null && engine.voices != null) languagesOn(engine) else null
             main.post { looked(made, found) }
         }
     }
+
+    /** Called on the thread each look for the voices runs on; a seam for tests. */
+    @Volatile internal var onLookup: (() -> Unit)? = null
 
     /** A look for the voices, or a connection whose answer brings one, not finished yet. */
     internal val isLooking: Boolean get() = looking > 0 || connection?.answered == false
@@ -153,8 +157,26 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         pending.clear()
         waiting = null
         current = null
-        connection?.let { made -> engineThread.execute { made.engine?.stop() } }
-        if (talking) quiet() else idleLater()
+        val made = connection
+        if (made == null) {
+            if (talking) quiet() else idleLater()
+            return
+        }
+        // Quiet only once the engine has stopped saying it: captions come
+        // back then, and must not hear the rest of the reply. A look for the
+        // voices may be ahead of the stop on the engine's thread.
+        val stopping = UUID.randomUUID().toString()
+        if (talking) pending += stopping
+        engineThread.execute {
+            made.engine?.stop()
+            main.post { stopped(stopping) }
+        }
+        if (!talking) idleLater()
+    }
+
+    // A reply asked for meanwhile owns the speaking from then on.
+    private fun stopped(stopping: String) {
+        if (pending.remove(stopping) && pending.isEmpty()) quiet()
     }
 
     /** Let go of, by [rest] or after nothing needed it for a while, until it is connected again. */
@@ -221,6 +243,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         if (ok) {
             looking++
             engineThread.execute {
+                onLookup?.invoke()
                 val found = made.engine?.let(::languagesOn).orEmpty()
                 main.post { looked(made, found) }
             }
@@ -288,35 +311,44 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         pending += ids
         engineThread.execute {
             val engine = made.engine
-            val taken = reply === current && engine != null && say(engine, language, reply.rate, pieces, ids)
-            main.post { handed(made, reply, ids, taken, retry) }
+            val said = if (reply === current && engine != null) say(engine, language, reply.rate, pieces, ids) else Said.Refused
+            main.post { handed(made, reply, language, ids, said, retry) }
         }
     }
 
     // Not taken because the engine let go of the app, or taken by one let
     // go of meanwhile: said once it is connected again, held busy meanwhile.
-    private fun handed(made: Connection, reply: Reply, ids: List<String>, taken: Boolean, retry: Boolean) {
+    // One with no voice on the phone is not said at all, and the voices
+    // listed lose that language, as a look would have found.
+    private fun handed(made: Connection, reply: Reply, language: UILanguage, ids: List<String>, said: Said, retry: Boolean) {
+        if (said == Said.NoVoice) installed.value = installed.value?.minus(language)
         if (reply !== current || reply.holding !in pending) return
-        if (taken && made === connection) {
+        if (said == Said.Taken && made === connection) {
             reply.taken = true
             pending.remove(reply.holding)
             if (pending.isEmpty()) quiet()
             return
         }
         pending.removeAll(ids.toSet())
-        if (retry) sayWhenConnected(reply, refused = made) else unsaid(reply)
+        if (retry && said != Said.NoVoice) sayWhenConnected(reply, refused = made) else unsaid(reply)
     }
+
+    private enum class Said { Taken, Refused, NoVoice }
 
     private fun unsaid(reply: Reply) {
         pending.remove(reply.holding)
         if (pending.isEmpty()) quiet()
     }
 
-    // On the engine's thread. False when the engine wouldn't take every
+    // On the engine's thread. Refused when the engine wouldn't take every
     // piece of the reply: what it had taken is dropped, so it is said again
-    // whole or not at all.
-    private fun say(engine: TextToSpeech, language: UILanguage, rate: Float, pieces: List<String>, ids: List<String>): Boolean {
-        engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
+    // whole or not at all. A voice removed since the voices were looked for
+    // is found here, rather than the reply being said in the last
+    // language's voice; an engine that let go of the app answers no voices.
+    private fun say(engine: TextToSpeech, language: UILanguage, rate: Float, pieces: List<String>, ids: List<String>): Said {
+        if (engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode)) < TextToSpeech.LANG_AVAILABLE) {
+            return if (engine.voices == null) Said.Refused else Said.NoVoice
+        }
         engine.setSpeechRate(rate / NORMAL_RATE)
         SpeakerChoice.beforeSpeaking(appContext, engine)
         // The engine refuses a longer text outright, and nothing was said:
@@ -325,7 +357,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
             engine.speak(piece, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, id) == TextToSpeech.SUCCESS
         }
         if (!queued.complete && queued.ids.isNotEmpty()) engine.stop()
-        return queued.complete
+        return if (queued.complete) Said.Taken else Said.Refused
     }
 
     // A piece of a longer reply, or a reply replaced by the next one, ends
