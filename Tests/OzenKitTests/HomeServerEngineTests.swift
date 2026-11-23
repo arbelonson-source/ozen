@@ -17,7 +17,6 @@ private actor ScriptedSocket: HomeServerSocket {
     var hangsOnHello = false
     private var helloSends: [CheckedContinuation<Void, Error>] = []
     private(set) var pings = 0
-    private(set) var pingsAnswered = 0
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
     private var queue: [String] = []
     private var waiters: [CheckedContinuation<String, Error>] = []
@@ -47,10 +46,7 @@ private actor ScriptedSocket: HomeServerSocket {
     func ping() async throws {
         if isClosed { throw Closed() }
         pings += 1
-        if answersPings {
-            pingsAnswered += 1
-            return
-        }
+        if answersPings { return }
         try await withCheckedThrowingContinuation { pingWaiters.append($0) }
     }
 
@@ -172,7 +168,7 @@ private final class SteppedClock: @unchecked Sendable {
             }
             try? await Task.sleep(for: .milliseconds(2))
         }
-        Issue.record("the engine neither waited for its next check nor stopped")
+        Issue.record("within a minute the engine neither came to wait, ready, for its next check nor stopped")
         return false
     }
 }
@@ -540,16 +536,16 @@ struct HomeServerEngineTests {
                 }
             }
             // Three seconds of quiet sound, a twentieth of a second with
-            // each check. A ping the computer has taken in is answered
-            // before time moves on, and the first ping has gone out before
-            // time passes its check.
+            // each check. Time moves on only once the engine has taken in
+            // the answer to its last ping (the computer answers at once),
+            // or, from the silent computer, once the first ping has reached
+            // it.
             let quiet = [Float](repeating: 0.0005, count: 800)
             while clock.time < .seconds(3) {
                 feed.yield(quiet)
                 let stepped = await clock.step(until: { await socket.isClosed }, when: {
-                    let pings = await socket.pings
-                    if answering { return await pings == socket.pingsAnswered }
-                    return pings > 0 || clock.time == .zero
+                    if answering { return await !server.pingOutstanding }
+                    return await socket.pings > 0 || clock.time == .zero
                 })
                 guard stepped else { break }
             }
