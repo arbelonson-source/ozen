@@ -880,6 +880,92 @@ class OnDeviceWhisperEngineTest {
         )
     }
 
+    // Checking a pass's segments (each one cleaned up, normalised and held
+    // against the lists of what Whisper writes on silence) is about half a
+    // megabyte for a 40-word line, and it was done three times a pass: the
+    // text twice and the segments once. Everything here runs on the test's
+    // one thread, so all a pass costs is counted wherever it runs.
+    @Test
+    fun each_pass_checks_its_segments_once() = runTest {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val rig = rig()
+        val line = segment(FORTY_WORDS, words("line" to 0.9f))
+        val word = segment("שלום", words("שלום" to 0.9f))
+        val filter = WhisperResultFilter().forSpeech("he")
+        val check = { segment: WhisperSegment -> filter.acceptedText(listOf(WhisperSegmentSummary(segment.text, 0f, -0.1f, 1f))) }
+        repeat(20) { check(line) + check(word) }
+        val once = (bytesHere { repeat(20) { check(line) } } - bytesHere { repeat(20) { check(word) } }) / 20
+        suspend fun cost(reply: WhisperSegment): Pair<Long, Int> {
+            rig.passes.reply = { listOf(reply) }
+            rig.stream(speech(6.0), silence(1.0)).toList()
+            val before = rig.passes.calls.size
+            var finals: List<String> = emptyList()
+            val bytes = bytesHere { finals = rig.stream(speech(6.0), silence(1.0)).toList().filter { it.isFinal }.map { it.text } }
+            assertEquals(listOf(reply.text), finals)
+            return bytes to rig.passes.calls.size - before
+        }
+        val (wordBytes, wordPasses) = cost(word)
+        val (lineBytes, linePasses) = cost(line)
+        assertEquals(wordPasses, linePasses)
+        val perPass = (lineBytes - wordBytes) / linePasses
+        assertTrue(
+            perPass < once * 3 / 2,
+            "a pass of a 40-word line allocated $perPass bytes more than a pass of one word, over $linePasses passes; " +
+                "checking those 40 words once is $once",
+        )
+    }
+
+    // Working out what a pass shows (each segment's scores, its words the
+    // model was unsure of, the checks above) is the rest of a pass's work
+    // after the model, and it ran on the thread that also draws the screen.
+    @Test
+    fun each_pass_works_out_what_to_show_off_the_thread_that_collects_the_captions() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val made = ConcurrentHashMap.newKeySet<Thread>()
+        val collector = Executors.newSingleThreadExecutor { Thread(it, "captions-collector").also(made::add) }.asCoroutineDispatcher()
+        val readOn = ConcurrentHashMap.newKeySet<Thread>()
+        val token = WhisperToken(100, " line", 0.9f)
+        val tokens = object : AbstractList<WhisperToken>() {
+            override val size = 1
+
+            override fun get(index: Int): WhisperToken {
+                readOn += Thread.currentThread()
+                return token
+            }
+        }
+        val line = segment(FORTY_WORDS, tokens)
+        val word = segment("שלום", words("שלום" to 0.9f))
+        val passes = FakeWhisperPasses { System.currentTimeMillis() }
+        val engine = OnDeviceWhisperEngine("fake-model", FakeLoader(passes))
+        val audio = flow { repeat(60) { emit(chunk(LOUD)) } }
+        val finished = ArrayList<List<String>>()
+        val (wordBytes, lineBytes) = try {
+            runBlocking(collector) {
+                assertEquals(EngineAvailability.Available, engine.prepare("he") {})
+                suspend fun bytes(reply: WhisperSegment): Long {
+                    passes.reply = { listOf(reply) }
+                    engine.stream("he", audio).toList()
+                    return bytesHere { finished += engine.stream("he", audio).toList().filter { it.isFinal }.map { it.text } }
+                }
+                bytes(word) to bytes(line)
+            }
+        } finally {
+            collector.close()
+        }
+        assertEquals(listOf(listOf("שלום"), listOf(FORTY_WORDS)), finished)
+        assertTrue(readOn.isNotEmpty(), "the pass's tokens were never read")
+        assertTrue(readOn.none { it in made }, "the pass's tokens were read on the captions' thread")
+        val filter = WhisperResultFilter().forSpeech("he")
+        val summary = listOf(WhisperSegmentSummary(FORTY_WORDS, 0f, -0.1f, 1f))
+        repeat(20) { filter.acceptedText(summary) }
+        val once = bytesHere { filter.acceptedText(summary) }
+        assertTrue(
+            lineBytes - wordBytes < once,
+            "the captions' thread allocated ${lineBytes - wordBytes} bytes more over a line of 40 words than over one of one " +
+                "word; checking those 40 words once is $once",
+        )
+    }
+
     private inline fun bytesHere(work: () -> Unit): Long {
         val before = threadMemory.currentThreadAllocatedBytes
         work()
@@ -889,5 +975,8 @@ class OnDeviceWhisperEngineTest {
     private companion object {
         const val SHORT_LINE_SECONDS = 2
         const val LONG_LINE_SECONDS = 20
+        const val FORTY_WORDS = "אני חושב שבשבוע הבא נלך יחד לשוק הגדול ונקנה ירקות טריים לארוחת ערב משפחתית עם סבתא וסבא " +
+            "והדודים שמגיעים מחיפה אחרי הצהריים כי כולם רוצים לראות את התינוקת החדשה שנולדה בשבוע שעבר בבית החולים " +
+            "ליד הים ביום שישי אחרי העבודה."
     }
 }

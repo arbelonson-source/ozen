@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.sin
 import kotlin.test.Test
@@ -18,6 +19,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -597,10 +599,46 @@ class CloudSpeechEngineTest {
             collector.close()
         }
         assertEquals(listOf("שלום לכולם"), tokens.filter { it.isFinal }.map { it.text })
-        // The intake keeps its one copy of the audio on that thread.
         val audioBytes = line.size * Float.SIZE_BYTES.toLong()
         assertTrue(
             bytes < 2 * audioBytes,
+            "the captions' thread allocated $bytes bytes over a line of $seconds s, whose audio is $audioBytes bytes",
+        )
+    }
+
+    // Every chunk of audio is copied into the line's buffer, which doubles
+    // as the line grows, and checked for speech: ten times a second, on the
+    // thread that also draws the screen.
+    @Test
+    fun `the audio is taken in off the thread that collects the captions`() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val made = ConcurrentHashMap.newKeySet<Thread>()
+        val collector = Executors.newSingleThreadExecutor { Thread(it, "captions-collector").also(made::add) }.asCoroutineDispatcher()
+        val engine = CloudSpeechEngine(http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("A: שלום לכולם"))), apiKey = { "sk-test" })
+        val seconds = 20
+        val chunks = List(seconds * 10) { chunk -> FloatArray(1_600) { 0.05f * sin((chunk * 1_600 + it) * 0.3f) } }
+        val takenOn = ConcurrentHashMap.newKeySet<Thread>()
+        val line = flow {
+            for (chunk in chunks) {
+                takenOn += Thread.currentThread()
+                emit(chunk)
+            }
+        }
+        val (tokens, bytes) = try {
+            runBlocking(collector) {
+                engine.stream("he", line).toList()
+                val before = threadMemory.currentThreadAllocatedBytes
+                val tokens = engine.stream("he", line).toList()
+                tokens to threadMemory.currentThreadAllocatedBytes - before
+            }
+        } finally {
+            collector.close()
+        }
+        assertEquals(listOf("שלום לכולם"), tokens.filter { it.isFinal }.map { it.text })
+        assertTrue(takenOn.isNotEmpty() && takenOn.none { it in made }, "the audio was taken in on ${takenOn.map { it.name }}")
+        val audioBytes = seconds * 16_000 * Float.SIZE_BYTES.toLong()
+        assertTrue(
+            bytes < audioBytes / 4,
             "the captions' thread allocated $bytes bytes over a line of $seconds s, whose audio is $audioBytes bytes",
         )
     }

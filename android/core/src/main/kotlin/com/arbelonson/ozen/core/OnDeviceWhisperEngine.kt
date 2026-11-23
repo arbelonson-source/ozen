@@ -597,39 +597,50 @@ class OnDeviceWhisperEngine(
                 }
                 reports.forEach { onFitMeasurement(it.first, it.second, it.third) }
             }
-            val summaries = results.map {
-                WhisperSegmentSummary(
-                    text = it.text,
-                    noSpeechProb = it.noSpeechProbability,
-                    avgLogprob = WhisperPassScoring.averageLogprob(it, specialTokenBegin) ?: Float.NEGATIVE_INFINITY,
-                    compressionRatio = WhisperPassScoring.compressionRatio(it, specialTokenBegin),
-                    // Only on the pass that stays: a line still being written
-                    // changes its mind about words as well as about itself.
-                    uncertainWords = if (isFinal) WhisperPassScoring.uncertainWords(it, specialTokenBegin, languageCode) else emptyList(),
-                    temperature = it.temperature ?: 0f,
+            // Worked out where the model runs, as its audio was (see
+            // `runStreaming`): each segment's scores and the checks on its
+            // text, over half a megabyte for a 40-word line, every pass.
+            val outcome = withContext(passDispatcher) {
+                val summaries = results.map {
+                    WhisperSegmentSummary(
+                        text = it.text,
+                        noSpeechProb = it.noSpeechProbability,
+                        avgLogprob = WhisperPassScoring.averageLogprob(it, specialTokenBegin) ?: Float.NEGATIVE_INFINITY,
+                        compressionRatio = WhisperPassScoring.compressionRatio(it, specialTokenBegin),
+                        // Only on the pass that stays: a line still being written
+                        // changes its mind about words as well as about itself.
+                        uncertainWords = if (isFinal) WhisperPassScoring.uncertainWords(it, specialTokenBegin, languageCode) else emptyList(),
+                        temperature = it.temperature ?: 0f,
+                    )
+                }
+                // A live pass that used all its room was looping on one sound
+                // (see `WhisperKitDecodeRoom.livePassTokens`).
+                val ranOut = !isFinal && WhisperKitDecodeRoom.livePassRanOut(
+                    wordTokens = results.sumOf { segment -> segment.tokens.count { it.id < specialTokenBegin } },
+                    seconds = windowSeconds,
+                )
+                // A thank-you, or a one-word names list read back, alone in a
+                // moment of voice is most likely household noise (see
+                // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
+                // the last chunk may not be scored yet.
+                val voicedChunks = if (status.finished) null else intake.voicedChunks(end)
+                val pass = if (ranOut) WhisperResultFilter.PassText.nothing else speechFilter.passText(summaries, voicedChunks, echo)
+                // Confidence has to describe exactly the text being shown, not
+                // the whole pass -- a rejected hallucination segment can have a
+                // confident logprob of its own and skew the mean either way for
+                // content that never reaches the screen.
+                PassOutcome(
+                    seen = summaries.size,
+                    accepted = pass.segments.size,
+                    text = pass.text,
+                    confidence = CaptionConfidence.whisperConfidence(pass.segments),
+                    uncertainWords = pass.segments.flatMap { it.uncertainWords },
+                    voicedChunks = voicedChunks,
                 )
             }
-            // A live pass that used all its room was looping on one sound
-            // (see `WhisperKitDecodeRoom.livePassTokens`).
-            val ranOut = !isFinal && WhisperKitDecodeRoom.livePassRanOut(
-                wordTokens = results.sumOf { segment -> segment.tokens.count { it.id < specialTokenBegin } },
-                seconds = windowSeconds,
-            )
-            // A thank-you, or a one-word names list read back, alone in a
-            // moment of voice is most likely household noise (see
-            // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
-            // the last chunk may not be scored yet.
-            val voicedChunks = if (status.finished) null else intake.voicedChunks(end)
-            val dropped = ranOut || speechFilter.isUnvoicedPhrase(speechFilter.acceptedText(summaries, echo), voicedChunks, echo)
-            // Confidence has to describe exactly the text being shown, not
-            // the whole pass -- a rejected hallucination segment can have a
-            // confident logprob of its own and skew the mean either way for
-            // content that never reaches the screen.
-            val acceptedSegments = if (dropped) emptyList() else speechFilter.accepted(summaries, echo)
-            val text = if (dropped) "" else speechFilter.acceptedText(summaries, echo)
-            val confidence = CaptionConfidence.whisperConfidence(acceptedSegments)
+            val text = outcome.text
             synchronized(lock) {
-                tally.recordSegments(seen = summaries.size, accepted = acceptedSegments.size)
+                tally.recordSegments(seen = outcome.seen, accepted = outcome.accepted)
                 if (isFinal) tally.recordFinalPass(cameBackEmpty = text.isEmpty())
             }
 
@@ -638,7 +649,7 @@ class OnDeviceWhisperEngine(
             // and its confidence describes that unrelated, rejected pass,
             // not the text now being shown again, so it falls back too.
             val shown = if (text.isEmpty()) lastShownText else text
-            val shownConfidence = if (text.isEmpty()) lastShownConfidence else confidence
+            val shownConfidence = if (text.isEmpty()) lastShownConfidence else outcome.confidence
             if (shown.isNotEmpty()) {
                 tokens.trySend(
                     TranscriptToken(
@@ -647,8 +658,8 @@ class OnDeviceWhisperEngine(
                         isFinal = isFinal,
                         timestamp = if (isFinal && (previewsSkipped || !previewsWanted) && lastShownText.isEmpty()) decidedAt - maxOf(0.0, (total - (status.firstSpeechStart ?: total)).toDouble() / sampleRate - firstPassSpeechSeconds) else wallClockSeconds(),
                         confidence = shownConfidence,
-                        uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
-                        voicedChunks = if (text.isEmpty()) null else voicedChunks,
+                        uncertainWords = if (text.isEmpty()) emptyList() else outcome.uncertainWords,
+                        voicedChunks = if (text.isEmpty()) null else outcome.voicedChunks,
                         speechStartSample = status.firstSpeechStart?.let { gone + it },
                     ),
                 )
@@ -698,6 +709,15 @@ class OnDeviceWhisperEngine(
         return ids.ifEmpty { null }
     }
 }
+
+private class PassOutcome(
+    val seen: Int,
+    val accepted: Int,
+    val text: String,
+    val confidence: Float?,
+    val uncertainWords: List<String>,
+    val voicedChunks: Int?,
+)
 
 private fun tokenFlow(run: suspend (SendChannel<TranscriptToken>) -> Unit): Flow<TranscriptToken> = flow {
     val tokens = Channel<TranscriptToken>(Channel.UNLIMITED)

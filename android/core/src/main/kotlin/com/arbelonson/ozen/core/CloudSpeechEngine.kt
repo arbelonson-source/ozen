@@ -49,9 +49,11 @@ class CloudSpeechEngine(
     private val approvalSeconds: Double = DEFAULT_APPROVAL_SECONDS,
     private val timeSource: TimeSource = TimeSource.Monotonic,
     /**
-     * Where each request's audio is copied out, brought up to a common
-     * level and written out as a file: the app collects the captions on
-     * its main thread, and a long line is megabytes of that every request.
+     * Where the audio is taken in (each chunk copied into the line's
+     * buffer and checked for speech) and where each request's audio is
+     * copied out, brought up to a common level and written out as a file:
+     * the app collects the captions on its main thread, and a long line is
+     * megabytes of that every request.
      */
     private val audioDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val apiKey: () -> String?,
@@ -145,7 +147,7 @@ class CloudSpeechEngine(
     private suspend fun run(languageCode: String, audio: Flow<FloatArray>, tokens: SendChannel<TranscriptToken>) = coroutineScope {
         val key = currentKey() ?: throw CloudSpeechError.KeyMissing
         val intake = SpeechIntake()
-        val intakeJob = launch {
+        val intakeJob = launch(audioDispatcher) {
             try {
                 audio.collect { chunk ->
                     ensureActive()

@@ -601,17 +601,13 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
             // the last chunk may not be scored yet.
             let voicedChunks = status.finished ? nil : intake.voicedChunks(upTo: end)
-            let dropped = ranOut || speechFilter.isUnvoicedPhrase(
-                speechFilter.acceptedText(from: summaries, echo: echo),
-                voicedChunks: voicedChunks,
-                echo: echo
-            )
+            let pass = ranOut ? WhisperResultFilter.PassText.nothing : speechFilter.passText(from: summaries, voicedChunks: voicedChunks, echo: echo)
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            let acceptedSegments = dropped ? [] : speechFilter.accepted(from: summaries, echo: echo)
-            let text = dropped ? "" : speechFilter.acceptedText(from: summaries, echo: echo)
+            let acceptedSegments = pass.segments
+            let text = pass.text
             let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }
