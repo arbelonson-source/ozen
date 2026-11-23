@@ -7,7 +7,8 @@ is downloaded (Settings → Home computer → "Download a backup to the
 phone"), captions carry on from the phone by themselves when this server
 can't be reached. Without it they wait, and start again within about 15
 seconds of the server answering; the phone's sound alerts keep listening
-meanwhile.
+meanwhile. An Android phone asks less often after two minutes, up to every
+five minutes, and at once when it joins a network.
 
 Measured on an RTX 2080 Ti: the first words of a line appear about a quarter
 of a second behind the speaker, and the finished line is on the phone about

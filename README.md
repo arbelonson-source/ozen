@@ -480,7 +480,9 @@ Open a section for the details.
   once it has been downloaded as a backup (Settings → Home computer →
   "Download a backup to the phone"; without it captions wait for the PC,
   start again within about 15 seconds of it answering, and the status line
-  offers the backup; sound alerts keep listening meanwhile).
+  offers the backup; sound alerts keep listening meanwhile; an Android
+  phone asks less often after two minutes, up to every five minutes, and
+  at once when it joins a network).
   See [Home computer requirements](#home-computer-requirements) and
   `server/README.md`.
 - **Optional cloud captions** for when the phone's models are too slow or
