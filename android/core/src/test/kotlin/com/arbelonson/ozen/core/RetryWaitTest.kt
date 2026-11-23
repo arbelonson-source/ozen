@@ -106,4 +106,63 @@ class RetryWaitTest {
         advanceUntilIdle()
         assertEquals(List<Duration?>(3) { 15.seconds + RetryWait.AFTERWARDS } + null, asked)
     }
+
+    @Test
+    fun `a wait that lets the processor sleep lets go of it, ends at the first second the phone is awake after it came due, and holds it again for the check after it`() = runTest {
+        val phone = SleepingPhone(this)
+        val asked = mutableListOf<Duration?>()
+        val wait = RetryWait(sinceBoot = phone.sinceBoot) { asked += it }
+        var over = false
+        launch {
+            wait.whileDue {
+                wait.wait(15.seconds)
+                wait.wait(5.minutes, keepUp = false)
+                over = true
+                delay(5_000)
+            }
+        }
+        advanceTimeBy(17_000)
+        runCurrent()
+        assertEquals(listOf(15.seconds + RetryWait.AFTERWARDS, null), asked, "kept up through a wait that should let the phone sleep")
+        phone.sleep(10.minutes)
+        advanceTimeBy(RetryWait.STEP_MILLIS)
+        runCurrent()
+        assertTrue(over, "still waiting after ten minutes asleep")
+        assertEquals(listOf(15.seconds + RetryWait.AFTERWARDS, null, RetryWait.AFTERWARDS), asked)
+        advanceUntilIdle()
+        assertEquals(listOf(15.seconds + RetryWait.AFTERWARDS, null, RetryWait.AFTERWARDS, null), asked)
+    }
+
+    @Test
+    fun `a nudge ends at once the wait that asked for one, and no other`() = runTest {
+        val wait = RetryWait(sinceBoot = SleepingPhone(this).sinceBoot)
+        var nudged: Boolean? = null
+        var plainOver = false
+        launch { nudged = wait.wait(5.minutes, nudgedSince = wait.nudged) }
+        launch {
+            wait.wait(5.minutes)
+            plainOver = true
+        }
+        advanceTimeBy(3_000)
+        runCurrent()
+        wait.nudge()
+        runCurrent()
+        assertEquals(true, nudged, "still waiting after a nudge")
+        assertFalse(plainOver)
+        advanceTimeBy(5 * 60_000L)
+        runCurrent()
+        assertTrue(plainOver)
+    }
+
+    @Test
+    fun `a nudge that came between two waits ends the next one at once, and a wait that runs its course says it was not nudged`() = runTest {
+        val wait = RetryWait(sinceBoot = SleepingPhone(this).sinceBoot)
+        val seen = wait.nudged
+        wait.nudge()
+        val started = testScheduler.currentTime
+        assertTrue(wait.wait(5.minutes, keepUp = false, nudgedSince = seen), "the nudge was missed")
+        assertEquals(started, testScheduler.currentTime)
+        assertFalse(wait.wait(15.seconds, nudgedSince = wait.nudged))
+        assertEquals(started + 15_000, testScheduler.currentTime)
+    }
 }

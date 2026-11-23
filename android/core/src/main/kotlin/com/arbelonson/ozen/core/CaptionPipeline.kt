@@ -262,10 +262,12 @@ class CaptionPipeline(
     /**
      * With no backup on the phone, captions stop when the home computer
      * can't be reached, and once the quick retries run out it is asked
-     * this often. Shorter than the switch-back minute: here nothing is
-     * being captioned meanwhile, and a computer that woke up just after a
-     * check left her without captions for most of a minute more (44 s in
-     * a drill with the real server). A check is one connection attempt.
+     * this often at first. Shorter than the switch-back minute: here
+     * nothing is being captioned meanwhile, and a computer that woke up
+     * just after a check left her without captions for most of a minute
+     * more (44 s in a drill with the real server). A check is one
+     * connection attempt. After two minutes the checks come further apart
+     * (see [WaitingPace]).
      */
     var homeServerWaitSeconds: Double = 15.0
 
@@ -274,9 +276,26 @@ class CaptionPipeline(
      * chosen, no model on the phone to take over and the quick retries used
      * up, the cloud is asked this often and captions start once it answers.
      * Calmer than the home computer's 15 s: the cloud is asked over the
-     * internet, and an outage there rarely ends within seconds.
+     * internet, and an outage there rarely ends within seconds. After two
+     * minutes the checks come further apart (see [WaitingPace]).
      */
     var cloudWaitSeconds: Double = 30.0
+
+    /**
+     * Someone is looking at the captions: the caption screen in front with
+     * the screen on, as the app reports it. Captions waiting for the
+     * computer or the cloud then keep asking at their first, quick pace
+     * (see [nextCheckWait]): with the waits slowed down regardless, a
+     * computer back from an update was found minutes late while the person
+     * watched the screen. Coming back in sight asks at once.
+     */
+    @Volatile
+    var watched: Boolean = false
+        set(value) {
+            val back = value && !field
+            field = value
+            if (back) retryWait.nudge()
+        }
 
     private val cloudProblemsForAPerson = setOf(
         EngineUnavailability.Kind.CloudKeyNeeded,
@@ -3578,7 +3597,10 @@ class CaptionPipeline(
      * home computer that stopped when the internet went: the timer gives
      * up after about half a minute, and a router takes longer to restart.
      * Not during a phone call, which holds the microphone: the call's end
-     * starts a fresh set of attempts instead.
+     * starts a fresh set of attempts instead. Captions waiting for the
+     * computer or the cloud ask at once on any other connection that comes
+     * (from mobile data to Wi-Fi, say): their checks come minutes apart
+     * after a while, and the phone may be asleep between them.
      */
     private fun networkConditionsChanged(conditions: NetworkConditions) {
         val allowCellular = allowsCellularDownload
@@ -3597,7 +3619,10 @@ class CaptionPipeline(
                 !(previous?.isConnected ?: false) && conditions.isConnected
             else -> false
         }
-        if (!returned) return
+        if (!returned) {
+            if (conditions.isConnected) retryWait.nudge()
+            return
+        }
         recovery.reset()
         startNetworkRetry()
     }
@@ -4081,10 +4106,11 @@ class CaptionPipeline(
      * computer left captions stopped once the quick retries ran out, even
      * after it woke up: only a tap, or the phone's own network dropping
      * and coming back, started them again. Asks the computer every
-     * [homeServerWaitSeconds] and starts captions once it answers. A
-     * refused code needs a person, so it isn't asked again, and neither is
-     * a plain ws:// address out on the internet, which the phone itself
-     * refuses before asking, nor no saved address at all.
+     * [homeServerWaitSeconds], less often after a while (see
+     * [nextCheckWait]), and starts captions once it answers. A refused
+     * code needs a person, so it isn't asked again, and neither is a plain
+     * ws:// address out on the internet, which the phone itself refuses
+     * before asking, nor no saved address at all.
      */
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
@@ -4104,9 +4130,14 @@ class CaptionPipeline(
             // The processor stays up from the first wait until captions
             // start or the wait ends, not only through the waits: each
             // check is a connection attempt, which sleeps just as badly.
+            // Only for the first ten minutes or so of waits, though (see
+            // `nextCheckWait`).
             retryWait.whileDue {
+                val pace = WaitingPace(homeServerWaitSeconds)
+                var seen = retryWait.nudged
                 while (isActive) {
-                    retryWait.wait(homeServerWaitSeconds.seconds)
+                    nextCheckWait(pace, seen, "the home computer")
+                    seen = retryWait.nudged
                     val current = phase
                     if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
                     // Read again on every pass: a backup model picked, a name
@@ -4145,7 +4176,8 @@ class CaptionPipeline(
      * place (a failed cover with nothing on the phone to take over): a
      * cloud that stayed unreachable through every quick retry, on a phone
      * with no model installed, left captions stopped until a tap. Asks the
-     * cloud every [cloudWaitSeconds] and starts captions once it answers.
+     * cloud every [cloudWaitSeconds], less often after a while (see
+     * [nextCheckWait]), and starts captions once it answers.
      * Only for a passing problem: a key, credit or permission problem needs
      * a person, and `PhasePresentation` already points them to Settings.
      */
@@ -4159,8 +4191,11 @@ class CaptionPipeline(
         logEvent(PipelineEvent.Kind.Note("waiting for the cloud, asking it every ${formatG(cloudWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
             retryWait.whileDue {
+                val pace = WaitingPace(cloudWaitSeconds)
+                var seen = retryWait.nudged
                 while (isActive) {
-                    retryWait.wait(cloudWaitSeconds.seconds)
+                    nextCheckWait(pace, seen, "the cloud")
+                    seen = retryWait.nudged
                     val current = phase
                     if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
                     val chosen = settingsInUse
@@ -4188,6 +4223,36 @@ class CaptionPipeline(
             }
         }
         return true
+    }
+
+    /**
+     * The wait before the next check of [waitForHomeServer] or
+     * [waitForCloud]. Asked every 15 s (or 30 s) for as long as it took,
+     * with the processor kept up all the while, a computer left off at
+     * home or a cloud that stayed down kept the phone from sleeping all
+     * day. While someone watches the captions ([watched]) that pace stays:
+     * the screen keeps the phone up anyway. Out of sight the checks keep
+     * their first pace for two minutes, then come further apart, up to
+     * five minutes; the processor is kept up only for the waits out of
+     * sight that end within the first ten minutes of them. After that a check
+     * comes due on a clock that goes on while the phone sleeps, and runs
+     * as soon as the phone is awake again for anything (the screen turned
+     * on, sound alerts listening, another app): no alarm wakes it just for
+     * this. A new connection ([nudge][RetryWait.nudge] from
+     * [networkConditionsChanged]) or the captions coming back in sight cut
+     * the wait short, so joining home Wi-Fi or opening the app asks at
+     * once, and the pace starts over from the first, quick one; the ten
+     * minutes kept up are not given again, or a connection that keeps
+     * changing would keep the phone up all day once more.
+     * Captions coming back end the wait; the next one starts afresh.
+     */
+    private suspend fun nextCheckWait(pace: WaitingPace, seen: Long, asked: String) {
+        val step = pace.next(watched)
+        if (step.letsGo) logEvent(PipelineEvent.Kind.Note("still no answer from $asked, the phone may sleep between checks now"))
+        if (retryWait.wait(step.seconds.seconds, keepUp = step.keptUp, nudgedSince = seen)) {
+            pace.startOver()
+            logEvent(PipelineEvent.Kind.Note("a new connection or the captions back in sight, asking $asked again now"))
+        }
     }
 
     /**
