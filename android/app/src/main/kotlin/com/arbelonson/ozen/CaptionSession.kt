@@ -543,8 +543,12 @@ class CaptionSession(
                 light.stop()
                 cameBack()
             }
-            // Android may end an app that is out of sight before the next autosave.
-            if (changed && !active) conversations.save(ended = false)
+            // Android may end an app that is out of sight before the next
+            // autosave, or before a settings change still being written lands.
+            if (changed && !active) {
+                settings.waitForWrites()
+                conversations.save(ended = false)
+            }
         }
 
     /**
@@ -1008,6 +1012,7 @@ class CaptionSession(
     /** Android says memory is short; [outOfSight] when no screen of the app is showing, and the app is next in line to be ended. */
     fun memoryShort(footprintBytes: Long, outOfSight: Boolean = false) {
         pipeline.handleMemoryWarning(footprintBytes, pausedForSpeech = replies.holdsCaptionsForAPhrase)
+        if (outOfSight) settings.waitForWrites()
         conversations.memoryShort(outOfSight)
     }
 

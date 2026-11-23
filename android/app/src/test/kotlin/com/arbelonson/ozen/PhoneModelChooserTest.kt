@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
@@ -119,7 +120,10 @@ class PhoneModelChooserTest {
 
     private fun have(file: String) = File(models, file).writeBytes(ByteArray(4))
 
-    private fun saved() = SettingsHolder(SettingsStore(File(folder, "ozen-settings.json"))).current.value
+    private fun saved(): AppSettings {
+        settings.waitForWrites()
+        return SettingsHolder(SettingsStore(File(folder, "ozen-settings.json"))).current.value
+    }
 
     @Test
     fun `before anything is on the phone a choice is made at once, with nothing downloaded until captions start`() {

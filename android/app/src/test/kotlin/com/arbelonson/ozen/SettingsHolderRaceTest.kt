@@ -49,6 +49,7 @@ class SettingsHolderRaceTest {
 
         assertEquals(fix, holder.current.value.wordFixes, "on screen")
         assertEquals(measured, holder.current.value.phoneLiveMeasurement, "measurement on screen")
+        holder.waitForWrites()
         val relaunched = SettingsStore(file).load()
         assertEquals(fix, relaunched.wordFixes, "after a relaunch")
         assertEquals(measured, relaunched.phoneLiveMeasurement, "measurement after a relaunch")
