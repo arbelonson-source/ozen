@@ -100,6 +100,7 @@ class PhoneModelChooser(
     private var stopDownload: AtomicBoolean? = null
 
     private var replaced: String? = null
+    private var replacedOnceSaved: Pair<String, String>? = null
 
     // A download that broke off for a reason a later try can mend (the
     // connection dropped, not a file that arrived damaged) is tried again by
@@ -129,14 +130,20 @@ class PhoneModelChooser(
         if (byHand) rememberChoiceAgainstWarning(file)
         picks += 1
         failures = 0
-        synchronized(lock) { replaced = null }
+        synchronized(lock) {
+            replaced = null
+            replacedOnceSaved = null
+        }
         start(file)
     }
 
     override fun replaceWith(file: String) {
         picks += 1
         failures = 0
-        synchronized(lock) { replaced = settings.current.value.phoneModel.file.takeIf { it != file } }
+        synchronized(lock) {
+            replaced = settings.current.value.phoneModel.file.takeIf { it != file }
+            replacedOnceSaved = null
+        }
         start(file)
     }
 
@@ -214,9 +221,24 @@ class PhoneModelChooser(
         if (settings.current.value.phoneModel.file != model.file) return
         // The new choice lands on the disk first: ended in between, the app
         // would otherwise come back to the old model with its file gone.
-        if (!settings.waitForWrites()) return
-        PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(old)
-        refreshInstalled()
+        if (settings.waitForWrites()) {
+            PhoneModelDeletion(modelFolder, model.file, remove).delete(old)
+            refreshInstalled()
+            return
+        }
+        // Not written: the file still names the old model. It goes once a
+        // later write lands, unless another choice came first.
+        replacedOnceSaved = old to model.file
+        scope.launch {
+            settings.saveFailed.first { !it }
+            synchronized(lock) {
+                val (waiting, file) = replacedOnceSaved ?: return@launch
+                replacedOnceSaved = null
+                if (settings.current.value.phoneModel.file != file) return@launch
+                PhoneModelDeletion(modelFolder, file, remove).delete(waiting)
+                refreshInstalled()
+            }
+        }
     }
 
     private fun removeStrayParts(model: PhoneModel) {

@@ -863,6 +863,29 @@ class PhoneModelChooserTest {
         assertTrue(settings.saveFailed.value)
         assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"), "the settings file still names the old model")
         assertTrue(onPhone("ggml-small-q5_1.bin"))
+        savesRefused = false
+        settings.change {}
+        settings.waitForWrites()
+        scope.runCurrent()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"), "once a later write lands the old model goes")
+    }
+
+    @Test
+    fun `an old model kept by a failed write stays when another model is chosen before a write lands`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        have("ggml-base-q5_1.bin")
+        savesRefused = true
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        savesRefused = false
+        settings.change {}
+        settings.waitForWrites()
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
     }
 
     @Test
