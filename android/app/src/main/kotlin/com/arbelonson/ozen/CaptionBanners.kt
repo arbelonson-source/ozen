@@ -509,6 +509,7 @@ internal fun HeardPill(text: String, modifier: Modifier) {
  */
 @Composable
 internal fun <T : Any> ArrivingBanner(shown: T?, content: @Composable (T) -> Unit) {
+    onScreenPartComposed?.invoke("banner")
     val kept = remember { arrayOfNulls<Any>(1) }
     if (shown != null) kept[0] = shown
     AnimatedVisibility(

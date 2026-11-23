@@ -76,7 +76,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 internal fun CaptionLines(
-    lines: List<CaptionLine>,
+    readLines: () -> List<CaptionLine>,
     away: AwayMark?,
     earlier: EarlierLines?,
     display: DisplayPreferences,
@@ -94,6 +94,8 @@ internal fun CaptionLines(
     onMarkProblem: (line: UUID) -> Unit,
     leading: (@Composable () -> Unit)? = null,
 ) {
+    // Read here, not by the screen that holds the list: a new word composes the list alone.
+    val lines = readLines()
     val lastIndex = if (trailing != null) lines.size else lines.lastIndex
     // The saved-conversation card can arrive after the lines (it is looked
     // up while captions start), and above them it pushes the newest down.
@@ -320,6 +322,10 @@ internal fun AwayJump(count: Int, look: CaptionTheme, onTap: () -> Unit) {
 /** Told each time a caption line is composed; only device tests set it, to count the lines composed again per new word. */
 @Volatile
 internal var onCaptionRowComposed: ((UUID) -> Unit)? = null
+
+/** Told by name each time a part of the caption screen around the lines is composed; only device tests set it, to count what a new word composes again. */
+@Volatile
+internal var onScreenPartComposed: ((String) -> Unit)? = null
 
 @Composable
 private fun CaptionLineRow(

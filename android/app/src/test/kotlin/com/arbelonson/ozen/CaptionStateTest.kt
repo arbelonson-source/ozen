@@ -417,6 +417,23 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `around the lines the state stays the same from one word or line to the next and follows what the screen shows`() {
+        CaptionState.clear()
+        val finished = TranscriptSegment(id = UUID.randomUUID(), text = "We met", isCommitted = true, startTimestamp = 1.0, lastUpdateTimestamp = 1.0)
+        val growing = TranscriptSegment(id = UUID.randomUUID(), text = "And then", isCommitted = false, startTimestamp = 1.2, lastUpdateTimestamp = 1.2)
+        show(PipelinePhase.Listening, listOf(finished, growing))
+        val before = CaptionState.screen.value.aroundTheLines
+        show(PipelinePhase.Listening, listOf(finished, growing.copy(text = "And then we", lastUpdateTimestamp = 1.5)))
+        assertEquals(before, CaptionState.screen.value.aroundTheLines, "a new word")
+        val next = TranscriptSegment(id = UUID.randomUUID(), text = "Left", isCommitted = false, startTimestamp = 1.6, lastUpdateTimestamp = 1.6)
+        show(PipelinePhase.Listening, listOf(finished, growing.copy(text = "And then we", isCommitted = true, lastUpdateTimestamp = 1.5), next))
+        assertEquals(before, CaptionState.screen.value.aroundTheLines, "a new line")
+        show(PipelinePhase.Paused, listOf(finished, growing.copy(text = "And then we", isCommitted = true, lastUpdateTimestamp = 1.5), next))
+        assertNotEquals(before, CaptionState.screen.value.aroundTheLines, "the captions paused")
+        assertEquals(emptyList(), CaptionState.screen.value.aroundTheLines.lines)
+    }
+
+    @Test
     fun `listening that began after the last line counts from when it began`() {
         showAt(PipelinePhase.Listening, lastLineAt = 1_000.0, listeningSince = 5_000.0)
         assertTrue(CaptionState.screen.value.keepsScreenOn(keepAwakeWhileListening = true, now = 5_000.0 + 14 * 60))

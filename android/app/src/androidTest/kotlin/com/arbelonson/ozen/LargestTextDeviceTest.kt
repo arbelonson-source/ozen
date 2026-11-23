@@ -149,7 +149,7 @@ class LargestTextDeviceTest {
         onASmallPhoneAtTheLargestText {
             scaled = LocalDensity.current
             CaptionLines(
-                captions, null, null, display, CaptionTheme.of(display.theme, systemDark = true), rememberLazyListState(), false, FollowMarks(), Modifier, null,
+                { captions }, null, null, display, CaptionTheme.of(display.theme, systemDark = true), rememberLazyListState(), false, FollowMarks(), Modifier, null,
                 onStar = {}, onOpen = { _, _ -> }, onFix = {}, onName = {}, onAskToRepeat = null, onMarkProblem = {},
             )
         }

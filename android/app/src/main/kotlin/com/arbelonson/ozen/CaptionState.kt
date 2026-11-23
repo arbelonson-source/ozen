@@ -168,6 +168,17 @@ data class CaptionScreenState(
             builtInOffered, modelGettingReady, modelJustReady, coverDetail, spokenLanguage, pausedForRecording, soundAlertsPaused,
         )
 
+    /**
+     * The state with what changes at every word left out: the lines, how
+     * many there are and when the newest word came. The same from one word
+     * to the next, so the screen around the lines (the banners, the status
+     * line, the buttons) is composed again only when something it shows
+     * changed: read whole, every word composed it all again. Whether there
+     * are lines, [keepsScreenOn] and [hidesButtons] need the whole state.
+     */
+    val aroundTheLines: CaptionScreenState
+        get() = copy(lines = emptyList(), lineCount = 0, lastActivityAt = null)
+
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
     val captionsRunning: Boolean
         get() = phase.isListening && !interruptedBySystem

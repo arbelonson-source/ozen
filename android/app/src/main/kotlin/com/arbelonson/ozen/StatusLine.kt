@@ -48,6 +48,7 @@ import com.arbelonson.ozen.ui.OzenSpacing
 
 @Composable
 internal fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Boolean, onTap: () -> Unit) {
+    onScreenPartComposed?.invoke("status line")
     val colors = MaterialTheme.colorScheme
     // As on the iPhone: paused, off or stopped shows its own icon and colour.
     // Only the small green dot went away before, and the old lines stayed,

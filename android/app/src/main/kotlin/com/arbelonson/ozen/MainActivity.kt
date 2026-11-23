@@ -454,8 +454,10 @@ private fun OzenApp(
     onAppLanguage: (AppLanguage) -> Unit,
     onLightScreen: (Boolean) -> Unit,
 ) {
+    onScreenPartComposed?.invoke("app")
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
-    val state by CaptionState.screen.collectAsStateWithLifecycle()
+    val screenState = CaptionState.screen.collectAsStateWithLifecycle()
+    val state by remember(screenState) { derivedStateOf { screenState.value.aroundTheLines } }
     val current by app.settings.current.collectAsStateWithLifecycle()
     val voices by app.captions.voice.installed.collectAsStateWithLifecycle()
     val recording by app.transcriber.state.collectAsStateWithLifecycle()
@@ -527,12 +529,14 @@ private fun OzenApp(
     // (the iPhone records on behind its lock screen).
     val backup by app.captions.backupStatus.collectAsStateWithLifecycle()
     val recordingVoice by SpeakerRecordings.progress.collectAsStateWithLifecycle()
+    val keepAwake = current.display.keepScreenAwake
+    val captionsKeepScreenOn by remember(screenState, keepAwake) { derivedStateOf { screenState.value.keepsScreenOn(keepAwake, awakeClock) } }
     KeepScreenOn(
         !current.hasCompletedOnboarding ||
             backup is BackupModelStatus.Downloading ||
             recordingVoice != null ||
             recording is FileTranscription.Working ||
-            state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
+            captionsKeepScreenOn,
     )
     val moreContrast = phoneAsksForMoreContrast()
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), moreContrast)
@@ -658,7 +662,7 @@ private fun OzenApp(
                         Front.Captions -> {
                             LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
                             CaptionScreen(
-                                state,
+                                screenState,
                                 current.display,
                                 look,
                                 onStatusTap,
@@ -927,7 +931,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
 
 @Composable
 private fun CaptionScreen(
-    state: CaptionScreenState,
+    screen: State<CaptionScreenState>,
     display: DisplayPreferences,
     look: CaptionTheme,
     onStatusTap: () -> Unit,
@@ -978,6 +982,11 @@ private fun CaptionScreen(
     awayAlertsOn: Boolean,
     soundAlertsOn: Boolean,
 ) {
+    onScreenPartComposed?.invoke("screen")
+    // A new word composes the lines, not the screen around them: that reads
+    // the state without its words, the same from one word to the next.
+    val state by remember(screen) { derivedStateOf { screen.value.aroundTheLines } }
+    val hasLines by remember(screen) { derivedStateOf { screen.value.lines.isNotEmpty() } }
     val context = LocalContext.current
     var notificationsAllowed by remember { mutableStateOf(AlertNotifier.allowed(context)) }
     var emergencyWarning by remember { mutableStateOf(EmergencyChannelNotice.Warning.None) }
@@ -1025,8 +1034,10 @@ private fun CaptionScreen(
     // iPhone (KeywordPill), and a text size change only adds what is left,
     // as does the speaker's name arriving after the pill showed.
     val accessibilitySize = LocalDensity.current.fontScale > LARGEST_ORDINARY_FONT_SCALE
-    val pillSpeaker = { word: HeardWord -> state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames } }
-    val pillSeconds = state.heard?.let { KeywordPill.visibleSeconds(KeywordPill.text(it.said, pillSpeaker(it)), accessibilitySize) }
+    val showNames = display.showSpeakerNames
+    val pillSpeaker = remember(screen, showNames) { { word: HeardWord -> screen.value.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { showNames } } }
+    val heardSpeaker by remember(pillSpeaker) { derivedStateOf { state.heard?.let(pillSpeaker) } }
+    val pillSeconds = state.heard?.let { KeywordPill.visibleSeconds(KeywordPill.text(it.said, heardSpeaker), accessibilitySize) }
     LaunchedEffect(state.heard?.id, state.heard?.at, talkBack, pillSeconds) {
         val word = state.heard ?: return@LaunchedEffect
         if (word.id == closedWord) return@LaunchedEffect
@@ -1105,7 +1116,7 @@ private fun CaptionScreen(
     }
     var following by rememberSaveable { mutableStateOf(true) }
     var countWhenLeft by rememberSaveable { mutableIntStateOf(0) }
-    val lineCount by rememberUpdatedState(state.lineCount)
+    val lineCount by remember(screen) { derivedStateOf { screen.value.lineCount } }
     // Only her own scrolling passes through here, not the screen following
     // the newest line, so a line growing past the bottom for a moment
     // doesn't stop the following, as it once did on the iPhone.
@@ -1134,7 +1145,7 @@ private fun CaptionScreen(
                 following = atEnd
             }
     }
-    LaunchedEffect(state.lines.isEmpty()) { if (state.lines.isEmpty()) following = true }
+    LaunchedEffect(hasLines) { if (!hasLines) following = true }
     LaunchedEffect(following, countWhenLeft) { CaptionState.readingBack(countWhenLeft.takeIf { !following }) }
     val scope = rememberCoroutineScope()
     val awayLine by rememberUpdatedState(state.away?.line)
@@ -1159,14 +1170,22 @@ private fun CaptionScreen(
     LaunchedEffect(listening) {
         if (listening) clockLifecycle.tickWhileStarted(1_000) { clock = secondsNow() }
     }
-    val hidden = state.hidesButtons(
-        autoHide = display.autoHideControls,
-        followingLatest = following,
-        screenReaderOn = talkBack,
-        pointerAccessOn = pointerAccessOn(),
-        lastTouchAt = lastTouchAt,
-        now = clock,
-    )
+    // Asked again at every word and every second, the screen composed
+    // again only when the answer changes.
+    val autoHide = display.autoHideControls
+    val pointerAccess = pointerAccessOn()
+    val hidden by remember(screen, autoHide, talkBack, pointerAccess) {
+        derivedStateOf {
+            screen.value.hidesButtons(
+                autoHide = autoHide,
+                followingLatest = following,
+                screenReaderOn = talkBack,
+                pointerAccessOn = pointerAccess,
+                lastTouchAt = lastTouchAt,
+                now = clock,
+            )
+        }
+    }
     val (flashColour, flashStrength) = alertFlash(state.heardSound)
     val offer = modelOffer?.takeIf { state.allowsModelOffer }
     Column(
@@ -1212,6 +1231,7 @@ private fun CaptionScreen(
                         .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    onScreenPartComposed?.invoke("banners")
                     // The same sound once: as heard while away, with its
                     // time. An older banner, kept up by TalkBack, stays
                     // beside it instead of hiding it, as on the iPhone.
@@ -1241,21 +1261,22 @@ private fun CaptionScreen(
                     ArrivingBanner(Unit.takeIf { awayAlertsBlocked }) { AwayAlertsBlockedBanner { openNotificationSettings(context) } }
                     NightStartCard(NightStartCheck.isNightStart(state.soundsOnly, state.pausedForRecording))
                     ArrivingBanner(shownWord) { word ->
+                        val speaker by remember(word, pillSpeaker) { derivedStateOf { pillSpeaker(word) } }
                         // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(
-                            KeywordPill.text(word.said, pillSpeaker(word)),
+                            KeywordPill.text(word.said, speaker),
                             Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button) {
                                 closedWord = word.id
                                 shownWord = null
                             },
                         )
                     }
-                    ArrivingBanner(state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }) { mark ->
+                    ArrivingBanner(state.away?.takeIf { it.offersJump && !awayMarkShowing && hasLines }) { mark ->
                         AwayJump(mark.count, look) {
                             CaptionState.acknowledgeAwayLines()
                             countWhenLeft = lineCount
                             following = false
-                            val index = state.lines.indexOfFirst { it.id == mark.line }
+                            val index = screen.value.lines.indexOfFirst { it.id == mark.line }
                             if (index >= 0) scope.launch { list.scrollToItem(index) }
                         }
                     }
@@ -1297,7 +1318,7 @@ private fun CaptionScreen(
                     ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (state.lines.isEmpty()) {
+                    if (!hasLines) {
                         // Scrolls when it can't all fit, at the phone's largest text
                         // or turned sideways. Centred in the free room when it fits.
                         val emptyScroll = rememberScrollState()
@@ -1374,9 +1395,9 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id; fixRefused = false }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) }, leading = leading)
+                        CaptionLines({ screen.value.lines }, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id; fixRefused = false }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) }, leading = leading)
                         if (!following) {
-                            JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
+                            JumpToLatest(jumpToLatestTitle(linesSince(lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
                             }
                         }
@@ -1399,6 +1420,7 @@ private fun CaptionScreen(
         var askingToClear by rememberSaveable { mutableStateOf(false) }
         var clearTries by remember { mutableIntStateOf(0) }
         AnimatedVisibility(visible = !hidden) {
+            onScreenPartComposed?.invoke("toolbar")
             val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
             val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
@@ -1430,7 +1452,7 @@ private fun CaptionScreen(
                                 Modifier.weight(toolbarShare(tr("להגיד", "Say"))).semantics { contentDescription = say },
                                 selected = state.speaking,
                             )
-                            ToolbarButton(Icons.Rounded.DeleteSweep, tr("ניקוי", "Clear"), { askingToClear = true }, Modifier.weight(toolbarShare(tr("ניקוי", "Clear"))), enabled = state.lines.isNotEmpty())
+                            ToolbarButton(Icons.Rounded.DeleteSweep, tr("ניקוי", "Clear"), { askingToClear = true }, Modifier.weight(toolbarShare(tr("ניקוי", "Clear"))), enabled = hasLines)
                             ToolbarButton(Icons.Rounded.Settings, tr("הגדרות", "Settings"), onSettings, Modifier.weight(toolbarShare(tr("הגדרות", "Settings"))))
                         }
                     }

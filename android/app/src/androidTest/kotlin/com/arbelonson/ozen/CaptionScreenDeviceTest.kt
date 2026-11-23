@@ -188,6 +188,45 @@ class CaptionScreenDeviceTest {
         assertEquals("lines composed again in a quiet room", emptyList<UUID>(), composedLines)
     }
 
+    // How many times each part of the screen around the lines is composed while [during] runs, by part.
+    private fun partsComposed(during: () -> Unit): Map<String, Int> {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val composed = CopyOnWriteArrayList<String>()
+        try {
+            app.settings.change { it.display = it.display.copy(autoHideControls = false) }
+            showListening(finishedLines + growingLine, "And then")
+            onScreenPartComposed = { composed += it }
+            during()
+            return composed.groupingBy { it }.eachCount()
+        } finally {
+            onScreenPartComposed = null
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
+    fun aNewWordComposesNothingAroundTheLines() {
+        val parts = partsComposed { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
+        assertEquals("parts of the screen composed again for one new word", emptyMap<String, Int>(), parts)
+    }
+
+    @Test
+    fun aNewLineComposesNothingAroundTheLines() {
+        val next = TranscriptSegment(id = UUID.randomUUID(), text = "We left", isCommitted = false, startTimestamp = 9.6, lastUpdateTimestamp = 9.6)
+        val parts = partsComposed { showListening(finishedLines + growingLine.copy(isCommitted = true) + next, "We left") }
+        assertEquals("parts of the screen composed again for the first word of a new line", emptyMap<String, Int>(), parts)
+    }
+
+    @Test
+    fun aQuietRoomComposesNothingAroundTheLinesAsTheSecondsPass() {
+        val parts = partsComposed {
+            compose.mainClock.advanceTimeBy(2_500)
+            compose.waitForIdle()
+        }
+        assertEquals("parts of the screen composed again in a quiet room", emptyMap<String, Int>(), parts)
+    }
+
     @Test
     fun aLineThatOpensInEnglishButIsHebrewIsDrawnRightToLeft() {
         val line = TranscriptSegment(
