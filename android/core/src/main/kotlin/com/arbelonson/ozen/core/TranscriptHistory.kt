@@ -1110,12 +1110,15 @@ class TranscriptHistoryStore(
      * ended: a line starred later protects its conversation from being
      * cleared out just as one starred while it was said does. Returns the
      * line's new state, or null when the conversation or line is gone. With
-     * [to], the line takes that state instead of the other one.
+     * [to], the line takes that state instead of the other one. With
+     * [throwIfUnreadable], a file that is there but can't be read just now
+     * throws, as in [fixText], so a star waiting for room keeps waiting
+     * instead of being taken for gone.
      */
-    fun toggleStar(segmentID: UUID, inSession: UUID, to: Boolean? = null): Boolean? {
+    fun toggleStar(segmentID: UUID, inSession: UUID, to: Boolean? = null, throwIfUnreadable: Boolean = false): Boolean? {
         val file = fileFor(inSession)
         var state: Boolean? = null
-        patchRecordFile(file, writeSearchText = false) { object_ ->
+        patchRecordFile(file, writeSearchText = false, throwIfUnreadable = throwIfUnreadable) { object_ ->
             val lines = object_["segments"] as? JsonArray ?: return@patchRecordFile null
             val index = lines.indexOfFirst { rawSegmentID(it) == segmentID }
             if (index < 0) return@patchRecordFile null

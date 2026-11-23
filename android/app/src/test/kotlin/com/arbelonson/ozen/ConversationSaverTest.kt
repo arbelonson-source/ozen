@@ -1615,7 +1615,7 @@ class ConversationSaverTest {
             try {
                 threads.fromHistory { starring.set(history.toggleStar(morning, lines[0].id)) }
                 threads.historyWaitsForTheDisk()
-                threads.onMain { history.speakerLabelsChanged() }
+                threads.answersAtOnce { history.speakerLabelsChanged() }
             } finally {
                 disk.resume()
             }
@@ -1692,8 +1692,8 @@ class ConversationSaverTest {
             try {
                 threads.fromHistory { starring.set(history.toggleStar(conversation, pills)) }
                 threads.historyWaitsForTheDisk()
-                assertEquals(false, threads.onMain { history.toggleLiveStar(pills) })
-                assertEquals(true, threads.onMain { history.toggleLiveStar(pills) })
+                assertEquals(false, threads.answersAtOnce { history.toggleLiveStar(pills) })
+                assertEquals(true, threads.answersAtOnce { history.toggleLiveStar(pills) })
                 assertTrue(folder.setWritable(false))
             } finally {
                 disk.resume()
