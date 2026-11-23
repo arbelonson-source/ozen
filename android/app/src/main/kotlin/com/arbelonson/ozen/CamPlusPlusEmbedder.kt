@@ -1,18 +1,19 @@
 package com.arbelonson.ozen
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.os.SystemClock
 import com.arbelonson.ozen.core.KaldiFBank
 import com.arbelonson.ozen.core.RetryingModel
 import com.arbelonson.ozen.core.SpeakerEmbedding
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class CamPlusPlusEmbedder(
     private val context: Context,
     note: (String) -> Unit = {},
     nowMillis: () -> Long = SystemClock::elapsedRealtime,
+    private val readModel: (AssetManager, String) -> ByteBuffer = ModelAssets::read,
 ) : SpeakerEmbedding {
     private val fbank = KaldiFBank()
     private val model = RetryingModel("speaker voice model", ::loadInterpreter, nowMillis, note)
@@ -33,12 +34,7 @@ class CamPlusPlusEmbedder(
         return output[0].takeIf { print -> print.all { it.isFinite() } }
     }
 
-    private fun loadInterpreter(): Interpreter {
-        val bytes = context.assets.open(MODEL).use { it.readBytes() }
-        val buffer = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder()).put(bytes)
-        buffer.rewind()
-        return Interpreter(buffer, Interpreter.Options().setNumThreads(1))
-    }
+    private fun loadInterpreter(): Interpreter = Interpreter(readModel(context.assets, MODEL), Interpreter.Options().setNumThreads(1))
 
     companion object {
         const val MODEL = "campp.tflite"
