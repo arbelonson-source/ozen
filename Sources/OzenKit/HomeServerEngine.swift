@@ -398,6 +398,10 @@ public actor HomeServerEngine: TranscriptionEngine {
 
     private enum HeartbeatStep { case ping, wait(Duration), lost }
 
+    /// Whether the last ping sent still waits for its answer to be taken
+    /// in, so a test moving its own clock can wait until it has been.
+    var pingOutstanding: Bool { pingSentAt != nil }
+
     private func notePong() {
         pingSentAt = nil
         lastHeardAt = now()
