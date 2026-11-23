@@ -177,6 +177,13 @@ class PhoneModelChooser(
             retryJob = null
             brokeOff = null
             switchState.value = PhoneModelSwitch.Idle
+            // Fetched, a model the phone cannot run took the download and
+            // was then refused as captions started; it stays unchosen, and
+            // the model in use stays.
+            if (!model.runsIn(totalMemory())) {
+                switchState.value = PhoneModelSwitch.TooLittleMemory(model.file)
+                return
+            }
             when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
                 PhoneModelChoice.Plan.UseNow -> {
                     use(model)
@@ -368,9 +375,10 @@ class PhoneModelChooser(
             val speed = measure { checkState.value = PhoneCheckState.Running(it) }
             if (speed == null) {
                 checkState.value = PhoneCheckState.Failed
-                // Kept during a test that could not measure: the model
-                // "Keep" chooses with no test running.
-                if (following) settings.current.value.let { choose(PhoneModelEstimate.recommend(it.spokenLanguage, it.effectiveGflops, totalMemory()).file) }
+                // Kept during a test that could not measure: the model this
+                // phone's own speed, if any, and memory recommend. A speed
+                // brought over from another phone would say nothing of this one.
+                if (following) settings.current.value.let { choose(PhoneModelEstimate.recommend(it.spokenLanguage, it.gflopsOn(device), totalMemory()).file) }
                 return@launch
             }
             if (captionsBusy.value) {

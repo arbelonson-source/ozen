@@ -430,6 +430,50 @@ class PhoneModelChooserTest {
     }
 
     @Test
+    fun `keeping the recommended model during a phone test that fails goes by this phone's memory, not by a speed measured on another phone`() {
+        memory = 1_850_000_000
+        settings.change { it.phoneSpeed = PhoneSpeed(1_000.0, 8, 1.0, device = "Galaxy S10") }
+        measured = null
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertTrue(chooser.followTheTest())
+        scope.advanceTimeBy(20_000)
+        scope.runCurrent()
+        assertEquals(PhoneCheckState.Failed, chooser.check.value)
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a model this phone has too little memory for in all is not downloaded or chosen, the model in use stays and the list says why under its row, while a phone with the memory gets it`() {
+        memory = 1_850_000_000
+        have("ggml-ozen-a3-q5_0.bin")
+        chooser.choose("ggml-ivrit-large-v3-turbo.bin", byHand = true)
+        scope.runCurrent()
+        assertTrue(fetched.isEmpty(), "downloaded: $fetched")
+        assertNull(saved().phoneModelFile)
+        assertEquals("ggml-ivrit-large-v3-turbo.bin", chooser.switching.value.fileOrNull)
+        assertEquals(0, applied)
+
+        memory = 2_600_000_000
+        chooser.choose("ggml-ivrit-large-v3-turbo.bin", byHand = true)
+        scope.runCurrent()
+        assertEquals(listOf("ggml-ivrit-large-v3-turbo.bin"), fetched)
+        assertEquals("ggml-ivrit-large-v3-turbo.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a model this phone has too little memory for in all is not switched to even when its file is on the phone`() {
+        memory = 1_850_000_000
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-ivrit-large-v3-turbo.bin")
+        chooser.choose("ggml-ivrit-large-v3-turbo.bin", byHand = true)
+        scope.runCurrent()
+        assertNull(saved().phoneModelFile)
+        assertEquals(0, applied)
+    }
+
+    @Test
     fun `with no phone test running, keeping the recommended model is left to the caller and nothing waits for a test`() {
         assertFalse(chooser.followTheTest())
         measured = PhoneSpeed(12.0, 2, 2.0)

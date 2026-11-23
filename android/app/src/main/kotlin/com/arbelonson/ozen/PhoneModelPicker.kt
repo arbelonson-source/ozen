@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.CaptionProblemText
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
@@ -114,6 +115,7 @@ internal val PhoneModelSwitch.fileOrNull: String?
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> file
         is PhoneModelSwitch.NotEnoughRoom -> file
+        is PhoneModelSwitch.TooLittleMemory -> file
         is PhoneModelSwitch.WaitingForWiFi -> file
         is PhoneModelSwitch.Offline -> file
         is PhoneModelSwitch.Retrying -> file
@@ -287,6 +289,7 @@ private fun switchNoteText(switching: PhoneModelSwitch): String? =
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> tr("הכתוביות ממשיכות עם המודל הנוכחי עד שהחדש יהיה מוכן.", "Captions keep using the current model until the new one is ready.")
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
+        is PhoneModelSwitch.TooLittleMemory -> CaptionProblemText.notEnoughMemory()
         is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.")
         is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
         is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")

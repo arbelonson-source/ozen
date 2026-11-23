@@ -80,6 +80,20 @@ class CloudCoverHomeSoonerTest {
     }
 
     @Test
+    fun `an installed phone model this phone has too little memory for hands over to the home computer, as one that fails to load does`() = runTest {
+        val cloud = FakeEngine(kind = TranscriptionEngineKind.Cloud)
+        val tooBig = EngineAvailability.unavailable(EngineUnavailability.Kind.NotEnoughMemory, "the phone has too little memory for the model")
+        val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit, availability = tooBig)
+        val captions = pipelineOf(cloud, phone, homeAnswering())
+        captions.start(settings())
+        assertTrue(eventually { on(captions, TranscriptionEngineKind.Cloud) })
+        cloud.endStream(throwing = lost())
+        assertTrue(eventually { on(captions, homeKind) })
+        assertTrue(captions.isCoveringForCloud)
+        assertEquals(1, phone.prepareCount)
+    }
+
+    @Test
     fun `a phone model that fails to load and a home computer that does not answer stay as before`() = runTest {
         val cloud = FakeEngine(kind = TranscriptionEngineKind.Cloud)
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit, availability = loadFailure())
