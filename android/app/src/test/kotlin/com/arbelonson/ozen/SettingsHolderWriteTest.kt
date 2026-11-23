@@ -99,4 +99,12 @@ class SettingsHolderWriteTest {
         waited.get(5, TimeUnit.SECONDS)
         assertTrue(relaunched().flashCameraLight, "after a relaunch")
     }
+
+    @Test
+    fun `waiting for the writes, as the app leaves the screen, writes a change handed to another thread to write`() {
+        val holder = SettingsHolder(store)
+        holder.changeInTurn { it.saveHistory = false }
+        assertTrue(holder.waitForWrites())
+        assertFalse(relaunched().saveHistory, "after a relaunch")
+    }
 }

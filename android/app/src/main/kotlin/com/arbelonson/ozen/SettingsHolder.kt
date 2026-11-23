@@ -38,7 +38,8 @@ class SettingsHolder(
     }
 
     fun waitForWrites(): Boolean = synchronized(oneWriteAtATime) {
-        if (writeAsked.getAndSet(false)) written() else lastSaved
+        val waiting = synchronized(oneChangeAtATime) { unwritten.isNotEmpty() }
+        if (writeAsked.getAndSet(false) || waiting) written() else lastSaved
     }
 
     fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = changeInTurn(edit)()
