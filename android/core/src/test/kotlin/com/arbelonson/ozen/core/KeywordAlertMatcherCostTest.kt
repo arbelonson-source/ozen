@@ -42,6 +42,18 @@ class KeywordAlertMatcherCostTest {
     }
 
     @Test
+    fun `a name with other forms on one list or none is looked up without making a new set`() {
+        val both = HebrewText.affectionateVariants.keys.intersect(HebrewText.otherForms.keys)
+        val stems = (HebrewText.affectionateVariants.keys + HebrewText.otherForms.keys + listOf("נועה", "יונתן", "Dana")).filter { it !in both }
+        assertTrue(stems.size >= 10)
+        stems.indices.forEach { HebrewText.alternateForms(stems[it]) }
+        val before = threadMemory.currentThreadAllocatedBytes
+        repeat(10) { for (index in stems.indices) HebrewText.alternateForms(stems[index]) }
+        val each = (threadMemory.currentThreadAllocatedBytes - before) / (10 * stems.size)
+        assertTrue(each < FORMS_BYTES_ALLOWED, "looking up a name's other forms allocated $each bytes each time")
+    }
+
+    @Test
     fun `a live line with a direction mark costs a word about what a short one does`() {
         val matcher = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "נועה")), "he")
         fun line(words: Int) = "\u200F" + (1..words).joinToString(" ") { "מילה$it" } + " הטל..."
@@ -104,5 +116,6 @@ class KeywordAlertMatcherCostTest {
     private companion object {
         const val BYTES_PER_NAME_ALLOWED = 3_072L
         const val FOLDING_BYTES_ALLOWED = 256L
+        const val FORMS_BYTES_ALLOWED = 8L
     }
 }

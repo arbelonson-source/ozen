@@ -69,6 +69,63 @@ class LineShapingCostTest {
         assertTrue(each < ASKING_BYTES_ALLOWED, "asking whether a language reads from the right allocated $each bytes each time")
     }
 
+    /** What [shape] allocates for each word more that [long] has than [short], [long] having [LONG_LINE] words and [short] [SHORT_LINE]. */
+    private fun bytesPerWord(short: String, long: String, shape: (String) -> Unit): Long {
+        val shortCost = bytesEach(TIMES) { repeat(TIMES) { shape(short) } }
+        val longCost = bytesEach(TIMES) { repeat(TIMES) { shape(long) } }
+        return (longCost - shortCost) / (LONG_LINE - SHORT_LINE)
+    }
+
+    @Test
+    fun `breaking a growing line into paragraphs costs little for each word on it`() {
+        val failures = ArrayList<String>()
+        val languages = listOf(Triple("he", hebrew, HEBREW_PARAGRAPH_BYTES_PER_WORD_ALLOWED), Triple("en", english, ENGLISH_PARAGRAPH_BYTES_PER_WORD_ALLOWED))
+        for ((language, words, allowed) in languages) {
+            val perWord = bytesPerWord(line(words, SHORT_LINE), line(words, LONG_LINE)) { CaptionLayout.readableText(it) }
+            if (perWord >= allowed) failures += "in \"$language\", breaking the line into paragraphs allocated $perWord bytes for each word of it, $allowed allowed"
+        }
+        assertEquals(emptyList(), failures, failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `marking each paragraph of a growing line to read from the right costs little for each word on it`() {
+        val short = CaptionLayout.readableText(line(hebrew, SHORT_LINE))
+        val long = CaptionLayout.readableText(line(hebrew, LONG_LINE))
+        assertTrue(long.count { it == '\n' } >= 4)
+        val perWord = bytesPerWord(short, long) { CaptionLayout.directed(it, "he") }
+        assertTrue(perWord < MARKING_BYTES_PER_WORD_ALLOWED, "marking the paragraphs allocated $perWord bytes for each word of the line, $MARKING_BYTES_PER_WORD_ALLOWED allowed")
+    }
+
+    @Test
+    fun `a line with no phone number, star code or dose in it is drawn and copied as it is, with nothing made`() {
+        val said = line(hebrew, LONG_LINE)
+        val joining = bytesEach(TIMES) { repeat(TIMES) { CaptionLayout.joiningNumbers(said, "he") } }
+        val findingNumbers = bytesEach(TIMES) { repeat(TIMES) { NumberEmphasis.ranges(said, "he") } }
+        val isolating = bytesEach(TIMES) { repeat(TIMES) { CaptionLayout.isolatingNumbers(said) } }
+        assertTrue(
+            joining - findingNumbers < NOTHING_TO_CHANGE_BYTES_ALLOWED && isolating < NOTHING_TO_CHANGE_BYTES_ALLOWED,
+            "a line with nothing to join allocated $joining bytes to join, $findingNumbers of them finding its numbers, " +
+                "and $isolating to isolate its phone numbers",
+        )
+    }
+
+    @Test
+    fun `a phone number just said at the end of a growing line is isolated in one copy of the line`() {
+        val number = " 050-1234567"
+        val short = line(hebrew, SHORT_LINE) + number
+        val long = line(hebrew, LONG_LINE) + number
+        assertTrue(CaptionLayout.isolatingNumbers(long).endsWith("\u2066050-1234567\u2069"))
+        val perWord = bytesPerWord(short, long) { CaptionLayout.isolatingNumbers(it) }
+        assertTrue(perWord < ISOLATING_BYTES_PER_WORD_ALLOWED, "isolating the phone number allocated $perWord bytes for each word of the line, $ISOLATING_BYTES_PER_WORD_ALLOWED allowed")
+    }
+
+    @Test
+    fun `asking whether a line has a right-to-left letter makes nothing new`() {
+        val said = line(english, LONG_LINE)
+        val each = bytesEach(TIMES) { repeat(TIMES) { TextDirection.containsRightToLeftLetter(said) } }
+        assertTrue(each < ASKING_BYTES_ALLOWED, "asking whether a line has a right-to-left letter allocated $each bytes each time")
+    }
+
     private companion object {
         const val SHORT_LINE = 6
         const val LONG_LINE = 100
@@ -77,5 +134,10 @@ class LineShapingCostTest {
         const val ENGLISH_BYTES_PER_WORD_ALLOWED = 150L
         const val AGAIN_BYTES_ALLOWED = 64L
         const val ASKING_BYTES_ALLOWED = 16L
+        const val HEBREW_PARAGRAPH_BYTES_PER_WORD_ALLOWED = 40L
+        const val ENGLISH_PARAGRAPH_BYTES_PER_WORD_ALLOWED = 20L
+        const val MARKING_BYTES_PER_WORD_ALLOWED = 40L
+        const val NOTHING_TO_CHANGE_BYTES_ALLOWED = 64L
+        const val ISOLATING_BYTES_PER_WORD_ALLOWED = 32L
     }
 }

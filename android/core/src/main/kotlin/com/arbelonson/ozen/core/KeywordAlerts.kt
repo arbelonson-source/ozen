@@ -732,8 +732,11 @@ object HebrewText {
         return folded?.let { String(it) } ?: word
     }
 
-    internal fun alternateForms(stem: String): Set<String> =
-        (affectionateVariants[stem] ?: emptySet()) + (otherForms[stem] ?: emptySet())
+    internal fun alternateForms(stem: String): Set<String> {
+        val affectionate = affectionateVariants[stem] ?: return otherForms[stem] ?: emptySet()
+        val other = otherForms[stem] ?: return affectionate
+        return affectionate + other
+    }
 
     /**
      * True if [normalizedWord] is a recognized affectionate form of [stem]:

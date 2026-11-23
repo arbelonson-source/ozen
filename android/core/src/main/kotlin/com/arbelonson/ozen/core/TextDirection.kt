@@ -14,7 +14,15 @@ object TextDirection {
         return false
     }
 
-    fun containsRightToLeftLetter(text: String): Boolean = text.codePoints().anyMatch { Character.isAlphabetic(it) && isRightToLeftLetter(it) }
+    fun containsRightToLeftLetter(text: String): Boolean {
+        var index = 0
+        while (index < text.length) {
+            val codePoint = text.codePointAt(index)
+            if (Character.isAlphabetic(codePoint) && isRightToLeftLetter(codePoint)) return true
+            index += Character.charCount(codePoint)
+        }
+        return false
+    }
 
     fun marked(text: String): String =
         if (opensLeftToRight(text) && containsRightToLeftLetter(text)) RIGHT_TO_LEFT_MARK + text else text
