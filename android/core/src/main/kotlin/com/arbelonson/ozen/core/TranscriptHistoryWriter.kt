@@ -141,16 +141,21 @@ class TranscriptHistoryWriter(
      * the one write that must not be lost, not for the whole
      * conversation's search index too.
      */
-    fun saveNow(record: TranscriptSessionRecord): Boolean {
-        var saved = false
-        queue.sync {
-            saved = failure.capture { store.save(record, updateSearchCaches = false) }
-            lastWritten.record = if (saved) record else null
-            if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
-            pendingRenames.dropTexts(record)
-            catchUp(record.id)
-        }
-        return saved
+    fun saveNow(record: TranscriptSessionRecord): Boolean = saveInTurn(record)()
+
+    /**
+     * [saveNow] handed in now, so every save asked after this call lands
+     * after it; the function returned waits for it and says whether it
+     * reached the disk. History's star is handed in by the main thread,
+     * which must not wait for a slow disk, and waited for on its own thread.
+     */
+    fun saveInTurn(record: TranscriptSessionRecord): () -> Boolean = queue.queued {
+        val saved = failure.capture { store.save(record, updateSearchCaches = false) }
+        lastWritten.record = if (saved) record else null
+        if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
+        pendingRenames.dropTexts(record)
+        catchUp(record.id)
+        saved
     }
 
     /**
@@ -211,7 +216,13 @@ class TranscriptHistoryWriter(
         }
         val record = waiting ?: store.loadThrowing(id) ?: return@sync null
         val texts = pendingRenames.texts.filter { it.sessionID == id }
-        record.copy(segments = record.segments.map { line -> texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line })
+        val stars = pendingRenames.stars.filter { it.sessionID == id }
+        record.copy(
+            segments = record.segments.map { line ->
+                val fixed = texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line
+                stars.lastOrNull { it.segmentID == line.id }?.let { fixed.copy(isStarred = it.starring) } ?: fixed
+            },
+        )
     }
 
     /**
@@ -254,6 +265,14 @@ class TranscriptHistoryWriter(
                 failure.record(error.toString())
             }
         }
+        for (next in pendingRenames.stars.toList()) {
+            try {
+                store.toggleStar(next.segmentID, next.sessionID, next.starring, throwIfUnreadable = true)
+                pendingRenames.stars.remove(next)
+            } catch (error: Exception) {
+                failure.record(error.toString())
+            }
+        }
     }
 
     /**
@@ -284,7 +303,7 @@ class TranscriptHistoryWriter(
     private fun catchUp(current: UUID?): Boolean {
         retrySaves(current)
         retryRenames()
-        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()
+        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty() && pendingRenames.stars.isEmpty()
     }
 
     /** The waiting renames, oldest first; one refused stops the rest. */
@@ -421,7 +440,7 @@ class TranscriptHistoryWriter(
      * the next save. With nothing waiting, an earlier error stays as it was.
      */
     private fun catchUpAfterFix() {
-        val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty()
+        val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty() || pendingRenames.stars.isNotEmpty()
         if (catchUp(null) && waited) failure.clear()
     }
 
@@ -455,15 +474,49 @@ class TranscriptHistoryWriter(
      * the last save's outcome, it took away the warning of a save that
      * really had failed, while the phone was still full.
      */
-    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
+    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? =
+        queue.sync { toggleStarOnQueue(sessionID, segmentID, keepingRefused, to) }
+
+    /**
+     * [toggleStarNow] handed in now, so every save asked after this call
+     * lands after it; the function returned waits for it. History takes a
+     * refused star back this way, from the main thread, in a conversation
+     * Clear captions took off the screen meanwhile.
+     */
+    fun toggleStarInTurn(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean, to: Boolean): () -> Boolean? =
+        queue.queued { toggleStarOnQueue(sessionID, segmentID, keepingRefused, to) }
+
+    /**
+     * The caption screen's star of a line a long quiet closed:
+     * [toggleStarNow] giving the line [to], in the first of [sessionIDs]
+     * whose file has it, handed in now and not waited for. The screen shows
+     * the star from memory, and on a phone slow to write it froze while the
+     * star was written.
+     */
+    fun toggleStarInBackground(sessionIDs: List<UUID>, segmentID: UUID, to: Boolean) {
+        queue.async {
+            for (sessionID in sessionIDs) if (toggleStarOnQueue(sessionID, segmentID, keepingRefused = true, to = to) != null) break
+        }
+    }
+
+    /**
+     * [toggleStarNow]'s work. A star the disk refuses with no waiting version
+     * of its line waits for room by itself when [keepingRefused], as a text
+     * fix does: History took a refused star back after Clear captions had
+     * saved its conversation with it, and the star came back once there was
+     * room.
+     */
+    private fun toggleStarOnQueue(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean, to: Boolean?): Boolean? {
         lastWritten.record = null
-        val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
+        val sameLine = { star: PendingStar -> star.sessionID == sessionID && star.segmentID == segmentID }
+        val starring = to ?: pendingRenames.stars.lastOrNull(sameLine)?.let { !it.starring }
+            ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
         val star = { failure.capture(counts = { succeeded -> !succeeded || result != null }) { result = store.toggleStar(segmentID, sessionID, starring) } }
         var reached = star()
         if (reached && result == null && !keepingRefused && pendingSaves.records[sessionID]?.segments?.any { it.id == segmentID } == true) {
             catchUp(null)
-            if (pendingSaves.records.containsKey(sessionID)) return@sync null
+            if (pendingSaves.records.containsKey(sessionID)) return null
             reached = star()
         }
         val counted = !reached || result != null
@@ -479,8 +532,14 @@ class TranscriptHistoryWriter(
                 result = starred
             }
         }
+        if (reached && result != null) pendingRenames.stars.removeAll(sameLine)
+        if (!reached && keepingRefused && result == null && starring != null) {
+            pendingRenames.stars.removeAll(sameLine)
+            pendingRenames.stars += PendingStar(sessionID, segmentID, starring)
+            result = starring
+        }
         if (counted) catchUp(null) else catchUpAfterFix()
-        result
+        return result
     }
 
     /**
@@ -492,11 +551,12 @@ class TranscriptHistoryWriter(
             lastWritten.record = null
             pendingSaves.records.remove(id)
             pendingRenames.texts.removeAll { it.sessionID == id }
+            pendingRenames.stars.removeAll { it.sessionID == id }
             store.delete(id)
             // Deleting the one conversation that could not be written left
             // the warning up until the next save, while captions were stopped
             // for good.
-            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()) {
+            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty() && pendingRenames.stars.isEmpty()) {
                 failure.clear()
             }
         }
@@ -515,18 +575,21 @@ class TranscriptHistoryWriter(
         store.deleteAll()
         pendingRenames.list.clear()
         pendingRenames.texts.clear()
+        pendingRenames.stars.clear()
         failure.clear()
     }
 
     /**
      * Deletes conversations that have outlived the retention setting,
-     * after the saves already queued. Returns how many were deleted.
+     * after the saves already queued. Returns how many were deleted. One
+     * with a star still waiting for room is kept: its file had no star yet,
+     * and the conversation was deleted as old, star and all.
      */
     fun deleteExpiredNow(retention: HistoryRetention, now: Double, protecting: Set<UUID>): Int {
         val cutoff = retention.cutoff(now) ?: return 0
         return queue.sync {
             lastWritten.record = null
-            store.deleteConversations(cutoff, protecting)
+            store.deleteConversations(cutoff, protecting + pendingRenames.stars.filter { it.starring }.map { it.sessionID })
         }
     }
 
@@ -571,20 +634,24 @@ class TranscriptHistoryWriter(
 
     private class PendingText(val sessionID: UUID, val segmentID: UUID, val text: String)
 
-    /** Voice renames and line-text fixes not yet written to every saved conversation. Only touched on the writer's queue. */
+    private class PendingStar(val sessionID: UUID, val segmentID: UUID, val starring: Boolean)
+
+    /** Voice renames, line-text fixes and stars not yet written to every saved conversation. Only touched on the writer's queue. */
     private class PendingRenames {
         val list = ArrayList<PendingRename>()
         val texts = ArrayList<PendingText>()
+        val stars = ArrayList<PendingStar>()
 
         /**
          * A save of a conversation, written or left waiting, is newer than any
-         * text of its lines still waiting: that text was written after it
-         * once there was room, and History's next fix started from the older
-         * words.
+         * text or star of its lines still waiting: that text was written after
+         * it once there was room, and History's next fix started from the
+         * older words.
          */
         fun dropTexts(record: TranscriptSessionRecord) {
             val lines = record.segments.mapTo(HashSet()) { it.id }
             texts.removeAll { it.sessionID == record.id && it.segmentID in lines }
+            stars.removeAll { it.sessionID == record.id && it.segmentID in lines }
         }
     }
 

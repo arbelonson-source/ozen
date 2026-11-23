@@ -44,7 +44,7 @@ class ConversationSaver(
     private val speakerName: (TranscriptSegment) -> String?,
     private val inputName: () -> String?,
     private val startNewConversation: () -> Unit,
-    private val setSaveHistory: (Boolean) -> Unit,
+    private val setSaveHistory: (Boolean) -> Unit = {},
     private val scope: CoroutineScope,
     private val now: () -> Double = { System.currentTimeMillis() / 1_000.0 },
     private val io: CoroutineContext = Dispatchers.IO,
@@ -65,6 +65,17 @@ class ConversationSaver(
      * main thread. [speakerName] itself when its names never change.
      */
     private val speakerNames: () -> (TranscriptSegment) -> String? = { speakerName },
+    /**
+     * [setSaveHistory] in two steps, for History's switch: the setting
+     * changes when this is called, on the main thread, and the function
+     * returned writes it, off that thread. [setSaveHistory] itself, with
+     * nothing left to write, when the setting is kept only in memory.
+     */
+    private val saveHistoryInTurn: (Boolean) -> () -> Unit = { on ->
+        setSaveHistory(on)
+        val nothingToWrite: () -> Unit = {}
+        nothingToWrite
+    },
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -79,6 +90,9 @@ class ConversationSaver(
     private class Closed(val lines: IntRange, val record: TranscriptSessionRecord?)
     private val reading = mutableSetOf<UUID>()
     private val starred = mutableSetOf<UUID>()
+
+    /** How many times each line's star was given or taken away: a star History could not save is taken back only while it is still the line's newest. */
+    private val starTurns = HashMap<UUID, Int>()
     private var sawListening = false
     private var autosave: Job? = null
     private var lastRetentionCheck = 0.0
@@ -119,9 +133,13 @@ class ConversationSaver(
     fun save(ended: Boolean, endedAt: Double? = null): TranscriptSessionRecord? = write(ended, endedAt)?.first
 
     /** [save], and whether this conversation reached the disk: another one still waiting for room may fail meanwhile. */
-    private fun write(ended: Boolean, endedAt: Double?): Pair<TranscriptSessionRecord, Boolean>? {
+    private fun write(ended: Boolean, endedAt: Double?): Pair<TranscriptSessionRecord, Boolean>? =
+        writeInTurn(ended, endedAt)?.let { (record, written) -> record to written() }
+
+    /** [write] handed to the writer now; the function returned waits for it. */
+    private fun writeInTurn(ended: Boolean, endedAt: Double?): Pair<TranscriptSessionRecord, () -> Boolean>? {
         val record = recording(ended, endedAt, speakerName)?.invoke() ?: return null
-        val written = writer.saveNow(record)
+        val written = writer.saveInTurn(record)
         deleteExpiredIfDue()
         return record to written
     }
@@ -225,11 +243,23 @@ class ConversationSaver(
      * Switched off, what was said until now is kept and nothing after it;
      * switched back on, saving starts with the next line. Without this the
      * next save after switching back on wrote every line said while it was off.
+     *
+     * History switches on the main thread, and a phone can be slow to write.
+     * The conversation is closed and handed to the writer, and the setting
+     * changed, in this one step, so no line said after it is saved, and
+     * every save and every History action asked after it lands after the
+     * conversation is written. The function returned waits for that write
+     * and then writes the setting, off the main thread: waited for on it, a
+     * slow write froze the screen.
      */
-    fun switchSaving(on: Boolean) {
-        if (on == settings().saveHistory) return
-        close(endedAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp })
-        setSaveHistory(on)
+    fun switchSaving(on: Boolean): () -> Unit {
+        if (on == settings().saveHistory) return {}
+        val closing = closeInTurn(endedAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp })
+        val stored = saveHistoryInTurn(on)
+        return {
+            closing()
+            stored()
+        }
     }
 
     val lastSaveFailure: String? get() = writer.lastFailure
@@ -254,11 +284,20 @@ class ConversationSaver(
     }
 
     private fun close(endedAt: Double?) {
+        closeInTurn(endedAt)()
+    }
+
+    /** [close] with its save handed to the writer now; the function returned waits for it. */
+    private fun closeInTurn(endedAt: Double?): () -> Unit {
+        var written: () -> Boolean = { true }
         if (settings().saveHistory) {
-            closed[id] = Closed(offset until lines().size, save(ended = true, endedAt = endedAt))
+            val saving = writeInTurn(ended = true, endedAt = endedAt)
+            closed[id] = Closed(offset until lines().size, saving?.first)
             closedLines = null
+            saving?.let { written = it.second }
         }
         forgetCurrent()
+        return { written() }
     }
 
     /**
@@ -358,25 +397,78 @@ class ConversationSaver(
      * files, which a version waiting for room or the caption screen can
      * differ from (a star taken off there while the phone was full), and its
      * Remove the star, as a tap, put the star back on such a line.
+     *
+     * History asks from its own thread, and a phone can be slow to write.
+     * Which conversation the line is in, its star on screen and the save of
+     * the conversation being captioned are decided and handed to the writer
+     * in steps of the main thread, which changes the lines at every word;
+     * only the wait for the disk is History's. Waited for on the main
+     * thread, a slow write froze the screen. A line a long quiet closed,
+     * still on screen, is starred the same way, on screen and handed to the
+     * writer in one step: starred in its file from History's thread first
+     * and only then on screen, a voice named in between saved the
+     * conversation from the screen, after the star and without it.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean? {
-        if (sessionID != id) {
-            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false, to = to)?.also { mark(segmentID, it) }
+        var earlier = false
+        var asked: HistoryStar? = null
+        onMainThread {
+            val shown = if (sessionID == id) currentLines.any { it.id == segmentID } else closedShows(sessionID, segmentID)
+            earlier = sessionID != id && !shown
+            if (shown) {
+                val had = segmentID in starred
+                val starring = to ?: !had
+                val written = starInTurn(sessionID, segmentID, starring)
+                asked = HistoryStar(starring, had, written, starTurns.getValue(segmentID))
+            }
         }
-        if (currentLines.none { it.id == segmentID }) return null
-        val had = segmentID in starred
-        val (starring, written) = starCurrentLine(segmentID, to ?: !had)
-        if (!written) {
-            starCurrentLine(segmentID, had)
-            return null
+        if (earlier) {
+            val starring = writer.toggleStarNow(sessionID, segmentID, keepingRefused = false, to = to) ?: return null
+            onMainThread { mark(segmentID, starring) }
+            return starring
         }
-        return starring
+        val star = asked ?: return null
+        if (star.written()) return star.starring
+        var undone: () -> Boolean = { true }
+        onMainThread { if (starTurns[segmentID] == star.turn) undone = starInTurn(sessionID, segmentID, star.had, undoing = true) }
+        undone()
+        return null
     }
 
-    /** Gives a line of the conversation being captioned [starring] and saves it: its new state, and whether the save reached the disk. */
-    private fun starCurrentLine(segmentID: UUID, starring: Boolean = segmentID !in starred): Pair<Boolean, Boolean> {
+    /**
+     * A star History gave a line on screen: its new state, the one it had,
+     * the wait for its save, and its turn among the line's stars. A star
+     * given on the caption screen since is newer, and has its own save.
+     */
+    private class HistoryStar(val starring: Boolean, val had: Boolean, val written: () -> Boolean, val turn: Int)
+
+    /** Whether [segmentID] is on screen among the lines of [sessionID], a conversation a long quiet closed, whose saves are made from the screen. */
+    private fun closedShows(sessionID: UUID, segmentID: UUID): Boolean {
+        val conversation = closed[sessionID]?.takeIf { it.record != null } ?: return false
+        val all = lines()
+        return all.subList(minOf(conversation.lines.first, all.size), minOf(conversation.lines.last + 1, all.size)).any { it.id == segmentID }
+    }
+
+    /**
+     * [toggleStar]'s step on the main thread: gives the line [starring] and
+     * hands the writer its save. The conversation being captioned is saved
+     * as the screen shows it now. In any other, the line alone takes the
+     * star in its file, in turn: saved whole from the screen, a conversation
+     * a long quiet closed lost a word History had fixed in it a moment
+     * before, which reached the screen only after its file. Marked here,
+     * every later save of it from the screen keeps the star.
+     *
+     * [undoing] takes back a star the phone refused, in the file and in any
+     * version waiting for room, and waits for room itself when nothing else
+     * does: Clear captions may have saved the conversation with the star
+     * meanwhile, and taken back only on the screen, a star History said was
+     * not saved reached the file once there was room.
+     */
+    private fun starInTurn(sessionID: UUID, segmentID: UUID, starring: Boolean, undoing: Boolean = false): () -> Boolean {
         mark(segmentID, starring)
-        return starring to (write(ended = false, endedAt = null)?.second ?: true)
+        if (sessionID == id) return writeInTurn(ended = false, endedAt = null)?.second ?: { true }
+        val saved = writer.toggleStarInTurn(sessionID, segmentID, keepingRefused = undoing, to = starring)
+        return { saved() != null }
     }
 
     fun fixLiveLine(segmentID: UUID, text: String) {
@@ -459,17 +551,21 @@ class ConversationSaver(
      * conversation it belongs to: the one being captioned, or one closed by
      * a long quiet whose lines are still on screen. With saving off the star
      * still shows on the line.
+     *
+     * The star is the other state of what the line shows, and its save is
+     * handed to the writer without waiting: the main thread draws the
+     * captions, and on a phone slow to write they froze until the
+     * conversation was written. A save the phone refuses waits for room
+     * with the star, which stays on the line, as before.
      */
     fun toggleLiveStar(segmentID: UUID): Boolean {
-        if (currentLines.any { it.id == segmentID }) return starCurrentLine(segmentID).first
-        for (conversation in closed.keys.reversed()) {
-            writer.toggleStarNow(conversation, segmentID)?.let { starring ->
-                mark(segmentID, starring)
-                return starring
-            }
-        }
         val starring = segmentID !in starred
         mark(segmentID, starring)
+        if (currentLines.any { it.id == segmentID }) {
+            writeInTurn(ended = false, endedAt = null)
+        } else if (closed.isNotEmpty()) {
+            writer.toggleStarInBackground(closed.keys.reversed(), segmentID, starring)
+        }
         return starring
     }
 
@@ -477,6 +573,7 @@ class ConversationSaver(
 
     private fun mark(segmentID: UUID, starring: Boolean) {
         if (starring) starred += segmentID else starred -= segmentID
+        starTurns[segmentID] = (starTurns[segmentID] ?: 0) + 1
     }
 
     fun isCurrent(id: UUID): Boolean = id == this.id

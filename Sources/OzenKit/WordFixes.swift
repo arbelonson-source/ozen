@@ -433,9 +433,18 @@ public enum WordFixes {
         let inside: Bool
     }
 
+    /// A kanji as a run of them reads on: an ideograph, 〆 and 〇 among
+    /// them, or the repeat mark 々, which writes the one before it again
+    /// (佐々木, 時々).
     private static func isHan(_ scalar: Unicode.Scalar) -> Bool {
-        scalar.properties.isIdeographic && !(0x3000...0x303F).contains(scalar.value)
+        switch scalar.value {
+        case 0x3005...0x3007: return true
+        case 0x3000...0x303F: return false
+        default: return scalar.properties.isIdeographic
+        }
     }
+
+    private static let repeatMark: UInt32 = 0x3005
 
     private static func isKatakanaLetter(_ scalar: Unicode.Scalar) -> Bool {
         switch scalar.value {
@@ -466,10 +475,15 @@ public enum WordFixes {
     /// kana, with a middle dot between names (ジョン・スミス), holding a Han
     /// character or a katakana letter. One all in hiragana is not: hiragana
     /// runs on through particles and verb endings (さくらが, 高かった), so
-    /// where it starts or stops is no word's edge.
+    /// where it starts or stops is no word's edge. The repeat mark 々 writes
+    /// the character before it again, so it is not the Han character a
+    /// heard word must hold, and one starting with it (々, 々木) is not read
+    /// inside words either.
     private static func readsInsideWords(_ heard: String) -> Bool {
         let scalars = heard.unicodeScalars
-        return scalars.allSatisfy { isJapanese($0) || $0.value == 0x30FB || $0.value == 0xFF65 } && scalars.contains { isHan($0) || isKatakanaLetter($0) }
+        guard let first = scalars.first, first.value != repeatMark else { return false }
+        return scalars.allSatisfy { isJapanese($0) || $0.value == 0x30FB || $0.value == 0xFF65 }
+            && scalars.contains { (isHan($0) && $0.value != repeatMark) || isKatakanaLetter($0) }
     }
 
     /// Whether `heard` at `start` in `line` takes in the whole katakana run

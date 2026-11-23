@@ -17,29 +17,43 @@ class SettingsHolder(private val store: SettingsStore) {
     private val takenUpFrom = MutableSharedFlow<AppSettings>(extraBufferCapacity = 8)
     val takenUp: SharedFlow<AppSettings> = takenUpFrom.asSharedFlow()
     private val oneChangeAtATime = Any()
+    private val oneWriteAtATime = Any()
+    private val unwritten = ArrayList<(AppSettings) -> Unit>()
 
     fun change(edit: (AppSettings) -> Unit) {
         changeAndSave(edit)
     }
 
-    fun changeAndSave(edit: (AppSettings) -> Unit): Boolean {
+    fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = changeInTurn(edit)()
+
+    fun changeInTurn(edit: (AppSettings) -> Unit): () -> Boolean {
+        synchronized(oneChangeAtATime) {
+            state.value = state.value.copy().also(edit)
+            unwritten += edit
+        }
+        return ::written
+    }
+
+    private fun written(): Boolean {
         var before: AppSettings? = null
-        val saved = synchronized(oneChangeAtATime) {
-            val next = state.value.copy().also(edit)
-            state.value = next
-            val saved = try {
-                val held = store.saveTakingUp(next)
-                if (held != next) {
-                    state.value = held
+        val saved = synchronized(oneWriteAtATime) {
+            val (next, taken) = synchronized(oneChangeAtATime) { state.value to unwritten.size }
+            val held = try {
+                store.saveTakingUp(next)
+            } catch (_: Exception) {
+                null
+            }
+            synchronized(oneChangeAtATime) {
+                val since = unwritten.drop(taken)
+                unwritten.subList(0, taken).clear()
+                if (held != null && held != next) {
+                    state.value = held.copy().also { settings -> since.forEach { it(settings) } }
                     before = next
                 }
-                true
-            } catch (_: Exception) {
-                false
             }
             settingsUnreadable.value = store.isUnreadable
-            saveFailed.value = !saved
-            saved
+            saveFailed.value = held == null
+            held != null
         }
         before?.let(takenUpFrom::tryEmit)
         return saved

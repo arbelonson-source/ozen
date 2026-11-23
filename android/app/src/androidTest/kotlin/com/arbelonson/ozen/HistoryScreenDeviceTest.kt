@@ -5,6 +5,7 @@ import android.app.Instrumentation
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Looper
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -2528,5 +2529,198 @@ class HistoryScreenDeviceTest {
         assertNull(store.load(id))
         compose.onNodeWithText("History").assertExists()
         compose.onNodeWithText("Device history line to delete", substring = true).assertDoesNotExist()
+    }
+
+    // History saved a star on the main thread: on a phone slow to write,
+    // the screen froze until the conversation was written, and a write that
+    // stuck could close the app as not responding. A star here says whether
+    // it was saved on the main thread and how many were under way at once,
+    // and a held one stays under way until the test lets it go.
+    private class StarringConversation(vararg said: String, starredAtFirst: Boolean = false) : SavedConversations {
+        val id: UUID = UUID.randomUUID()
+        private val lines = said.map { UUID.randomUUID() }
+        private val texts = lines.zip(said).toMap()
+        private val starred: MutableSet<UUID> = ConcurrentHashMap.newKeySet<UUID>().also { if (starredAtFirst) it += lines }
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        private val nextHold = AtomicReference<CountDownLatch?>()
+        private val underWay = AtomicInteger()
+        val onMainThread = CopyOnWriteArrayList<Boolean>()
+        val begun = AtomicInteger()
+        val answered = AtomicInteger()
+        val mostAtOnce = AtomicInteger()
+
+        fun holdNextStar() = CountDownLatch(1).also(nextHold::set)
+
+        private fun segment(line: UUID) = SavedSegment(line, texts.getValue(line), null, null, startedAt, true, isStarred = line in starred)
+
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean {
+            onMainThread += Looper.myLooper() == Looper.getMainLooper()
+            mostAtOnce.accumulateAndGet(underWay.incrementAndGet(), ::maxOf)
+            begun.incrementAndGet()
+            try {
+                nextHold.getAndSet(null)?.await(20, TimeUnit.SECONDS)
+                val now = to ?: (segmentID !in starred)
+                if (now) starred += segmentID else starred -= segmentID
+                return now
+            } finally {
+                underWay.decrementAndGet()
+                answered.incrementAndGet()
+            }
+        }
+
+        override fun load(id: UUID) = TranscriptSessionRecord(
+            id = this.id,
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = lines.map(::segment),
+        )
+
+        override fun starredLines() = lines.filter { it in starred }.map { StarredLine(id, startedAt, segment(it), engine = TranscriptionEngineKind.HomeServer, model = "home server") }
+        override fun isCurrent(id: UUID) = false
+        override fun rename(id: UUID, title: String) = false
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String) = WordFixResult.Unreadable
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {}
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    private fun showStarring(conversation: StarringConversation) {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+    }
+
+    @Test
+    fun aStarGivenInAConversationIsSavedOffTheMainThread() {
+        val conversation = StarringConversation("Slow star test the pharmacy closes at nine")
+        showStarring(conversation)
+        compose.waitUntil(5_000) { shownLine("Slow star test the pharmacy closes at nine") }
+        lineAction("Slow star test the pharmacy closes at nine", "Mark as important")
+        compose.waitUntil(5_000) { conversation.answered.get() == 1 }
+
+        assertEquals("the star was saved on the main thread", listOf(false), conversation.onMainThread.toList())
+        compose.waitUntil(5_000) { shownLine("Marked as important. Slow star test the pharmacy closes at nine") }
+    }
+
+    // Saved on the main thread, two stars of one line asked at once were
+    // saved one after the other. Each star the phone can't save is taken
+    // back to what the line had before it, so the second must not begin
+    // while the first may still be taken back.
+    @Test
+    fun twoStarsOfOneLineAskedAtOnceAreSavedOneAfterTheOther() {
+        val conversation = StarringConversation("Twice star test the bus leaves at six")
+        showStarring(conversation)
+        compose.waitUntil(5_000) { shownLine("Twice star test the bus leaves at six") }
+        val first = conversation.holdNextStar()
+        try {
+            val star = compose.onNodeWithContentDescription("Twice star test the bus leaves at six", substring = true).fetchSemanticsNode()
+                .config[SemanticsActions.CustomActions].single { it.label == "Mark as important" }
+            compose.runOnUiThread {
+                star.action()
+                star.action()
+            }
+            compose.waitUntil(5_000) { conversation.begun.get() == 1 }
+            Thread.sleep(500)
+            compose.waitForIdle()
+            assertEquals("the second star began while the first was still being saved", 1, conversation.begun.get())
+        } finally {
+            first.countDown()
+        }
+        compose.waitUntil(5_000) { conversation.answered.get() == 2 }
+        assertEquals(1, conversation.mostAtOnce.get())
+    }
+
+    @Test
+    fun aStarTakenOffInStarredLinesIsSavedOffTheMainThread() {
+        val conversation = StarringConversation("Slow unstar test the dentist at four", starredAtFirst = true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                StarredLinesScreen(conversation, marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Slow unstar test the dentist at four") }
+        lineAction("Slow unstar test the dentist at four", "Remove the star")
+        compose.waitUntil(5_000) { conversation.answered.get() == 1 }
+
+        assertEquals("the star was taken off on the main thread", listOf(false), conversation.onMainThread.toList())
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Slow unstar test the dentist at four", substring = true).fetchSemanticsNodes().isEmpty() }
+    }
+
+    private fun answeredWithin(conversation: StarringConversation, count: Int): Int {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (conversation.answered.get() < count && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        return conversation.answered.get()
+    }
+
+    // A star asked while another was being saved waited its turn in the
+    // screen's own coroutine: leaving the conversation (turning the phone
+    // makes it again) cancelled it, and the star was never given, with no
+    // word said. The stars now wait their turn in the app.
+    @Test
+    fun aStarAskedWhileAnotherIsSavedIsStillGivenWhenTheConversationCloses() {
+        val conversation = StarringConversation("Leaving star test the bus leaves at six", "Leaving star test the train leaves at seven")
+        val open = mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Leaving star test the train leaves at seven") }
+        val first = conversation.holdNextStar()
+        try {
+            lineAction("Leaving star test the bus leaves at six", "Mark as important")
+            compose.waitUntil(5_000) { conversation.begun.get() == 1 }
+            lineAction("Leaving star test the train leaves at seven", "Mark as important")
+            compose.waitForIdle()
+            compose.runOnUiThread { open.value = false }
+            compose.waitForIdle()
+        } finally {
+            first.countDown()
+        }
+        assertEquals("the star asked while another was saved was never given", 2, answeredWithin(conversation, 2))
+        assertEquals(2, conversation.starredLines().size)
+    }
+
+    // A star taken off in Starred lines and still being saved as the list
+    // left the screen was read as still there when the list came back, and
+    // stayed: the reading after the removal went with the old list.
+    @Test
+    fun aStarTakenOffInStarredLinesStaysOffWhenTheListComesBackBeforeItIsSaved() {
+        val conversation = StarringConversation("Returning unstar test the dentist at four", starredAtFirst = true)
+        val open = mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) StarredLinesScreen(conversation, marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Returning unstar test the dentist at four") }
+        val removal = conversation.holdNextStar()
+        try {
+            lineAction("Returning unstar test the dentist at four", "Remove the star")
+            compose.waitUntil(5_000) { conversation.begun.get() == 1 }
+            compose.runOnUiThread { open.value = false }
+            compose.waitForIdle()
+            compose.runOnUiThread { open.value = true }
+            compose.waitForIdle()
+        } finally {
+            removal.countDown()
+        }
+        assertEquals(1, answeredWithin(conversation, 1))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("No starred lines").fetchSemanticsNodes().isNotEmpty() }
+        assertFalse("the line whose star came off was back in Starred lines", shownLine("Returning unstar test the dentist at four"))
     }
 }

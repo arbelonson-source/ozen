@@ -28,6 +28,7 @@ private object FixesBefore {
     private const val FINAL_SIGMA = 0x03C2
     private const val SIGMA = 0x03C3
     private const val DOTTED_CAPITAL_I = 0x0130
+    private const val REPEAT_MARK = 0x3005
 
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val letters: IntArray, val at: IntArray, val replacedEnd: Int)
     private class Compiled(val words: List<String>, val joints: List<Int>, val written: String, val exactly: Boolean, val inside: Boolean)
@@ -241,7 +242,7 @@ private object FixesBefore {
         return isLetter(start) && start !in 0x0590..0x05FF
     }
 
-    private fun isHan(c: Int) = Character.isIdeographic(c) && c !in 0x3000..0x303F
+    private fun isHan(c: Int) = c in 0x3005..0x3007 || Character.isIdeographic(c) && c !in 0x3000..0x303F
 
     private fun isKatakanaLetter(c: Int) = c in 0x30A1..0x30FA || c == 0x30FF || c in 0x31F0..0x31FF || c in 0xFF66..0xFF6F || c in 0xFF71..0xFF9D
 
@@ -251,8 +252,9 @@ private object FixesBefore {
 
     private fun isJapanese(c: Int) = isHan(c) || isKatakana(c) || isHiragana(c)
 
-    private fun readsInsideWords(heard: String) = heard.codePoints().allMatch { isJapanese(it) || it == 0x30FB || it == 0xFF65 } &&
-        heard.codePoints().anyMatch { isHan(it) || isKatakanaLetter(it) }
+    private fun readsInsideWords(heard: String) = heard.isNotEmpty() && heard.codePointAt(0) != REPEAT_MARK &&
+        heard.codePoints().allMatch { isJapanese(it) || it == 0x30FB || it == 0xFF65 } &&
+        heard.codePoints().anyMatch { (isHan(it) && it != REPEAT_MARK) || isKatakanaLetter(it) }
 
     private fun hasJapanese(text: String, word: Word): Boolean {
         var at = word.start
