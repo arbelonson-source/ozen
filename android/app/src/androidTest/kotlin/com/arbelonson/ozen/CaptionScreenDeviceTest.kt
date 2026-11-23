@@ -1054,6 +1054,43 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // The phone's speech engine runs as an app of its own, tens of megabytes
+    // held for as long as Ozen is connected to it: the screens that speak
+    // connect it as they open, and it is let go of a while after they close.
+    @Test
+    fun theSayScreenAndSettingsHoldThePhonesVoiceOnlyWhileTheyAreOpen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val voice = app.captions.voice
+        val before = app.settings.current.value.display
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        try {
+            app.settings.change { it.display = it.display.copy(autoHideControls = false) }
+            assertWithin(15_000, { "the phone's voice was never let go of" }) {
+                compose.runOnUiThread { voice.rest() }
+                voice.isResting
+            }
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Say something").assertExists()
+            assertWithin(10_000, { "the Say screen opened with the phone's voice let go of" }) { !voice.isResting }
+            keyboardAway()
+            compose.onNodeWithText("Slower, please").performScrollTo().performClick()
+            assertTrue("the quick phrase was never said", within(10_000) { app.captions.isSpeaking })
+            assertTrue("never finished", within(15_000) { !app.captions.isSpeaking })
+            compose.onNodeWithText("Close").performScrollTo().performClick()
+            compose.onNodeWithText("Say something").assertDoesNotExist()
+            assertWithin(40_000, { "the phone's voice was still held after the Say screen closed" }) { voice.isResting }
+
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Say something (type to speak)").assertExists()
+            assertWithin(10_000, { "Settings opened with the phone's voice let go of" }) { !voice.isResting }
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Say something (type to speak)").assertDoesNotExist()
+            assertWithin(40_000, { "the phone's voice was still held after Settings closed" }) { voice.isResting }
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
     @Test
     fun theSayFieldStaysInsideTheSideBarsWithThePhoneSidewaysInBothDirectionsAndLanguages() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
@@ -1391,13 +1428,16 @@ class CaptionScreenDeviceTest {
         }
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val phrasesBefore = app.settings.current.value.quickPhrases
-        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
         app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.Hebrew) }
         instrumentation.addMonitor(settings)
         try {
-            compose.runOnUiThread { app.captions.voice.installed.value = emptySet() }
+            // Opening connects the phone's speech engine, whose answer lists
+            // its voices: the missing ones are set only after that.
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             keyboardAway()
+            assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null && !app.captions.voice.isLooking })
+            compose.runOnUiThread { app.captions.voice.installed.value = emptySet() }
+            compose.waitForIdle()
             compose.onNodeWithText("Slower, please").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("No speech engine or voice is installed on this phone, so phrases can’t be read aloud.").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("No Hebrew voice is installed.").assertDoesNotExist()
@@ -1423,7 +1463,7 @@ class CaptionScreenDeviceTest {
     @Test
     fun comingBackToTheAppLooksAgainForTheVoicesThePhoneHas() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
-        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
+        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null && !app.captions.voice.isLooking })
         val real = app.captions.voice.installed.value
         val stale = setOf(UILanguage.Amharic)
         compose.runOnUiThread { app.captions.voice.installed.value = stale }

@@ -9,12 +9,15 @@ import android.speech.tts.TextToSpeech
 import androidx.annotation.RequiresApi
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.SpeakingOutput
+import java.util.concurrent.atomic.AtomicLong
 
 internal object SpeakerChoice {
     @Volatile internal var chosen = false
-    private var routed = false
-    private var callAttributes = false
-    private var devicesSeen: Set<Int>? = null
+    @Volatile private var routed = false
+    @Volatile private var callAttributes = false
+    @Volatile private var devicesSeen: Set<Int>? = null
+    private val samples = AtomicLong()
+    private var newestSample = 0L
 
     val canChoose: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -29,12 +32,18 @@ internal object SpeakerChoice {
     }
 
     private fun connected(audio: AudioManager): List<AudioDeviceInfo> {
+        val sample = sample()
         val devices = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY }
-        observe(devices.map { it.id }.toSet())
+        observe(devices.map { it.id }.toSet(), sample)
         return devices
     }
 
-    internal fun observe(ids: Set<Int>) {
+    fun sample(): Long = samples.incrementAndGet()
+
+    @Synchronized
+    internal fun observe(ids: Set<Int>, sample: Long = sample()) {
+        if (sample < newestSample) return
+        newestSample = sample
         if (devicesSeen != null && devicesSeen != ids) chosen = false
         devicesSeen = ids
     }

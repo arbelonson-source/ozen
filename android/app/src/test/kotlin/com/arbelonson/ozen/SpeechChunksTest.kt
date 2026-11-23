@@ -75,4 +75,15 @@ class SpeechChunksTest {
         assertTrue(queued.complete)
         assertEquals(3, queued.ids.distinct().size)
     }
+
+    @Test
+    fun `each piece goes to the engine under the id made for it beforehand`() {
+        val given = mutableListOf<String>()
+        val queued = SpeechChunks.queue(listOf("one", "two"), listOf("a", "b")) { _, id, _ ->
+            given += id
+            true
+        }
+        assertEquals(listOf("a", "b"), given)
+        assertEquals(listOf("a", "b"), queued.ids)
+    }
 }

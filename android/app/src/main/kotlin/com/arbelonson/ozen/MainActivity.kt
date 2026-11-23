@@ -596,11 +596,14 @@ private fun OzenApp(
                                 onFinish = onboarding.finish,
                             )
                         }
-                        Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onWordFixes = { app.captions.setWordFixes(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
-                            app.captions.showWalkthroughAgain()
-                            showingSettings.value = false
-                            settingsAtBackup.value = false
-                        }, onClearCaptions = { keepingHistory -> app.captions.clearCaptions(keepingHistory, this::askAgain); true }, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, onSoundsOnly = { showingSettings.value = false; settingsAtBackup.value = false; onSoundsOnly() }, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, onTryLight = app.captions::tryCameraLight, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        Front.Settings -> {
+                            HoldPhoneVoice(app.captions.voice)
+                            SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onWordFixes = { app.captions.setWordFixes(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                                app.captions.showWalkthroughAgain()
+                                showingSettings.value = false
+                                settingsAtBackup.value = false
+                            }, onClearCaptions = { keepingHistory -> app.captions.clearCaptions(keepingHistory, this::askAgain); true }, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, onSoundsOnly = { showingSettings.value = false; settingsAtBackup.value = false; onSoundsOnly() }, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, onTryLight = app.captions::tryCameraLight, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        }
                         Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
@@ -636,25 +639,28 @@ private fun OzenApp(
                             onClose = { choosingMicrophone = false },
                             routedElsewhere = state.routedElsewhere?.takeIf { state.captionsRunning },
                         )
-                        Front.Say -> SayScreen(
-                            draft = sayDraft,
-                            onDraft = { sayDraft = it },
-                            speaking = state.speaking,
-                            phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
-                            canSay = app.captions::canSay,
-                            onSpeak = app.captions::speak,
-                            onStop = app.captions::stopSpeaking,
-                            onAddPhrase = app.captions::addQuickPhrase,
-                            onRemovePhrase = app.captions::removeQuickPhrase,
-                            onRestorePhrase = app.captions::restoreQuickPhrase,
-                            onMovePhrase = app.captions::moveQuickPhrase,
-                            onRestorePhrases = app.captions::restoreQuickPhrases,
-                            phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),
-                            look = look,
-                            captionSize = current.display.fontSize,
-                            onClose = { saying = false },
-                            voiceNotices = VoiceNotice.forSay(Localization.language, voices),
-                        )
+                        Front.Say -> {
+                            HoldPhoneVoice(app.captions.voice)
+                            SayScreen(
+                                draft = sayDraft,
+                                onDraft = { sayDraft = it },
+                                speaking = state.speaking,
+                                phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
+                                canSay = app.captions::canSay,
+                                onSpeak = app.captions::speak,
+                                onStop = app.captions::stopSpeaking,
+                                onAddPhrase = app.captions::addQuickPhrase,
+                                onRemovePhrase = app.captions::removeQuickPhrase,
+                                onRestorePhrase = app.captions::restoreQuickPhrase,
+                                onMovePhrase = app.captions::moveQuickPhrase,
+                                onRestorePhrases = app.captions::restoreQuickPhrases,
+                                phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),
+                                look = look,
+                                captionSize = current.display.fontSize,
+                                onClose = { saying = false },
+                                voiceNotices = VoiceNotice.forSay(Localization.language, voices),
+                            )
+                        }
                         Front.History -> HistoryScreen(
                             app.captions.savedConversations,
                             saving = current.saveHistory,
