@@ -230,6 +230,62 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    // History names a conversation on its own thread, and the saving warning
+    // the name changed was put on the caption screen from there: read,
+    // copied and written back while the main thread did the same at every
+    // word, so one of the two changes could be lost.
+    @Test
+    fun aConversationNamedInHistoryChangesTheCaptionScreenOnlyOnTheMainThread() = runBlocking {
+        val work = File(context.cacheDir, "history-name-thread-test").apply {
+            File(this, "history").setWritable(true)
+            deleteRecursively()
+            mkdirs()
+        }
+        val folder = File(work, "history")
+        val now = System.currentTimeMillis() / 1_000.0
+        val dinner = TranscriptSessionRecord(
+            startedAt = now - 7_200,
+            endedAt = now - 7_140,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The doctor said twice a day", null, null, now - 7_200, true)),
+        ).also { TranscriptHistoryStore(folder).save(it) }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = folder)
+        }
+        val mainFree = CountDownLatch(1)
+        try {
+            withContext(Dispatchers.Main) {}
+            assertFalse(CaptionState.screen.value.savingTrouble)
+            assertTrue(folder.setWritable(false))
+            val mainBusy = CountDownLatch(1)
+            Handler(Looper.getMainLooper()).post {
+                mainBusy.countDown()
+                mainFree.await(10, TimeUnit.SECONDS)
+            }
+            assertTrue(mainBusy.await(5, TimeUnit.SECONDS))
+            var kept = true
+            val naming = thread(name = "history") { kept = session.savedConversations.rename(dinner.id, "Dinner") }
+            naming.join(1_000)
+            val warnedMeanwhile = CaptionState.screen.value.savingTrouble
+            mainFree.countDown()
+            naming.join(10_000)
+            assertFalse("History's thread changed the caption screen while the main thread was busy", warnedMeanwhile)
+            assertFalse("the name never finished", naming.isAlive)
+            assertFalse("the phone refused the name", kept)
+            assertTrue(CaptionState.screen.value.savingTrouble)
+        } finally {
+            mainFree.countDown()
+            folder.setWritable(true)
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
+    }
+
     @Test
     fun aBatteryRunningLowWhileTheMicrophoneListensPutsUpTheWarningAndChargingTakesItDown() = runBlocking {
         val work = File(context.cacheDir, "battery-test").apply { deleteRecursively(); mkdirs() }

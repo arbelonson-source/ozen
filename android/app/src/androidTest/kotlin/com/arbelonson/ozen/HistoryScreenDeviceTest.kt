@@ -1921,6 +1921,263 @@ class HistoryScreenDeviceTest {
         }
     }
 
+    // History's readings of one conversation, any of which the test can
+    // hold: a held reading reads the conversation as it is when it begins,
+    // then waits until the test lets it go, as a reading of the file made
+    // just before a star, a name or a fix wrote it. A held fix waits before
+    // it is saved. Stars, names and fixes are kept here; each reading that
+    // comes back, and each check of whether it is still being captioned,
+    // is counted.
+    private class RacingConversation(vararg said: String, private val current: Boolean = false) : SavedConversations {
+        class Hold {
+            val begun = CountDownLatch(1)
+            val gate = CountDownLatch(1)
+        }
+
+        val id: UUID = UUID.randomUUID()
+        private val lines = said.map { UUID.randomUUID() }
+        private val texts = ConcurrentHashMap(lines.zip(said).toMap())
+        private val starred: MutableSet<UUID> = ConcurrentHashMap.newKeySet()
+        private val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        private val nextRead = AtomicReference<Hold?>()
+        private val nextFix = AtomicReference<Hold?>()
+        private val unreadable = AtomicInteger()
+        private val holds = CopyOnWriteArrayList<Hold>()
+        val reads = AtomicInteger()
+        val checks = AtomicInteger()
+
+        @Volatile private var title: String? = null
+
+        fun holdNextRead() = Hold().also { nextRead.set(it); holds += it }
+
+        fun holdNextFix() = Hold().also { nextFix.set(it); holds += it }
+
+        fun cannotReadNext(times: Int) = unreadable.set(times)
+
+        fun letAllGo() = holds.forEach { it.gate.countDown() }
+
+        private fun holdOn(hold: Hold?) {
+            hold ?: return
+            hold.begun.countDown()
+            hold.gate.await(20, TimeUnit.SECONDS)
+        }
+
+        override fun load(id: UUID): TranscriptSessionRecord {
+            try {
+                if (unreadable.getAndUpdate { maxOf(0, it - 1) } > 0) throw IOException("Permission denied")
+                val record = TranscriptSessionRecord(
+                    id = this.id,
+                    startedAt = startedAt,
+                    endedAt = startedAt + 30,
+                    engine = TranscriptionEngineKind.HomeServer,
+                    modelVariant = "home server",
+                    inputName = null,
+                    segments = lines.mapIndexed { index, line -> SavedSegment(line, texts.getValue(line), null, null, startedAt + index, true, isStarred = line in starred) },
+                    title = title,
+                )
+                holdOn(nextRead.getAndSet(null))
+                return record
+            } finally {
+                reads.incrementAndGet()
+            }
+        }
+
+        override fun isCurrent(id: UUID): Boolean {
+            checks.incrementAndGet()
+            return current
+        }
+
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?): Boolean {
+            val now = to ?: (segmentID !in starred)
+            if (now) starred += segmentID else starred -= segmentID
+            return now
+        }
+
+        override fun rename(id: UUID, title: String): Boolean {
+            this.title = title.trim().ifEmpty { null }
+            return true
+        }
+
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult {
+            holdOn(nextFix.getAndSet(null))
+            val text = texts.getValue(segmentID)
+            val fixed = WordFixes.apply(listOf(WordFix(heard, written)), text)
+            if (fixed == text) return WordFixResult.LineChanged
+            texts[segmentID] = fixed
+            return WordFixResult.Saved
+        }
+
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) {}
+        override fun wordFixes() = emptyList<WordFix>()
+        override fun opened(id: UUID) {}
+        override fun doneWith(id: UUID) {}
+        override fun list() = emptyList<TranscriptSessionSummary>()
+        override fun search(query: String) = emptyList<TranscriptSessionSummary>()
+        override fun starredLines() = emptyList<StarredLine>()
+        override fun sizeOnDisk() = 0L
+        override val lastSaveFailure: String? = null
+        override fun delete(id: UUID) {}
+        override fun deleteAll() {}
+        override fun switchSaving(on: Boolean) {}
+        override suspend fun keepFor(retention: HistoryRetention) {}
+    }
+
+    private fun showRacing(conversation: RacingConversation) {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+    }
+
+    // A reading let go, given time to come back to the screen.
+    private fun letTheReadingBack(conversation: RacingConversation, hold: RacingConversation.Hold) {
+        val read = conversation.reads.get()
+        hold.gate.countDown()
+        compose.waitUntil(5_000) { conversation.reads.get() > read }
+        Thread.sleep(500)
+        compose.waitForIdle()
+    }
+
+    private fun lineAction(line: String, action: String) {
+        val node = compose.onNodeWithContentDescription(line, substring = true).fetchSemanticsNode()
+        val wanted = node.config[SemanticsActions.CustomActions].single { it.label == action }
+        compose.runOnUiThread { wanted.action() }
+    }
+
+    // The twenty-second reading of the conversation still being captioned
+    // read its file just before a star was saved, and came back after the
+    // star's own reading had shown it: the star went away until the next
+    // reading, and a tap on the line then offered to star it again.
+    @Test
+    fun aStarStaysWhenAReadingMadeJustBeforeItComesBackAfterIt() {
+        val conversation = RacingConversation("Racing star test the pharmacy closes at nine", current = true)
+        showRacing(conversation)
+        compose.waitUntil(5_000) { shownLine("Racing star test the pharmacy closes at nine") }
+        val hold = conversation.holdNextRead()
+        try {
+            compose.mainClock.advanceTimeBy(21_000)
+            compose.waitUntil(10_000) { hold.begun.count == 0L }
+            lineAction("Racing star test the pharmacy closes at nine", "Mark as important")
+            compose.waitUntil(5_000) { shownLine("Marked as important. Racing star test the pharmacy closes at nine") }
+
+            val checked = conversation.checks.get()
+            hold.gate.countDown()
+            compose.waitUntil(5_000) { conversation.checks.get() > checked }
+            compose.waitForIdle()
+            assertTrue("the star went away", shownLine("Marked as important. Racing star test the pharmacy closes at nine"))
+            val actions = compose.onNodeWithContentDescription("Racing star test the pharmacy closes at nine", substring = true).fetchSemanticsNode().config[SemanticsActions.CustomActions]
+            assertTrue(actions.any { it.label == "Remove the star" })
+        } finally {
+            conversation.letAllGo()
+        }
+    }
+
+    // The same with a name: the reading made just before it was saved came
+    // back after the name's own reading and took the name away.
+    @Test
+    fun aNameStaysWhenAReadingMadeJustBeforeItComesBackAfterIt() {
+        val conversation = RacingConversation("Racing name test the bus leaves at six", current = true)
+        showRacing(conversation)
+        compose.waitUntil(5_000) { shownLine("Racing name test the bus leaves at six") }
+        val hold = conversation.holdNextRead()
+        try {
+            compose.mainClock.advanceTimeBy(21_000)
+            compose.waitUntil(10_000) { hold.begun.count == 0L }
+            compose.onNodeWithText("Name this conversation").performClick()
+            compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Bus times")
+            compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+            waitFor("Bus times")
+
+            val checked = conversation.checks.get()
+            hold.gate.countDown()
+            compose.waitUntil(5_000) { conversation.checks.get() > checked }
+            compose.waitForIdle()
+            assertTrue("the name went away", compose.onAllNodesWithText("Bus times").fetchSemanticsNodes().isNotEmpty())
+        } finally {
+            conversation.letAllGo()
+        }
+    }
+
+    // A fix from a dialog closed while it was being saved was read back
+    // from the file just before a fix from the next dialog was saved, and
+    // came back after that one's reading: the second fix seemed to vanish.
+    @Test
+    fun aFixStaysWhenTheReadingOfAnEarlierFixComesBackAfterIt() {
+        val conversation = RacingConversation("Racing fix test I spoke with Shera yesterday", "Racing fix test we meet Dan at nine")
+        showRacing(conversation)
+        val fix = conversation.holdNextFix()
+        try {
+            openFixFor("Shera yesterday")
+            saveFix("Shera", "Shira")
+            compose.waitUntil(10_000) { fix.begun.count == 0L }
+            cancelFix()
+            openFixFor("Dan at nine")
+            val reading = conversation.holdNextRead()
+            fix.gate.countDown()
+            compose.waitUntil(10_000) { reading.begun.count == 0L }
+            saveFix("Dan", "Dana")
+            compose.waitUntil(5_000) { !fixDialogOpen() }
+            compose.waitUntil(5_000) { shownLine("Racing fix test we meet Dana at nine") }
+            compose.waitUntil(5_000) { shownLine("Racing fix test I spoke with Shira yesterday") }
+
+            letTheReadingBack(conversation, reading)
+            assertTrue("the second fix went away", shownLine("Racing fix test we meet Dana at nine"))
+            assertTrue(shownLine("Racing fix test I spoke with Shira yesterday"))
+        } finally {
+            conversation.letAllGo()
+        }
+    }
+
+    // A fix saved while the conversation, no longer being captioned, could
+    // not be read back just now kept its old words on the screen until it
+    // was opened again. It is read again a few seconds later, and once it
+    // shows, not again.
+    @Test
+    fun aFixWhoseReadingCannotReadTheConversationJustNowShowsOnceItIsReadAgain() {
+        val conversation = RacingConversation("Unread fix test I spoke with Shera yesterday")
+        showRacing(conversation)
+        openFixFor("Shera yesterday")
+        conversation.cannotReadNext(1)
+        saveFix("Shera", "Shira")
+        compose.waitUntil(5_000) { !fixDialogOpen() }
+        compose.mainClock.advanceTimeBy(3_500)
+        compose.waitUntil(10_000) { shownLine("Unread fix test I spoke with Shira yesterday") }
+        val shown = conversation.reads.get()
+        letTimePass(30_000)
+        assertEquals(shown, conversation.reads.get())
+    }
+
+    // Each star tapped while the conversation, no longer being captioned,
+    // could not be read back started its own reading every few seconds:
+    // taps while it stayed unreadable left several readings of the file
+    // going at once. The newest change's reading takes the place of the
+    // one before it, and once one shows, none goes on.
+    @Test
+    fun starsTappedWhileTheConversationCannotBeReadAreReadAgainOneReadingAtATime() {
+        val conversation = RacingConversation("Retry star test the pharmacy closes at nine", "Retry star test we meet Dan at nine")
+        showRacing(conversation)
+        compose.waitUntil(5_000) { shownLine("Retry star test we meet Dan at nine") }
+        conversation.cannotReadNext(1_000)
+        val opened = conversation.reads.get()
+        lineAction("Retry star test the pharmacy closes at nine", "Mark as important")
+        compose.waitUntil(5_000) { conversation.reads.get() == opened + 1 }
+        lineAction("Retry star test we meet Dan at nine", "Mark as important")
+        compose.waitUntil(5_000) { conversation.reads.get() == opened + 2 }
+
+        letTimePass(3_500)
+        assertEquals("readings a few seconds after the two stars", opened + 3, conversation.reads.get())
+
+        conversation.cannotReadNext(0)
+        letTimePass(3_000)
+        compose.waitUntil(5_000) { shownLine("Marked as important. Retry star test we meet Dan at nine") }
+        assertTrue(shownLine("Marked as important. Retry star test the pharmacy closes at nine"))
+        assertEquals("readings once the file could be read", opened + 4, conversation.reads.get())
+        letTimePass(30_000)
+        assertEquals(opened + 4, conversation.reads.get())
+    }
+
     @Test
     fun aStarStarredLinesCannotTakeOffSaysSoAndTheLineComesBack() {
         val id = starredConversation("Starred list test the dentist at four", System.currentTimeMillis() / 1_000.0 - 60)

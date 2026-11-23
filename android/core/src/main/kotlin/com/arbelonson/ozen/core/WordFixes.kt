@@ -214,10 +214,20 @@ object WordFixes {
      * from the text up to the space after it and the quotes left open
      * before it, so a reused word is the word reading the line again
      * finds. Two lines are kept: the line as heard and the line as shown
-     * with the fixes made on it come in turn.
+     * with the fixes made on it come in turn. A line read again as it is,
+     * as its doubtful words are right after it, gets its words back as they
+     * were read, so the other line stays kept.
      */
     private fun lineWords(text: String): List<Word> {
         val recent = recentLines
+        if (recent != null) {
+            if (recent.newest.text == text) return recent.newest.words
+            val older = recent.older
+            if (older != null && older.text == text) {
+                recentLines = RecentLines(older, recent.newest)
+                return older.words
+            }
+        }
         val newestKept = keptWords(recent?.newest, text)
         val olderKept = keptWords(recent?.older, text)
         val line = if (olderKept > newestKept) recent?.older else recent?.newest
@@ -549,7 +559,7 @@ object WordFixes {
      */
     fun applyToUncertain(fixes: List<WordFix>, text: String, uncertain: List<String>): List<String> {
         if (uncertain.isEmpty()) return uncertain
-        val rewritten = rewrite(fixes, text)
+        val rewritten = rewrite(fixes, text, writing = false)
         val taken = HashSet<Int>()
         val written = HashMap<Span, Pair<Int, Boolean>>()
         val out = ArrayList<String>()
@@ -600,14 +610,21 @@ object WordFixes {
         return CompiledFixes(fixes.toList(), compiled, han).also { lastCompiled = it }
     }
 
-    private fun rewrite(fixes: List<WordFix>, text: String, compiledFixes: CompiledFixes? = null): Rewrite {
+    /**
+     * [text]'s words and where [fixes] rewrite them, with the line they
+     * make when [writing]. The doubtful words need only the words and the
+     * spans, and writing the line out again for them cost about 3 KB per
+     * word on a line of a hundred Hebrew words; without [writing] the
+     * [Rewrite.text] is [text] as it came.
+     */
+    private fun rewrite(fixes: List<WordFix>, text: String, compiledFixes: CompiledFixes? = null, writing: Boolean = true): Rewrite {
         if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, lineWords(text), emptyList())
         val prepared = compiledFixes ?: compile(fixes)
         val compiled = prepared.compiled
         if (compiled.isEmpty()) return Rewrite(text, lineWords(text), emptyList())
         val han = prepared.han
         val all = lineWords(text)
-        val sb = StringBuilder(text.length + 16)
+        val sb = if (writing) StringBuilder(text.length + 16) else null
         val spans = ArrayList<Span>()
         var copied = 0
         var index = 0
@@ -629,7 +646,7 @@ object WordFixes {
             if (best == null) {
                 val inside = replacingHan(han, text, all[index])
                 if (inside != null) {
-                    sb.append(text, copied, all[index].start).append(inside)
+                    sb?.append(text, copied, all[index].start)?.append(inside)
                     copied = all[index].end
                     spans.add(Span(index, index, inside))
                 }
@@ -643,12 +660,12 @@ object WordFixes {
             val last = all[index + best.words.size - 1]
             val prefix = text.substring(all[index].start, keep)
             val replacement = prefix + (if (prefix.isNotEmpty() && needsMaqaf(best.written)) "\u05BE" else "") + best.written
-            sb.append(text, copied, all[index].start).append(replacement)
+            sb?.append(text, copied, all[index].start)?.append(replacement)
             spans.add(Span(index, index + best.words.size - 1, replacement))
             copied = last.replacedEnd
             index += best.words.size
         }
-        return Rewrite(sb.append(text, copied, text.length).toString(), all, spans)
+        return Rewrite(sb?.append(text, copied, text.length)?.toString() ?: text, all, spans)
     }
 }
 
