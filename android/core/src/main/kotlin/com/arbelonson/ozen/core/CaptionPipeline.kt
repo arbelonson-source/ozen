@@ -3148,15 +3148,17 @@ class CaptionPipeline(
     }
 
     /**
-     * A phone model that is installed but fails to load while it covers
-     * the cloud: the home computer is tried once as the next cover, with
-     * the same conditions as when no model is installed. Once per cover,
-     * so a computer that then fails does not send captions back and forth.
+     * A phone model that is installed but fails to load, or that the phone
+     * has too little memory for, while it covers the cloud: the home
+     * computer is tried once as the next cover, with the same conditions
+     * as when no model is installed. Once per cover, so a computer that
+     * then fails does not send captions back and forth.
      */
     private suspend fun homeComputerAfterPhoneModelFailed(failure: PipelineFailure) {
         if (!isCoveringForCloud || homeComputerTriedAfterPhoneModel) return
         val loadFailure = (phase as? PipelinePhase.Failed)?.reason ?: return
-        if (loadFailure.engineUnavailability?.kind != EngineUnavailability.Kind.ModelLoadFailed) return
+        val kind = loadFailure.engineUnavailability?.kind
+        if (kind != EngineUnavailability.Kind.ModelLoadFailed && kind != EngineUnavailability.Kind.NotEnoughMemory) return
         val onPhone = settingsInUse ?: return
         if (onPhone.engine != TranscriptionEngineKind.WhisperKit) return
         if (homeComputerCover(onPhone, failure, coveredSettings) == null) return
