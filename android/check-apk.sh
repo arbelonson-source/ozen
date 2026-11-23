@@ -18,6 +18,13 @@ for abi in arm64-v8a x86_64; do
     need "lib/$abi/libc++_shared.so"
 done
 need "assets/silero-v6.2.0-ggml.bin"
+for model in campp.tflite yamnet.tflite; do
+    entry=$(unzip -v "$apk" "assets/$model" 2> /dev/null || true)
+    if ! grep -q " Stored " <<< "$entry"; then
+        echo "$apk does not store assets/$model uncompressed, so the app copies it into memory instead of reading it in place" >&2
+        missing=1
+    fi
+done
 languages=$(python3 -c 'import json, sys; print(*json.load(open(sys.argv[1], encoding="utf-8")))' ../Sources/OzenKit/Resources/Translations.json)
 for language in $languages; do
     need "translations/$language.json"

@@ -4,7 +4,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppSettings
 import org.json.JSONObject
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,6 +67,23 @@ class CamPlusPlusEmbedderDeviceTest {
         assertTrue("one voice scored $same", same >= threshold)
         assertTrue("another voice scored ${cosine(first, other)}", cosine(first, other) < threshold)
         assertTrue("another voice scored ${cosine(second, other)}", cosine(second, other) < threshold)
+    }
+
+    @Test
+    fun theLoadedModelKeepsNoCopyOfItselfOnTheJavaHeap() {
+        val sound = clip(clips.first())
+        val size = instrumentation.targetContext.assets.openFd(CamPlusPlusEmbedder.MODEL).use { it.length }
+        val before = javaHeapInUse()
+        assertNotNull(embedder.embed(sound, 16_000.0))
+        val kept = javaHeapInUse() - before
+        assertTrue("the Java heap kept $kept more bytes for a $size-byte model", kept < size / 2)
+    }
+
+    @Test
+    fun theModelReadInPlaceGivesTheSamePrintsAsACopyOfIt() {
+        val inPlace = CamPlusPlusEmbedder(instrumentation.targetContext, readModel = ModelAssets::mapped)
+        val copy = CamPlusPlusEmbedder(instrumentation.targetContext, readModel = ModelAssets::copied)
+        for (name in clips) assertArrayEquals(name, copy.embed(clip(name), 16_000.0), inPlace.embed(clip(name), 16_000.0), 0f)
     }
 
     @Test

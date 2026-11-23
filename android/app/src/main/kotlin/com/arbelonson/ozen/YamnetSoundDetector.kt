@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.os.SystemClock
 import com.arbelonson.ozen.core.RestartBudget
 import com.arbelonson.ozen.core.SoundClassifierSupervisor
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
-class YamnetSoundDetector(private val context: Context) : SoundEventDetecting {
+class YamnetSoundDetector(
+    private val context: Context,
+    private val readModel: (AssetManager, String) -> ByteBuffer = ModelAssets::read,
+) : SoundEventDetecting {
     override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> = observations(audio) {}
 
     override fun observations(audio: Flow<FloatArray>, availability: (Boolean) -> Unit): Flow<SoundObservation> = flow {
@@ -65,10 +68,7 @@ class YamnetSoundDetector(private val context: Context) : SoundEventDetecting {
         var interpreter: Interpreter? = null
         return try {
             val labels = context.assets.open(LABELS).bufferedReader().use { it.readLines() }
-            val bytes = context.assets.open(MODEL).use { it.readBytes() }
-            val model = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder()).put(bytes)
-            model.rewind()
-            interpreter = Interpreter(model, Interpreter.Options().setNumThreads(1))
+            interpreter = Interpreter(readModel(context.assets, MODEL), Interpreter.Options().setNumThreads(1))
             Classifier(interpreter, YamnetSounds.indices(labels), Array(1) { FloatArray(labels.size) })
         } catch (error: Throwable) {
             if (error is VirtualMachineError && error !is OutOfMemoryError) throw error
