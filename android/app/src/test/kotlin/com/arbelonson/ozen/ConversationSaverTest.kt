@@ -1166,6 +1166,9 @@ class ConversationSaverTest {
         try {
             assertTrue(saver.toggleLiveStar(pills))
             assertTrue(saver.isStarred(pills))
+            writer.waitUntilIdle()
+            assertNotNull(saver.lastSaveFailure, "the star's save was refused while the folder could not be written")
+            assertEquals(listOf(false), store.load(conversation)!!.segments.map { it.isStarred })
         } finally {
             folder.setWritable(true)
         }
