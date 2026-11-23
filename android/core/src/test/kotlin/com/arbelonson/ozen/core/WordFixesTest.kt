@@ -289,4 +289,45 @@ class WordFixesTest {
         assertEquals(listOf("トムソンさんが来た"), WordFixes.applyToUncertain(tom, "トムソンさんが来た", listOf("トムソンさんが来た")))
         assertEquals(listOf("トムは来た"), WordFixes.applyToUncertain(listOf(fix("は", "わ")), "トムは来た", listOf("トムは来た")))
     }
+
+    @Test fun aHeardWordWithTheKanjiRepeatMarkOrWithClosingMarkOrZeroIsFixedInsideALineWithNoSpaces() {
+        assertEquals("昨日笹木さんが来た", run("昨日佐々木さんが来た", fix("佐々木", "笹木")))
+        assertEquals("昨日ササキさんが来た", run("昨日佐々木さんが来た", fix("佐々木さん", "ササキさん")))
+        assertEquals("ときどき雨が降る", run("時々雨が降る", fix("時々", "ときどき")))
+        assertEquals("多くの人びとが来た", run("多くの人々が来た", fix("人々", "人びと")))
+        assertEquals("明日が締切です", run("明日が〆切です", fix("〆切", "締切")))
+        assertEquals("我2026年去了", run("我二〇二六年去了", fix("二〇二六年", "2026年")))
+        assertEquals("笹木", run("佐々木", fix("佐々木", "笹木")))
+    }
+
+    @Test fun theRepeatMarkAloneOrAtTheStartOfAHeardWordIsNeverFoundInsideAWordWhileAKanjiNextToItStillIs() {
+        assertEquals("佐々木さんが来た", run("佐々木さんが来た", fix("々", "木")))
+        assertEquals("部分々々で違う", run("部分々々で違う", fix("々々", "部分")))
+        assertEquals("佐々木さんが来た", run("佐々木さんが来た", fix("々木", "樹")))
+        assertEquals("佐々樹さんが来た", run("佐々木さんが来た", fix("木", "樹")))
+        assertEquals("左々木さんが来た", run("佐々木さんが来た", fix("佐", "左")))
+    }
+
+    @Test fun aLineAFixWithTheRepeatMarkRewroteIsLeftAsItIsWhenTheSameFixRunsOnItAgain() {
+        val cases = listOf(
+            fix("佐々木", "佐々木さん") to "佐々木が来た",
+            fix("佐々木", "佐々木 太郎") to "昨日佐々木に会った",
+            fix("時々", "時々は") to "時々雨",
+        )
+        for ((one, line) in cases) {
+            val once = run(line, one)
+            assertNotEquals(line, once, "${one.heard} on $line")
+            assertEquals(once, run(once, one), "${one.heard} on $line")
+        }
+    }
+
+    @Test fun aDoubtfulWordInAJapaneseLineKeepsItsDoubtOnWhatAFixWithTheRepeatMarkWroteThere() {
+        val sasaki = listOf(fix("佐々木", "笹木"))
+        assertEquals(listOf("昨日笹木さんが来た"), WordFixes.applyToUncertain(sasaki, "昨日佐々木さんが来た", listOf("昨日佐々木さんが来た")))
+        val heard = "今日は 佐々木さんが来た"
+        val shown = WordFixes.apply(sasaki, heard)
+        val marked = UncertainWords.ranges(shown, WordFixes.applyToUncertain(sasaki, heard, listOf("佐々木さんが来た")))
+        assertEquals(listOf("笹木さんが来た"), marked.map { shown.substring(it.start, it.endExclusive) })
+        assertEquals(listOf("佐々木さんが来た"), WordFixes.applyToUncertain(listOf(fix("々", "木")), "佐々木さんが来た", listOf("佐々木さんが来た")))
+    }
 }

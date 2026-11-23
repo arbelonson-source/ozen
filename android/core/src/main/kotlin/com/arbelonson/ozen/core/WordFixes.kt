@@ -12,6 +12,7 @@ object WordFixes {
     private const val FINAL_SIGMA = 0x03C2
     private const val SIGMA = 0x03C3
     private const val DOTTED_CAPITAL_I = 0x0130
+    private const val REPEAT_MARK = 0x3005
 
     /**
      * A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last.
@@ -397,7 +398,8 @@ object WordFixes {
         return isLetter(start) && start !in 0x0590..0x05FF
     }
 
-    private fun isHan(c: Int) = Character.isIdeographic(c) && c !in 0x3000..0x303F
+    /** A kanji as a run of them reads on: an ideograph, 〆 and 〇 among them, or the repeat mark 々, which writes the one before it again (佐々木, 時々). */
+    private fun isHan(c: Int) = c in 0x3005..0x3007 || Character.isIdeographic(c) && c !in 0x3000..0x303F
 
     private fun isKatakanaLetter(c: Int) = c in 0x30A1..0x30FA || c == 0x30FF || c in 0x31F0..0x31FF || c in 0xFF66..0xFF6F || c in 0xFF71..0xFF9D
 
@@ -414,15 +416,19 @@ object WordFixes {
      * kana, with a middle dot between names (ジョン・スミス), holding a Han
      * character or a katakana letter. One all in hiragana is not: hiragana
      * runs on through particles and verb endings (さくらが, 高かった), so
-     * where it starts or stops is no word's edge.
+     * where it starts or stops is no word's edge. The repeat mark 々 writes
+     * the character before it again, so it is not the Han character a
+     * heard word must hold, and one starting with it (々, 々木) is not read
+     * inside words either.
      */
     private fun readsInsideWords(heard: String): Boolean {
+        if (heard.isEmpty() || heard.codePointAt(0) == REPEAT_MARK) return false
         var anchored = false
         var at = 0
         while (at < heard.length) {
             val c = heard.codePointAt(at)
             if (!isJapanese(c) && c != 0x30FB && c != 0xFF65) return false
-            anchored = anchored || isHan(c) || isKatakanaLetter(c)
+            anchored = anchored || (isHan(c) && c != REPEAT_MARK) || isKatakanaLetter(c)
             at += Character.charCount(c)
         }
         return anchored
