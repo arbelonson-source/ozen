@@ -24,13 +24,16 @@ internal object SpeechChunks {
 
     class Queued(val ids: List<String>, val complete: Boolean)
 
-    fun queue(pieces: List<String>, offer: (piece: String, id: String, flush: Boolean) -> Boolean): Queued {
-        val ids = mutableListOf<String>()
+    fun queue(
+        pieces: List<String>,
+        ids: List<String> = pieces.map { java.util.UUID.randomUUID().toString() },
+        offer: (piece: String, id: String, flush: Boolean) -> Boolean,
+    ): Queued {
+        val taken = mutableListOf<String>()
         for ((at, piece) in pieces.withIndex()) {
-            val id = java.util.UUID.randomUUID().toString()
-            if (!offer(piece, id, at == 0)) return Queued(ids, complete = false)
-            ids += id
+            if (!offer(piece, ids[at], at == 0)) return Queued(taken, complete = false)
+            taken += ids[at]
         }
-        return Queued(ids, complete = true)
+        return Queued(taken, complete = true)
     }
 }

@@ -7,6 +7,7 @@ import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +72,15 @@ internal fun VoiceNotices(notices: List<String>) {
     val context = LocalContext.current
     notices.forEach { Text(it, color = cautionOrange()) }
     TextButton(onClick = { openVoiceSettings(context) }) { Text(VoiceNotice.openSettings()) }
+}
+
+/** The phone's speech engine stays connected while a screen that speaks is open, so a reply is said at once. */
+@Composable
+internal fun HoldPhoneVoice(voice: PhoneVoice) {
+    DisposableEffect(voice) {
+        val letGo = voice.hold()
+        onDispose { letGo() }
+    }
 }
 
 @Composable
