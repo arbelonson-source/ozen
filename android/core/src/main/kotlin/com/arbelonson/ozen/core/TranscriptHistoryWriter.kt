@@ -72,10 +72,11 @@ class SerialQueue(name: String = "ozen.serial-queue") {
  * if it runs on the main thread every twenty seconds. Autosaves therefore
  * go to a serial queue and return at once.
  *
- * Saves that matter right now (listening stopped, the app is leaving the
- * screen, a conversation break) wait instead: they queue behind any
- * autosave still in flight, so an older autosave can never land on top
- * of the final version of a conversation.
+ * Saves that end a conversation (listening stopped, a conversation break,
+ * Clear captions) queue behind any autosave still in flight, so an older
+ * autosave can never land on top of the final version of a conversation.
+ * The caption screen no longer waits for them, and hears back through
+ * [whenWritten]; the save as the app leaves the screen still waits.
  *
  * An autosave identical to what this writer last wrote is skipped: in a
  * quiet room the conversation doesn't change for hours, and writing the
@@ -134,8 +135,8 @@ class TranscriptHistoryWriter(
 
     /**
      * Waits for earlier queued saves, then writes this one before
-     * returning. Called directly from the main thread when a conversation
-     * stops or the app leaves the screen, so what it blocks on matters:
+     * returning. Called directly from the main thread when the app leaves
+     * the screen, so what it blocks on matters:
      * the summary and search-text caches are skipped here (see
      * `TranscriptHistoryStore.save`) so this holds the caller up only for
      * the one write that must not be lost, not for the whole
@@ -324,6 +325,19 @@ class TranscriptHistoryWriter(
     fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
         lastWritten.record = null
         write(text, sessionID, segmentID)
+    }
+
+    /**
+     * The caption screen's fix of a line a long quiet closed: [fixTextNow]
+     * in the first of [sessionIDs] that has the line, handed in now and not
+     * waited for. Waited for, each conversation tried in turn froze the
+     * captions on a phone slow to write.
+     */
+    fun fixTextInBackground(sessionIDs: List<UUID>, segmentID: UUID, text: String) {
+        queue.async {
+            lastWritten.record = null
+            for (sessionID in sessionIDs) if (write(text, sessionID, segmentID)) break
+        }
     }
 
     /**
@@ -596,6 +610,15 @@ class TranscriptHistoryWriter(
     /** Returns once every queued save has been written. */
     fun waitUntilIdle() {
         queue.sync {}
+    }
+
+    /**
+     * Runs [then] on the writer's thread once everything handed in before
+     * it is done, without waiting for it here: the caption screen hears
+     * back this way from the saves it hands in and does not wait for.
+     */
+    fun whenWritten(then: () -> Unit) {
+        queue.async(then)
     }
 
     private class FailureBox {

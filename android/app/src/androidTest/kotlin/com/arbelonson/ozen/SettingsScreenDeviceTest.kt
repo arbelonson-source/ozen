@@ -2404,6 +2404,37 @@ class SettingsScreenDeviceTest {
         assertEquals(listOf(true, false), promised)
     }
 
+    // The save the question promised is no longer waited for on the main
+    // thread, so the phone refuses it only after Delete closed the question:
+    // the question comes back then, saying the lines won't be saved.
+    @Test
+    fun aClearWhoseSaveIsRefusedAfterTheQuestionClosedAsksAgainSayingTheyWontBeSaved() {
+        var failing = false
+        var asked: ClearAgain? = null
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                Column {
+                    ClearCaptionsRow(saving = true, saveFailing = { failing }, onClear = { keepingHistory ->
+                        if (keepingHistory) asked = this
+                        true
+                    })
+                }
+            }
+        }
+        compose.onNodeWithText("Clear captions from the screen").performClick()
+        compose.onNodeWithText("They stay saved in History.").assertExists()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Delete all captions from the screen?").assertDoesNotExist()
+        failing = true
+        compose.runOnUiThread { checkNotNull(asked) { "Delete never answered the question" }.askAgain() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Saving to History isn’t working right now, so they won’t be saved.").assertExists()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Delete all captions from the screen?").assertDoesNotExist()
+    }
+
     @Test
     fun diagnosticsListASoundHeardTooFaintToAlertWithHowSureAndWhen() {
         // As if the phone had heard a faint doorbell; nothing resets the
