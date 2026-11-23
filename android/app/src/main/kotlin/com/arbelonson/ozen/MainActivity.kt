@@ -277,6 +277,13 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    // Pulled down over the app, the shade takes the focus without stopping
+    // it, and shows the listening notification: its lines catch up then.
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        (application as OzenApplication).captions.screenFocused(hasFocus)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLink(intent)

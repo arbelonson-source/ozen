@@ -320,6 +320,25 @@ class LockScreenUpdateThrottleTest {
         assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(second.copy(status = "paused"), now = 105.0, linesShown = false))
     }
 
+    // Drawn with its lines and then out of sight (the app in front), the
+    // notification is drawn again only for a new status, and once it can be
+    // seen again only if the lines moved on meanwhile.
+    @Test
+    fun `lines drawn and then out of sight are not drawn again for new words, and catch up once seen`() {
+        val throttle = LockScreenUpdateThrottle(minimumInterval = 1.0)
+        throttle.sent(first, at = 100.0, linesShown = true)
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(second, now = 105.0, linesShown = false))
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(second.copy(ageNote = "1 min"), now = 160.0, linesShown = false))
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(first, now = 170.0, linesShown = true))
+        assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(second, now = 170.0, linesShown = true))
+        val paused = second.copy(status = "paused")
+        assertEquals(LockScreenUpdateThrottle.Decision.Send, throttle.decide(paused, now = 170.0, linesShown = false))
+        throttle.sent(paused, at = 170.0, linesShown = true)
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(paused.copy(lines = first.lines), now = 175.0, linesShown = false))
+        assertEquals(LockScreenUpdateThrottle.Decision.NothingNew, throttle.decide(paused, now = 175.0, linesShown = true))
+        assertEquals(LockScreenUpdateThrottle.Decision.Wait(0.5), throttle.decide(paused.copy(lines = first.lines), now = 170.5, linesShown = true))
+    }
+
     @Test
     fun `with the lines shown new words are sent once the interval is up`() {
         val throttle = LockScreenUpdateThrottle(minimumInterval = 1.0)

@@ -18,6 +18,7 @@ import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.LockScreenUpdateThrottle
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.RestartingWatcher
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.errorGuardedScope
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.Job
@@ -46,6 +47,9 @@ class ListeningService : Service() {
     private val throttle = LockScreenUpdateThrottle()
     private var flush: Job? = null
     private var drawnPublic: Boolean? = null
+    private val manager by lazy { getSystemService(NotificationManager::class.java) }
+    private val taps by lazy { Taps(this) }
+    private var channelLanguage: UILanguage? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -70,9 +74,9 @@ class ListeningService : Service() {
                 // The sharing type goes up first: Android 14 refuses to hand out
                 // the projection to a service that is not yet of that type.
                 val types = if (sharing || captions.phoneSoundOn) MICROPHONE_AND_SHARING else ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                startForeground(NOTIFICATION_ID, notification(this, content, public), types)
+                startForeground(NOTIFICATION_ID, notice(content, public), types)
             } else {
-                startForeground(NOTIFICATION_ID, notification(this, content, public))
+                startForeground(NOTIFICATION_ID, notice(content, public))
             }
         } catch (error: SecurityException) {
             return foregroundRefused(error)
@@ -134,6 +138,19 @@ class ListeningService : Service() {
             .copy(status = screen.status.title)
     }
 
+    /**
+     * The channel is made once, and again in a new language for its name;
+     * the two taps are looked up once. Made at every word, each was a call
+     * into the system.
+     */
+    private fun notice(content: LockScreenCaptionContent, public: Boolean): Notification {
+        if (channelLanguage != content.language) {
+            manager.createNotificationChannel(listeningChannel())
+            channelLanguage = content.language
+        }
+        return notification(this, content, public, taps)
+    }
+
     private fun drawn(content: LockScreenCaptionContent, public: Boolean) {
         throttle.sent(content, secondsNow(), linesShown = public)
         drawnPublic = public
@@ -146,7 +163,8 @@ class ListeningService : Service() {
      * looked at again every half minute, so the age moves on and the lines
      * go after a quarter of an hour. Turning the lock screen captions on or
      * off goes at once: a line left on the locked phone she just hid them
-     * from is what she switched off.
+     * from is what she switched off. The caption screen in front, or out of
+     * it, is looked at again too.
      */
     private suspend fun watch() = coroutineScope {
         launch {
@@ -161,7 +179,7 @@ class ListeningService : Service() {
                 captions.keepListeningRecordAlive()
             }
         }
-        CaptionState.screen.combine(settings.current) { _, _ -> }.collect { refresh() }
+        combine(CaptionState.screen, settings.current, captions.listeningNoticeCovered) { _, _, _ -> }.collect { refresh() }
     }
 
     /**
@@ -176,13 +194,18 @@ class ListeningService : Service() {
             finish()
             return
         }
-        val content = content()
         val public = onLockScreen()
-        val decision = if (public != drawnPublic) LockScreenUpdateThrottle.Decision.Send else throttle.decide(content, secondsNow(), linesShown = public)
+        // With the caption screen in front, or the lines kept off the lock
+        // screen, nobody sees them: only a new status is drawn, and the lines
+        // aren't worked out at every word to find that out.
+        val seen = public && !captions.listeningNoticeCovered.value
+        val looked = if (seen) content() else LockScreenCaptionContent(lines = emptyList(), status = screen.status.title)
+        val decision = if (public != drawnPublic) LockScreenUpdateThrottle.Decision.Send else throttle.decide(looked, secondsNow(), linesShown = seen)
         when (decision) {
             LockScreenUpdateThrottle.Decision.NothingNew -> Unit
             LockScreenUpdateThrottle.Decision.Send -> {
-                getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(this, content, public))
+                val content = if (public && !seen) content() else looked
+                manager.notify(NOTIFICATION_ID, notice(content, public))
                 drawn(content, public)
             }
             is LockScreenUpdateThrottle.Decision.Wait -> if (flush == null) {
@@ -237,21 +260,23 @@ class ListeningService : Service() {
 
         internal fun listeningChannel() = NotificationChannel(CHANNEL_ID, tr("מאזינה", "Listening"), NotificationManager.IMPORTANCE_LOW)
 
-        /** The listening notification showing [content], its lines only when [public] (captions on the lock screen). */
-        internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
-            val manager = context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(listeningChannel())
-            val open = PendingIntent.getActivity(
+        /** The notification's two taps: opening the app, and Stop. */
+        internal class Taps(context: Context) {
+            val open: PendingIntent = PendingIntent.getActivity(
                 context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
             )
-            val stop = PendingIntent.getService(
+            val stop: PendingIntent = PendingIntent.getService(
                 context, 1, Intent(context, ListeningService::class.java).setAction(ACTION_PAUSE), PendingIntent.FLAG_IMMUTABLE,
             )
+        }
+
+        /** The listening notification showing [content], its lines only when [public] (captions on the lock screen). */
+        internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean, taps: Taps = Taps(context)): Notification {
             val builder = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_listening)
                 .setContentTitle(content.status)
-                .setContentIntent(open)
-                .addAction(Notification.Action.Builder(null, tr("עצירה", "Stop"), stop).build())
+                .setContentIntent(taps.open)
+                .addAction(Notification.Action.Builder(null, tr("עצירה", "Stop"), taps.stop).build())
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
