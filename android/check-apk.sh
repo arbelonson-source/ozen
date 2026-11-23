@@ -18,6 +18,10 @@ for abi in arm64-v8a x86_64; do
     need "lib/$abi/libc++_shared.so"
 done
 need "assets/silero-v6.2.0-ggml.bin"
+languages=$(python3 -c 'import json, sys; print(*json.load(open(sys.argv[1], encoding="utf-8")))' ../Sources/OzenKit/Resources/Translations.json)
+for language in $languages; do
+    need "translations/$language.json"
+done
 for variant in armv8.0_1 armv8.2_1 armv8.2_2 armv8.6_1 armv9.0_1 armv9.2_1 armv9.2_2; do
     need "lib/arm64-v8a/libggml-cpu-android_$variant.so"
 done

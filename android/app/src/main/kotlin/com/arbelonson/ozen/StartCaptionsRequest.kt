@@ -8,6 +8,7 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 
 object StartCaptionsRequest {
@@ -20,9 +21,13 @@ object StartCaptionsRequest {
     fun launchPendingIntent(context: Context): PendingIntent =
         PendingIntent.getActivity(context, 0, launchIntent(context), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    fun applyAppLanguage(settings: SettingsHolder) {
+    fun appLanguage(settings: SettingsHolder): UILanguage {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
-        Localization.language = settings.current.value.appLanguage.resolved(phoneLanguages)
+        return settings.current.value.appLanguage.resolved(phoneLanguages)
+    }
+
+    fun applyAppLanguage(settings: SettingsHolder) {
+        Localization.language = appLanguage(settings)
     }
 
     fun publishShortcut(context: Context) {
