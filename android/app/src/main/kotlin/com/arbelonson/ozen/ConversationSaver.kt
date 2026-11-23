@@ -702,10 +702,16 @@ class ConversationSaver(
 
     /**
      * Android may end the app next: what was said since the last autosave
-     * is handed to the writer now. Not waited for: it is written as soon
-     * either way, and waiting froze the captions on a phone slow to write.
+     * is handed to the writer now. With the captions on screen it is not
+     * waited for: waiting froze them on a phone slow to write. [outOfSight],
+     * nothing on screen can freeze and Android ends such an app first, so
+     * this returns only once it is written.
      */
-    fun memoryShort() {
+    fun memoryShort(outOfSight: Boolean = false) {
+        if (outOfSight) {
+            save(ended = false)
+            return
+        }
         writeInTurn(ended = false, endedAt = null)?.let { whenWritten(it.second) }
     }
 

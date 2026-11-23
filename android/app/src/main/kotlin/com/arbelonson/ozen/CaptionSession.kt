@@ -1005,9 +1005,10 @@ class CaptionSession(
         settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(Localization.language) }
     }
 
-    fun memoryShort(footprintBytes: Long) {
+    /** Android says memory is short; [outOfSight] when no screen of the app is showing, and the app is next in line to be ended. */
+    fun memoryShort(footprintBytes: Long, outOfSight: Boolean = false) {
         pipeline.handleMemoryWarning(footprintBytes, pausedForSpeech = replies.holdsCaptionsForAPhrase)
-        conversations.memoryShort()
+        conversations.memoryShort(outOfSight)
     }
 
     fun close() {

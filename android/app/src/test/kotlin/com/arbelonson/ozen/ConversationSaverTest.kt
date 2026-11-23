@@ -2007,7 +2007,7 @@ class ConversationSaverTest {
     }
 
     @Test
-    fun `a memory warning hands what was said to the writer without the main thread waiting`() {
+    fun `a memory warning while the captions show hands what was said to the writer without the main thread waiting`() {
         val disk = SerialQueue("slow disk")
         val slow = TranscriptHistoryWriter(store, disk)
         Threads().use { threads ->
@@ -2017,12 +2017,38 @@ class ConversationSaverTest {
             say("The pill in the morning")
             disk.suspend()
             try {
-                threads.answersAtOnce { history.memoryShort() }
+                threads.answersAtOnce { history.memoryShort(outOfSight = false) }
             } finally {
                 disk.resume()
             }
             slow.waitUntilIdle()
             assertEquals("The pill in the morning", store.listSummaries().single().preview)
+        }
+    }
+
+    // Out of sight nothing on screen can freeze, and Android ends such an
+    // app first: the warning is there so the lines are on the disk before
+    // that, so it waits for them as before.
+    @Test
+    fun `a memory warning while the app is out of sight returns only once what was said is written`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val history = savingOn(threads, slow)
+            listening = true
+            threads.onMain { history.listeningChanged() }
+            say("The pill in the morning")
+            var warning: Thread? = null
+            disk.suspend()
+            try {
+                warning = thread(name = "memory warning") { threads.onMain { history.memoryShort(outOfSight = true) } }
+                threads.screenWaitsForTheDisk()
+                assertTrue(warning.isAlive, "the warning returned before the disk had the lines")
+            } finally {
+                disk.resume()
+            }
+            assertNotNull(warning).join(10_000)
+            assertEquals("The pill in the morning", store.listSummaries().singleOrNull()?.preview, "the warning returned before the lines were written")
         }
     }
 
