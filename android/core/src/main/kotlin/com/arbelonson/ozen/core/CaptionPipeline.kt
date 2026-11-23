@@ -1060,6 +1060,7 @@ class CaptionPipeline(
         phase = PipelinePhase.Listening
         logEvent(PipelineEvent.Kind.Listening)
         listeningSince = now()
+        outageWaited = 0.0
         audioWatchdog.reset()
 
         embeddingTask = scope.launch {
@@ -1165,6 +1166,7 @@ class CaptionPipeline(
         restartAfterRecording = null
         retryAfterTranscription = null
         recovery.reset()
+        outageWaited = 0.0
         listeningSince = null
         soundsOnlyStoppedByItself = false
         meanwhileRestartAttempts = 0
@@ -1450,6 +1452,7 @@ class CaptionPipeline(
     suspend fun retryAfterTap(settings: AppSettings? = null) {
         if (phase !is PipelinePhase.Failed) return
         recovery.reset()
+        outageWaited = 0.0
         retry(settings)
     }
 
@@ -4124,6 +4127,9 @@ class CaptionPipeline(
             return false
         }
         homeServerRecheck?.cancel()
+        // Read before the wait is launched: a network joined in between
+        // asks at once, rather than a whole quick step later.
+        val nudgedAtFailure = retryWait.nudged
         // Once, not per check: a diagnostics report went from the last
         // quick retry straight to "answers again" a minute later, and a
         // computer that never answered left no sign the phone was waiting.
@@ -4135,8 +4141,8 @@ class CaptionPipeline(
             // Only for the first ten minutes or so of waits, though (see
             // `nextCheckWait`).
             retryWait.whileDue {
-                val pace = WaitingPace(homeServerWaitSeconds)
-                var seen = retryWait.nudged
+                val pace = WaitingPace(homeServerWaitSeconds, alreadyWaited = outageWaited)
+                var seen = nudgedAtFailure
                 while (isActive) {
                     nextCheckWait(pace, seen, "the home computer")
                     seen = retryWait.nudged
@@ -4190,11 +4196,12 @@ class CaptionPipeline(
             return false
         }
         homeServerRecheck?.cancel()
+        val nudgedAtFailure = retryWait.nudged
         logEvent(PipelineEvent.Kind.Note("waiting for the cloud, asking it every ${formatG(cloudWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
             retryWait.whileDue {
-                val pace = WaitingPace(cloudWaitSeconds)
-                var seen = retryWait.nudged
+                val pace = WaitingPace(cloudWaitSeconds, alreadyWaited = outageWaited)
+                var seen = nudgedAtFailure
                 while (isActive) {
                     nextCheckWait(pace, seen, "the cloud")
                     seen = retryWait.nudged
@@ -4245,11 +4252,19 @@ class CaptionPipeline(
      * the wait short, so joining home Wi-Fi or opening the app asks at
      * once, and the pace starts over from the first, quick one; the ten
      * minutes kept up are not given again, or a connection that keeps
-     * changing would keep the phone up all day once more.
-     * Captions coming back end the wait; the next one starts afresh.
+     * changing would keep the phone up all day once more. Nor are they
+     * given again when the wait itself starts over while captions stay
+     * stopped (the network dropping and coming back, a call ending): what
+     * was spent is kept in [outageWaited].
+     * Captions coming back end the wait; the next one starts afresh, as
+     * does a stop or a Retry tap.
      */
+    /** The waits [nextCheckWait] has counted since captions last ran; see there. */
+    private var outageWaited = 0.0
+
     private suspend fun nextCheckWait(pace: WaitingPace, seen: Long, asked: String) {
         val step = pace.next(watched)
+        outageWaited = pace.waited
         if (step.letsGo) logEvent(PipelineEvent.Kind.Note("still no answer from $asked, the phone may sleep between checks now"))
         if (retryWait.wait(step.seconds.seconds, keepUp = step.keptUp, nudgedSince = seen)) {
             pace.startOver()
