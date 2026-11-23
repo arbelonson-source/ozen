@@ -21,7 +21,7 @@ private struct FailingConnector: HomeServerConnecting {
 }
 
 private func check(_ error: any Error, atOpen: Bool) async -> (HomeServerCheck, EngineUnavailability?) {
-    let engine = HomeServerEngine(address: "wss://192.168.1.20:8766", token: { "1234" }, connector: FailingConnector(error: error, atOpen: atOpen), handshakeSeconds: 1)
+    let engine = HomeServerEngine(address: "wss://192.168.1.20:8766", token: { "1234" }, connector: FailingConnector(error: error, atOpen: atOpen), handshakeSeconds: 30)
     let availability = await engine.checkAvailability(languageCode: "he")
     return (HomeServerCheck(availability: availability, seconds: 0), availability.unavailability)
 }

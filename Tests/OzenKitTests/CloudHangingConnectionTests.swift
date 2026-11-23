@@ -13,7 +13,8 @@ struct CloudHangingConnectionTests {
             audio: audio,
             engineFactory: { $0.engine == .cloud ? cloud : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            audioWatchdog: .disabled
         )
         pipeline.cloudRecheckSeconds = 0.05
         pipeline.homeServerSwitchBackQuietSeconds = 0
@@ -79,8 +80,8 @@ struct CloudHangingConnectionTests {
         phone.pendingDownload = 400
         await pipeline.start(settings: cloudSettings)
         http.blackHole = true
-        await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
-        #expect(http.transcriptionRequests.count >= 2)
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 2 }
+        #expect(await eventually { http.transcriptionRequests.count >= 2 })
         #expect(!pipeline.isCoveringForCloud)
         #expect(pipeline.activeEngineKind == .cloud)
     }

@@ -101,12 +101,18 @@ private struct Connector: HomeServerConnecting {
 }
 
 private let ready = #"{"type":"ready","model":"ivrit","version":1}"#
+private let answeredSeconds: Double = 30
+private let unansweredSeconds: Double = 1
 
 private func text(_ utterance: Int, _ words: String, final: Bool) -> String {
     #"{"type":"text","utterance":\#(utterance),"text":"\#(words)","final":\#(final),"confidence":0.9}"#
 }
 
-private func engine(_ socket: ScriptedSocket?, address: String = "10.0.0.5", token: String? = "1234", beam: Int? = nil, handshakeSeconds: Double = 1) -> HomeServerEngine {
+/// A server that answers is never waited out, so a long handshake limit
+/// costs nothing; with every test starting at once, one second ran out
+/// before the scripted answer (CI, one core, two cores). A test of a server
+/// that never answers passes `unansweredSeconds`, so it isn't kept waiting.
+private func engine(_ socket: ScriptedSocket?, address: String = "10.0.0.5", token: String? = "1234", beam: Int? = nil, handshakeSeconds: Double = answeredSeconds) -> HomeServerEngine {
     HomeServerEngine(address: address, token: { token }, connector: Connector(socket: socket), handshakeSeconds: handshakeSeconds, client: "Ozen 36, iOS 18.2", beam: beam)
 }
 
@@ -138,7 +144,7 @@ struct HomeServerEngineTests {
         await socket.setHangsOnHello(true)
         let started = ContinuousClock.now
         let answer = await withTaskGroup(of: EngineAvailability?.self) { group in
-            group.addTask { await engine(socket).checkAvailability(languageCode: "he") }
+            group.addTask { await engine(socket, handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he") }
             // Far above the 1 s handshake wait and far below the system's
             // minute: a CI simulator running every suite at once once held
             // the 1 s timer back for over 5 s.
@@ -334,7 +340,7 @@ struct HomeServerEngineTests {
         #expect(HomeServerCheck(availability: ok, seconds: 0.0424) == .connected(milliseconds: 42))
         let refused = await engine(ScriptedSocket(helloReply: #"{"type":"error","code":"unauthorized","detail":""}"#)).checkAvailability(languageCode: "he")
         #expect(HomeServerCheck(availability: refused, seconds: 0.1) == .codeRefused)
-        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        let silent = await engine(ScriptedSocket(helloReply: nil), handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he")
         #expect(HomeServerCheck(availability: silent, seconds: 0.3) == .unreachable)
         let noCode = await engine(ScriptedSocket(helloReply: ready), token: nil).checkAvailability(languageCode: "he")
         #expect(HomeServerCheck(availability: noCode, seconds: 0) == .notSetUp)
@@ -386,7 +392,7 @@ struct HomeServerEngineTests {
         let reply = #"{"type":"error","code":"unsupported_language","detail":""}"#
         let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "xx")
         #expect(HomeServerCheck(availability: availability, seconds: 0.1) == .languageNotCovered)
-        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        let silent = await engine(ScriptedSocket(helloReply: nil), handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he")
         #expect(HomeServerCheck(availability: silent, seconds: 0.3) == .unreachable)
     }
 
@@ -426,7 +432,7 @@ struct HomeServerEngineTests {
             let failure = PipelineFailure(kind: .engineUnavailable, detail: "", engineUnavailability: availability.unavailability)
             #expect(CloudCover.phoneSettings(replacing: chosen, after: failure)?.engine == .whisperKit, "\(reply)")
         }
-        let silent = await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he")
+        let silent = await engine(ScriptedSocket(helloReply: nil), handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he")
         #expect(!HomeServer.answeredWrongly(silent.unavailability))
         #expect(!HomeServer.answeredWrongly(await engine(nil).checkAvailability(languageCode: "he").unavailability))
         let refused = await engine(ScriptedSocket(helloReply: #"{"type":"error","code":"unauthorized","detail":""}"#)).checkAvailability(languageCode: "he")
@@ -445,7 +451,7 @@ struct HomeServerEngineTests {
         var chosen = AppSettings.default
         chosen.engine = .homeServer
         #expect(CloudCover.phoneSettings(replacing: chosen, after: failure)?.engine == .whisperKit)
-        #expect(!HomeServer.languageNotCovered(await engine(ScriptedSocket(helloReply: nil)).checkAvailability(languageCode: "he").unavailability))
+        #expect(!HomeServer.languageNotCovered(await engine(ScriptedSocket(helloReply: nil), handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he").unavailability))
     }
 
     @Test("a connection that stops answering pings is given up on within seconds, even in silence; one that answers is kept")
@@ -453,7 +459,7 @@ struct HomeServerEngineTests {
         func run(answering: Bool) async throws -> (Error?, Int) {
             let socket = ScriptedSocket(helloReply: ready)
             await socket.setAnswersPings(answering)
-            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, pingSeconds: 0.05, pongSeconds: 1)
+            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, pingSeconds: 0.05, pongSeconds: 1)
             let (audio, feed) = AsyncStream<[Float]>.makeStream()
             let tokens = server.stream(languageCode: "he", audio: audio)
             let quiet = [Float](repeating: 0.0005, count: 1600)
@@ -489,7 +495,7 @@ struct HomeServerEngineTests {
         // ping, where waiting for the next ping's turn made it 4 s. Timed
         // from the ping: with every test starting at once, a test run can
         // hold everything up for most of a second (CI, 4 cores).
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, pingSeconds: 2, pongSeconds: 2.05)
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, pingSeconds: 2, pongSeconds: 2.05)
         let (audio, feed) = AsyncStream<[Float]>.makeStream()
         defer { feed.finish() }
         do {
@@ -578,7 +584,7 @@ struct HomeServerEngineTests {
     @Test("a server that stays connected but never answers speech is given up on, so the phone's own model can take over; silence alone never is")
     func stuckServerIsDropped() async throws {
         func run(_ chunk: [Float], replyEvery: Int?, socket: ScriptedSocket = ScriptedSocket(helloReply: ready), reply: @escaping (Int) -> String = { text($0, "", final: true) }) async throws -> Error? {
-            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, stallSeconds: 2)
+            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, stallSeconds: 2)
             let (audio, feed) = AsyncStream<[Float]>.makeStream()
             let tokens = server.stream(languageCode: "he", audio: audio)
             let quiet = [Float](repeating: 0.0005, count: 1600)
@@ -624,7 +630,7 @@ struct HomeServerEngineTests {
     func closeReasonIsNamed() async {
         for code in ["transcription_failed", "models_unavailable"] {
             let socket = ScriptedSocket(helloReply: ready)
-            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1)
+            let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds)
             let (audio, feed) = AsyncStream<[Float]>.makeStream()
             let tokens = server.stream(languageCode: "he", audio: audio)
             let reading = Task { () -> Error? in
@@ -654,7 +660,7 @@ struct HomeServerEngineTests {
     @Test("a connection that closes with no word from the computer still counts as unreachable")
     func silentCloseStaysUnreachable() async {
         let socket = ScriptedSocket(helloReply: ready)
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1)
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds)
         let (audio, feed) = AsyncStream<[Float]>.makeStream()
         let tokens = server.stream(languageCode: "he", audio: audio)
         let reading = Task { () -> Error? in
@@ -677,15 +683,12 @@ struct HomeServerEngineTests {
     func sendsReport() async {
         let saving = ScriptedSocket(helloReply: ready)
         await saving.setReportReply(#"{"type":"report_saved","name":"20260926-2100.txt"}"#)
-        // A server that answers is never waited out, so a long limit costs
-        // nothing here; one second ran out before the scripted answer on a
-        // busy CI runner (and on one core), and the report was never sent.
-        #expect(await engine(saving, handshakeSeconds: 30).sendReport("levels -40 dB", languageCode: "he"))
+        #expect(await engine(saving).sendReport("levels -40 dB", languageCode: "he"))
         let sent = await saving.sentTexts
         #expect(sent.first?.contains(#""purpose":"report""#) == true)
         #expect(sent.contains(HomeServer.report("levels -40 dB")))
 
-        #expect(await engine(ScriptedSocket(helloReply: ready)).sendReport("x", languageCode: "he") == false)
+        #expect(await engine(ScriptedSocket(helloReply: ready), handshakeSeconds: unansweredSeconds).sendReport("x", languageCode: "he") == false)
         #expect(await engine(ScriptedSocket(helloReply: ready), token: nil).sendReport("x", languageCode: "he") == false)
     }
 
@@ -765,7 +768,7 @@ struct HomeServerEngineTests {
     @Test("an approval is trusted for a quick restart, but a start long after the computer was last heard checks it again")
     func staleApprovalCheckedAgain() async throws {
         let socket = ScriptedSocket(helloReply: ready)
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, approvalSeconds: 0.3)
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: answeredSeconds, approvalSeconds: 0.3)
         #expect(await server.checkAvailability(languageCode: "he") == .available)
         #expect(await socket.isClosed)
         #expect(await server.checkAvailability(languageCode: "he") == .available)
@@ -780,7 +783,7 @@ struct HomeServerEngineTests {
         #expect(await engine(ScriptedSocket(helloReply: ready), token: nil).checkAvailability(languageCode: "he").unavailability?.kind == .homeServerRejected)
 
         let silent = ScriptedSocket(helloReply: nil)
-        #expect(await engine(silent).checkAvailability(languageCode: "he").unavailability?.kind == .homeServerUnreachable)
+        #expect(await engine(silent, handshakeSeconds: unansweredSeconds).checkAvailability(languageCode: "he").unavailability?.kind == .homeServerUnreachable)
         #expect(await silent.isClosed)
         #expect(await engine(nil).checkAvailability(languageCode: "he").unavailability?.kind == .homeServerUnreachable)
         #expect(await engine(ScriptedSocket(helloReply: ready), address: "http://x").checkAvailability(languageCode: "he").unavailability?.kind == .homeServerUnreachable)
