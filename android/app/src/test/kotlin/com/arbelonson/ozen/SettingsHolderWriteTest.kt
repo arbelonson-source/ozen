@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.SettingsStore
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -106,5 +107,34 @@ class SettingsHolderWriteTest {
         holder.changeInTurn { it.saveHistory = false }
         assertTrue(holder.waitForWrites())
         assertFalse(relaunched().saveHistory, "after a relaunch")
+    }
+
+    @Test
+    fun `the background writer leaves a change handed to another thread once another save took the change it was asked for`() {
+        val tasks = ArrayList<Runnable>()
+        val holder = SettingsHolder(store, writer = Executor { tasks += it })
+        holder.change { it.flashCameraLight = true }
+        assertTrue(holder.changeAndSave { it.saveHistory = false })
+        val pending = holder.changeInTurn { it.saveHistory = true }
+        tasks.toList().forEach { it.run() }
+        assertFalse(relaunched().saveHistory, "the background writer wrote a change handed to another thread")
+        assertTrue(pending())
+        assertTrue(relaunched().saveHistory)
+    }
+
+    @Test
+    fun `a change made while the background writer is saving is written by it afterwards`() {
+        val tasks = ArrayList<Runnable>()
+        lateinit var holder: SettingsHolder
+        var during: (() -> Unit)? = { holder.change { it.flashCameraLight = true } }
+        holder = SettingsHolder(store, writer = Executor { tasks += it }) { settings ->
+            during?.invoke()
+            during = null
+            store.saveTakingUp(settings)
+        }
+        holder.change { it.saveHistory = false }
+        while (tasks.isNotEmpty()) tasks.removeAt(0).run()
+        assertFalse(relaunched().saveHistory)
+        assertTrue(relaunched().flashCameraLight, "the change made during the save was left unwritten")
     }
 }
