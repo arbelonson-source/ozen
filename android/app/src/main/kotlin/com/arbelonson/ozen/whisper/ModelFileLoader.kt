@@ -36,6 +36,10 @@ class ModelFileLoader(
     private val variant: String? = null,
     private val marker: ModelLoadMarker? = null,
     private val keepAwake: (Duration?) -> Unit = {},
+    /** The least total memory the model runs in ([com.arbelonson.ozen.core.PhoneModel.leastRamBytes]), checked against [totalMemory] before it downloads or loads. */
+    private val leastMemoryBytes: Long? = null,
+    /** The phone's total memory, or null when unknown. */
+    private val totalMemory: () -> Long? = { null },
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -53,6 +57,7 @@ class ModelFileLoader(
         cellularDownloadAllowed: Boolean,
         progress: (EnginePreparationProgress) -> Unit,
     ): WhisperLoadedModel {
+        refuseWithoutMemory()
         val existed = file.isFile
         if (!existed) {
             fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), cellularDownloadAllowed, progress)
@@ -82,6 +87,21 @@ class ModelFileLoader(
             passes = WhisperFallbackPasses(WhisperCppPasses(model, threads)),
             release = { thread(name = "ozen-model-release") { model.close() } },
             settled = { marker?.clear() },
+        )
+    }
+
+    // whisper.cpp reads the whole file into memory and adds its buffers. A
+    // phone with too little memory in all for that was sent the download,
+    // then ended the app as it loaded. Free memory is not the measure: it
+    // leaves out the background apps Android ends to make room, and a phone
+    // that runs the model fine would be turned down at random.
+    private fun refuseWithoutMemory() {
+        val least = leastMemoryBytes ?: return
+        val total = totalMemory() ?: return
+        if (total >= least) return
+        throw EngineUnavailability(
+            EngineUnavailability.Kind.NotEnoughMemory,
+            "${file.name} needs a phone with at least ${least / 1_000_000} MB of memory and this one has ${total / 1_000_000} MB; not downloaded or loaded",
         )
     }
 

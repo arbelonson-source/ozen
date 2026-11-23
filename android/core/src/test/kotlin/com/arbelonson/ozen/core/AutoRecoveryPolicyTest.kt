@@ -108,6 +108,12 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `a model refused for lack of free memory is not tried again on a timer, which would only find the same full memory`() {
+        val policy = AutoRecoveryPolicy(glitchDelays = listOf(1.0, 3.0, 8.0, 20.0), downloadDelays = listOf(15.0))
+        assertNull(policy.nextDelay(failure(PipelineFailure.Kind.EngineUnavailable, EngineUnavailability.Kind.NotEnoughMemory)))
+    }
+
+    @Test
     fun `a new kind of trouble gets its own fresh tries, not runoff from an unrelated one`() {
         val policy = AutoRecoveryPolicy(glitchDelays = listOf(1.0, 3.0, 8.0, 20.0), downloadDelays = listOf(15.0))
         val glitch = failure(PipelineFailure.Kind.TranscriptionStopped)

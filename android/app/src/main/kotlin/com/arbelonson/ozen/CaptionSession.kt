@@ -254,7 +254,18 @@ class CaptionSession(
     private val screenWatch = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             screenOn = intent.action != Intent.ACTION_SCREEN_OFF
+            tellWatched()
         }
+    }
+
+    /**
+     * Captions waiting for the computer or the cloud keep their quick pace
+     * only while someone can see them: the caption screen in front with
+     * the screen on. Out of sight the checks slow down and the phone may
+     * sleep between them (see `CaptionPipeline.watched`).
+     */
+    private fun tellWatched() {
+        pipeline.watched = appIsActive && screenOn
     }
     private val batterySaving = object : BroadcastReceiver() {
         // Only a change is noted, as the iPhone's notice: a session just
@@ -553,6 +564,7 @@ class CaptionSession(
             val changed = active != field
             if (active && !microphoneGoneAtRestart) restartRefused = false
             field = active
+            tellWatched()
             // Back in front, the screen is covered once its window says it has the focus again.
             if (!active) screenHasFocus = false
             listeningNoticeCoveredNow.value = active && screenHasFocus
@@ -798,6 +810,7 @@ class CaptionSession(
         context.registerReceiver(batterySaving, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
         context.registerReceiver(screenWatch, IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) })
         screenOn = power.isInteractive
+        tellWatched()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) watchHeat()
         loadRecentConversation()
     }
@@ -2020,6 +2033,8 @@ class CaptionSession(
                 variant = settings.phoneModel.variant,
                 marker = loadMarker,
                 keepAwake = downloadAwake::keepAwake,
+                leastMemoryBytes = settings.phoneModel.leastRamBytes,
+                totalMemory = { totalMemory() },
             ),
             voiceScorerFactory = ::voiceScore,
             previewDemand = ::previewDemand,
@@ -2071,6 +2086,9 @@ class CaptionSession(
                 shortfallMegabytes = PhoneModelDownloader(model, source, modelFetcher).shortfallMegabytes(freeSpace()),
                 network = pipeline.networkConditions,
                 allowCellular = current.allowCellularModelDownload,
+                // As the loader checks it: a model this phone cannot run is
+                // neither downloaded nor counted on.
+                runsHere = current.phoneModel.runsIn(totalMemory()),
             )
         }
     }

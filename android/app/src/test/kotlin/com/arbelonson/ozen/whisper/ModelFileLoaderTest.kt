@@ -214,6 +214,62 @@ class ModelFileLoaderTest {
         assertTrue(file.isFile)
     }
 
+    private class Marks : MarkerStore {
+        val written = CopyOnWriteArrayList<String>()
+
+        override fun read(): String? = written.lastOrNull()
+
+        override fun write(value: String) {
+            written += value
+        }
+
+        override fun clear() {}
+    }
+
+    private fun memoryLoader(total: Long?, fetcher: ChunkedModel = ChunkedModel(data), marks: MarkerStore = Marks()) = ModelFileLoader(
+        file,
+        "/lib",
+        download = PhoneModelDownloader(file, source, fetcher),
+        marker = ModelLoadMarker(marks),
+        leastMemoryBytes = 1_461_000_000,
+        totalMemory = { total },
+    ) { path, _ ->
+        opened.add(path)
+        null
+    }
+
+    @Test
+    fun `a model on the phone that this phone has too little memory for in all is not loaded, so Android does not end the app over it`() = runBlocking {
+        file.writeBytes(data)
+        val marks = Marks()
+        val failure = assertFailsWith<EngineUnavailability> { memoryLoader(1_400_000_000, marks = marks).load("he", cellularDownloadAllowed = true) {} }
+        assertEquals(EngineUnavailability.Kind.NotEnoughMemory, failure.kind)
+        assertTrue(opened.isEmpty())
+        assertTrue(marks.written.isEmpty(), "marked as loading: ${marks.written}")
+        assertContentEquals(data, file.readBytes())
+    }
+
+    @Test
+    fun `a model this phone has too little memory for in all is not downloaded either`() = runBlocking {
+        val fetcher = ChunkedModel(data)
+        val failure = assertFailsWith<EngineUnavailability> { memoryLoader(1_400_000_000, fetcher).load("he", cellularDownloadAllowed = true) {} }
+        assertEquals(EngineUnavailability.Kind.NotEnoughMemory, failure.kind)
+        assertEquals(0, fetcher.served)
+        assertFalse(file.exists())
+        assertTrue(opened.isEmpty())
+    }
+
+    @Test
+    fun `a phone with the least memory the model runs in, or of unknown memory, loads it as before`() = runBlocking {
+        file.writeBytes(data)
+        for (total in listOf(1_461_000_000L, null)) {
+            opened.clear()
+            val failure = assertFailsWith<EngineUnavailability> { memoryLoader(total).load("he", cellularDownloadAllowed = true) {} }
+            assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind, "$total")
+            assertEquals(listOf(file.path), opened, "$total")
+        }
+    }
+
     @Test
     fun `a model that was just downloaded and fails to load is not checked again`() = runBlocking {
         val failure = assertFailsWith<EngineUnavailability> { loader(ChunkedModel(data)).load("en", cellularDownloadAllowed = true) {} }

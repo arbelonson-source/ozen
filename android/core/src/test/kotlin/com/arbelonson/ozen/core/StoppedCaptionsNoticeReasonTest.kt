@@ -47,6 +47,14 @@ class StoppedCaptionsNoticeReasonTest {
     }
 
     @Test
+    fun `a model the phone has too little memory for is named as that, not as a failed load`() {
+        assertNamed(
+            tr("אין בטלפון הזה מספיק זיכרון למודל הזה", "This phone doesn’t have enough memory for this model"),
+            body(engineFailure(EngineUnavailability.Kind.NotEnoughMemory)),
+        )
+    }
+
+    @Test
     fun `a failed download, a damaged model, a missing model and a failed load are told apart`() {
         assertNamed(tr("הורדת המודל נכשלה", "Downloading the model failed"), body(engineFailure(EngineUnavailability.Kind.ModelDownloadFailed)))
         assertNamed(DamagedModelNotice.text(), body(engineFailure(EngineUnavailability.Kind.ModelDamaged)))

@@ -105,11 +105,70 @@ class PhoneModelEstimateTest {
     }
 
     @Test
-    fun `without a speed figure a 2 GB phone keeps the best model, as the 2 GB test emulator runs it, and a roomy phone is not sent the bigger file of the same quality`() {
-        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 1_900_000_000).file)
-        assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 1_900_000_000).file)
+    fun `without a speed figure a roomy phone keeps the best model and is not sent the bigger file of the same quality`() {
         assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 8_000_000_000).file)
         assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 8_000_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a 2 or 3 GB phone is recommended Small, not a 574 MB model its memory holds but its processor cannot keep up with`() {
+        for (memory in listOf(1_850_000_000L, 1_900_000_000L, 2_800_000_000L, 3_000_000_000L)) {
+            for (language in listOf(UILanguage.Hebrew, UILanguage.English)) {
+                assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(language, null, memory).file, "$language, $memory bytes")
+            }
+        }
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, Double.NaN, 1_850_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a 4 GB phone keeps the best model, as before`() {
+        for (memory in listOf(3_600_000_000L, 3_800_000_000L)) {
+            assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, memory).file)
+            assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, memory).file)
+        }
+    }
+
+    @Test
+    fun `with a speed figure a 2 GB phone is judged by its speed as before, so a fast one still gets the best model`() {
+        assertEquals("ggml-base-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, 40.0, 1_850_000_000).file)
+        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, 500.0, 1_850_000_000).file)
+    }
+
+    @Test
+    fun `the least memory a model runs in is its working memory with 700 MB beside it, or what makes it comfortable when that is less`() {
+        assertEquals(1_461_041_195, model("ggml-ozen-a3-q5_0").leastRamBytes)
+        assertEquals(1_461_041_195, model("ggml-large-v3-turbo-q5_0").leastRamBytes)
+        assertEquals(2_518_555_275, model("ivrit").leastRamBytes)
+        assertEquals(model("small").comfortableRamBytes, model("small").leastRamBytes)
+        assertEquals(model("base").comfortableRamBytes, model("base").leastRamBytes)
+    }
+
+    @Test
+    fun `the test emulator that was ended loading the full-precision ivrit file cannot run it, and runs the 574 MB files`() {
+        assertFalse(model("ivrit").runsIn(2_500_000_000))
+        assertTrue(model("ggml-ozen-a3-q5_0").runsIn(2_500_000_000))
+    }
+
+    @Test
+    fun `a 2 GB phone runs every model but the full-precision ivrit file, a 3 and a 4 GB phone every model, and one of unknown memory any`() {
+        for (candidate in PhoneModelCatalog.all) {
+            assertEquals(candidate.variant != "ivrit-large-v3-turbo-8bit", candidate.runsIn(1_850_000_000), candidate.variant)
+            assertTrue(candidate.runsIn(2_800_000_000), candidate.variant)
+            assertTrue(candidate.runsIn(3_600_000_000), candidate.variant)
+            assertTrue(candidate.runsIn(null), candidate.variant)
+        }
+    }
+
+    @Test
+    fun `no phone is refused the model its recommendation gives it, with or without a speed figure`() {
+        for (language in UILanguage.entries) {
+            for (memory in 900_000_000L..16_000_000_000L step 50_000_000L) {
+                for (speed in listOf(null, 5.0, 20.0, 40.0, 60.0, 125.0, 200.0, 400.0, 1_000.0)) {
+                    val picked = PhoneModelEstimate.recommend(language, speed, memory)
+                    assertTrue(picked.runsIn(memory), "$language, $memory bytes, $speed GFLOPS: ${picked.variant}")
+                }
+            }
+        }
     }
 
     @Test

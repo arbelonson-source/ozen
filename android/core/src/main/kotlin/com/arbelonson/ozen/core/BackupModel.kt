@@ -15,6 +15,8 @@ sealed class BackupModelStatus {
 
     data class NotEnoughRoom(val megabytes: Int) : BackupModelStatus()
 
+    data object TooLittleMemory : BackupModelStatus()
+
     data object Failed : BackupModelStatus()
 }
 
@@ -28,8 +30,10 @@ object BackupModel {
         shortfallMegabytes: Int?,
         network: NetworkConditions?,
         allowCellular: Boolean,
+        runsHere: Boolean,
     ): BackupModelStatus {
         if (engine != TranscriptionEngineKind.HomeServer && engine != TranscriptionEngineKind.Cloud) return BackupModelStatus.NotNeeded
+        if (!runsHere) return BackupModelStatus.TooLittleMemory
         if (installed) return BackupModelStatus.Ready
         if (downloading != null) return BackupModelStatus.Downloading(downloading)
         if (shortfallMegabytes != null) return BackupModelStatus.NotEnoughRoom(shortfallMegabytes)
