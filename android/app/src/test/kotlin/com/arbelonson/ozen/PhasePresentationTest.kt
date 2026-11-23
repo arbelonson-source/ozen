@@ -236,6 +236,23 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a phone without enough free memory for the model says so, and a tap opens the model choice for a lighter one`() {
+        val state = unavailable(EngineUnavailability.Kind.NotEnoughMemory)
+        Localization.withLanguage(UILanguage.English) {
+            val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)
+            assertEquals("Not enough free memory on the phone for this model", presentation.title)
+            assertEquals("Tap to choose a lighter model, or close other apps and start again", presentation.detail)
+            assertEquals(Action.OpenEngineSettings, presentation.action)
+            assertEquals(PhaseTint.Problem, presentation.tint)
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)
+            assertEquals("אין בטלפון מספיק זיכרון פנוי למודל הזה", presentation.title)
+            assertEquals("הקישו כדי לבחור מודל קל יותר, או סגרו אפליקציות אחרות והפעילו שוב", presentation.detail)
+        }
+    }
+
+    @Test
     fun `a full phone says how much to free and then offers a smaller model, word for word`() {
         val state = unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)
         val size = PhasePresentation.sizeText(1_300)

@@ -105,11 +105,33 @@ class PhoneModelEstimateTest {
     }
 
     @Test
-    fun `without a speed figure a 2 GB phone keeps the best model, as the 2 GB test emulator runs it, and a roomy phone is not sent the bigger file of the same quality`() {
-        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 1_900_000_000).file)
-        assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 1_900_000_000).file)
+    fun `without a speed figure a roomy phone keeps the best model and is not sent the bigger file of the same quality`() {
         assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 8_000_000_000).file)
         assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 8_000_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a 2 or 3 GB phone is recommended Small, not a 574 MB model its memory holds but its processor cannot keep up with`() {
+        for (memory in listOf(1_850_000_000L, 1_900_000_000L, 2_800_000_000L, 3_000_000_000L)) {
+            for (language in listOf(UILanguage.Hebrew, UILanguage.English)) {
+                assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(language, null, memory).file, "$language, $memory bytes")
+            }
+        }
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, Double.NaN, 1_850_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a 4 GB phone keeps the best model, as before`() {
+        for (memory in listOf(3_600_000_000L, 3_800_000_000L)) {
+            assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, memory).file)
+            assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, memory).file)
+        }
+    }
+
+    @Test
+    fun `with a speed figure a 2 GB phone is judged by its speed as before, so a fast one still gets the best model`() {
+        assertEquals("ggml-base-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, 40.0, 1_850_000_000).file)
+        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, 500.0, 1_850_000_000).file)
     }
 
     @Test

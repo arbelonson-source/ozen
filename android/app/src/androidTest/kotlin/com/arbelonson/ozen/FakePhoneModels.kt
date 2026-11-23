@@ -47,4 +47,6 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
         checks += thenChooseBest
         if (checkRuns) check.value = PhoneCheckState.Running(0f)
     }
+
+    override fun followTheTest(): Boolean = check.value is PhoneCheckState.Running
 }

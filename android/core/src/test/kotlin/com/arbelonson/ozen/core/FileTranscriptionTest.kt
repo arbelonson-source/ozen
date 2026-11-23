@@ -20,6 +20,12 @@ class FileTranscriptionTest {
     }
 
     @Test
+    fun aModelThePhoneHadNoFreeMemoryForIsAModelThatDidNotLoadWhichCanBeTriedAgainOrSwapped() {
+        assertEquals(FileTranscriptionProblem.ModelFailed, problem(EngineUnavailability.Kind.NotEnoughMemory))
+        assertTrue(FileTranscriptionProblem.ModelFailed.canTryAgain)
+    }
+
+    @Test
     fun everyProblemHasItsOwnPlainMessageInBothLanguages() {
         val english = Localization.withLanguage(UILanguage.English) { FileTranscriptionProblem.entries.map { it.message } }
         val hebrew = Localization.withLanguage(UILanguage.Hebrew) { FileTranscriptionProblem.entries.map { it.message } }

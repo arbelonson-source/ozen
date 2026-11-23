@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -36,6 +37,10 @@ class ModelFileLoader(
     private val variant: String? = null,
     private val marker: ModelLoadMarker? = null,
     private val keepAwake: (Duration?) -> Unit = {},
+    /** What the model takes in memory once loaded ([com.arbelonson.ozen.core.PhoneModel.workingBytes]), checked against [freeMemory] before it loads. */
+    private val needsBytes: Long? = null,
+    /** The phone's free memory now, as Android counts it for apps (`ActivityManager.MemoryInfo.availMem`), or null when unknown. */
+    private val freeMemory: () -> Long? = { null },
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -57,6 +62,7 @@ class ModelFileLoader(
         if (!existed) {
             fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), cellularDownloadAllowed, progress)
         }
+        refuseWithoutMemory()
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = variant ?: file.name))
         var opened: WhisperModel? = null
         try {
@@ -82,6 +88,25 @@ class ModelFileLoader(
             passes = WhisperFallbackPasses(WhisperCppPasses(model, threads)),
             release = { thread(name = "ozen-model-release") { model.close() } },
             settled = { marker?.clear() },
+        )
+    }
+
+    // whisper.cpp reads the whole file into memory and adds its buffers.
+    // With less free than that (free counts the file cache Android drops at
+    // once), room has to come from ending other apps, and on a small phone
+    // Android ended Ozen itself as it loaded, the captions gone until it
+    // was opened again. A model let go a moment ago may still be giving its
+    // memory back, so a short reading is taken again before refusing.
+    private suspend fun refuseWithoutMemory() {
+        val needs = needsBytes ?: return
+        var free = freeMemory() ?: return
+        if (free >= needs) return
+        delay(MEMORY_RECHECK)
+        free = freeMemory() ?: return
+        if (free >= needs) return
+        throw EngineUnavailability(
+            EngineUnavailability.Kind.NotEnoughMemory,
+            "${file.name} takes about ${needs / 1_000_000} MB once loaded and the phone has ${free / 1_000_000} MB free; not loaded",
         )
     }
 
@@ -154,5 +179,6 @@ class ModelFileLoader(
     companion object {
         val AWAKE_FOR = 10.minutes
         val RENEW_EVERY = 1.minutes
+        val MEMORY_RECHECK = 500.milliseconds
     }
 }

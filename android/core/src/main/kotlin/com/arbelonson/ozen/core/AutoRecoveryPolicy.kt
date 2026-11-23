@@ -169,6 +169,9 @@ class AutoRecoveryPolicy(
                 EngineUnavailability.Kind.ModelNotOnDevice -> Schedule.Never
                 EngineUnavailability.Kind.ModelDownloadFailed -> Schedule.Download
                 EngineUnavailability.Kind.ModelLoadFailed -> Schedule.LoadFailure
+                // Only the person can free memory, by closing other apps, or
+                // choose a lighter model; a timer would find the same memory.
+                EngineUnavailability.Kind.NotEnoughMemory -> Schedule.Never
                 // The damaged file is gone; the next try downloads it again.
                 EngineUnavailability.Kind.ModelDamaged -> Schedule.Glitch
                 EngineUnavailability.Kind.HomeServerUnreachable ->

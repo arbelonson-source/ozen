@@ -529,9 +529,16 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
         PrimaryButton(
             tr("להישאר עם המודל המומלץ", "Keep the recommended model"),
             onClick = {
-                val recommended = recommendedPhoneModel(settings.spokenLanguage, settings.effectiveGflops, models.totalMemoryBytes).file
-                models.choose(recommended, byHand = false)
-                if ((models.switching.value as? PhoneModelSwitch.NotEnoughRoom)?.file != recommended) onKept()
+                // During the phone test the test's pick is the recommended
+                // model, as on the iPhone, where Keep is not counted as the
+                // person's own pick.
+                if (models.followTheTest()) {
+                    onKept()
+                } else {
+                    val recommended = recommendedPhoneModel(settings.spokenLanguage, settings.effectiveGflops, models.totalMemoryBytes).file
+                    models.choose(recommended, byHand = false)
+                    if ((models.switching.value as? PhoneModelSwitch.NotEnoughRoom)?.file != recommended) onKept()
+                }
             },
             modifier = Modifier.fillMaxWidth().testTag("model-page-keep"),
             icon = Icons.Rounded.Check,

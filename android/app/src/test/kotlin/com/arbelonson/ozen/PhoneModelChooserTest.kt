@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelDownloader
+import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -67,6 +68,7 @@ class PhoneModelChooserTest {
     private var downloadsStarted = 0
     private var whenHashing: () -> Unit = {}
     private var diskFull = false
+    private var memory: Long? = null
 
     private val fetcher = object : ReleaseFileFetching {
         override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
@@ -113,6 +115,7 @@ class PhoneModelChooserTest {
         },
         applied = { applied += 1 },
         captionsBusy = busy,
+        totalMemory = { memory },
         io = StandardTestDispatcher(scope.testScheduler),
         device = "Pixel 7",
         downloadStarted = { downloadsStarted += 1 },
@@ -370,6 +373,69 @@ class PhoneModelChooserTest {
         chooser.runCheck(thenChooseBest = true)
         scope.runCurrent()
         assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `keeping the recommended model during the phone test leaves the choice to the test, which picks what a slow 2 GB phone can run`() {
+        memory = 1_850_000_000
+        measured = PhoneSpeed(20.0, 4, 2.0)
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertTrue(chooser.followTheTest())
+        assertTrue(fetched.isEmpty())
+        scope.advanceTimeBy(20_000)
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `keeping the recommended model during the phone test replaces a model picked by hand before it`() {
+        measured = PhoneSpeed(20.0, 4, 2.0)
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        chooser.choose("ggml-small-q5_1.bin", byHand = true)
+        assertTrue(chooser.followTheTest())
+        scope.advanceTimeBy(20_000)
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a model picked by hand after keeping the recommended one during the phone test stays the choice`() {
+        measured = PhoneSpeed(20.0, 4, 2.0)
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertTrue(chooser.followTheTest())
+        chooser.choose("ggml-small-q5_1.bin", byHand = true)
+        scope.advanceTimeBy(20_000)
+        scope.runCurrent()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `keeping the recommended model during a phone test that fails chooses the one recommended without a speed figure`() {
+        memory = 1_850_000_000
+        measured = null
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertTrue(chooser.followTheTest())
+        scope.advanceTimeBy(20_000)
+        scope.runCurrent()
+        assertEquals(PhoneCheckState.Failed, chooser.check.value)
+        assertEquals(PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 1_850_000_000).file, saved().phoneModelFile)
+    }
+
+    @Test
+    fun `with no phone test running, keeping the recommended model is left to the caller and nothing waits for a test`() {
+        assertFalse(chooser.followTheTest())
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        chooser.runCheck(thenChooseBest = false)
+        scope.runCurrent()
+        assertNull(saved().phoneModelFile)
     }
 
     @Test

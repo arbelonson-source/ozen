@@ -12,6 +12,7 @@ data class PhoneModel(
     val hebrewQuality: Int,
     val otherQuality: Int,
     val passGflop: Double,
+    val stateBytes: Long,
 ) {
     val displayName: String get() = nameText()
 
@@ -20,6 +21,9 @@ data class PhoneModel(
     val bytes: Long get() = source.bytes
 
     val comfortableRamBytes: Long get() = source.bytes * PhoneModelCatalog.RAM_PER_FILE_BYTE
+
+    /** What whisper.cpp holds in memory once this model is loaded and has made a pass: the weights it reads in whole, and [stateBytes]. */
+    val workingBytes: Long get() = source.bytes + stateBytes
 
     val megabytes: Int get() = ((source.bytes + 999_999) / 1_000_000).toInt()
 
@@ -43,9 +47,29 @@ object PhoneModelCatalog {
      * file in total memory: the weights, the working buffers of a pass and
      * the system and the app itself. The 2.5 GB test emulator was killed
      * loading the 1.62 GB file (needs 4.9 GB by this rule) and holds the
-     * 574 MB files (1.7 GB) fine.
+     * 574 MB files (1.7 GB) fine. whisper.cpp 1.9.5 itself, measured at its
+     * peak after loading each file and making one pass (see [TURBO_STATE_BYTES]),
+     * takes 2.7 times the Base file, 1.9 times Small, 1.3 times the 574 MB
+     * files and 1.1 times the 1.62 GB one: the rule covers it for every
+     * model, and at the 574 MB files' 1.7 GB leaves about 1 GB to Android and
+     * the rest of the app, about what the 2 GB test emulator that runs them
+     * has left.
      */
     const val RAM_PER_FILE_BYTE = 3L
+
+    /**
+     * whisper.cpp's caches and working buffers besides the weights, by the
+     * peak memory of a load and one 10-second pass of each file (whisper.cpp
+     * 1.9.5 on a laptop's x86-64 processor, CPU only, flash attention on, as
+     * the app runs it): 761 MB for the 574 MB files, 1.82 GB for the 1.62 GB
+     * one, 364 MB for Small, and 251 MB for the 148 MB full-precision Base,
+     * whose buffers are those of the 60 MB one. The same shape of model has
+     * the same buffers.
+     */
+    private const val TURBO_STATE_BYTES = 187_000_000L
+    private const val FULL_PRECISION_STATE_BYTES = 194_000_000L
+    private const val SMALL_STATE_BYTES = 175_000_000L
+    private const val BASE_STATE_BYTES = 104_000_000L
 
     private const val OZEN_MODELS = "https://github.com/arbelonson-source/ozen-models/releases/download"
     private const val WHISPER_CPP = "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1"
@@ -58,7 +82,7 @@ object PhoneModelCatalog {
             nameText = { tr("טורבו עברית של אוזן", "Ozen Turbo Hebrew") },
             noteText = { tr("אומן גם על דיבור מרחוק, ברעש וכשטלוויזיה פועלת ברקע. המדויק ביותר בעברית.", "Trained further on speech from across a room, in noise and over a TV. The most accurate in Hebrew.") },
             source = PhoneModelSource(URI("$OZEN_MODELS/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/$OZEN_HEBREW_FILE"), 574_041_195, "c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af"),
-            isHebrewOnly = true, hebrewQuality = 5, otherQuality = 0, passGflop = 470.0,
+            isHebrewOnly = true, hebrewQuality = 5, otherQuality = 0, passGflop = 470.0, stateBytes = TURBO_STATE_BYTES,
         ),
         PhoneModel(
             file = "ggml-ivrit-large-v3-turbo.bin",
@@ -66,7 +90,7 @@ object PhoneModelCatalog {
             nameText = { tr("טורבו עברית של ivrit.ai", "Turbo Hebrew by ivrit.ai") },
             noteText = { tr("אומן על 5,000 שעות של עברית. הקובץ המלא, בלי דחיסה: הורדה גדולה, וכבד לטלפון.", "Trained on 5,000 hours of Hebrew. The full file, not compressed: a big download and heavy for a phone.") },
             source = PhoneModelSource(URI("$IVRIT/ggml-model.bin"), 1_624_555_275, "c8090411113357097bfafc2b8e228ec1639fa7f5fe4ecb5d054ac0ccef8641b1"),
-            isHebrewOnly = true, hebrewQuality = 5, otherQuality = 0, passGflop = FULL_PRECISION_PASS_GFLOP,
+            isHebrewOnly = true, hebrewQuality = 5, otherQuality = 0, passGflop = FULL_PRECISION_PASS_GFLOP, stateBytes = FULL_PRECISION_STATE_BYTES,
         ),
         PhoneModel(
             file = GENERAL_FILE,
@@ -74,7 +98,7 @@ object PhoneModelCatalog {
             nameText = { tr("טורבו", "Turbo") },
             noteText = { tr("המודל הכללי המדויק ביותר, לכל השפות. טוב בעברית, אבל פחות ממודלי העברית.", "The most accurate general model, for every language. Good in Hebrew, but behind the Hebrew models.") },
             source = PhoneModelSource(URI("$WHISPER_CPP/$GENERAL_FILE"), 574_041_195, "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"),
-            isHebrewOnly = false, hebrewQuality = 4, otherQuality = 5, passGflop = 470.0,
+            isHebrewOnly = false, hebrewQuality = 4, otherQuality = 5, passGflop = 470.0, stateBytes = TURBO_STATE_BYTES,
         ),
         PhoneModel(
             file = "ggml-small-q5_1.bin",
@@ -82,7 +106,7 @@ object PhoneModelCatalog {
             nameText = { tr("קטן", "Small") },
             noteText = { tr("קל יותר, לטלפון איטי. מובן, אבל עם טעויות. חלש יותר בעברית.", "Lighter for a slower phone. Understandable, with mistakes. Weaker in Hebrew.") },
             source = PhoneModelSource(URI("$WHISPER_CPP/ggml-small-q5_1.bin"), 190_085_487, "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"),
-            isHebrewOnly = false, hebrewQuality = 2, otherQuality = 3, passGflop = 76.0,
+            isHebrewOnly = false, hebrewQuality = 2, otherQuality = 3, passGflop = 76.0, stateBytes = SMALL_STATE_BYTES,
         ),
         PhoneModel(
             file = "ggml-base-q5_1.bin",
@@ -90,7 +114,7 @@ object PhoneModelCatalog {
             nameText = { tr("בסיסי", "Base") },
             noteText = { tr("הקל והמהיר ביותר, לטלפון ישן. בעברית רוב המילים יוצאות שגויות.", "The lightest and fastest, for an old phone. In Hebrew most words come out wrong.") },
             source = PhoneModelSource(URI("$WHISPER_CPP/ggml-base-q5_1.bin"), 59_707_625, "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"),
-            isHebrewOnly = false, hebrewQuality = 1, otherQuality = 2, passGflop = 17.0,
+            isHebrewOnly = false, hebrewQuality = 1, otherQuality = 2, passGflop = 17.0, stateBytes = BASE_STATE_BYTES,
         ),
     )
 
@@ -143,7 +167,9 @@ object PhoneModelEstimate {
      * Without a speed figure (the phone test failed or never ran) a phone
      * whose memory is known still gets a model that memory holds: the most
      * accurate one, ties going to the smaller file, or the smallest file
-     * when none fits. With neither figure the catalog's choice stands.
+     * when none fits. A phone below [LIGHT_WITHOUT_SPEED_BELOW_BYTES] gets
+     * no model heavier than Small then. With neither figure the catalog's
+     * choice stands.
      */
     fun recommend(language: UILanguage, measuredGflops: Double?, totalMemoryBytes: Long? = null): PhoneModel {
         if (measuredGflops == null || !(measuredGflops > 0)) return heldBy(language, totalMemoryBytes)
@@ -156,10 +182,26 @@ object PhoneModelEstimate {
         return offered.minBy { it.passGflop }
     }
 
+    /**
+     * A 2 or 3 GB phone: one of 3 GB reports about 2.8 GB to the app, one of
+     * 4 GB about 3.6. Its memory holds the 574 MB models by
+     * [PhoneModelCatalog.RAM_PER_FILE_BYTE], but such phones come with
+     * entry-level processors, and a pass of those models needs 165 GFLOPS
+     * here just to fall a little behind: a flagship's speed. Going by
+     * memory alone, a slow 2 GB phone was sent a 574 MB download that wrote
+     * captions far behind the speech, where any measured speed up to 40
+     * GFLOPS would have given it Base. Small needs 27 GFLOPS to fall only a
+     * little behind, and if it falls further behind in use, the caption
+     * screen offers a lighter model.
+     */
+    const val LIGHT_WITHOUT_SPEED_BELOW_BYTES = 3_200_000_000L
+
     private fun heldBy(language: UILanguage, totalMemoryBytes: Long?): PhoneModel {
         if (totalMemoryBytes == null) return PhoneModelCatalog.recommended(language)
         val offered = PhoneModelCatalog.offered(language)
-        return offered.filter { it.comfortableRamBytes <= totalMemoryBytes }
+        val small = PhoneModelCatalog.all.first { it.variant == "small" }
+        val runnable = if (totalMemoryBytes < LIGHT_WITHOUT_SPEED_BELOW_BYTES) offered.filter { it.passGflop <= small.passGflop } else offered
+        return runnable.filter { it.comfortableRamBytes <= totalMemoryBytes }
             .maxWithOrNull(compareBy<PhoneModel> { it.quality(language) }.thenBy { -it.bytes })
             ?: offered.minBy { it.bytes }
     }

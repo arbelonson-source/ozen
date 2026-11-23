@@ -673,6 +673,14 @@ class PhasePresentation private constructor(
                     action = Action.Retry,
                 )
 
+                EngineUnavailability.Kind.NotEnoughMemory -> PhasePresentation(
+                    title = CaptionProblemText.notEnoughMemory(),
+                    detail = tr("הקישו כדי לבחור מודל קל יותר, או סגרו אפליקציות אחרות והפעילו שוב", "Tap to choose a lighter model, or close other apps and start again"),
+                    systemImage = "cpu",
+                    tint = PhaseTint.Problem,
+                    action = Action.OpenEngineSettings,
+                )
+
                 EngineUnavailability.Kind.ModelDamaged -> PhasePresentation(
                     title = DamagedModelNotice.text(),
                     detail = tr("הקישו כדי להוריד אותו שוב", "Tap to download it again"),

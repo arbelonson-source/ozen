@@ -26,6 +26,8 @@ object CaptionProblemText {
 
     fun modelLoadFailed(): String = tr("טעינת המודל נכשלה", "Loading the model failed")
 
+    fun notEnoughMemory(): String = tr("אין בטלפון מספיק זיכרון פנוי למודל הזה", "Not enough free memory on the phone for this model")
+
     fun temporarilyUnavailable(engine: TranscriptionEngineKind?): String =
         tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(engineName(engine)))
 
