@@ -1069,6 +1069,7 @@ class ConversationSaverTest {
         start()
         say("Take two pills after dinner")
         assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        writer.waitUntilIdle()
         val conversation = saver.currentId
         assertTrue(folder.setWritable(false))
         try {
@@ -1092,6 +1093,7 @@ class ConversationSaverTest {
         start()
         say("Good morning", at = clock - 30 * 60)
         assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        writer.waitUntilIdle()
         val morning = saver.currentId
         assertTrue(folder.setWritable(false))
         try {
@@ -1460,6 +1462,116 @@ class ConversationSaverTest {
             assertEquals(true, starring.get())
             assertTrue(threads.onMain { history.isStarred(line) })
             assertTrue(store.load(earlier)!!.segments.single().isStarred)
+        }
+    }
+
+    // A star given on the caption screen was saved while the main thread
+    // waited: on a phone slow to write, the captions froze until the
+    // conversation was written, and a write that stuck could close the app
+    // as not responding. The star shows from memory at once and its save is
+    // queued; the waiting version keeps it should the phone refuse.
+    @Test
+    fun `a star given on the caption screen to a line being captioned shows at once and is saved without the main thread waiting`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val screen = savingOn(threads, slow)
+            listening = true
+            screen.listeningChanged()
+            say("Take two pills after dinner")
+            val conversation = screen.currentId
+            val pills = lines[0].id
+            disk.suspend()
+            try {
+                assertEquals(true, threads.answersAtOnce { screen.toggleLiveStar(pills) })
+                assertTrue(threads.answersAtOnce { screen.isStarred(pills) })
+            } finally {
+                disk.resume()
+            }
+            slow.waitUntilIdle()
+            assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+        }
+    }
+
+    @Test
+    fun `a star given on the caption screen to a line a long quiet closed shows at once and is saved in that conversation without the main thread waiting`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val screen = savingOn(threads, slow)
+            listening = true
+            screen.listeningChanged()
+            say("Good morning", at = clock - 30 * 60)
+            val morning = screen.currentId
+            assertTrue(screen.checkForConversationBreak())
+            say("Good evening")
+            for (starring in listOf(true, false)) {
+                disk.suspend()
+                try {
+                    assertEquals(starring, threads.answersAtOnce { screen.toggleLiveStar(lines[0].id) })
+                    assertEquals(starring, threads.answersAtOnce { screen.isStarred(lines[0].id) })
+                } finally {
+                    disk.resume()
+                }
+                slow.waitUntilIdle()
+                assertEquals(listOf(starring), store.load(morning)!!.segments.map { it.isStarred })
+            }
+        }
+    }
+
+    // History's saving switch closed the conversation and waited on the
+    // main thread for it to be written. Closed and handed to the writer in
+    // the switch's own step, with the setting changed there too, nothing
+    // said after it is saved, and it is written before anything History
+    // asks next, here deleting it.
+    @Test
+    fun `switching saving off closes the conversation at once and writes it without the main thread waiting`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val history = savingOn(threads, slow)
+            listening = true
+            history.listeningChanged()
+            say("Good morning", at = clock - 20)
+            val conversation = history.currentId
+            disk.suspend()
+            try {
+                threads.answersAtOnce { history.switchSaving(false) }
+                assertFalse(settings.saveHistory, "the switch still showed saving on")
+                say("A secret between us", at = clock - 10)
+                threads.answersAtOnce { history.save(ended = false) }
+            } finally {
+                disk.resume()
+            }
+            slow.waitUntilIdle()
+            val kept = store.listSummaries().single()
+            assertEquals(conversation, kept.id)
+            assertEquals(clock - 20, kept.endedAt)
+            assertEquals(listOf("Good morning"), store.load(conversation)!!.segments.map { it.text })
+        }
+    }
+
+    @Test
+    fun `a conversation History deletes just after switching saving off is not written back by the switch`() {
+        val disk = SerialQueue("slow disk")
+        val slow = TranscriptHistoryWriter(store, disk)
+        Threads().use { threads ->
+            val history = savingOn(threads, slow)
+            listening = true
+            history.listeningChanged()
+            say("Good morning", at = clock - 20)
+            val conversation = history.currentId
+            disk.suspend()
+            try {
+                threads.answersAtOnce { history.switchSaving(false) }
+                threads.fromHistory { history.delete(conversation) }
+            } finally {
+                disk.resume()
+            }
+            threads.historyDone()
+            slow.waitUntilIdle()
+            assertNull(store.load(conversation))
+            assertTrue(store.listSummaries().isEmpty())
         }
     }
 

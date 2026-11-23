@@ -52,6 +52,21 @@ class SettingsHolderRaceTest {
         assertEquals(measured, relaunched.phoneLiveMeasurement, "measurement after a relaunch")
     }
 
+    @Test
+    fun `a change made in turn shows at once and reaches the file when its write runs, with every change made since`() {
+        val holder = SettingsHolder(SettingsStore(file))
+        val switched = holder.changeInTurn { it.saveHistory = false }
+        assertFalse(holder.current.value.saveHistory, "on screen")
+        assertTrue(SettingsStore(file).load().saveHistory, "in the file before its write ran")
+        val fixed = holder.changeInTurn { it.wordFixes = fix }
+        assertTrue(switched())
+        val relaunched = SettingsStore(file).load()
+        assertFalse(relaunched.saveHistory, "after a relaunch")
+        assertEquals(fix, relaunched.wordFixes, "the later change after a relaunch")
+        assertTrue(fixed())
+        assertFalse(holder.saveFailed.value)
+    }
+
     private fun waitUntilDoneOrHeldUp(thread: Thread) {
         val settled = setOf(Thread.State.TERMINATED, Thread.State.BLOCKED, Thread.State.WAITING)
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)

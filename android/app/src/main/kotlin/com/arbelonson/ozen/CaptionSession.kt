@@ -567,7 +567,7 @@ class CaptionSession(
         speakerName = pipeline::displayName,
         inputName = { audio.availableInputs.firstOrNull { it.uid == audio.selectedInputUID }?.portName },
         startNewConversation = pipeline::startNewConversation,
-        setSaveHistory = { on -> settings.change { it.saveHistory = on } },
+        saveHistoryInTurn = { on -> settings.changeInTurn { it.saveHistory = on }.let { write -> { write() } } },
         scope = scope,
         problemAudio = problemAudio,
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
@@ -651,15 +651,23 @@ class CaptionSession(
         override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult =
             conversations.fixLineEverywhere(sessionID, segmentID, WordFix(heard, written)) { line, change -> pipeline.correctWord(line, change) != null }
 
+        // History asks on the main thread, and a phone can be slow to write:
+        // the switch and the keeping time show at once, and the conversation
+        // closed, the settings file and the shared copies are written and
+        // deleted off it. Done on it, a slow write froze the screen, and one
+        // that stuck could close the app as not responding. Started even when
+        // the captions close meanwhile, so the file keeps the choice shown.
         override fun switchSaving(on: Boolean) {
-            conversations.switchSaving(on)
+            val written = conversations.switchSaving(on)
             publish()
+            scope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) { written() }
         }
 
         override suspend fun keepFor(retention: HistoryRetention) {
-            settings.change { it.historyRetention = retention }
+            val stored = settings.changeInTurn { it.historyRetention = retention }
+            withContext(NonCancellable + Dispatchers.IO) { stored() }
             conversations.deleteExpired()
-            forgetSharedCopy()
+            withContext(Dispatchers.IO) { forgetSharedCopy() }
         }
 
         override fun opened(id: UUID) = conversations.opened(id)

@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
+import android.os.StrictMode
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -1808,5 +1809,66 @@ class CaptionSessionDeviceTest {
             }
             work.deleteRecursively()
         }
+    }
+
+    // History's saving switch and its keeping time wrote the settings file,
+    // and the keeping time cleared the shared copies, on the main thread: on
+    // a phone slow to write the screen froze for it, and a write that stuck
+    // could close the app as not responding. Both still show the choice at
+    // once, and the file and the shared copies follow off the main thread.
+    @Test
+    fun historysSavingSwitchAndKeepingTimeWriteNoFileOnTheMainThread(): Unit = runBlocking {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+        val work = File(context.cacheDir, "main-thread-writes-test").apply { deleteRecursively(); mkdirs() }
+        val settingsFile = File(work, "settings.json")
+        val settings = SettingsHolder(SettingsStore(settingsFile))
+        val shared = File(context.cacheDir, CaptionSession.SHARED_FOLDER).also { it.mkdirs() }.resolve("Conversation from Ozen.txt")
+        shared.writeText("Main thread writes test")
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        try {
+            val switching = mainThreadWrites { session.savedConversations.switchSaving(false) }
+            assertFalse("the switch did not show saving off at once", settings.current.value.saveHistory)
+            val keeping = mainThreadWrites { session.savedConversations.keepFor(HistoryRetention.Week) }
+            assertEquals(HistoryRetention.Week, settings.current.value.historyRetention)
+            assertEquals("written on the main thread", mapOf("saving switch" to emptyList<String>(), "keeping time" to emptyList()), mapOf("saving switch" to switching, "keeping time" to keeping))
+            val written = withTimeoutOrNull(5_000) {
+                while (SettingsStore(settingsFile).load().let { it.saveHistory || it.historyRetention != HistoryRetention.Week }) delay(50)
+                true
+            }
+            assertNotNull("the settings file never took both choices", written)
+            assertFalse("the shared copy was left behind", shared.exists())
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+            shared.delete()
+        }
+    }
+
+    /** The settings, history and shared-copy writes the main thread made while [work] ran there, as StrictMode saw them: each as the app's first steps that led to it. */
+    private suspend fun mainThreadWrites(work: suspend () -> Unit): List<String> {
+        val seen = CopyOnWriteArrayList<String>()
+        val before = withContext(Dispatchers.Main) {
+            StrictMode.getThreadPolicy().also {
+                StrictMode.setThreadPolicy(
+                    StrictMode.ThreadPolicy.Builder().detectDiskWrites().penaltyListener({ it.run() }) { violation ->
+                        seen += violation.stackTrace.filter { it.className.startsWith("com.arbelonson.ozen") }.joinToString(" < ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
+                    }.build(),
+                )
+            }
+        }
+        try {
+            withContext(Dispatchers.Main) { work() }
+            // StrictMode reports what it saw after the main thread's step.
+            withContext(Dispatchers.Main) {}
+        } finally {
+            withContext(Dispatchers.Main) { StrictMode.setThreadPolicy(before) }
+        }
+        return seen.filter { steps -> listOf("SettingsStore", "TranscriptHistory", "forgetSharedCopy").any { it in steps } }.map { it.split(" < ").take(4).joinToString(" < ") }.distinct()
     }
 }

@@ -22,11 +22,22 @@ class SettingsHolder(private val store: SettingsStore) {
         changeAndSave(edit)
     }
 
-    fun changeAndSave(edit: (AppSettings) -> Unit): Boolean {
+    fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = saving { edited(edit) }
+
+    fun changeInTurn(edit: (AppSettings) -> Unit): () -> Boolean {
+        synchronized(oneChangeAtATime) { edited(edit) }
+        return { saving {} }
+    }
+
+    private fun edited(edit: (AppSettings) -> Unit) {
+        state.value = state.value.copy().also(edit)
+    }
+
+    private fun saving(edit: () -> Unit): Boolean {
         var before: AppSettings? = null
         val saved = synchronized(oneChangeAtATime) {
-            val next = state.value.copy().also(edit)
-            state.value = next
+            edit()
+            val next = state.value
             val saved = try {
                 val held = store.saveTakingUp(next)
                 if (held != next) {

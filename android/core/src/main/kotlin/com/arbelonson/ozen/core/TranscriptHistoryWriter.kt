@@ -460,7 +460,23 @@ class TranscriptHistoryWriter(
      * the last save's outcome, it took away the warning of a save that
      * really had failed, while the phone was still full.
      */
-    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? = queue.sync {
+    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true, to: Boolean? = null): Boolean? =
+        queue.sync { toggleStarOnQueue(sessionID, segmentID, keepingRefused, to) }
+
+    /**
+     * The caption screen's star of a line a long quiet closed:
+     * [toggleStarNow] giving the line [to], in the first of [sessionIDs]
+     * whose file has it, handed in now and not waited for. The screen shows
+     * the star from memory, and on a phone slow to write it froze while the
+     * star was written.
+     */
+    fun toggleStarInBackground(sessionIDs: List<UUID>, segmentID: UUID, to: Boolean) {
+        queue.async {
+            for (sessionID in sessionIDs) if (toggleStarOnQueue(sessionID, segmentID, keepingRefused = true, to = to) != null) break
+        }
+    }
+
+    private fun toggleStarOnQueue(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean, to: Boolean?): Boolean? {
         lastWritten.record = null
         val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
@@ -468,7 +484,7 @@ class TranscriptHistoryWriter(
         var reached = star()
         if (reached && result == null && !keepingRefused && pendingSaves.records[sessionID]?.segments?.any { it.id == segmentID } == true) {
             catchUp(null)
-            if (pendingSaves.records.containsKey(sessionID)) return@sync null
+            if (pendingSaves.records.containsKey(sessionID)) return null
             reached = star()
         }
         val counted = !reached || result != null
@@ -485,7 +501,7 @@ class TranscriptHistoryWriter(
             }
         }
         if (counted) catchUp(null) else catchUpAfterFix()
-        result
+        return result
     }
 
     /**
