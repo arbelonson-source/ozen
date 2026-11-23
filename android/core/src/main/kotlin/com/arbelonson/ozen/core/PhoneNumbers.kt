@@ -43,6 +43,7 @@ object PhoneNumbers {
     private var lastSearch: Pair<String, List<Match>>? = null
 
     fun matches(text: String): List<Match> {
+        if (!hasDigitsForANumber(text)) return emptyList()
         lastSearch?.let { (searched, found) -> if (searched == text) return found }
         val found = ArrayList<Match>()
         val read = asciiDigits(text)
@@ -65,6 +66,26 @@ object PhoneNumbers {
         }
         return found.sortedBy { it.start }.also { lastSearch = text to it }
     }
+
+    /**
+     * Whether [text] has as many digits as the shortest number found holds:
+     * eight, one from abroad ([abroad]); an Israeli one has nine, a service
+     * or North American one ten. The line still being said is searched at
+     * every word, as three slightly different texts that the memory above
+     * never holds, and almost always has fewer: it is then not searched.
+     */
+    private fun hasDigitsForANumber(text: String): Boolean {
+        var digits = 0
+        var index = 0
+        while (index < text.length) {
+            val scalar = text.codePointAt(index)
+            if (Character.isDigit(scalar) && ++digits >= FEWEST_DIGITS) return true
+            index += Character.charCount(scalar)
+        }
+        return false
+    }
+
+    private const val FEWEST_DIGITS = 8
 
     /**
      * Numbers written for other countries: "+" and a country code (8 to 15

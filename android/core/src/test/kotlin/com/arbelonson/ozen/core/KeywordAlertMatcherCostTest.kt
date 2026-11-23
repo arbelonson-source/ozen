@@ -113,9 +113,27 @@ class KeywordAlertMatcherCostTest {
         assertTrue(glued > 200)
     }
 
+    @Test
+    fun `asking whether a word has a Chinese or a Hebrew letter makes nothing new`() {
+        val words = listOf("medicine", "Dana", "תרופה", "סבתא", "王老师", "明天", "مرحبا", "😀", "")
+        assertEquals(listOf(false, false, false, false, true, true, false, false, false), words.map { HebrewText.containsHan(it) })
+        assertEquals(listOf(false, false, true, true, false, false, false, false, false), words.map { HebrewText.containsHebrew(it) })
+        repeat(10) { for (word in words) HebrewText.containsHan(word) || HebrewText.containsHebrew(word) }
+        val before = threadMemory.currentThreadAllocatedBytes
+        repeat(100) {
+            for (index in words.indices) {
+                HebrewText.containsHan(words[index])
+                HebrewText.containsHebrew(words[index])
+            }
+        }
+        val each = (threadMemory.currentThreadAllocatedBytes - before) / (200 * words.size)
+        assertTrue(each < ASKING_BYTES_ALLOWED, "asking whether a word has a Chinese or a Hebrew letter allocated $each bytes each time")
+    }
+
     private companion object {
         const val BYTES_PER_NAME_ALLOWED = 3_072L
         const val FOLDING_BYTES_ALLOWED = 256L
         const val FORMS_BYTES_ALLOWED = 8L
+        const val ASKING_BYTES_ALLOWED = 8L
     }
 }

@@ -632,11 +632,20 @@ object HebrewText {
         "على" to setOf("علي"),
     )
 
-    internal fun containsHan(text: String): Boolean =
-        text.codePoints().anyMatch { it in 0x4E00..0x9FFF || it in 0x3400..0x4DBF || it in 0x20000..0x323AF }
+    internal fun containsHan(text: String): Boolean = containsScalar(text) { it in 0x4E00..0x9FFF || it in 0x3400..0x4DBF || it in 0x20000..0x323AF }
 
-    internal fun containsHebrew(text: String): Boolean =
-        text.codePoints().anyMatch { it in 0x0590..0x05FF || it in 0xFB1D..0xFB4F }
+    internal fun containsHebrew(text: String): Boolean = containsScalar(text) { it in 0x0590..0x05FF || it in 0xFB1D..0xFB4F }
+
+    /** Whether [text] has a scalar [matches] takes, asked without the stream of them that made 160 bytes each time. */
+    private inline fun containsScalar(text: String, matches: (Int) -> Boolean): Boolean {
+        var index = 0
+        while (index < text.length) {
+            val scalar = text.codePointAt(index)
+            if (matches(scalar)) return true
+            index += Character.charCount(scalar)
+        }
+        return false
+    }
 
     /**
      * The app's own suggested everyday words, as said in each language it
