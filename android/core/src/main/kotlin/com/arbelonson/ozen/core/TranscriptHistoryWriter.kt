@@ -267,7 +267,7 @@ class TranscriptHistoryWriter(
         }
         for (next in pendingRenames.stars.toList()) {
             try {
-                store.toggleStar(next.segmentID, next.sessionID, next.starring)
+                store.toggleStar(next.segmentID, next.sessionID, next.starring, throwIfUnreadable = true)
                 pendingRenames.stars.remove(next)
             } catch (error: Exception) {
                 failure.record(error.toString())
@@ -581,13 +581,15 @@ class TranscriptHistoryWriter(
 
     /**
      * Deletes conversations that have outlived the retention setting,
-     * after the saves already queued. Returns how many were deleted.
+     * after the saves already queued. Returns how many were deleted. One
+     * with a star still waiting for room is kept: its file had no star yet,
+     * and the conversation was deleted as old, star and all.
      */
     fun deleteExpiredNow(retention: HistoryRetention, now: Double, protecting: Set<UUID>): Int {
         val cutoff = retention.cutoff(now) ?: return 0
         return queue.sync {
             lastWritten.record = null
-            store.deleteConversations(cutoff, protecting)
+            store.deleteConversations(cutoff, protecting + pendingRenames.stars.filter { it.starring }.map { it.sessionID })
         }
     }
 

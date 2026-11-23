@@ -453,6 +453,51 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // A star given while the phone was full, waiting for room by itself,
+    // did not keep its conversation: the file had no star yet, so the
+    // conversation was deleted as old, star and all.
+    @Test
+    fun `a conversation whose star waits for room is not deleted as old meanwhile`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.star-keeps"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "Take two pills", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        writer.toggleStarInTurn(old.id, line, keepingRefused = true, to = true)()
+        permissions(dir, "rwx------")
+        writer.deleteExpiredNow(HistoryRetention.Week, now = 1_800_000_000.0, protecting = emptySet())
+        assertNotNull(store.load(old.id), "the conversation whose star waited for room was deleted as old")
+
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals(listOf(true), store.load(old.id)?.segments?.map { it.isStarred })
+    }
+
+    // A star waiting for room was tried again while its conversation's file
+    // could not be read, taken for a conversation that was gone, and
+    // dropped: the star taken back came back once the file could be read.
+    @Test
+    fun `a star waiting for room is kept while its conversation cannot be read, and written once it can`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.star-unreadable"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "Take two pills", null, null, 100.0, true, isStarred = true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.name.equals("${old.id}.json", ignoreCase = true) }
+        permissions(dir, "r-x------")
+        writer.toggleStarInTurn(old.id, line, keepingRefused = true, to = false)()
+        permissions(dir, "rwx------")
+        permissions(file, "---------")
+        try {
+            writer.saveNow(record(UUID.randomUUID(), 1, true))
+        } finally {
+            permissions(file, "rw-------")
+        }
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals(listOf(false), store.load(old.id)?.segments?.map { it.isStarred }, "the star taken back came back once its conversation could be read")
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a text fix waiting for room is kept while its conversation cannot be read, and written once it can`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)

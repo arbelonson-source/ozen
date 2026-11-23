@@ -2720,8 +2720,7 @@ class HistoryScreenDeviceTest {
             removal.countDown()
         }
         assertEquals(1, answeredWithin(conversation, 1))
-        Thread.sleep(500)
-        compose.waitForIdle()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("No starred lines").fetchSemanticsNodes().isNotEmpty() }
         assertFalse("the line whose star came off was back in Starred lines", shownLine("Returning unstar test the dentist at four"))
     }
 }

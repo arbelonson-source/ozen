@@ -104,6 +104,7 @@ import java.util.TimeZone
 import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -669,10 +670,18 @@ class CaptionSession(
 
         override suspend fun keepFor(retention: HistoryRetention) {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                val stored = settings.changeInTurn { it.historyRetention = retention }
-                withContext(Dispatchers.IO) { stored() }
-                conversations.deleteExpired()
-                withContext(Dispatchers.IO) { forgetSharedCopy() }
+                try {
+                    val stored = settings.changeInTurn { it.historyRetention = retention }
+                    withContext(Dispatchers.IO) { stored() }
+                    conversations.deleteExpired()
+                    withContext(Dispatchers.IO) { forgetSharedCopy() }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    // The session's scope stops the captions on an error;
+                    // the keeping time's clean-up is not the captions'.
+                    noteUnrelatedError(error)
+                }
             }.join()
         }
 
