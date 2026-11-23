@@ -76,6 +76,12 @@ class ConversationSaver(
         val nothingToWrite: () -> Unit = {}
         nothingToWrite
     },
+    /**
+     * Runs on the main thread once a save the caption screen handed to the
+     * writer without waiting for it is written or refused, so a refused one
+     * still shows the saving warning, as it did while the screen waited.
+     */
+    private val saveDone: () -> Unit = {},
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -96,6 +102,9 @@ class ConversationSaver(
     private var sawListening = false
     private var autosave: Job? = null
     private var lastRetentionCheck = 0.0
+
+    /** How many times the screen was cleared: a clear still waiting for its save does nothing once another cleared the screen first. */
+    private var clears = 0
 
     private val currentLines: List<TranscriptSegment>
         get() = shownSince(lines())
@@ -122,7 +131,29 @@ class ConversationSaver(
         } else {
             autosave?.cancel()
             autosave = null
-            save(ended = true)
+            writeInTurn(ended = true, endedAt = null)?.let { whenWritten(it.second) }
+        }
+    }
+
+    /**
+     * Hears back from [written], a save handed to the writer that the main
+     * thread does not wait for: waited for there, a phone slow to write
+     * froze the captions until it was in. Once it is done, [then] runs on
+     * the main thread with whether it reached the disk with nothing else
+     * refused, and then [saveDone].
+     */
+    private fun whenWritten(written: () -> Boolean = { true }, then: (Boolean) -> Unit = {}) {
+        writer.whenWritten {
+            val reached = try {
+                written()
+            } catch (_: Exception) {
+                false
+            }
+            val kept = reached && writer.lastFailure == null
+            scope.launch {
+                then(kept)
+                saveDone()
+            }
         }
     }
 
@@ -230,11 +261,17 @@ class ConversationSaver(
     /** A saved person's name changed: every saved conversation follows, not only those on screen. */
     fun renameSpeaker(from: String, to: String) = writer.renameSpeakerInBackground(from, to)
 
-    /** Ends the saved conversation after a long quiet stretch; its lines stay on screen. */
+    /**
+     * Ends the saved conversation after a long quiet stretch; its lines stay
+     * on screen. It is closed and its save handed to the writer in this one
+     * step of the main thread, so every save and History action asked after
+     * it lands after that save, and the main thread does not wait for it:
+     * waited for, a phone slow to write froze the captions while it was in.
+     */
     fun checkForConversationBreak(now: Double = this.now()): Boolean {
         val lastCaptionAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp }
         if (!ConversationBreak.shouldStartNew(lastCaptionAt, now)) return false
-        close(endedAt = lastCaptionAt)
+        closeInTurn(endedAt = lastCaptionAt)?.let { whenWritten(it) }
         startNewConversation()
         return true
     }
@@ -257,7 +294,7 @@ class ConversationSaver(
         val closing = closeInTurn(endedAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp })
         val stored = saveHistoryInTurn(on)
         return {
-            closing()
+            closing?.invoke()
             stored()
         }
     }
@@ -283,21 +320,21 @@ class ConversationSaver(
         }
     }
 
-    private fun close(endedAt: Double?) {
-        closeInTurn(endedAt)()
-    }
-
-    /** [close] with its save handed to the writer now; the function returned waits for it. */
-    private fun closeInTurn(endedAt: Double?): () -> Unit {
-        var written: () -> Boolean = { true }
+    /**
+     * Closes the conversation being captioned, its lines kept on screen,
+     * with its save handed to the writer now; the function returned waits
+     * for that save, null when there was nothing to save.
+     */
+    private fun closeInTurn(endedAt: Double?): (() -> Boolean)? {
+        var written: (() -> Boolean)? = null
         if (settings().saveHistory) {
             val saving = writeInTurn(ended = true, endedAt = endedAt)
             closed[id] = Closed(offset until lines().size, saving?.first)
             closedLines = null
-            saving?.let { written = it.second }
+            written = saving?.second
         }
         forgetCurrent()
-        return { written() }
+        return written
     }
 
     /**
@@ -327,15 +364,42 @@ class ConversationSaver(
      * saved as one ended conversation before [clearLines] takes the lines
      * away, and the next words start a new one from the top of the screen.
      * When the question promised the lines stay in History
-     * ([keepingHistory]) and that save fails, nothing is cleared and false
-     * comes back, so the question can be asked again, now saying saving
-     * isn't working.
+     * ([keepingHistory]) and that save fails, nothing is cleared, so the
+     * question can be asked again, now saying saving isn't working.
+     *
+     * The main thread draws the captions, and a phone can be slow to write:
+     * the save is handed to the writer in this step and not waited for.
+     * Without a promise, or with no line of this conversation to keep, the
+     * lines go at once and true comes back. With one,
+     * false comes back, the lines stay until the save is in, and [answered]
+     * then runs on the main thread: true once the lines went, with any line
+     * said meanwhile saved with the rest, false when they stay. Should
+     * another clear empty the screen first, this one has nothing left to
+     * clear and answers nothing: a second Delete tapped while the first was
+     * written took away, once answered, the lines said after the first.
      */
-    fun clear(keepingHistory: Boolean = false, clearLines: () -> Unit): Boolean {
-        if (settings().saveHistory) {
-            val saved = save(ended = true)
-            if (keepingHistory && saved != null && writer.lastFailure != null) return false
+    fun clear(keepingHistory: Boolean = false, answered: (Boolean) -> Unit = {}, clearLines: () -> Unit): Boolean {
+        val saving = if (settings().saveHistory) writeInTurn(ended = true, endedAt = null) else null
+        if (saving == null || !keepingHistory || saving.first.segments.isEmpty()) {
+            cleared(clearLines)
+            saving?.let { whenWritten(it.second) }
+            return true
         }
+        val asked = clears
+        whenWritten(saving.second) { kept ->
+            if (asked != clears) return@whenWritten
+            if (kept) {
+                val endedAt = end?.takeIf { it.first == id }?.second
+                recording(ended = true, endedAt = endedAt, names = speakerNames())?.let { writer.saveInBackground(it) }
+                cleared(clearLines)
+            }
+            answered(kept)
+        }
+        return false
+    }
+
+    /** The lines go, and the next words start a new conversation from the top of the screen. */
+    private fun cleared(clearLines: () -> Unit) {
         clearLines()
         closed.clear()
         closedLines = null
@@ -343,7 +407,7 @@ class ConversationSaver(
         id = UUID.randomUUID()
         offset = 0
         startedAt = if (isListening()) now() else null
-        return true
+        clears += 1
     }
 
     /**
@@ -471,12 +535,22 @@ class ConversationSaver(
         return { saved() != null }
     }
 
+    /**
+     * A word fixed on the caption screen: [text] is the line's words now. A
+     * line of the conversation being captioned saves that conversation; one
+     * a long quiet closed is written to the latest of those conversations
+     * that has it. Handed to the writer and not waited for: waited for, a
+     * phone slow to write froze the captions until the conversation was
+     * written, or until each closed one had been tried in turn.
+     */
     fun fixLiveLine(segmentID: UUID, text: String) {
         if (currentLines.any { it.id == segmentID }) {
-            save(ended = false)
+            writeInTurn(ended = false, endedAt = null)?.let { whenWritten(it.second) }
             return
         }
-        for (conversation in closed.keys.reversed()) if (writer.fixTextNow(conversation, segmentID, text)) return
+        if (closed.isEmpty()) return
+        writer.fixTextInBackground(closed.keys.reversed(), segmentID, text)
+        whenWritten()
     }
 
     /**
@@ -626,9 +700,19 @@ class ConversationSaver(
         startedAt = null
     }
 
-    /** Android may end the app next: what was said since the last autosave is written now. */
-    fun memoryShort() {
-        save(ended = false)
+    /**
+     * Android may end the app next: what was said since the last autosave
+     * is handed to the writer now. With the captions on screen it is not
+     * waited for: waiting froze them on a phone slow to write. [outOfSight],
+     * nothing on screen can freeze and Android ends such an app first, so
+     * this returns only once it is written.
+     */
+    fun memoryShort(outOfSight: Boolean = false) {
+        if (outOfSight) {
+            save(ended = false)
+            return
+        }
+        writeInTurn(ended = false, endedAt = null)?.let { whenWritten(it.second) }
     }
 
     /** After each save, and as the app comes back: with saving off nothing else sweeps. */

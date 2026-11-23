@@ -6,4 +6,6 @@ import android.content.ComponentCallbacks2
 object MemoryPressure {
     fun isWarning(level: Int): Boolean =
         level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && level != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
+
+    fun outOfSight(level: Int): Boolean = level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
 }

@@ -211,7 +211,7 @@ fun SettingsScreen(
     heardBy: (KeywordHit) -> String? = { null },
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
-    onClearCaptions: (keepingHistory: Boolean) -> Boolean = { true },
+    onClearCaptions: ClearAgain.(keepingHistory: Boolean) -> Boolean = { true },
     historySaveFailing: () -> Boolean = { false },
     voiceNotice: String? = null,
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
@@ -1614,7 +1614,7 @@ internal fun privacyPolicyUrl(language: UILanguage): String =
 private const val WHISPER_ENGINE = "https://github.com/ggml-org/whisper.cpp"
 
 @Composable
-private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> Unit, saving: Boolean, saveFailing: () -> Boolean, onClear: (keepingHistory: Boolean) -> Boolean) {
+private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> Unit, saving: Boolean, saveFailing: () -> Boolean, onClear: ClearAgain.(keepingHistory: Boolean) -> Boolean) {
     SectionHeader(tr("תחזוקה", "Maintenance"))
     SettingsGroup(dividerInset = 56.dp) {
         item { SettingRow(tr("אבחון", "Diagnostics"), icon = Icons.Rounded.BugReport, onClick = onDiagnostics, trailing = { Chevron() }) }
@@ -1646,7 +1646,7 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
 }
 
 @Composable
-internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: (keepingHistory: Boolean) -> Boolean) {
+internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: ClearAgain.(keepingHistory: Boolean) -> Boolean) {
     var asking by rememberSaveable { mutableStateOf(false) }
     var tries by remember { mutableIntStateOf(0) }
     val error = MaterialTheme.colorScheme.error
@@ -1671,8 +1671,13 @@ internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onCle
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // A save that fails now asks again, saying the lines won't be kept.
-                        asking = !onClear(question.keepsHistory)
+                        // A save that fails asks again, saying the lines won't be kept:
+                        // at once, or once the phone has refused it.
+                        val again = ClearAgain {
+                            asking = true
+                            tries += 1
+                        }
+                        asking = !onClear(again, question.keepsHistory)
                         if (asking) tries += 1
                     },
                 ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }

@@ -75,11 +75,13 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerProfile
+import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.FileTranscriptKeeper
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
+import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -559,8 +561,10 @@ class CaptionSession(
         }
     }
 
+    private val historyWriter = TranscriptHistoryWriter(historyStore)
+
     private val conversations = ConversationSaver(
-        writer = TranscriptHistoryWriter(historyStore),
+        writer = historyWriter,
         lines = { pipeline.segments },
         isListening = { pipeline.phase.isListening },
         settings = { settings.current.value },
@@ -574,19 +578,33 @@ class CaptionSession(
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
         onMainThread = ::onMainThread,
         speakerNames = pipeline::speakerNames,
+        saveDone = ::refreshSavingTrouble,
     )
 
     /** Runs a step on the main thread and waits for it: History asks from a thread of its own. */
     private fun onMainThread(step: () -> Unit) = runBlocking { withContext(Dispatchers.Main.immediate) { step() } }
 
     val savedConversations = object : SavedConversations {
-        override fun list() = historyStore.listSummaries()
+        // The caption screen hands a conversation that captions stopped,
+        // cleared or closed to the writer without waiting for it: History,
+        // reading off the main thread, reads after it is written, or a
+        // conversation stopped just before was missing from the list.
+        override fun list(): List<TranscriptSessionSummary> {
+            historyWriter.waitUntilIdle()
+            return historyStore.listSummaries()
+        }
 
-        override fun search(query: String) = historyStore.search(query)
+        override fun search(query: String): List<TranscriptSessionSummary> {
+            historyWriter.waitUntilIdle()
+            return historyStore.search(query)
+        }
 
         override fun load(id: UUID) = conversations.load(id)
 
-        override fun starredLines() = historyStore.starredLines()
+        override fun starredLines(): List<StarredLine> {
+            historyWriter.waitUntilIdle()
+            return historyStore.starredLines()
+        }
 
         override fun sizeOnDisk() = historyStore.totalSizeOnDisk()
 
@@ -905,22 +923,36 @@ class CaptionSession(
     /** The listening service ended: a blinking light goes dark with it. */
     fun stopCameraLight() = light.stop()
 
-    /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
     /**
-     * When the question before this promised the lines stay in History
-     * ([keepingHistory]) and saving them fails now, they stay on screen and
-     * false comes back, as on the iPhone. What the question said counts, not
-     * how saving stands now: an autosave failing while it was open otherwise
-     * let the lines go unsaved under the promise.
+     * Settings' and the caption screen's "Clear captions from the screen":
+     * the conversation so far is saved first. When the question before this
+     * promised the lines stay in History ([keepingHistory]), they go once
+     * that save is in; if it fails they stay on screen and [askAgain] asks
+     * the question again, as on the iPhone, now saying saving isn't working.
+     * What the question said counts, not how saving stands now: an autosave
+     * failing while it was open otherwise let the lines go unsaved under the
+     * promise. The main thread draws the captions and does not wait for the
+     * save: on a phone slow to write they froze until it was in.
      */
-    fun clearCaptions(keepingHistory: Boolean = false): Boolean {
-        if (!conversations.clear(keepingHistory, pipeline::clearTranscript)) {
-            publish()
-            return false
-        }
+    fun clearCaptions(keepingHistory: Boolean = false, askAgain: () -> Unit = {}) {
+        val clearedNow = conversations.clear(
+            keepingHistory,
+            answered = { cleared ->
+                if (cleared) {
+                    captionsCleared()
+                } else {
+                    publish()
+                    askAgain()
+                }
+            },
+            clearLines = pipeline::clearTranscript,
+        )
+        if (clearedNow) captionsCleared()
+    }
+
+    private fun captionsCleared() {
         dismissRecentConversation()
         publish()
-        return true
     }
 
     /**
@@ -973,9 +1005,10 @@ class CaptionSession(
         settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(Localization.language) }
     }
 
-    fun memoryShort(footprintBytes: Long) {
+    /** Android says memory is short; [outOfSight] when no screen of the app is showing, and the app is next in line to be ended. */
+    fun memoryShort(footprintBytes: Long, outOfSight: Boolean = false) {
         pipeline.handleMemoryWarning(footprintBytes, pausedForSpeech = replies.holdsCaptionsForAPhrase)
-        conversations.memoryShort()
+        conversations.memoryShort(outOfSight)
     }
 
     fun close() {
@@ -989,6 +1022,9 @@ class CaptionSession(
             }
         }
         pipeline.close()
+        // Captions stopping hand their conversation to the writer without
+        // waiting: a session closed has it written.
+        historyWriter.waitUntilIdle()
         network.close()
         voice.shutdown()
         scope.cancel()

@@ -280,3 +280,13 @@ class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
 }
 
 data class ClearQuestion(val text: String, val keepsHistory: Boolean)
+
+/**
+ * What Delete in the question before clearing the captions can do once the
+ * question has closed: its answer says at once whether to ask again, but a
+ * save it promised is refused only after the phone has written it, and the
+ * question is then asked again through [askAgain].
+ */
+fun interface ClearAgain {
+    fun askAgain()
+}
