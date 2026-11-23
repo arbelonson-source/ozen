@@ -148,8 +148,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** What the History screen reads and changes: the saved conversations, and the one still being captioned. */
@@ -752,7 +750,7 @@ internal fun ConversationScreen(
                 newer
             } else {
                 HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
-                    withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+                    HistoryStars.inTurn { opened(conversations.load(id), query, marksUncertain, languageCode) }
                 }
             }
             if (now != null) {
@@ -833,13 +831,6 @@ internal fun ConversationScreen(
     var fixOpening by remember { mutableIntStateOf(0) }
     var fixSaving by remember { mutableStateOf<Int?>(null) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
-    // A star is saved off the main thread: on a phone slow to write, saved
-    // on it, the screen froze until the conversation was written, and a
-    // write that stuck could close the app as not responding. One at a
-    // time, as the main thread took them: a star the phone can't save is
-    // taken back to what the line had before it, which would undo a second
-    // star of the line begun meanwhile.
-    val stars = remember { Mutex() }
     var nameRefused by rememberSaveable { mutableStateOf(false) }
     val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
     fixingLine?.let { line ->
@@ -979,8 +970,17 @@ internal fun ConversationScreen(
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
+                                    // A star is saved off the main thread: on a phone slow
+                                    // to write, saved on it, the screen froze until the
+                                    // conversation was written, and a write that stuck could
+                                    // close the app as not responding. One at a time, as the
+                                    // main thread took them: a star the phone can't save is
+                                    // taken back to what the line had before it, which would
+                                    // undo a second star of the line begun meanwhile. The
+                                    // app keeps their turns, not this screen: one waiting as
+                                    // the screen went (the phone turned) was never given.
                                     scope.launch {
-                                        if (stars.withLock { withContext(Dispatchers.IO) { conversations.toggleStar(id, line.id) } } == null) starRefused = true
+                                        if (HistoryStars.inTurn { conversations.toggleStar(id, line.id) } == null) starRefused = true
                                         rereads.afterChange(load = { readBack(it) }) { show(it) }
                                     }
                                 }

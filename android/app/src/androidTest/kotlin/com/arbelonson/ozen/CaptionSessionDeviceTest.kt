@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -1840,6 +1841,51 @@ class CaptionSessionDeviceTest {
             }
             assertNotNull("the settings file never took both choices", written)
             assertFalse("the shared copy was left behind", shared.exists())
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+            shared.delete()
+        }
+    }
+
+    // A shorter keeping time chosen just as History closed was kept, but
+    // History's leaving cancelled the rest: the old conversations it said
+    // it would delete, and the shared copies, stayed on the phone.
+    @Test
+    fun aShorterKeepingTimeStillDeletesOldConversationsAndSharedCopiesWhenHistoryClosesMeanwhile(): Unit = runBlocking {
+        val work = File(context.cacheDir, "keeping-time-closed-test").apply { deleteRecursively(); mkdirs() }
+        val history = File(work, "history")
+        val store = TranscriptHistoryStore(history)
+        val longAgo = System.currentTimeMillis() / 1_000.0 - 40 * 86_400
+        val old = TranscriptSessionRecord(
+            startedAt = longAgo,
+            endedAt = longAgo + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "Keeping time test from long ago", null, null, longAgo, true)),
+        )
+        assertTrue(store.save(old))
+        val shared = File(context.cacheDir, CaptionSession.SHARED_FOLDER).also { it.mkdirs() }.resolve("Conversation from Ozen.txt")
+        shared.writeText("Keeping time test")
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = history)
+        }
+        try {
+            withContext(Dispatchers.Main) {
+                launch(start = CoroutineStart.UNDISPATCHED) { session.savedConversations.keepFor(HistoryRetention.Week) }.cancel()
+            }
+            val cleaned = withTimeoutOrNull(5_000) {
+                while (store.load(old.id) != null || shared.exists()) delay(50)
+                true
+            }
+            assertNotNull("History closing as the keeping time was saved left the old conversation or the shared copy behind", cleaned)
+            assertEquals(HistoryRetention.Week, settings.current.value.historyRetention)
         } finally {
             withContext(Dispatchers.Main) {
                 session.close()

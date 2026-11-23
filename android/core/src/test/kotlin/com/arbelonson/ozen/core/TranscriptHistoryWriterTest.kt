@@ -432,6 +432,27 @@ class TranscriptHistoryWriterTest {
         assertNull(writer.lastFailure)
     }
 
+    // History took a refused star back after Clear captions had saved its
+    // conversation with it: no version waited for room, and the star taken
+    // back while the phone was full came back once there was room.
+    @Test
+    fun `a star taken back while the phone is full, with no version waiting for room, is written once there is room`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.star-back"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "Take two pills", null, null, 100.0, true, isStarred = true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        writer.toggleStarInTurn(old.id, line, keepingRefused = true, to = false)()
+        assertNotNull(writer.lastFailure)
+        assertEquals(listOf(false), writer.loadNow(old.id)?.segments?.map { it.isStarred }, "History showed the star taken back as still there")
+
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals(listOf(false), store.load(old.id)?.segments?.map { it.isStarred }, "the star taken back came back once there was room")
+        assertNull(writer.lastFailure)
+    }
+
     @Test
     fun `a text fix waiting for room is kept while its conversation cannot be read, and written once it can`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)

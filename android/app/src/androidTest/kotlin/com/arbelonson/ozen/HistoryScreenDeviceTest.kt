@@ -2659,4 +2659,69 @@ class HistoryScreenDeviceTest {
         assertEquals("the star was taken off on the main thread", listOf(false), conversation.onMainThread.toList())
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Slow unstar test the dentist at four", substring = true).fetchSemanticsNodes().isEmpty() }
     }
+
+    private fun answeredWithin(conversation: StarringConversation, count: Int): Int {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (conversation.answered.get() < count && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        return conversation.answered.get()
+    }
+
+    // A star asked while another was being saved waited its turn in the
+    // screen's own coroutine: leaving the conversation (turning the phone
+    // makes it again) cancelled it, and the star was never given, with no
+    // word said. The stars now wait their turn in the app.
+    @Test
+    fun aStarAskedWhileAnotherIsSavedIsStillGivenWhenTheConversationCloses() {
+        val conversation = StarringConversation("Leaving star test the bus leaves at six", "Leaving star test the train leaves at seven")
+        val open = mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) ConversationScreen(conversation, conversation.id, query = "", marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Leaving star test the train leaves at seven") }
+        val first = conversation.holdNextStar()
+        try {
+            lineAction("Leaving star test the bus leaves at six", "Mark as important")
+            compose.waitUntil(5_000) { conversation.begun.get() == 1 }
+            lineAction("Leaving star test the train leaves at seven", "Mark as important")
+            compose.waitForIdle()
+            compose.runOnUiThread { open.value = false }
+            compose.waitForIdle()
+        } finally {
+            first.countDown()
+        }
+        assertEquals("the star asked while another was saved was never given", 2, answeredWithin(conversation, 2))
+        assertEquals(2, conversation.starredLines().size)
+    }
+
+    // A star taken off in Starred lines and still being saved as the list
+    // left the screen was read as still there when the list came back, and
+    // stayed: the reading after the removal went with the old list.
+    @Test
+    fun aStarTakenOffInStarredLinesStaysOffWhenTheListComesBackBeforeItIsSaved() {
+        val conversation = StarringConversation("Returning unstar test the dentist at four", starredAtFirst = true)
+        val open = mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                if (open.value) StarredLinesScreen(conversation, marksUncertain = false, emphasizeNumbers = false, captionSize = 18.0, onClose = {}, languageCode = "en")
+            }
+        }
+        compose.waitUntil(5_000) { shownLine("Returning unstar test the dentist at four") }
+        val removal = conversation.holdNextStar()
+        try {
+            lineAction("Returning unstar test the dentist at four", "Remove the star")
+            compose.waitUntil(5_000) { conversation.begun.get() == 1 }
+            compose.runOnUiThread { open.value = false }
+            compose.waitForIdle()
+            compose.runOnUiThread { open.value = true }
+            compose.waitForIdle()
+        } finally {
+            removal.countDown()
+        }
+        assertEquals(1, answeredWithin(conversation, 1))
+        Thread.sleep(500)
+        compose.waitForIdle()
+        assertFalse("the line whose star came off was back in Starred lines", shownLine("Returning unstar test the dentist at four"))
+    }
 }

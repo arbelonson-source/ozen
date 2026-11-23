@@ -216,7 +216,13 @@ class TranscriptHistoryWriter(
         }
         val record = waiting ?: store.loadThrowing(id) ?: return@sync null
         val texts = pendingRenames.texts.filter { it.sessionID == id }
-        record.copy(segments = record.segments.map { line -> texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line })
+        val stars = pendingRenames.stars.filter { it.sessionID == id }
+        record.copy(
+            segments = record.segments.map { line ->
+                val fixed = texts.lastOrNull { it.segmentID == line.id }?.let { line.copy(text = it.text) } ?: line
+                stars.lastOrNull { it.segmentID == line.id }?.let { fixed.copy(isStarred = it.starring) } ?: fixed
+            },
+        )
     }
 
     /**
@@ -259,6 +265,14 @@ class TranscriptHistoryWriter(
                 failure.record(error.toString())
             }
         }
+        for (next in pendingRenames.stars.toList()) {
+            try {
+                store.toggleStar(next.segmentID, next.sessionID, next.starring)
+                pendingRenames.stars.remove(next)
+            } catch (error: Exception) {
+                failure.record(error.toString())
+            }
+        }
     }
 
     /**
@@ -289,7 +303,7 @@ class TranscriptHistoryWriter(
     private fun catchUp(current: UUID?): Boolean {
         retrySaves(current)
         retryRenames()
-        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()
+        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty() && pendingRenames.stars.isEmpty()
     }
 
     /** The waiting renames, oldest first; one refused stops the rest. */
@@ -426,7 +440,7 @@ class TranscriptHistoryWriter(
      * the next save. With nothing waiting, an earlier error stays as it was.
      */
     private fun catchUpAfterFix() {
-        val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty()
+        val waited = pendingSaves.records.isNotEmpty() || pendingRenames.list.isNotEmpty() || pendingRenames.texts.isNotEmpty() || pendingRenames.stars.isNotEmpty()
         if (catchUp(null) && waited) failure.clear()
     }
 
@@ -485,9 +499,18 @@ class TranscriptHistoryWriter(
         }
     }
 
+    /**
+     * [toggleStarNow]'s work. A star the disk refuses with no waiting version
+     * of its line waits for room by itself when [keepingRefused], as a text
+     * fix does: History took a refused star back after Clear captions had
+     * saved its conversation with it, and the star came back once there was
+     * room.
+     */
     private fun toggleStarOnQueue(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean, to: Boolean?): Boolean? {
         lastWritten.record = null
-        val starring = to ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
+        val sameLine = { star: PendingStar -> star.sessionID == sessionID && star.segmentID == segmentID }
+        val starring = to ?: pendingRenames.stars.lastOrNull(sameLine)?.let { !it.starring }
+            ?: pendingSaves.records[sessionID]?.segments?.firstOrNull { it.id == segmentID }?.let { !it.isStarred }
         var result: Boolean? = null
         val star = { failure.capture(counts = { succeeded -> !succeeded || result != null }) { result = store.toggleStar(segmentID, sessionID, starring) } }
         var reached = star()
@@ -509,6 +532,12 @@ class TranscriptHistoryWriter(
                 result = starred
             }
         }
+        if (reached && result != null) pendingRenames.stars.removeAll(sameLine)
+        if (!reached && keepingRefused && result == null && starring != null) {
+            pendingRenames.stars.removeAll(sameLine)
+            pendingRenames.stars += PendingStar(sessionID, segmentID, starring)
+            result = starring
+        }
         if (counted) catchUp(null) else catchUpAfterFix()
         return result
     }
@@ -522,11 +551,12 @@ class TranscriptHistoryWriter(
             lastWritten.record = null
             pendingSaves.records.remove(id)
             pendingRenames.texts.removeAll { it.sessionID == id }
+            pendingRenames.stars.removeAll { it.sessionID == id }
             store.delete(id)
             // Deleting the one conversation that could not be written left
             // the warning up until the next save, while captions were stopped
             // for good.
-            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()) {
+            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty() && pendingRenames.stars.isEmpty()) {
                 failure.clear()
             }
         }
@@ -545,6 +575,7 @@ class TranscriptHistoryWriter(
         store.deleteAll()
         pendingRenames.list.clear()
         pendingRenames.texts.clear()
+        pendingRenames.stars.clear()
         failure.clear()
     }
 
@@ -601,20 +632,24 @@ class TranscriptHistoryWriter(
 
     private class PendingText(val sessionID: UUID, val segmentID: UUID, val text: String)
 
-    /** Voice renames and line-text fixes not yet written to every saved conversation. Only touched on the writer's queue. */
+    private class PendingStar(val sessionID: UUID, val segmentID: UUID, val starring: Boolean)
+
+    /** Voice renames, line-text fixes and stars not yet written to every saved conversation. Only touched on the writer's queue. */
     private class PendingRenames {
         val list = ArrayList<PendingRename>()
         val texts = ArrayList<PendingText>()
+        val stars = ArrayList<PendingStar>()
 
         /**
          * A save of a conversation, written or left waiting, is newer than any
-         * text of its lines still waiting: that text was written after it
-         * once there was room, and History's next fix started from the older
-         * words.
+         * text or star of its lines still waiting: that text was written after
+         * it once there was room, and History's next fix started from the
+         * older words.
          */
         fun dropTexts(record: TranscriptSessionRecord) {
             val lines = record.segments.mapTo(HashSet()) { it.id }
             texts.removeAll { it.sessionID == record.id && it.segmentID in lines }
+            stars.removeAll { it.sessionID == record.id && it.segmentID in lines }
         }
     }
 

@@ -58,9 +58,7 @@ import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TrailingValue
 import java.util.UUID
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** History's way in, shown only when some saved line has a star, as on the iPhone. */
 @Composable
@@ -98,11 +96,14 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
     }
     BackHandler(onBack = onClose)
     // Reads can finish out of order: only the newest is shown, or an older
-    // read would bring back a line whose star had just come off.
+    // read would bring back a line whose star had just come off. Each read
+    // waits its turn after the stars taken off before it, wherever they
+    // were asked: a removal still being saved as the list left the screen
+    // was read as still there when the list came back.
     var reads by remember { mutableIntStateOf(0) }
     suspend fun reload() {
         val read = ++reads
-        val found = withContext(Dispatchers.IO) { conversations.starredLines() }
+        val found = HistoryStars.inTurn { conversations.starredLines() }
         if (read == reads) lines = found
     }
     // A line whose star is coming off can't be asked again before the list
@@ -157,7 +158,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                                     if (removing.add(line.id)) {
                                         lines = lines?.filterNot { it.id == line.id }
                                         scope.launch {
-                                            if (withContext(Dispatchers.IO) { conversations.toggleStar(line.sessionID, line.id, to = false) } == null) starRefused = true
+                                            if (HistoryStars.inTurn { conversations.toggleStar(line.sessionID, line.id, to = false) } == null) starRefused = true
                                             else ScreenReader.said(context, tr("הסימון הוסר", "Star removed"))
                                             reload()
                                             removing.remove(line.id)

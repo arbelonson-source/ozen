@@ -634,9 +634,11 @@ class CaptionSession(
         // the iPhone, not only once the next caption redraws the screen.
         // History stars from its own thread; the caption screen and its
         // warning are the main thread's, which changes them at every word.
-        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also { starring ->
+        // The line shows its star as it is now: a star given on the caption
+        // screen while History's was written is newer than History's answer.
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also {
             onMainThread {
-                starring?.let { CaptionState.markStarred(segmentID, it) }
+                CaptionState.markStarred(segmentID, conversations.isStarred(segmentID))
                 refreshSavingTrouble()
             }
         }
@@ -655,8 +657,10 @@ class CaptionSession(
         // the switch and the keeping time show at once, and the conversation
         // closed, the settings file and the shared copies are written and
         // deleted off it. Done on it, a slow write froze the screen, and one
-        // that stuck could close the app as not responding. Started even when
-        // the captions close meanwhile, so the file keeps the choice shown.
+        // that stuck could close the app as not responding. Both are the
+        // captions' own work, not History's: History leaving meanwhile left
+        // the keeping time chosen but the old conversations it said it would
+        // delete, and the shared copies, on the phone.
         override fun switchSaving(on: Boolean) {
             val written = conversations.switchSaving(on)
             publish()
@@ -664,10 +668,12 @@ class CaptionSession(
         }
 
         override suspend fun keepFor(retention: HistoryRetention) {
-            val stored = settings.changeInTurn { it.historyRetention = retention }
-            withContext(NonCancellable + Dispatchers.IO) { stored() }
-            conversations.deleteExpired()
-            withContext(Dispatchers.IO) { forgetSharedCopy() }
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                val stored = settings.changeInTurn { it.historyRetention = retention }
+                withContext(Dispatchers.IO) { stored() }
+                conversations.deleteExpired()
+                withContext(Dispatchers.IO) { forgetSharedCopy() }
+            }.join()
         }
 
         override fun opened(id: UUID) = conversations.opened(id)
