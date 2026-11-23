@@ -8,15 +8,25 @@ import Testing
 /// as it waited, while all the other tests waited for a turn.
 private final class OffThreadCall: @unchecked Sendable {
     private let lock = NSLock()
+    private var started = false
     private var returned = false
+
+    func markStarted() { lock.withLock { started = true } }
 
     func markReturned() { lock.withLock { returned = true } }
 
-    /// Whether the call returned within `limit`, seen within milliseconds
-    /// of its return.
+    /// Whether the call returned within `limit` of its start, seen within
+    /// milliseconds of its return. Counted from when the thread began the
+    /// call: a busy machine can start a thread late, and a call that has
+    /// not begun has not been held up.
     func hasReturned(within limit: Duration) async -> Bool {
+        guard await holds(within: .seconds(60), { $0.started }) else { return false }
+        return await holds(within: limit) { $0.returned }
+    }
+
+    private func holds(within limit: Duration, _ condition: (OffThreadCall) -> Bool) async -> Bool {
         let deadline = ContinuousClock.now + limit
-        while !lock.withLock({ returned }) {
+        while !lock.withLock({ condition(self) }) {
             guard ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: .milliseconds(5))
         }
@@ -53,6 +63,7 @@ struct TranscriptHistoryWriterTests {
     private func offThread(_ work: @escaping @Sendable () -> Void) -> OffThreadCall {
         let call = OffThreadCall()
         Thread {
+            call.markStarted()
             work()
             call.markReturned()
         }.start()
@@ -137,12 +148,13 @@ struct TranscriptHistoryWriterTests {
         let saved = offThread { writer.saveNow(self.record(id: id, lines: 3, ended: true)) }
         // A correct writer is stuck behind the paused autosave here; one
         // that skips the queue has already written and returned.
-        _ = await saved.hasReturned(within: .milliseconds(200))
+        let saveReturnedEarly = await saved.hasReturned(within: .milliseconds(200))
         queue.resume()
         await autosaved.finish()
         await saved.finish()
         writer.waitUntilIdle()
 
+        #expect(saveReturnedEarly == false)
         let summary = store.listSummaries().first
         #expect(summary?.segmentCount == 3)
         #expect(summary?.endedAt == 200)

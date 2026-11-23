@@ -2643,18 +2643,6 @@ struct CaptionPipelineEnrollmentTests {
 
     @Test("a microphone that delivers nothing ends the recording instead of hanging it", .timeLimit(.minutes(1)))
     func enrollmentStalls() async {
-        // Timed against a recording given an hour to stall, started first,
-        // instead of the clock: with every test starting at once, a busy
-        // machine held the 0.1 s stall past a 3 s bound with nothing wrong,
-        // and it holds both recordings back alike.
-        let (patient, patientAudio, _) = makePipeline()
-        patient.enrollmentStallSeconds = 3_600
-        let waiting = Task { @MainActor in
-            await patient.captureEnrollmentSamples(seconds: 0.1)
-        }
-        #expect(await eventually { patientAudio.calls.contains("startCapture") })
-        patientAudio.push([Float](repeating: 0.1, count: 400))
-
         let (pipeline, audio, _) = makePipeline()
         pipeline.enrollmentStallSeconds = 0.1
         let recording = Task { @MainActor in
@@ -2662,13 +2650,21 @@ struct CaptionPipelineEnrollmentTests {
         }
         #expect(await eventually { audio.calls.contains("startCapture") })
         audio.push([Float](repeating: 0.1, count: 400))
+        // The stall must stop the microphone within 3 s, checked by a timer
+        // set now rather than by timing the whole recording: with every
+        // test starting at once, a busy machine held the recording's return
+        // past 3 s (3.3 and 3.6 s) after the stall had stopped it. The
+        // stall's own 0.2 s timer, set before this one, goes off first.
+        let stoppedByThen = Task { @MainActor () -> Bool? in
+            guard (try? await Task.sleep(for: .seconds(3))) != nil else { return nil }
+            return audio.calls.contains("stopCapture")
+        }
         let samples = await recording.value
+        stoppedByThen.cancel()
 
         #expect(samples.count == 400)
-        #expect(!patientAudio.calls.contains("stopCapture"), "the recording given an hour to stall, started first, was stopped first")
+        #expect(await stoppedByThen.value != false, "the microphone was still recording 3 s after its last sound")
         #expect(pipeline.phase == .idle)
-        patientAudio.push([Float](repeating: 0.1, count: 1_200))
-        #expect(await waiting.value.count == 1_600)
     }
 
     @Test("stopping an enrollment midway ends the recording at once and brings captions back", .timeLimit(.minutes(1)))

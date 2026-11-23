@@ -29,6 +29,7 @@ struct CloudCoverHomeSoonerTests {
             },
             embedder: FakeEmbedder(),
             recovery: recovery,
+            audioWatchdog: .disabled,
             now: { clock.now }
         )
         captions.cloudRecheckSeconds = 0.05
@@ -115,7 +116,11 @@ struct CloudCoverHomeSoonerTests {
         let (captions, audio, http, _) = hangingRig()
         await captions.start(settings: settings(paired: false))
         http.blackHole = true
-        await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
+        // Speech goes on until the second request: the next live pass needs
+        // 2 s of new speech, or as long as the last request took if that was
+        // longer, and on a busy machine three passes' worth could all be
+        // read before the first request, leaving none for the second.
+        await talk(audio, steps: 15) { http.transcriptionRequests.count >= 2 }
         #expect(await eventually { http.transcriptionRequests.count >= 2 })
         #expect(!captions.isCoveringForCloud)
         #expect(captions.activeEngineKind == .cloud)

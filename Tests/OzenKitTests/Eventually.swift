@@ -13,7 +13,7 @@ import Foundation
 func eventually(within timeout: Duration = .seconds(60), _ condition: @MainActor () -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + timeout
     while !condition() {
-        guard ContinuousClock.now < deadline else { return false }
+        guard !Task.isCancelled, ContinuousClock.now < deadline else { return false }
         try? await Task.sleep(for: .milliseconds(5))
     }
     return true

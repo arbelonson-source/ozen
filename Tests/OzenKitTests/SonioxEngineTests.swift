@@ -300,33 +300,38 @@ struct SonioxEngineTests {
 
     @Test("a connection that stops answering pings is closed and reported as no internet", .timeLimit(.minutes(1)))
     func silentConnection() async {
-        // Timed against two silent connections started first, one given an
-        // hour to answer its ping and one an hour before its first ping,
-        // instead of the clock: with every test starting at once, a busy
-        // machine can hold a 0.25 s close back for seconds, and it holds
-        // all three back alike.
-        func patient(pingSeconds: Double, pongSeconds: Double) -> (socket: StreamSocket, microphone: AsyncStream<[Float]>.Continuation, heard: Task<StreamHeard, Never>) {
-            let socket = StreamSocket(answersPings: false)
-            let (audio, microphone) = AsyncStream<[Float]>.makeStream()
-            microphone.yield([Float](repeating: 0.05, count: 1_600))
-            let soniox = engine(StreamDialer(socket), pingSeconds: pingSeconds, pongSeconds: pongSeconds)
-            return (socket, microphone, Task { await listen(soniox, audio) })
-        }
-        let unanswered = patient(pingSeconds: 0.05, pongSeconds: 3_600)
-        let unpinged = patient(pingSeconds: 3_600, pongSeconds: 0.2)
-        #expect(await waitUntil(within: 60) { await unanswered.socket.pings == 1 })
+        // With every test starting at once, a busy machine can hold the
+        // connection's setup back for seconds, so the wait is not timed
+        // from the start. A connection that waits an hour for its first
+        // ping, connected first, shows the first ping comes when it was set
+        // to; a timer set at the ping shows the close comes within 5 s of
+        // it. The engine's own 0.2 s wait, begun before that timer, ends
+        // first.
+        let unpingedSocket = StreamSocket(answersPings: false)
+        let (unpingedAudio, unpingedMicrophone) = AsyncStream<[Float]>.makeStream()
+        unpingedMicrophone.yield([Float](repeating: 0.05, count: 1_600))
+        let unpinged = engine(StreamDialer(unpingedSocket), pingSeconds: 3_600, pongSeconds: 0.2)
+        let waiting = Task { await listen(unpinged, unpingedAudio) }
+        #expect(await waitUntil(within: 60) { await unpingedSocket.sentTexts.isEmpty == false })
 
         let socket = StreamSocket(answersPings: false)
-        let heard = await listen(engine(StreamDialer(socket), pingSeconds: 0.05, pongSeconds: 0.2), audio(chunks: 1, ends: false))
+        let silent = engine(StreamDialer(socket), pingSeconds: 0.05, pongSeconds: 0.2)
+        let microphone = audio(chunks: 1, ends: false)
+        let listening = Task { await listen(silent, microphone) }
+        #expect(await waitUntil(within: 60) { await socket.pings == 1 })
+        let closedByThen = Task { () -> Bool? in
+            guard (try? await Task.sleep(for: .seconds(5))) != nil else { return nil }
+            return await socket.isClosed
+        }
+        let heard = await listening.value
+        closedByThen.cancel()
         #expect(heard.error as? CloudSpeechError == .offline)
         #expect(await socket.isClosed)
-        #expect(!(await unanswered.socket.isClosed), "the connection given an hour to answer its ping, pinged first, was closed first")
-        #expect(await unpinged.socket.pings == 0, "the connection given an hour before its first ping, started first, was pinged")
-        #expect(!(await unpinged.socket.isClosed))
-        for other in [unanswered, unpinged] {
-            other.microphone.finish()
-            #expect(await other.heard.value.error == nil)
-        }
+        #expect(await closedByThen.value != false, "the connection was still open 5 s after its unanswered ping")
+        #expect(await unpingedSocket.pings == 0, "the connection given an hour before its first ping, connected first, was pinged")
+        #expect(!(await unpingedSocket.isClosed))
+        unpingedMicrophone.finish()
+        #expect(await waiting.value.error == nil)
     }
 
     @Test("a connection that answers its pings is pinged again and stays open", .timeLimit(.minutes(1)))
