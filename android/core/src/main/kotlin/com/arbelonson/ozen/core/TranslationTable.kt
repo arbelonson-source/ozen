@@ -1,24 +1,27 @@
 package com.arbelonson.ozen.core
 
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 object TranslationTable {
-    private val tablesByLanguage: Map<String, Map<String, String>> by lazy { load() }
+    private val lines = MapSerializer(String.serializer(), String.serializer())
+    private val tables = LanguageTables(::read)
 
-    fun lookup(english: String, language: UILanguage): String? = tablesByLanguage[language.rawValue]?.get(english)
+    fun lookup(english: String, language: UILanguage): String? = tables[language][english]
 
-    fun table(language: UILanguage): Map<String, String> = tablesByLanguage[language.rawValue].orEmpty()
+    fun table(language: UILanguage): Map<String, String> = tables[language]
 
-    private fun load(): Map<String, Map<String, String>> {
-        val text = TranslationTable::class.java.getResourceAsStream("/Translations.json")
+    private fun read(language: UILanguage): Map<String, String> {
+        val text = TranslationTable::class.java.getResourceAsStream("/translations/${language.rawValue}.json")
             ?.use { it.readBytes().decodeToString() }
             ?: return emptyMap()
-        return runCatching {
-            Json.parseToJsonElement(text).jsonObject.mapValues { (_, table) ->
-                table.jsonObject.mapValues { (_, value) -> value.jsonPrimitive.content }
-            }
-        }.getOrDefault(emptyMap())
+        return runCatching { Json.decodeFromString(lines, text) }.getOrDefault(emptyMap())
     }
+}
+
+internal class LanguageTables(read: (UILanguage) -> Map<String, String>) {
+    private val tables = UILanguage.entries.associateWith { language -> lazy { read(language) } }
+
+    operator fun get(language: UILanguage): Map<String, String> = tables.getValue(language).value
 }

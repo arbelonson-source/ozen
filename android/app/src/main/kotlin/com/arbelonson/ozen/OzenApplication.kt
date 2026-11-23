@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.ClockFormat
 import com.arbelonson.ozen.core.CloudHTTP
 import com.arbelonson.ozen.core.PhoneModelPartialCleanup
 import com.arbelonson.ozen.core.SettingsStore
+import com.arbelonson.ozen.core.TranslationTable
 import com.arbelonson.ozen.core.UrlConnectionCloudHTTP
 import com.arbelonson.ozen.core.errorGuardedScope
 import java.io.File
@@ -29,6 +30,7 @@ class OzenApplication : Application() {
         super.onCreate()
         ClockFormat.phoneUses24Hours = { DateFormat.is24HourFormat(this) }
         Thread({ PhoneModelPartialCleanup.removeStale(filesDir, System.currentTimeMillis()) }, "ozen-part-cleanup").start()
+        Thread({ runCatching { TranslationTable.table(StartCaptionsRequest.appLanguage(settings)) } }, "ozen-translations").start()
     }
 
     override fun onTrimMemory(level: Int) {

@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.app.NotificationManager
+import android.media.AudioManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
 import androidx.test.platform.app.InstrumentationRegistry
@@ -205,6 +206,67 @@ class ServiceRestartDeviceTest {
             instrumentation.runOnMainSync { captions.appIsActive = false }
             Thread.sleep(2_000)
             assertNull(stoppedNotice())
+        }
+    }
+
+    // The captions publish at every word, and each publish asked whether the
+    // microphone is allowed (a call into the system on Android 8 to 10) and
+    // twice for the phone's audio mode. The first counts only after a refused
+    // restart, the second only while something holds the captions.
+    @Test
+    fun aWordAsksTheSystemForTheMicrophonePermissionOrTheAudioModeOnlyWhenARefusalOrAnInterruptionMakesItCount() {
+        PreferencesMarkerStore(app).clear()
+        app.captions.checkLoadMarker()
+        val work = File(context.cacheDir, "per-word-test").apply { deleteRecursively(); mkdirs() }
+        val audio = AndroidAudioCapture(context)
+        var modeAsked = 0
+        audio.audioMode = {
+            modeAsked += 1
+            AudioManager.MODE_NORMAL
+        }
+        var permissionAsked = 0
+        var session: CaptionSession? = null
+        instrumentation.runOnMainSync {
+            session = CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                audio,
+                historyFolder = File(work, "history"),
+            ).also {
+                it.microphoneGranted = {
+                    permissionAsked += 1
+                    true
+                }
+            }
+        }
+        val captions = session!!
+        val words = { count: Int -> instrumentation.runOnMainSync { repeat(count) { captions.pipeline.onCaptionsChanged?.invoke() } } }
+        try {
+            instrumentation.runOnMainSync {
+                captions.appIsActive = true
+                permissionAsked = 0
+                modeAsked = 0
+            }
+            words(100)
+            assertEquals("asked of the system for 100 words: the microphone permission, the audio mode", listOf(0, 0), listOf(permissionAsked, modeAsked))
+
+            instrumentation.runOnMainSync { audio.onInterruption?.invoke(true) }
+            modeAsked = 0
+            words(1)
+            assertTrue("an interruption no longer asks whether it is a call", modeAsked > 0)
+            instrumentation.runOnMainSync { audio.onInterruption?.invoke(false) }
+
+            instrumentation.runOnMainSync { captions.foregroundRefused(SecurityException("the phone refused the service")) }
+            permissionAsked = 0
+            words(1)
+            assertTrue("a refused restart no longer asks whether the microphone is allowed", permissionAsked > 0)
+        } finally {
+            instrumentation.runOnMainSync {
+                captions.appIsActive = false
+                captions.close()
+            }
         }
     }
 
