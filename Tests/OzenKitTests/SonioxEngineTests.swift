@@ -300,12 +300,33 @@ struct SonioxEngineTests {
 
     @Test("a connection that stops answering pings is closed and reported as no internet", .timeLimit(.minutes(1)))
     func silentConnection() async {
+        // Timed against two silent connections started first, one given an
+        // hour to answer its ping and one an hour before its first ping,
+        // instead of the clock: with every test starting at once, a busy
+        // machine can hold a 0.25 s close back for seconds, and it holds
+        // all three back alike.
+        func patient(pingSeconds: Double, pongSeconds: Double) -> (socket: StreamSocket, microphone: AsyncStream<[Float]>.Continuation, heard: Task<StreamHeard, Never>) {
+            let socket = StreamSocket(answersPings: false)
+            let (audio, microphone) = AsyncStream<[Float]>.makeStream()
+            microphone.yield([Float](repeating: 0.05, count: 1_600))
+            let soniox = engine(StreamDialer(socket), pingSeconds: pingSeconds, pongSeconds: pongSeconds)
+            return (socket, microphone, Task { await listen(soniox, audio) })
+        }
+        let unanswered = patient(pingSeconds: 0.05, pongSeconds: 3_600)
+        let unpinged = patient(pingSeconds: 3_600, pongSeconds: 0.2)
+        #expect(await waitUntil(within: 60) { await unanswered.socket.pings == 1 })
+
         let socket = StreamSocket(answersPings: false)
-        let started = ContinuousClock.now
         let heard = await listen(engine(StreamDialer(socket), pingSeconds: 0.05, pongSeconds: 0.2), audio(chunks: 1, ends: false))
         #expect(heard.error as? CloudSpeechError == .offline)
-        #expect(ContinuousClock.now - started < .seconds(5))
         #expect(await socket.isClosed)
+        #expect(!(await unanswered.socket.isClosed), "the connection given an hour to answer its ping, pinged first, was closed first")
+        #expect(await unpinged.socket.pings == 0, "the connection given an hour before its first ping, started first, was pinged")
+        #expect(!(await unpinged.socket.isClosed))
+        for other in [unanswered, unpinged] {
+            other.microphone.finish()
+            #expect(await other.heard.value.error == nil)
+        }
     }
 
     @Test("a connection that answers its pings is pinged again and stays open", .timeLimit(.minutes(1)))

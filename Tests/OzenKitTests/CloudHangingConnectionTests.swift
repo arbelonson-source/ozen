@@ -80,7 +80,7 @@ struct CloudHangingConnectionTests {
         await pipeline.start(settings: cloudSettings)
         http.blackHole = true
         await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
-        #expect(http.transcriptionRequests.count >= 2)
+        #expect(await eventually { http.transcriptionRequests.count >= 2 })
         #expect(!pipeline.isCoveringForCloud)
         #expect(pipeline.activeEngineKind == .cloud)
     }

@@ -2643,20 +2643,32 @@ struct CaptionPipelineEnrollmentTests {
 
     @Test("a microphone that delivers nothing ends the recording instead of hanging it", .timeLimit(.minutes(1)))
     func enrollmentStalls() async {
+        // Timed against a recording given an hour to stall, started first,
+        // instead of the clock: with every test starting at once, a busy
+        // machine held the 0.1 s stall past a 3 s bound with nothing wrong,
+        // and it holds both recordings back alike.
+        let (patient, patientAudio, _) = makePipeline()
+        patient.enrollmentStallSeconds = 3_600
+        let waiting = Task { @MainActor in
+            await patient.captureEnrollmentSamples(seconds: 0.1)
+        }
+        #expect(await eventually { patientAudio.calls.contains("startCapture") })
+        patientAudio.push([Float](repeating: 0.1, count: 400))
+
         let (pipeline, audio, _) = makePipeline()
         pipeline.enrollmentStallSeconds = 0.1
         let recording = Task { @MainActor in
             await pipeline.captureEnrollmentSamples(seconds: 0.1)
         }
         #expect(await eventually { audio.calls.contains("startCapture") })
-        let stalled = ContinuousClock.now
         audio.push([Float](repeating: 0.1, count: 400))
         let samples = await recording.value
-        let waited = ContinuousClock.now - stalled
 
         #expect(samples.count == 400)
-        #expect(waited < .seconds(3))
+        #expect(!patientAudio.calls.contains("stopCapture"), "the recording given an hour to stall, started first, was stopped first")
         #expect(pipeline.phase == .idle)
+        patientAudio.push([Float](repeating: 0.1, count: 1_200))
+        #expect(await waiting.value.count == 1_600)
     }
 
     @Test("stopping an enrollment midway ends the recording at once and brings captions back", .timeLimit(.minutes(1)))
@@ -5314,11 +5326,16 @@ struct CaptionPipelineHomeLossTests {
         let home = FakeEngine(kind: .homeServer)
         let phone = FakeEngine(kind: .whisperKit)
         let audio = FakeAudioCapturer()
+        // The microphone here goes quiet after each burst of speech, which
+        // the stall check rightly calls a failure after 6 s. On two busy
+        // threads 40 s of speech had not all been taken in by then, and
+        // captions failed with the rest unheard.
         let pipeline = CaptionPipeline(
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? home : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            audioWatchdog: .disabled
         )
         return (pipeline, audio, home, phone)
     }

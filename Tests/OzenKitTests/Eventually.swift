@@ -10,7 +10,7 @@ import Foundation
 /// bundle, which compiles these files too, share this one definition.
 @MainActor
 @discardableResult
-func eventually(within timeout: Duration = .seconds(10), _ condition: @MainActor () -> Bool) async -> Bool {
+func eventually(within timeout: Duration = .seconds(60), _ condition: @MainActor () -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + timeout
     while !condition() {
         guard ContinuousClock.now < deadline else { return false }

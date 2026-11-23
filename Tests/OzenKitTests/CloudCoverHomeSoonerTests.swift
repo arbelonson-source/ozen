@@ -116,7 +116,7 @@ struct CloudCoverHomeSoonerTests {
         await captions.start(settings: settings(paired: false))
         http.blackHole = true
         await talk(audio, steps: 3) { http.transcriptionRequests.count >= 2 }
-        #expect(http.transcriptionRequests.count >= 2)
+        #expect(await eventually { http.transcriptionRequests.count >= 2 })
         #expect(!captions.isCoveringForCloud)
         #expect(captions.activeEngineKind == .cloud)
     }

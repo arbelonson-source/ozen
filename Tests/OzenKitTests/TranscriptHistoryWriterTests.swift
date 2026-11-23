@@ -3,6 +3,32 @@ import Foundation
 import Testing
 @testable import OzenKit
 
+/// A call made on a thread of its own, checked on without holding one of
+/// the few threads every test shares: a semaphore wait held one for as long
+/// as it waited, while all the other tests waited for a turn.
+private final class OffThreadCall: @unchecked Sendable {
+    private let lock = NSLock()
+    private var returned = false
+
+    func markReturned() { lock.withLock { returned = true } }
+
+    /// Whether the call returned within `limit`, seen within milliseconds
+    /// of its return.
+    func hasReturned(within limit: Duration) async -> Bool {
+        let deadline = ContinuousClock.now + limit
+        while !lock.withLock({ returned }) {
+            guard ContinuousClock.now < deadline else { return false }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return true
+    }
+
+    /// Waits for a call the test has let go on.
+    func finish() async {
+        _ = await hasReturned(within: .seconds(60))
+    }
+}
+
 @Suite("Transcript history writer")
 struct TranscriptHistoryWriterTests {
     private func record(id: UUID, lines: Int, ended: Bool) -> TranscriptSessionRecord {
@@ -23,14 +49,14 @@ struct TranscriptHistoryWriterTests {
     /// shows up as a failed expectation instead of hanging the whole test
     /// run. Not the shared global queue: on a one-core runner its threads
     /// were all taken by other tests, and the work did not even start
-    /// within the second this waits.
-    private func offThread(_ work: @escaping @Sendable () -> Void) -> DispatchSemaphore {
-        let done = DispatchSemaphore(value: 0)
+    /// within a second.
+    private func offThread(_ work: @escaping @Sendable () -> Void) -> OffThreadCall {
+        let call = OffThreadCall()
         Thread {
             work()
-            done.signal()
+            call.markReturned()
         }.start()
-        return done
+        return call
     }
 
     private func makeStore() -> (TranscriptHistoryStore, URL) {
@@ -39,7 +65,7 @@ struct TranscriptHistoryWriterTests {
     }
 
     @Test("an autosave returns without waiting for the disk")
-    func autosaveDoesNotBlock() {
+    func autosaveDoesNotBlock() async {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.writer")
@@ -47,12 +73,12 @@ struct TranscriptHistoryWriterTests {
 
         queue.suspend()
         let returned = offThread { writer.saveInBackground(self.record(id: UUID(), lines: 1, ended: false)) }
-        let returnedWhilePaused = returned.wait(timeout: .now() + .seconds(1)) == .success
+        let returnedWhilePaused = await returned.hasReturned(within: .seconds(30))
         #expect(returnedWhilePaused)
         #expect(store.listSummaries().isEmpty)
 
         queue.resume()
-        if !returnedWhilePaused { returned.wait() }
+        await returned.finish()
         writer.waitUntilIdle()
         #expect(store.listSummaries().count == 1)
     }
@@ -74,7 +100,7 @@ struct TranscriptHistoryWriterTests {
     }
 
     @Test("a rename waits for autosaves already queued, so the name ends up on the newest copy")
-    func renameQueuesBehindAutosave() {
+    func renameQueuesBehindAutosave() async {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.writer")
@@ -84,12 +110,12 @@ struct TranscriptHistoryWriterTests {
 
         queue.suspend()
         let autosaved = offThread { writer.saveInBackground(self.record(id: id, lines: 4, ended: false)) }
-        let autosaveReturned = autosaved.wait(timeout: .now() + .seconds(1)) == .success
+        #expect(await autosaved.hasReturned(within: .seconds(30)))
         let renamed = offThread { writer.renameNow(id: id, title: "ארוחת ערב") }
-        let renameReturnedEarly = renamed.wait(timeout: .now() + .milliseconds(200)) == .success
+        let renameReturnedEarly = await renamed.hasReturned(within: .milliseconds(200))
         queue.resume()
-        if !autosaveReturned { autosaved.wait() }
-        if !renameReturnedEarly { renamed.wait() }
+        await autosaved.finish()
+        await renamed.finish()
         writer.waitUntilIdle()
 
         #expect(renameReturnedEarly == false)
@@ -98,7 +124,7 @@ struct TranscriptHistoryWriterTests {
     }
 
     @Test("a save made now lands after an autosave that was still waiting, never under it")
-    func saveNowWinsOverPendingAutosave() {
+    func saveNowWinsOverPendingAutosave() async {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.writer")
@@ -107,14 +133,14 @@ struct TranscriptHistoryWriterTests {
 
         queue.suspend()
         let autosaved = offThread { writer.saveInBackground(self.record(id: id, lines: 1, ended: false)) }
-        let autosaveReturned = autosaved.wait(timeout: .now() + .seconds(1)) == .success
+        #expect(await autosaved.hasReturned(within: .seconds(30)))
         let saved = offThread { writer.saveNow(self.record(id: id, lines: 3, ended: true)) }
         // A correct writer is stuck behind the paused autosave here; one
         // that skips the queue has already written and returned.
-        let saveReturnedEarly = saved.wait(timeout: .now() + .milliseconds(200)) == .success
+        _ = await saved.hasReturned(within: .milliseconds(200))
         queue.resume()
-        if !autosaveReturned { autosaved.wait() }
-        if !saveReturnedEarly { saved.wait() }
+        await autosaved.finish()
+        await saved.finish()
         writer.waitUntilIdle()
 
         let summary = store.listSummaries().first
@@ -146,7 +172,7 @@ struct TranscriptHistoryWriterTests {
     }
 
     @Test("a delete waits for an autosave of the same conversation, so the autosave can't bring it back")
-    func deleteQueuesBehindAutosave() throws {
+    func deleteQueuesBehindAutosave() async throws {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.writer")
@@ -156,12 +182,12 @@ struct TranscriptHistoryWriterTests {
 
         queue.suspend()
         let autosaved = offThread { writer.saveInBackground(self.record(id: id, lines: 2, ended: false)) }
-        let autosaveReturned = autosaved.wait(timeout: .now() + .seconds(1)) == .success
+        #expect(await autosaved.hasReturned(within: .seconds(30)))
         let deleted = offThread { try? writer.deleteNow(id: id) }
-        let deleteReturnedEarly = deleted.wait(timeout: .now() + .milliseconds(200)) == .success
+        let deleteReturnedEarly = await deleted.hasReturned(within: .milliseconds(200))
         queue.resume()
-        if !autosaveReturned { autosaved.wait() }
-        if !deleteReturnedEarly { deleted.wait() }
+        await autosaved.finish()
+        await deleted.finish()
         writer.waitUntilIdle()
 
         #expect(deleteReturnedEarly == false)
@@ -170,7 +196,7 @@ struct TranscriptHistoryWriterTests {
     }
 
     @Test("delete all waits for queued autosaves too")
-    func deleteAllQueuesBehindAutosave() throws {
+    func deleteAllQueuesBehindAutosave() async throws {
         let (store, dir) = makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         let queue = DispatchQueue(label: "test.writer")
@@ -179,12 +205,12 @@ struct TranscriptHistoryWriterTests {
 
         queue.suspend()
         let autosaved = offThread { writer.saveInBackground(self.record(id: UUID(), lines: 2, ended: false)) }
-        let autosaveReturned = autosaved.wait(timeout: .now() + .seconds(1)) == .success
+        #expect(await autosaved.hasReturned(within: .seconds(30)))
         let deleted = offThread { try? writer.deleteAllNow() }
-        let deleteReturnedEarly = deleted.wait(timeout: .now() + .milliseconds(200)) == .success
+        let deleteReturnedEarly = await deleted.hasReturned(within: .milliseconds(200))
         queue.resume()
-        if !autosaveReturned { autosaved.wait() }
-        if !deleteReturnedEarly { deleted.wait() }
+        await autosaved.finish()
+        await deleted.finish()
         writer.waitUntilIdle()
 
         #expect(deleteReturnedEarly == false)

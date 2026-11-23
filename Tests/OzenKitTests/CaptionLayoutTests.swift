@@ -293,7 +293,11 @@ struct CaptionPipelineLongRunTests {
     @Test("an update to the newest line lands on it, however many lines came before")
     func manyLines() async {
         let engine = FakeEngine()
-        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled)
+        // The microphone here never sends a sound, which the stall check
+        // rightly calls a failure after 6 s. On two busy threads the lines
+        // had not all been read by then (200 of the 2,001), and captions
+        // failed with the rest unread.
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled, audioWatchdog: .disabled)
         await pipeline.start(settings: .default)
         for index in 0..<2_000 {
             engine.emit(TranscriptToken(utteranceID: UUID(), text: "שורה \(index)", isFinal: true, timestamp: 1_000 + Double(index)))

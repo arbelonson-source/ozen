@@ -108,7 +108,7 @@ struct HomeServerLateCloseTests {
         let old = SlowCloseSocket()
         let fresh = SlowCloseSocket()
         let engine = HomeServerEngine(
-            address: "10.0.0.5", token: { "1234" }, connector: Sockets([old, fresh]), handshakeSeconds: 2
+            address: "10.0.0.5", token: { "1234" }, connector: Sockets([old, fresh]), handshakeSeconds: 30
         )
         let audio1 = AsyncStream<[Float]>.makeStream()
         let first = Task { do { for try await _ in engine.stream(languageCode: "he", audio: audio1.stream) {} } catch {} }
@@ -140,7 +140,7 @@ struct HomeServerLateCloseTests {
     func closeRightAfterEndIsAFinish() async {
         let socket = CloseOnEndSocket()
         let engine = HomeServerEngine(
-            address: "10.0.0.5", token: { "1234" }, connector: Sockets([socket]), handshakeSeconds: 2
+            address: "10.0.0.5", token: { "1234" }, connector: Sockets([socket]), handshakeSeconds: 30
         )
         let audio = AsyncStream<[Float]>.makeStream()
         let run = Task { () -> (any Error)? in
