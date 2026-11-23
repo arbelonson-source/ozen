@@ -494,4 +494,49 @@ struct WordFixesTests {
         #expect(WordFixes.applyToUncertain(tom, text: "トムソンさんが来た", ["トムソンさんが来た"]) == ["トムソンさんが来た"])
         #expect(WordFixes.applyToUncertain([fix("は", "わ")], text: "トムは来た", ["トムは来た"]) == ["トムは来た"])
     }
+
+    @Test("a heard word with the kanji repeat mark 々, or with 〆 or 〇, is fixed inside a line with no spaces")
+    func repeatMarkInAnUnspacedLine() {
+        #expect(WordFixes.apply([fix("佐々木", "笹木")], to: "昨日佐々木さんが来た") == "昨日笹木さんが来た")
+        #expect(WordFixes.apply([fix("佐々木さん", "ササキさん")], to: "昨日佐々木さんが来た") == "昨日ササキさんが来た")
+        #expect(WordFixes.apply([fix("時々", "ときどき")], to: "時々雨が降る") == "ときどき雨が降る")
+        #expect(WordFixes.apply([fix("人々", "人びと")], to: "多くの人々が来た") == "多くの人びとが来た")
+        #expect(WordFixes.apply([fix("〆切", "締切")], to: "明日が〆切です") == "明日が締切です")
+        #expect(WordFixes.apply([fix("二〇二六年", "2026年")], to: "我二〇二六年去了") == "我2026年去了")
+        #expect(WordFixes.apply([fix("佐々木", "笹木")], to: "佐々木") == "笹木")
+    }
+
+    @Test("the repeat mark 々 alone, or at the start of a heard word, is never found inside a word, while a kanji next to it still is")
+    func repeatMarkNeverStartsAFix() {
+        #expect(WordFixes.apply([fix("々", "木")], to: "佐々木さんが来た") == "佐々木さんが来た")
+        #expect(WordFixes.apply([fix("々々", "部分")], to: "部分々々で違う") == "部分々々で違う")
+        #expect(WordFixes.apply([fix("々木", "樹")], to: "佐々木さんが来た") == "佐々木さんが来た")
+        #expect(WordFixes.apply([fix("木", "樹")], to: "佐々木さんが来た") == "佐々樹さんが来た")
+        #expect(WordFixes.apply([fix("佐", "左")], to: "佐々木さんが来た") == "左々木さんが来た")
+    }
+
+    @Test("a line a fix with 々 rewrote is left as it is when the same fix runs on it again")
+    func repeatMarkFixedAgain() {
+        let cases = [
+            (fix("佐々木", "佐々木さん"), "佐々木が来た"),
+            (fix("佐々木", "佐々木 太郎"), "昨日佐々木に会った"),
+            (fix("時々", "時々は"), "時々雨"),
+        ]
+        for (one, line) in cases {
+            let once = WordFixes.apply([one], to: line)
+            #expect(once != line, "\(one.heard) on \(line)")
+            #expect(WordFixes.apply([one], to: once) == once, "\(one.heard) on \(line)")
+        }
+    }
+
+    @Test("a doubtful word in a Japanese line keeps its doubt on what a fix with 々 wrote there")
+    func repeatMarkFixKeepsTheDoubt() {
+        let sasaki = [fix("佐々木", "笹木")]
+        #expect(WordFixes.applyToUncertain(sasaki, text: "昨日佐々木さんが来た", ["昨日佐々木さんが来た"]) == ["昨日笹木さんが来た"])
+        let heard = "今日は 佐々木さんが来た"
+        let shown = WordFixes.apply(sasaki, to: heard)
+        let marked = UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(sasaki, text: heard, ["佐々木さんが来た"]))
+        #expect(marked.map { String(shown[$0]) } == ["笹木さんが来た"])
+        #expect(WordFixes.applyToUncertain([fix("々", "木")], text: "佐々木さんが来た", ["佐々木さんが来た"]) == ["佐々木さんが来た"])
+    }
 }
