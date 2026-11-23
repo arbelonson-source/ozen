@@ -340,6 +340,9 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     }
 
     private func transcribe(_ window: [Float], key: String, languageCode: String) async throws -> [String] {
+        // The echo check matches the names this request was sent with,
+        // even if the list changes while it is out.
+        let echo = self.echo
         guard let request = provider.transcriptionRequest(
             model: model,
             apiKey: key,
@@ -361,7 +364,6 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             if error is CancellationError || Task.isCancelled { throw CancellationError() }
             throw (error as? URLError)?.code == .timedOut ? CloudSpeechError.timedOut : CloudSpeechError.offline
         }
-        let echo = self.echo
         return CloudSpeech.turns(in: try provider.transcript(from: response), filter: filter)
             .filter { !(echo?.isEcho($0) ?? false) }
     }

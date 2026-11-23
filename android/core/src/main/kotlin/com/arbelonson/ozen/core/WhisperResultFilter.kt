@@ -256,8 +256,31 @@ class WhisperResultFilter(
      * [echo] drops segments that are just the vocabulary prompt read back (see
      * [PromptEchoDetector]).
      */
-    fun acceptedText(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): String {
-        val joined = accepted(segments, echo)
+    fun acceptedText(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): String = textOf(accepted(segments, echo))
+
+    /**
+     * What one pass of the phone's engine shows: [accepted] and the
+     * [acceptedText] made of them, or nothing at all when that text is a
+     * lone phrase heard in too little voice ([isUnvoicedPhrase]). Each
+     * segment is checked once for both, where asking for the two
+     * separately checks them twice; on a 40-word line a check is about
+     * half a megabyte and, on a cheap phone, one to two milliseconds.
+     */
+    fun passText(segments: List<WhisperSegmentSummary>, voicedChunks: Int?, echo: PromptEchoDetector? = null): PassText {
+        val kept = accepted(segments, echo)
+        val text = textOf(kept)
+        return if (isUnvoicedPhrase(text, voicedChunks, echo)) PassText.nothing else PassText(kept, text)
+    }
+
+    /** See [passText]. */
+    class PassText(val segments: List<WhisperSegmentSummary>, val text: String) {
+        companion object {
+            val nothing = PassText(emptyList(), "")
+        }
+    }
+
+    private fun textOf(accepted: List<WhisperSegmentSummary>): String {
+        val joined = accepted
             .map { segment ->
                 val text = withoutNotes(trimmingWhisperWhitespace(stripSpecialTokens(segment.text)))
                 if (segment.compressionRatio > compressionRatioThreshold) repeatedSentence(text) ?: text else text

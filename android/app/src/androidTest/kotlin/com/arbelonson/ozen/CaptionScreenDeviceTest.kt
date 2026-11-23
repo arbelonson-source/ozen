@@ -1739,7 +1739,10 @@ class CaptionScreenDeviceTest {
             settingsFile.deleteRecursively()
             settingsFile.writeBytes(settingsBefore)
         }
-        val save = { app.settings.change { it.display = it.display.copy() } }
+        val save = {
+            app.settings.change { it.display = it.display.copy() }
+            app.settings.waitForWrites()
+        }
         store.save(record)
         try {
             app.settings.change { it.saveHistory = true }

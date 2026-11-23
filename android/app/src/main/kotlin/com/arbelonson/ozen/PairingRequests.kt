@@ -50,10 +50,16 @@ class PairingRequests(
             saveFailed.value = true
             return false
         }
-        settings.change {
-            it.homeServerAddress = pairing.address
-            it.homeServerCertificatePin = pairing.pin
-            it.engine = TranscriptionEngineKind.HomeServer
+        val saved = withContext(io) {
+            settings.changeAndSave {
+                it.homeServerAddress = pairing.address
+                it.homeServerCertificatePin = pairing.pin
+                it.engine = TranscriptionEngineKind.HomeServer
+            }
+        }
+        if (!saved) {
+            saveFailed.value = true
+            return false
         }
         paired.value = true
         onPaired?.invoke()

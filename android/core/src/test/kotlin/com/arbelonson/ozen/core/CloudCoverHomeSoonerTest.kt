@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlin.time.Duration.Companion.milliseconds
@@ -140,7 +141,14 @@ class CloudCoverHomeSoonerTest {
 
     private fun TestScope.hangingRig(homeAnswers: Boolean = true, now: () -> Double = { virtualNow() }, newHome: FakeEngine? = null): Rig {
         val http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("hello")))
-        val cloud = CloudSpeechEngine(http = http, failedSegmentPauseSeconds = 0.001, approvalSeconds = 0.01, timeSource = testScheduler.timeSource, apiKey = { "sk-test" })
+        val cloud = CloudSpeechEngine(
+            http = http,
+            failedSegmentPauseSeconds = 0.001,
+            approvalSeconds = 0.01,
+            timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
+            apiKey = { "sk-test" },
+        )
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit).also { it.pendingDownload = 400 }
         val home = homeAnswering(homeAnswers)
         val audio = FakeAudioCapturer()

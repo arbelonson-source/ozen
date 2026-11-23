@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServerCheck
@@ -52,7 +53,10 @@ class EngineSettingsTest {
         folder.deleteRecursively()
     }
 
-    private fun saved() = SettingsHolder(SettingsStore(settingsFile)).current.value
+    private fun saved(): AppSettings {
+        settings.waitForWrites()
+        return SettingsHolder(SettingsStore(settingsFile)).current.value
+    }
 
     @Test
     fun `android offers the phone's own model, the home computer and the cloud, not apple's recognizer`() {
@@ -300,6 +304,7 @@ class EngineSettingsTest {
     fun `an address that reached the disk is reported saved even when another change fails to save before Settings looks`() {
         breakTheDisk()
         settings.change {}
+        settings.waitForWrites()
         assertTrue(settings.saveFailed.value)
         mendTheDisk()
         var onDisk: String? = null
@@ -312,6 +317,7 @@ class EngineSettingsTest {
 
         val written = engineSettings.saveHomeComputerAddress("wss://pc.example.net")
         other.cancel()
+        settings.waitForWrites()
 
         assertEquals("wss://pc.example.net", onDisk, "the address reached the disk")
         assertTrue(settings.saveFailed.value, "the other change could not be saved")

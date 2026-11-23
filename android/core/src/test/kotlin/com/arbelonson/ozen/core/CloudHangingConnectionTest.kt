@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlin.time.Duration.Companion.milliseconds
@@ -18,7 +19,14 @@ class CloudHangingConnectionTest {
     private class Rig(val captions: CaptionPipeline, val audio: FakeAudioCapturer, val phone: FakeEngine, val http: FakeCloudHTTP)
 
     private fun TestScope.rig(http: FakeCloudHTTP): Rig {
-        val cloud: TranscriptionEngine = CloudSpeechEngine(http = http, failedSegmentPauseSeconds = 0.001, approvalSeconds = 0.01, timeSource = testScheduler.timeSource, apiKey = { "sk-test" })
+        val cloud: TranscriptionEngine = CloudSpeechEngine(
+            http = http,
+            failedSegmentPauseSeconds = 0.001,
+            approvalSeconds = 0.01,
+            timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
+            apiKey = { "sk-test" },
+        )
         val phone = FakeEngine(kind = TranscriptionEngineKind.WhisperKit)
         val audio = FakeAudioCapturer()
         val captions = captionPipeline(

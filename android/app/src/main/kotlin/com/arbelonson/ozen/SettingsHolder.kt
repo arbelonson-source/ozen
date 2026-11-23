@@ -2,6 +2,10 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.SettingsStore
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -9,7 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsHolder(private val store: SettingsStore) {
+class SettingsHolder(
+    private val store: SettingsStore,
+    private val save: (AppSettings) -> AppSettings = store::saveTakingUp,
+) {
     private val state = MutableStateFlow(store.load())
     val current: StateFlow<AppSettings> = state.asStateFlow()
     val saveFailed = MutableStateFlow(false)
@@ -19,9 +26,20 @@ class SettingsHolder(private val store: SettingsStore) {
     private val oneChangeAtATime = Any()
     private val oneWriteAtATime = Any()
     private val unwritten = ArrayList<(AppSettings) -> Unit>()
+    private val writeAsked = AtomicBoolean(false)
+    private var lastSaved = true
+    private val writer = ThreadPoolExecutor(1, 1, 10, TimeUnit.SECONDS, LinkedBlockingQueue()) { task ->
+        Thread(task, "ozen-settings-writer").apply { isDaemon = true }
+    }.apply { allowCoreThreadTimeOut(true) }
 
     fun change(edit: (AppSettings) -> Unit) {
-        changeAndSave(edit)
+        changeInTurn(edit)
+        if (writeAsked.compareAndSet(false, true)) writer.execute { waitForWrites() }
+    }
+
+    fun waitForWrites(): Boolean = synchronized(oneWriteAtATime) {
+        val waiting = synchronized(oneChangeAtATime) { unwritten.isNotEmpty() }
+        if (writeAsked.getAndSet(false) || waiting) written() else lastSaved
     }
 
     fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = changeInTurn(edit)()
@@ -39,7 +57,7 @@ class SettingsHolder(private val store: SettingsStore) {
         val saved = synchronized(oneWriteAtATime) {
             val (next, taken) = synchronized(oneChangeAtATime) { state.value to unwritten.size }
             val held = try {
-                store.saveTakingUp(next)
+                save(next)
             } catch (_: Exception) {
                 null
             }
@@ -53,7 +71,8 @@ class SettingsHolder(private val store: SettingsStore) {
             }
             settingsUnreadable.value = store.isUnreadable
             saveFailed.value = held == null
-            held != null
+            lastSaved = held != null
+            lastSaved
         }
         before?.let(takenUpFrom::tryEmit)
         return saved

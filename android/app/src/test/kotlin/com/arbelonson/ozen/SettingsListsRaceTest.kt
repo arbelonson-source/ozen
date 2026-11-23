@@ -99,7 +99,10 @@ class SettingsListsRaceTest {
         }
     }
 
-    private fun relaunched() = SettingsStore(file).load()
+    private fun relaunched(): AppSettings {
+        holder.waitForWrites()
+        return SettingsStore(file).load()
+    }
 
     private fun whileAnotherChangeIsMade(other: (AppSettings) -> Unit, mine: () -> Unit) {
         val inside = CountDownLatch(1)

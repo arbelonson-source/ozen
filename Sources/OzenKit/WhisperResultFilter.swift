@@ -280,7 +280,30 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// `echo` drops segments that are just the vocabulary prompt read back
     /// (see `PromptEchoDetector`).
     public func acceptedText(from segments: [WhisperSegmentSummary], echo: PromptEchoDetector? = nil) -> String {
-        let joined = accepted(from: segments, echo: echo)
+        joinedText(of: accepted(from: segments, echo: echo))
+    }
+
+    /// What one pass of the phone's engine shows: `accepted(from:echo:)`
+    /// and the `acceptedText(from:echo:)` made of them, or nothing at all
+    /// when that text is a lone phrase heard in too little voice
+    /// (`isUnvoicedPhrase`). Each segment is checked once for both, where
+    /// asking for the two separately checks them twice.
+    public func passText(from segments: [WhisperSegmentSummary], voicedChunks: Int?, echo: PromptEchoDetector? = nil) -> PassText {
+        let kept = accepted(from: segments, echo: echo)
+        let text = joinedText(of: kept)
+        return isUnvoicedPhrase(text, voicedChunks: voicedChunks, echo: echo) ? .nothing : PassText(segments: kept, text: text)
+    }
+
+    /// See `passText(from:voicedChunks:echo:)`.
+    public struct PassText: Sendable, Equatable {
+        public let segments: [WhisperSegmentSummary]
+        public let text: String
+
+        public static let nothing = PassText(segments: [], text: "")
+    }
+
+    private func joinedText(of segments: [WhisperSegmentSummary]) -> String {
+        let joined = segments
             .map { segment in
                 let text = withoutNotes(Self.stripSpecialTokens(segment.text).trimmingCharacters(in: .whitespacesAndNewlines))
                 guard segment.compressionRatio > compressionRatioThreshold else { return text }
