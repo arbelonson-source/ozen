@@ -27,19 +27,18 @@ class SettingsHolder(
     private val oneWriteAtATime = Any()
     private val unwritten = ArrayList<(AppSettings) -> Unit>()
     private val writeAsked = AtomicBoolean(false)
+    private var lastSaved = true
     private val writer = ThreadPoolExecutor(1, 1, 10, TimeUnit.SECONDS, LinkedBlockingQueue()) { task ->
         Thread(task, "ozen-settings-writer").apply { isDaemon = true }
     }.apply { allowCoreThreadTimeOut(true) }
 
     fun change(edit: (AppSettings) -> Unit) {
         changeInTurn(edit)
-        if (writeAsked.compareAndSet(false, true)) writer.execute(::waitForWrites)
+        if (writeAsked.compareAndSet(false, true)) writer.execute { waitForWrites() }
     }
 
-    fun waitForWrites() {
-        synchronized(oneWriteAtATime) {
-            if (writeAsked.getAndSet(false)) written()
-        }
+    fun waitForWrites(): Boolean = synchronized(oneWriteAtATime) {
+        if (writeAsked.getAndSet(false)) written() else lastSaved
     }
 
     fun changeAndSave(edit: (AppSettings) -> Unit): Boolean = changeInTurn(edit)()
@@ -71,7 +70,8 @@ class SettingsHolder(
             }
             settingsUnreadable.value = store.isUnreadable
             saveFailed.value = held == null
-            held != null
+            lastSaved = held != null
+            lastSaved
         }
         before?.let(takenUpFrom::tryEmit)
         return saved

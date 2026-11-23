@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -44,7 +45,6 @@ class PairingRequestsTest {
         assertEquals(TranscriptionEngineKind.HomeServer, settings.current.value.engine)
         assertEquals("wss://desktop.tail.ts.net", settings.current.value.homeServerAddress)
         assertEquals("testcode123", codes.read())
-        settings.waitForWrites()
         val reopened = SettingsStore(settingsFile).load()
         assertEquals(TranscriptionEngineKind.HomeServer, reopened.engine)
         assertEquals("wss://desktop.tail.ts.net", reopened.homeServerAddress)
@@ -59,15 +59,23 @@ class PairingRequestsTest {
         assertTrue(pairing.acceptPending())
         assertEquals("wss://192.168.1.20:8766", settings.current.value.homeServerAddress)
         assertEquals(pin, settings.current.value.homeServerCertificatePin)
-        settings.waitForWrites()
         assertEquals(pin, SettingsStore(settingsFile).load().homeServerCertificatePin)
 
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=example-code-123")
         assertTrue(pairing.acceptPending())
         assertEquals("wss://desktop.tail.ts.net", settings.current.value.homeServerAddress)
         assertNull(settings.current.value.homeServerCertificatePin)
-        settings.waitForWrites()
         assertNull(SettingsStore(settingsFile).load().homeServerCertificatePin)
+    }
+
+    @Test
+    fun `a pairing whose settings cannot be written says so and is not counted as paired`() = runBlocking<Unit> {
+        val refusing = SettingsHolder(SettingsStore(settingsFile)) { throw IOException("No space left on device") }
+        val pairing = PairingRequests(refusing, codes::save)
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        assertFalse(pairing.acceptPending())
+        assertTrue(pairing.saveFailed.value)
+        assertFalse(pairing.paired.value)
     }
 
     @Test

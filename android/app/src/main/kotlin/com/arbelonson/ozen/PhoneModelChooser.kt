@@ -214,7 +214,7 @@ class PhoneModelChooser(
         if (settings.current.value.phoneModel.file != model.file) return
         // The new choice lands on the disk first: ended in between, the app
         // would otherwise come back to the old model with its file gone.
-        settings.waitForWrites()
+        if (!settings.waitForWrites()) return
         PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(old)
         refreshInstalled()
     }

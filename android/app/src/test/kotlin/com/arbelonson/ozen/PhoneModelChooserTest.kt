@@ -41,7 +41,12 @@ import kotlinx.coroutines.test.runCurrent
 class PhoneModelChooserTest {
     private val folder = Files.createTempDirectory("ozen-chooser").toFile()
     private val models = File(folder, "models").also { it.mkdirs() }
-    private val settings = SettingsHolder(SettingsStore(File(folder, "ozen-settings.json")))
+    private var savesRefused = false
+    private val settingsStore = SettingsStore(File(folder, "ozen-settings.json"))
+    private val settings = SettingsHolder(settingsStore) { next ->
+        if (savesRefused) throw IOException("No space left on device")
+        settingsStore.saveTakingUp(next)
+    }
     private val scope = TestScope()
     private var applied = 0
     private var network: NetworkConditions? = NetworkConditions.wifi
@@ -847,6 +852,17 @@ class PhoneModelChooserTest {
         assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
         assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
         assertEquals(setOf("ggml-small-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `replacing the model in use keeps the old one while the new choice cannot be written`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        savesRefused = true
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        assertTrue(settings.saveFailed.value)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"), "the settings file still names the old model")
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
     }
 
     @Test
