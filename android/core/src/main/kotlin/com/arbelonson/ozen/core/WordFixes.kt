@@ -331,7 +331,7 @@ object WordFixes {
      * written "北京" on "北京市"), and a fix that adds characters before or
      * after the heard ones would otherwise write them twice.
      */
-    private fun hanWrittenAlready(text: String, at: Int, fix: Compiled): Boolean {
+    private fun writtenAlreadyInside(text: String, at: Int, fix: Compiled): Boolean {
         val end = at + fix.words[0].length
         val lowest = maxOf(0, at - fix.written.length)
         val starts = generateSequence(at) { if (it > lowest) it - Character.charCount(text.codePointBefore(it)) else null }
@@ -377,29 +377,67 @@ object WordFixes {
         return isLetter(start) && start !in 0x0590..0x05FF
     }
 
-    private fun isHan(word: String) = word.isNotEmpty() && word.codePoints().allMatch { isHan(it) }
-
     private fun isHan(c: Int) = Character.isIdeographic(c) && c !in 0x3000..0x303F
 
-    private fun hasHan(text: String, word: Word): Boolean {
+    private fun isKatakanaLetter(c: Int) = c in 0x30A1..0x30FA || c == 0x30FF || c in 0x31F0..0x31FF || c in 0xFF66..0xFF6F || c in 0xFF71..0xFF9D
+
+    /** Katakana as a run of it reads on: its letters, small ones too, the long-vowel mark ー, its repeat marks and the voiced-sound marks. */
+    private fun isKatakana(c: Int) = isKatakanaLetter(c) || c in 0x30FC..0x30FE || c == 0xFF70 || c in 0xFF9E..0xFF9F || c in 0x3099..0x309C
+
+    private fun isHiragana(c: Int) = c in 0x3041..0x3096 || c in 0x309D..0x309F
+
+    private fun isJapanese(c: Int) = isHan(c) || isKatakana(c) || isHiragana(c)
+
+    /**
+     * Whether a one-word [heard] word is looked for inside words too, as
+     * Chinese and Japanese are written without spaces: Han characters and
+     * kana, with a middle dot between names (ジョン・スミス), holding a Han
+     * character or a katakana letter. One all in hiragana is not: hiragana
+     * runs on through particles and verb endings (さくらが, 高かった), so
+     * where it starts or stops is no word's edge.
+     */
+    private fun readsInsideWords(heard: String): Boolean {
+        var anchored = false
+        var at = 0
+        while (at < heard.length) {
+            val c = heard.codePointAt(at)
+            if (!isJapanese(c) && c != 0x30FB && c != 0xFF65) return false
+            anchored = anchored || isHan(c) || isKatakanaLetter(c)
+            at += Character.charCount(c)
+        }
+        return anchored
+    }
+
+    private fun hasJapanese(text: String, word: Word): Boolean {
         var at = word.start
         while (at < word.end) {
             val c = text.codePointAt(at)
-            if (isHan(c)) return true
+            if (isJapanese(c)) return true
             at += Character.charCount(c)
         }
         return false
     }
 
-    private fun replacingHan(fixes: List<Compiled>, text: String, word: Word): String? {
-        if (fixes.isEmpty() || !hasHan(text, word)) return null
+    /**
+     * Whether [heard] at [at] in [text] takes in the whole katakana run at
+     * each of its ends that is katakana: トム in トムさん or トム・クルーズ,
+     * not in トムソン or アトム.
+     */
+    private fun standsAlone(text: String, at: Int, heard: String): Boolean {
+        val end = at + heard.length
+        if (isKatakana(heard.codePointAt(0)) && at > 0 && isKatakana(text.codePointBefore(at))) return false
+        return !(isKatakana(heard.codePointBefore(heard.length)) && end < text.length && isKatakana(text.codePointAt(end)))
+    }
+
+    private fun replacingInside(fixes: List<Compiled>, text: String, word: Word): String? {
+        if (fixes.isEmpty() || !hasJapanese(text, word)) return null
         val out = StringBuilder()
         var changed = false
         var at = word.start
         while (at < word.end) {
-            val hit = fixes.firstOrNull { text.startsWith(it.words[0], at) && at + it.words[0].length <= word.end }
+            val hit = fixes.firstOrNull { text.startsWith(it.words[0], at) && at + it.words[0].length <= word.end && standsAlone(text, at, it.words[0]) }
             if (hit != null) {
-                val kept = hanWrittenAlready(text, at, hit)
+                val kept = writtenAlreadyInside(text, at, hit)
                 out.append(if (kept) hit.words[0] else hit.written)
                 at += hit.words[0].length
                 changed = changed || !kept
@@ -519,9 +557,9 @@ object WordFixes {
     /**
      * Whether [fix] could change [text]: its first heard word is on the
      * line, folded as a word's [Word.key] folds it and with the marks the
-     * key leaves out skipped, or a Chinese one is there as written. Every
-     * word [prefixEnd] takes for it ends in it, so a line without it is
-     * one [rewrite] gives back unchanged.
+     * key leaves out skipped, or a Chinese or Japanese one is there as
+     * written. Every word [prefixEnd] takes for it ends in it, so a line
+     * without it is one [rewrite] gives back unchanged.
      */
     private fun mayFix(text: String, fix: Compiled): Boolean {
         val heard = fix.words[0]
@@ -587,8 +625,8 @@ object WordFixes {
         return out
     }
 
-    /** [han] are the one-word Chinese or Japanese fixes, longest first, looked for inside a word. */
-    private class CompiledFixes(val fixes: List<WordFix>, val compiled: List<Compiled>, val han: List<Compiled>)
+    /** [inside] are the one-word Chinese or Japanese fixes, longest first, looked for inside a word too (see [readsInsideWords]). */
+    private class CompiledFixes(val fixes: List<WordFix>, val compiled: List<Compiled>, val inside: List<Compiled>)
 
     /**
      * The fixes compiled last, kept for the next word: the same list comes
@@ -606,8 +644,8 @@ object WordFixes {
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
             else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written, keyOf(fix.heard) == keyOf(fix.written))
         }
-        val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
-        return CompiledFixes(fixes.toList(), compiled, han).also { lastCompiled = it }
+        val inside = compiled.filter { it.words.size == 1 && readsInsideWords(it.words[0]) }.sortedByDescending { it.words[0].length }
+        return CompiledFixes(fixes.toList(), compiled, inside).also { lastCompiled = it }
     }
 
     /**
@@ -622,7 +660,7 @@ object WordFixes {
         val prepared = compiledFixes ?: compile(fixes)
         val compiled = prepared.compiled
         if (compiled.isEmpty()) return Rewrite(text, lineWords(text), emptyList())
-        val han = prepared.han
+        val inside = prepared.inside
         val all = lineWords(text)
         val sb = if (writing) StringBuilder(text.length + 16) else null
         val spans = ArrayList<Span>()
@@ -644,11 +682,11 @@ object WordFixes {
                 if (ok) { best = c; keep = first }
             }
             if (best == null) {
-                val inside = replacingHan(han, text, all[index])
-                if (inside != null) {
-                    sb?.append(text, copied, all[index].start)?.append(inside)
+                val fixed = replacingInside(inside, text, all[index])
+                if (fixed != null) {
+                    sb?.append(text, copied, all[index].start)?.append(fixed)
                     copied = all[index].end
-                    spans.add(Span(index, index, inside))
+                    spans.add(Span(index, index, fixed))
                 }
                 index++
                 continue

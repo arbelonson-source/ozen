@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 class WordFixesTest {
@@ -230,5 +231,58 @@ class WordFixesTest {
         val picked = WordFixes.wordsOf(line).subList(2, 4).joinToString(" ")
         assertEquals("ג׳ורג׳ בוש", picked)
         assertEquals("ראיתי את ‘George Bush’ אתמול", WordFixes.apply(listOf(fix(picked, "George Bush")), line))
+    }
+
+    @Test fun aKatakanaNameIsFixedInsideAJapaneseLineWithNoSpacesButNotInsideALongerKatakanaWord() {
+        val tom = fix("トム", "トモ")
+        assertEquals("トモさんが来た", run("トムさんが来た", tom))
+        assertEquals("昨日トモに会った", run("昨日トムに会った", tom))
+        assertEquals("トモ・クルーズが来た", run("トム・クルーズが来た", tom))
+        assertEquals("トムソンさんが来た", run("トムソンさんが来た", tom))
+        assertEquals("アトムが好き", run("アトムが好き", tom))
+        assertEquals("メアリーさんが来た", run("メアリーさんが来た", fix("メアリ", "マリ")))
+        assertEquals("ジョンが来た", run("ジョンが来た", fix("ジ", "ジー")))
+        assertEquals("ジャンとトムソン", run("ジョンとトムソン", fix("ジョン", "ジャン")))
+    }
+
+    @Test fun aHeardWordAllInHiraganaIsFixedOnlyAsAWholeWordSoParticlesAndVerbEndingsInAJapaneseLineAreUntouched() {
+        assertEquals("トムは来た", run("トムは来た", fix("は", "わ")))
+        assertEquals("トムが来た", run("トムが来た", fix("が", "か")))
+        assertEquals("トムの本", run("トムの本", fix("の", "野")))
+        assertEquals("高かった", run("高かった", fix("かった", "勝った")))
+        assertEquals("サクラ が 咲いた", run("さくら が 咲いた", fix("さくら", "サクラ")))
+        assertEquals("トモはトムソンの友達", run("トムはトムソンの友達", fix("トム", "トモ"), fix("は", "わ"), fix("の", "野")))
+    }
+
+    @Test fun aHeardWordOfKanjiAndKanaIsFixedInsideAJapaneseLineItsKatakanaKeptWhole() {
+        assertEquals("昨日田仲さんが来た", run("昨日田中さんが来た", fix("田中さん", "田仲さん")))
+        assertEquals("トモ君が来た", run("トム君が来た", fix("トム君", "トモ君")))
+        assertEquals("アトム君が来た", run("アトム君が来た", fix("トム君", "トモ君")))
+        assertEquals("トモさんが来た", run("トムさんが来た", fix("トムさん", "トモさん")))
+        assertEquals("それはすごーいね", run("それはすごーいね", fix("すごーい", "すごい")))
+    }
+
+    @Test fun aJapaneseLineAKanaFixRewroteIsLeftAsItIsWhenTheSameFixRunsOnItAgain() {
+        val cases = listOf(
+            fix("トム", "トムさん") to "トムが来た",
+            fix("トム", "トム・ハンクス") to "昨日トムに会った",
+            fix("ジョン", "ジョン・スミス") to "ジョンが来た",
+        )
+        for ((one, line) in cases) {
+            val once = run(line, one)
+            assertNotEquals(line, once, "${one.heard} on $line")
+            assertEquals(once, run(once, one), "${one.heard} on $line")
+        }
+    }
+
+    @Test fun aDoubtfulWordInAJapaneseLineKeepsItsDoubtOnWhatAKanaFixWroteThere() {
+        val tom = listOf(fix("トム", "トモ"))
+        assertEquals(listOf("トモさんが来た"), WordFixes.applyToUncertain(tom, "トムさんが来た", listOf("トムさんが来た")))
+        val heard = "今日は トムさんが来た"
+        val shown = WordFixes.apply(tom, heard)
+        val marked = UncertainWords.ranges(shown, WordFixes.applyToUncertain(tom, heard, listOf("トムさんが来た")))
+        assertEquals(listOf("トモさんが来た"), marked.map { shown.substring(it.start, it.endExclusive) })
+        assertEquals(listOf("トムソンさんが来た"), WordFixes.applyToUncertain(tom, "トムソンさんが来た", listOf("トムソンさんが来た")))
+        assertEquals(listOf("トムは来た"), WordFixes.applyToUncertain(listOf(fix("は", "わ")), "トムは来た", listOf("トムは来た")))
     }
 }
