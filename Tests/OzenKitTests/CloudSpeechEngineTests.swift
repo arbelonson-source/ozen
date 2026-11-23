@@ -530,6 +530,15 @@ struct CloudSpeechEngineTests {
         #expect(tokens.isEmpty)
     }
 
+    @Test("a names list set while a request is out leaves the line that request heard")
+    func namesSetDuringRequest() async throws {
+        let http = NamesDuringRequest(FakeCloudHTTP(answers: [.text("דנה, יוסי, מרים")]), names: ["דנה", "יוסי", "מרים"])
+        let engine = CloudSpeechEngine(http: http, failedSegmentPauseSeconds: 0.001, apiKey: { "sk-test" })
+        http.engine = engine
+        let tokens = try await transcribe(engine, speech(seconds: 1) + silence(seconds: 1))
+        #expect(tokens.map(\.text) == ["דנה, יוסי, מרים"])
+    }
+
     @Test("no key: nothing is sent and the screen asks for one")
     func noKey() async {
         let http = FakeCloudHTTP()
@@ -672,5 +681,27 @@ struct CloudLanguageCoverTests {
             return
         }
         #expect(why.kind == .cloudKeyNeeded)
+    }
+}
+
+private final class NamesDuringRequest: CloudHTTP, @unchecked Sendable {
+    private let inner: FakeCloudHTTP
+    private let names: [String]
+    private let lock = NSLock()
+    private var target: CloudSpeechEngine?
+
+    init(_ inner: FakeCloudHTTP, names: [String]) {
+        self.inner = inner
+        self.names = names
+    }
+
+    var engine: CloudSpeechEngine? {
+        get { lock.withLock { target } }
+        set { lock.withLock { target = newValue } }
+    }
+
+    func send(_ request: CloudHTTPRequest) async throws -> CloudHTTPResponse {
+        if request.method == "POST" { await engine?.setVocabulary(names) }
+        return try await inner.send(request)
     }
 }

@@ -53,7 +53,7 @@ class CloudSpeechEngineTest {
         keyChecks: List<FakeCloudHTTP.Answer> = emptyList(),
     ) = FakeCloudHTTP(answers, keyChecks, testScheduler.timeSource)
 
-    private fun TestScope.engine(http: FakeCloudHTTP, key: String? = "sk-test", pause: Double = 0.001) =
+    private fun TestScope.engine(http: CloudHTTP, key: String? = "sk-test", pause: Double = 0.001) =
         CloudSpeechEngine(
             http = http,
             failedSegmentPauseSeconds = pause,
@@ -486,6 +486,18 @@ class CloudSpeechEngineTest {
         engine.setVocabulary(listOf("דנה", "יוסי", "מרים"))
         val tokens = transcribe(engine, speech(1.0) + silence(1.0))
         assertTrue(tokens.isEmpty())
+    }
+
+    @Test
+    fun `a names list set while a request is out leaves the line that request heard`() = runTest {
+        val fake = http(listOf(FakeCloudHTTP.Answer.Text("דנה, יוסי, מרים")))
+        lateinit var engine: CloudSpeechEngine
+        engine = engine(CloudHTTP { request ->
+            if (request.method == "POST") engine.setVocabulary(listOf("דנה", "יוסי", "מרים"))
+            fake.send(request)
+        })
+        val tokens = transcribe(engine, speech(1.0) + silence(1.0))
+        assertEquals(listOf("דנה, יוסי, מרים"), tokens.map { it.text })
     }
 
     @Test

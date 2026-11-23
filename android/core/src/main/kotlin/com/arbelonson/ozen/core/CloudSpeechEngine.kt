@@ -347,7 +347,9 @@ class CloudSpeechEngine(
     }
 
     private suspend fun transcribe(window: FloatArray, key: String, languageCode: String): List<String> {
-        val names = synchronized(lock) { vocabulary }
+        // The echo check matches the names this request was sent with,
+        // even if the list changes while it is out.
+        val (names, echo) = synchronized(lock) { vocabulary to echo }
         val request = withContext(audioDispatcher) {
             provider.transcriptionRequest(
                 model = model,
@@ -371,7 +373,6 @@ class CloudSpeechEngine(
             if (!currentCoroutineContext().isActive) throw CancellationException("cancelled")
             throw if (error is java.net.SocketTimeoutException) CloudSpeechError.TimedOut else CloudSpeechError.Offline
         }
-        val echo = synchronized(lock) { echo }
         return CloudSpeech.turns(provider.transcript(response), filter)
             .filter { !(echo?.isEcho(it) ?: false) }
     }
