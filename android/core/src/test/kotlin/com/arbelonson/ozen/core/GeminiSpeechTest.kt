@@ -19,6 +19,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 private fun geminiReply(status: Int, json: String) = CloudHTTPResponse(status, json.toByteArray(Charsets.UTF_8))
@@ -147,7 +148,13 @@ class GeminiSpeechTest {
             keyChecks = listOf(FakeCloudHTTP.Answer.Status(200, """{"models":[]}""")),
             timeSource = testScheduler.timeSource,
         )
-        val engine = CloudSpeechEngine(provider = CloudProvider.Gemini, http = http, timeSource = testScheduler.timeSource, apiKey = { "AIza-test" })
+        val engine = CloudSpeechEngine(
+            provider = CloudProvider.Gemini,
+            http = http,
+            timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
+            apiKey = { "AIza-test" },
+        )
         assertEquals(EngineAvailability.Available, engine.prepare("he") { })
         val feed = AudioFeed()
         feed.add(List(46) { FloatArray(1_024) { index -> 0.05f * kotlin.math.sin(index.toFloat() * 0.3f) } })

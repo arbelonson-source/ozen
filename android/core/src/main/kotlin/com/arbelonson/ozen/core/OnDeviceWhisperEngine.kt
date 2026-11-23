@@ -475,7 +475,6 @@ class OnDeviceWhisperEngine(
 
             // Only this loop drops audio from the front, so the first
             // `total` samples are still the ones the counts described.
-            val window: FloatArray
             val line = UtteranceCut.finishedLine(
                 total = total,
                 speechEnd = lineEndAtPause ?: speechEnd,
@@ -483,23 +482,27 @@ class OnDeviceWhisperEngine(
                 maxSamples = maxSamples,
                 stillTalkingAtCap = tooLong && !pauseReached && !status.finished,
             )
-            if (!isFinal) {
-                window = intake.copySamples(total)
-            } else if (line.cut) {
-                // Still talking at the cap, or more than the longest line
-                // waiting after a slow pass: end the line in the quietest
-                // moment of the last two seconds before the cap rather than
-                // mid-word. What comes after it is kept and starts the next line.
-                val heard = intake.copySamples(line.end)
-                val cut = UtteranceCut.quietestPoint(
-                    samples = heard,
-                    before = heard.size,
-                    lookBack = longCutLookBack,
-                    frame = longCutFrame,
-                )
-                window = heard.copyOfRange(0, cut)
-            } else {
-                window = intake.copySamples(line.end)
+            // Copied where the model runs, as the audio is taken in (see
+            // `runStreaming`): up to 28 s of it, every pass.
+            val window = withContext(passDispatcher) {
+                if (!isFinal) {
+                    intake.copySamples(total)
+                } else if (line.cut) {
+                    // Still talking at the cap, or more than the longest line
+                    // waiting after a slow pass: end the line in the quietest
+                    // moment of the last two seconds before the cap rather than
+                    // mid-word. What comes after it is kept and starts the next line.
+                    val heard = intake.copySamples(line.end)
+                    val cut = UtteranceCut.quietestPoint(
+                        samples = heard,
+                        before = heard.size,
+                        lookBack = longCutLookBack,
+                        frame = longCutFrame,
+                    )
+                    heard.copyOfRange(0, cut)
+                } else {
+                    intake.copySamples(line.end)
+                }
             }
             val end = window.size
             samplesAtLastPass = total
@@ -549,8 +552,9 @@ class OnDeviceWhisperEngine(
             // A voice across the room reaches the model quiet; brought up to
             // a common level it made fewer mistakes (speaker across the room
             // 51.3 -> 49.6% of words wrong, 8 dB quieter 86.5 -> 84.9%) and
-            // changed nothing up close (see `SpeechGain`).
-            val heard = SpeechGain.normalized(window)
+            // changed nothing up close (see `SpeechGain`). Off the
+            // collector's thread too: another copy of the line.
+            val heard = withContext(passDispatcher) { SpeechGain.normalized(window) }
             val passStarted = timeSource.markNow()
             val coolAtStart = ModelFitWatch.counts(1.0, heat(), lowPowerMode(), kind)
             val saverAtStart = ModelFitWatch.countsInLowPower(1.0, heat(), lowPowerMode(), kind)

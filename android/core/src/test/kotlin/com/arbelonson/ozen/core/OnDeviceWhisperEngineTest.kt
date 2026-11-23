@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.io.IOException
+import java.lang.management.ManagementFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.exp
@@ -26,6 +27,8 @@ private const val RATE = 16_000
 private const val CHUNK = 1_600
 private const val SPECIAL_BEGIN = 50_000
 private const val LOUD = 0.2f
+
+private val threadMemory = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
 
 private class Call(val index: Int, val startedAtMs: Long, val samples: Int, val peak: Float, val options: WhisperPassOptions) {
     val isFinal get() = options.isFinal
@@ -843,5 +846,48 @@ class OnDeviceWhisperEngineTest {
         }
         assertTrue(scoredOn.isNotEmpty(), "the voice check never ran")
         assertTrue(scoredOn.none { it in made }, "the voice check ran on the captions' thread: ${scoredOn.map { it.name }}")
+    }
+
+    // Every pass copies the line's audio and brings it up to a common
+    // level: on a long line megabytes and tens of milliseconds, every
+    // 0.6 s or so, on the thread that also draws the screen. What a stream
+    // costs that thread whatever the length of the line drops out between
+    // a short line and a long one.
+    @Test
+    fun each_pass_gets_its_audio_ready_off_the_thread_that_collects_the_captions() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val collector = Executors.newSingleThreadExecutor { Thread(it, "captions-collector") }.asCoroutineDispatcher()
+        val engine = OnDeviceWhisperEngine("fake-model", FakeLoader(FakeWhisperPasses { System.currentTimeMillis() }))
+        val line = { seconds: Int -> flow { repeat(seconds * 10) { emit(chunk(LOUD)) } } }
+        val finished = ArrayList<List<String>>()
+        val (short, long) = try {
+            runBlocking(collector) {
+                assertEquals(EngineAvailability.Available, engine.prepare("he") {})
+                engine.stream("he", line(LONG_LINE_SECONDS)).toList()
+                val short = bytesHere { finished += engine.stream("he", line(SHORT_LINE_SECONDS)).toList().filter { it.isFinal }.map { it.text } }
+                val long = bytesHere { finished += engine.stream("he", line(LONG_LINE_SECONDS)).toList().filter { it.isFinal }.map { it.text } }
+                short to long
+            }
+        } finally {
+            collector.close()
+        }
+        assertEquals(List(2) { listOf("hello there friend") }, finished)
+        val more = (LONG_LINE_SECONDS - SHORT_LINE_SECONDS) * RATE * Float.SIZE_BYTES.toLong()
+        assertTrue(
+            long - short < more / 4,
+            "the captions' thread allocated $long bytes over a line of $LONG_LINE_SECONDS s, against $short over one of " +
+                "$SHORT_LINE_SECONDS s: ${long - short} more, for $more bytes more audio",
+        )
+    }
+
+    private inline fun bytesHere(work: () -> Unit): Long {
+        val before = threadMemory.currentThreadAllocatedBytes
+        work()
+        return threadMemory.currentThreadAllocatedBytes - before
+    }
+
+    private companion object {
+        const val SHORT_LINE_SECONDS = 2
+        const val LONG_LINE_SECONDS = 20
     }
 }

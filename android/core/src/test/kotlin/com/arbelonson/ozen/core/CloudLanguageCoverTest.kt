@@ -6,6 +6,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 class CloudLanguageCoverTest {
@@ -60,7 +61,13 @@ class CloudLanguageCoverTest {
     @Test
     fun `the request carries the plain code for the old Hebrew code`() = runTest {
         val http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("שלום")), emptyList(), testScheduler.timeSource)
-        val engine = CloudSpeechEngine(provider = CloudProvider.Deepgram, http = http, timeSource = testScheduler.timeSource, apiKey = { "k" })
+        val engine = CloudSpeechEngine(
+            provider = CloudProvider.Deepgram,
+            http = http,
+            timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
+            apiKey = { "k" },
+        )
         val feed = AudioFeed()
         feed.add(List(16) { FloatArray(1_024) { index -> 0.05f * kotlin.math.sin(index.toFloat() * 0.3f) } } + List(16) { FloatArray(1_024) })
         feed.finish()

@@ -5,6 +5,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.coroutineScope
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
@@ -45,6 +48,12 @@ class CloudSpeechEngine(
     private val failedSegmentPauseSeconds: Double = 1.0,
     private val approvalSeconds: Double = DEFAULT_APPROVAL_SECONDS,
     private val timeSource: TimeSource = TimeSource.Monotonic,
+    /**
+     * Where each request's audio is copied out, brought up to a common
+     * level and written out as a file: the app collects the captions on
+     * its main thread, and a long line is megabytes of that every request.
+     */
+    private val audioDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val apiKey: () -> String?,
 ) : TranscriptionEngine {
     override val kind: TranscriptionEngineKind = TranscriptionEngineKind.Cloud
@@ -205,23 +214,23 @@ class CloudSpeechEngine(
                     maxSamples = maxSamples,
                     stillTalkingAtCap = tooLong && !pauseReached && !status.finished,
                 )
-                var livePass: LiveWindow.Pass? = null
-                val window: FloatArray = if (!isFinal) {
-                    val heard = intake.copySamples(total)
-                    val pass = live.pass(heard)
-                    livePass = pass
-                    heard.copyOfRange(pass.start, pass.end)
-                } else if (line.cut) {
-                    val heard = intake.copySamples(line.end)
-                    val cut = UtteranceCut.quietestPoint(
-                        samples = heard,
-                        before = heard.size,
-                        lookBack = (LONG_CUT_LOOK_BACK_SECONDS * rate).toInt(),
-                        frame = (LONG_CUT_FRAME_SECONDS * rate).toInt(),
-                    )
-                    heard.copyOfRange(0, cut)
-                } else {
-                    intake.copySamples(line.end)
+                val (window, livePass) = withContext(audioDispatcher) {
+                    if (!isFinal) {
+                        val heard = intake.copySamples(total)
+                        val pass = live.pass(heard)
+                        heard.copyOfRange(pass.start, pass.end) to pass
+                    } else if (line.cut) {
+                        val heard = intake.copySamples(line.end)
+                        val cut = UtteranceCut.quietestPoint(
+                            samples = heard,
+                            before = heard.size,
+                            lookBack = (LONG_CUT_LOOK_BACK_SECONDS * rate).toInt(),
+                            frame = (LONG_CUT_FRAME_SECONDS * rate).toInt(),
+                        )
+                        heard.copyOfRange(0, cut) to null
+                    } else {
+                        intake.copySamples(line.end) to null
+                    }
                 }
                 val end = window.size
                 samplesAtLastPass = total
@@ -339,16 +348,18 @@ class CloudSpeechEngine(
 
     private suspend fun transcribe(window: FloatArray, key: String, languageCode: String): List<String> {
         val names = synchronized(lock) { vocabulary }
-        val request = provider.transcriptionRequest(
-            model = model,
-            apiKey = key,
-            // Measurement mode hands speech from across a room over at
-            // -45 to -60 dBFS, where a 16-bit file keeps only a few bits
-            // of it.
-            wav = WAVFile.pcm16(SpeechGain.normalized(window), SAMPLE_RATE),
-            languageCode = languageCode,
-            vocabulary = names,
-        )
+        val request = withContext(audioDispatcher) {
+            provider.transcriptionRequest(
+                model = model,
+                apiKey = key,
+                // Measurement mode hands speech from across a room over at
+                // -45 to -60 dBFS, where a 16-bit file keeps only a few bits
+                // of it.
+                wav = WAVFile.pcm16(SpeechGain.normalized(window), SAMPLE_RATE),
+                languageCode = languageCode,
+                vocabulary = names,
+            )
+        }
             // A service that streams has no request per sentence; it gets
             // its own engine (see `CloudProvider.engine`).
             ?: throw CloudSpeechError.BadReply

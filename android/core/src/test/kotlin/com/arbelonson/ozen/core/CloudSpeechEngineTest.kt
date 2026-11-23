@@ -1,7 +1,9 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.lang.management.ManagementFactory
 import java.util.Base64
+import java.util.concurrent.Executors
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,10 +15,14 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -25,6 +31,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+private val threadMemory = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
 
 private fun repositoryText(path: String): String {
     val root = File(assertNotNull(System.getProperty("ozen.fixtures"))).parentFile.parentFile
@@ -46,7 +54,13 @@ class CloudSpeechEngineTest {
     ) = FakeCloudHTTP(answers, keyChecks, testScheduler.timeSource)
 
     private fun TestScope.engine(http: FakeCloudHTTP, key: String? = "sk-test", pause: Double = 0.001) =
-        CloudSpeechEngine(http = http, failedSegmentPauseSeconds = pause, timeSource = testScheduler.timeSource, apiKey = { key })
+        CloudSpeechEngine(
+            http = http,
+            failedSegmentPauseSeconds = pause,
+            timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
+            apiKey = { key },
+        )
 
     private fun TestScope.providerEngine(provider: CloudProvider, http: FakeCloudHTTP, key: String) =
         CloudSpeechEngine(
@@ -54,6 +68,7 @@ class CloudSpeechEngineTest {
             http = http,
             failedSegmentPauseSeconds = 0.001,
             timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
             apiKey = { key },
         )
 
@@ -515,6 +530,7 @@ class CloudSpeechEngineTest {
             failedSegmentPauseSeconds = 0.001,
             approvalSeconds = 1.0,
             timeSource = testScheduler.timeSource,
+            audioDispatcher = StandardTestDispatcher(testScheduler),
             apiKey = { "sk-test" },
         )
         assertEquals(EngineAvailability.Available, engine.checkAvailability("he"))
@@ -558,5 +574,34 @@ class CloudSpeechEngineTest {
             recovery = AutoRecoveryPolicy.disabled(),
         )
         assertTrue(CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS < captions.cloudRecheckSeconds)
+    }
+
+    // Each request copies the line's audio, brings it up to a common level
+    // and writes it out as a sound file: on a long line megabytes, on the
+    // thread that also draws the screen.
+    @Test
+    fun `each request gets its audio ready off the thread that collects the captions`() {
+        assertTrue(threadMemory.isThreadAllocatedMemorySupported && threadMemory.isThreadAllocatedMemoryEnabled)
+        val collector = Executors.newSingleThreadExecutor { Thread(it, "captions-collector") }.asCoroutineDispatcher()
+        val engine = CloudSpeechEngine(http = FakeCloudHTTP(listOf(FakeCloudHTTP.Answer.Text("A: שלום לכולם"))), apiKey = { "sk-test" })
+        val seconds = 20
+        val line = FloatArray(seconds * 16_000) { 0.05f * sin(it * 0.3f) }
+        val (tokens, bytes) = try {
+            runBlocking(collector) {
+                engine.stream("he", flowOf(line)).toList()
+                val before = threadMemory.currentThreadAllocatedBytes
+                val tokens = engine.stream("he", flowOf(line)).toList()
+                tokens to threadMemory.currentThreadAllocatedBytes - before
+            }
+        } finally {
+            collector.close()
+        }
+        assertEquals(listOf("שלום לכולם"), tokens.filter { it.isFinal }.map { it.text })
+        // The intake keeps its one copy of the audio on that thread.
+        val audioBytes = line.size * Float.SIZE_BYTES.toLong()
+        assertTrue(
+            bytes < 2 * audioBytes,
+            "the captions' thread allocated $bytes bytes over a line of $seconds s, whose audio is $audioBytes bytes",
+        )
     }
 }
