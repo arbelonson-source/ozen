@@ -400,14 +400,19 @@ class ConversationSaver(
      * the conversation being captioned are decided and handed to the writer
      * in steps of the main thread, which changes the lines at every word;
      * only the wait for the disk is History's. Waited for on the main
-     * thread, a slow write froze the screen.
+     * thread, a slow write froze the screen. A line a long quiet closed,
+     * still on screen, is starred the same way, in that conversation as the
+     * screen shows it: starred in its file from History's thread first and
+     * only then on screen, a voice named in between saved the conversation
+     * from the screen, after the star and without it.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean? = null): Boolean? {
         var earlier = false
         var asked: HistoryStar? = null
         onMainThread {
-            earlier = sessionID != id
-            if (!earlier && currentLines.any { it.id == segmentID }) {
+            val shown = if (sessionID == id) currentLines.any { it.id == segmentID } else closedShows(sessionID, segmentID)
+            earlier = sessionID != id && !shown
+            if (shown) {
                 val had = segmentID in starred
                 val starring = to ?: !had
                 asked = HistoryStar(starring, had, starInTurn(sessionID, segmentID, starring))
@@ -426,18 +431,31 @@ class ConversationSaver(
         return null
     }
 
-    /** A star History gave a line being captioned: its new state, the one it had, and the wait for its save. */
+    /** A star History gave a line on screen: its new state, the one it had, and the wait for its save. */
     private class HistoryStar(val starring: Boolean, val had: Boolean, val written: () -> Boolean)
+
+    /** Whether [segmentID] is on screen among the lines of [sessionID], a conversation a long quiet closed, whose saves are made from the screen. */
+    private fun closedShows(sessionID: UUID, segmentID: UUID): Boolean {
+        val conversation = closed[sessionID]?.takeIf { it.record != null } ?: return false
+        val all = lines()
+        return all.subList(minOf(conversation.lines.first, all.size), minOf(conversation.lines.last + 1, all.size)).any { it.id == segmentID }
+    }
 
     /**
      * [toggleStar]'s step on the main thread: gives the line [starring] and
      * hands the writer its conversation as the screen shows it now, still
      * being captioned or closed by a long quiet since the star was asked.
+     * A conversation Clear captions took off the screen since then was saved
+     * with the line as it was shown, so the line takes [starring] in its file
+     * and in any version waiting for room: taken back only on the screen, a
+     * star History said was not saved reached the file once there was room.
      */
     private fun starInTurn(sessionID: UUID, segmentID: UUID, starring: Boolean): () -> Boolean {
         mark(segmentID, starring)
         if (sessionID == id) return writeInTurn(ended = false, endedAt = null)?.second ?: { true }
-        return closed[sessionID]?.let { closedRecord(it) }?.let(writer::saveInTurn) ?: { true }
+        closed[sessionID]?.let { closedRecord(it) }?.let { return writer.saveInTurn(it) }
+        val saved = writer.toggleStarInTurn(sessionID, segmentID, keepingRefused = true, to = starring)
+        return { saved() != null }
     }
 
     fun fixLiveLine(segmentID: UUID, text: String) {

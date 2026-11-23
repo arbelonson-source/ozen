@@ -464,6 +464,15 @@ class TranscriptHistoryWriter(
         queue.sync { toggleStarOnQueue(sessionID, segmentID, keepingRefused, to) }
 
     /**
+     * [toggleStarNow] handed in now, so every save asked after this call
+     * lands after it; the function returned waits for it. History takes a
+     * refused star back this way, from the main thread, in a conversation
+     * Clear captions took off the screen meanwhile.
+     */
+    fun toggleStarInTurn(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean, to: Boolean): () -> Boolean? =
+        queue.queued { toggleStarOnQueue(sessionID, segmentID, keepingRefused, to) }
+
+    /**
      * The caption screen's star of a line a long quiet closed:
      * [toggleStarNow] giving the line [to], in the first of [sessionIDs]
      * whose file has it, handed in now and not waited for. The screen shows
