@@ -2086,6 +2086,9 @@ class CaptionSession(
                 shortfallMegabytes = PhoneModelDownloader(model, source, modelFetcher).shortfallMegabytes(freeSpace()),
                 network = pipeline.networkConditions,
                 allowCellular = current.allowCellularModelDownload,
+                // As the loader checks it: a model this phone cannot run is
+                // neither downloaded nor counted on.
+                runsHere = current.phoneModel.runsIn(totalMemory()),
             )
         }
     }

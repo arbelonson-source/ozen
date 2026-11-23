@@ -14,10 +14,23 @@ class BackupModelTest {
         shortfall: Int? = null,
         network: NetworkConditions? = NetworkConditions.wifi,
         allowCellular: Boolean = false,
+        runsHere: Boolean = true,
     ) = BackupModel.status(
         engine = engine, installed = installed, sizeMegabytes = 626, downloading = downloading, failed = failed,
-        shortfallMegabytes = shortfall, network = network, allowCellular = allowCellular,
+        shortfallMegabytes = shortfall, network = network, allowCellular = allowCellular, runsHere = runsHere,
     )
+
+    @Test
+    fun `a backup the phone has too little memory to run is neither offered nor downloaded, and not ready even once on the phone`() {
+        val tooBig = status(runsHere = false)
+        assertEquals(BackupModelStatus.TooLittleMemory, tooBig)
+        assertEquals(BackupModelStatus.TooLittleMemory, status(runsHere = false, installed = true))
+        assertEquals(BackupModelStatus.TooLittleMemory, status(runsHere = false, failed = true))
+        assertEquals(BackupModelStatus.TooLittleMemory, status(runsHere = false, network = NetworkConditions.offline))
+        assertFalse(BackupModel.canStart(tooBig))
+        assertFalse(BackupModel.shouldOffer(EngineUnavailability.Kind.HomeServerUnreachable, tooBig))
+        assertEquals(BackupModelStatus.NotNeeded, status(runsHere = false, engine = TranscriptionEngineKind.WhisperKit))
+    }
 
     @Test
     fun `only a computer or cloud engine needs a backup - one already on the phone is ready`() {
