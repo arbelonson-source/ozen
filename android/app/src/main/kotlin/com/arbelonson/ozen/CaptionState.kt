@@ -558,7 +558,10 @@ object CaptionState {
 
     /** Saving on the phone failed: the caption screen says so, and why, until it is tapped away. */
     fun savingTrouble(show: Boolean, settingsUnreadable: Boolean = false, onlyUnreadable: Boolean = false) {
-        state.value = state.value.copy(savingTrouble = show, savingTroubleUnreadable = settingsUnreadable, savingTroubleOnlyUnreadable = onlyUnreadable)
+        // Looked at again after every word: the screen is copied only when the warning changes.
+        val now = state.value
+        if (now.savingTrouble == show && now.savingTroubleUnreadable == settingsUnreadable && now.savingTroubleOnlyUnreadable == onlyUnreadable) return
+        state.value = now.copy(savingTrouble = show, savingTroubleUnreadable = settingsUnreadable, savingTroubleOnlyUnreadable = onlyUnreadable)
     }
 
     /** A star given or taken away shows on the line at once, before the next captions. */

@@ -1197,6 +1197,7 @@ class CaptionScreenDeviceTest {
                 text() == expected
             }
         }
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
         try {
             app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
             compose.runOnUiThread { ListeningService.start(app) }
@@ -1204,9 +1205,91 @@ class CaptionScreenDeviceTest {
             // captions' own empty lines over and over; looked at once they
             // have started, what the notification shows holds still.
             compose.waitUntil(30_000) { app.captions.pipeline.phase.isListening || app.captions.pipeline.phase is PipelinePhase.Failed }
+            // Under the caption screen in front nobody sees the notification,
+            // and its lines wait; pulled down, the shade shows them.
+            shell("cmd statusbar expand-notifications")
             assertTrue("not named with names on: ${text()}", shows("Dana: Names test good morning"))
             app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
             assertTrue("named with names off: ${text()}", shows("Names test good morning"))
+        } finally {
+            shell("cmd statusbar collapse")
+            compose.runOnUiThread {
+                app.captions.pipeline.stop()
+                CaptionState.clear()
+            }
+            app.settings.change { it.display = before }
+        }
+    }
+
+    // With the caption screen in front nobody can see the listening
+    // notification, and drawing it again once a second while people talk
+    // was a call into the system and a redraw of the shade for nothing,
+    // for hours. Pulled down, the shade takes the screen's focus and has
+    // the newest line; leaving the app, for the lock screen too.
+    @Test
+    fun withTheCaptionScreenInFrontTheListeningNotificationIsNotDrawnAgainForWordsAndTheShadeOrLockScreenGetsTheNewest() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val listening = { manager.activeNotifications.firstOrNull { it.notification.channelId == ListeningService.CHANNEL_ID } }
+        val text = { listening()?.notification?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty() }
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        val before = app.settings.current.value.display
+        val line = UUID.randomUUID()
+        var words = 0
+        // In letters, since digits get marks around them in a Hebrew line.
+        val word = { count: Int -> "x" + count.toString().padStart(4, '0').map { 'a' + (it - '0') }.joinToString("") }
+        val say = {
+            words += 1
+            val now = System.currentTimeMillis() / 1_000.0
+            val said = TranscriptSegment(id = line, text = "Pacing test ${word(words)}", isCommitted = false, startTimestamp = now, lastUpdateTimestamp = now)
+            compose.runOnUiThread { CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(said), languageCode = "en") }
+        }
+        // Each post of the notification, by its time, with its title: one
+        // with the same title as the post before it was drawn for words.
+        val posts = mutableListOf<Pair<Long, String?>>()
+        val note = {
+            listening()?.let { posted ->
+                if (posts.lastOrNull()?.first != posted.postTime) posts += posted.postTime to posted.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+            }
+        }
+        val talk = { millis: Long ->
+            val end = SystemClock.elapsedRealtime() + millis
+            var nextWord = 0L
+            while (SystemClock.elapsedRealtime() < end) {
+                if (SystemClock.elapsedRealtime() >= nextWord) {
+                    say()
+                    nextWord = SystemClock.elapsedRealtime() + 100
+                }
+                note()
+                Thread.sleep(20)
+            }
+        }
+        val redrawnForWords = { posts.zipWithNext().count { (earlier, later) -> earlier.second == later.second } }
+        try {
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
+            compose.runOnUiThread { ListeningService.start(app) }
+            // Started, the captions go quiet: they listen, or wait a while to try again.
+            compose.waitUntil(30_000) { app.captions.pipeline.phase.isListening || app.captions.pipeline.phase is PipelinePhase.Failed }
+            assertWithin(10_000, { "never shown" }) { listening() != null }
+            compose.waitUntil(5_000) { compose.runOnUiThread { compose.activity.hasWindowFocus() } }
+            talk(6_000)
+            assertEquals("drawn again for words alone, ten words a second for 6 s with the app in front: $posts", 0, redrawnForWords())
+
+            shell("cmd statusbar expand-notifications")
+            try {
+                say()
+                assertWithin(3_000, { "the pulled-down shade never got the newest words: ${text()}" }) { word(words) in text() }
+            } finally {
+                shell("cmd statusbar collapse")
+            }
+            compose.waitUntil(5_000) { compose.runOnUiThread { compose.activity.hasWindowFocus() } }
+
+            shell("input keyevent KEYCODE_HOME")
+            waitForScenarioState(Lifecycle.State.CREATED)
+            posts.clear()
+            talk(4_000)
+            assertTrue("the lock screen's lines were not kept up once a second while away: $posts", redrawnForWords() in 2..5)
+            assertWithin(3_000, { "away, the newest words never came: ${text()}" }) { word(words) in text() }
         } finally {
             compose.runOnUiThread {
                 app.captions.pipeline.stop()

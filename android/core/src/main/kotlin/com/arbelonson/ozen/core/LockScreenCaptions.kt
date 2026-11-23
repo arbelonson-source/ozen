@@ -247,12 +247,17 @@ class LockScreenUpdateThrottle(var minimumInterval: Double = BACKGROUND_INTERVAL
     private var lastSentAt: Double? = null
     private var lastSent: LockScreenCaptionContent? = null
 
-    /** With [linesShown] false the notification is the title alone, so only a new status or language counts. */
+    /**
+     * With [linesShown] false the lines can't be seen (kept off the lock
+     * screen, or the app in front), so only a new status or language
+     * counts, also against lines drawn before they went out of sight.
+     */
     fun decide(content: LockScreenCaptionContent, now: Double, linesShown: Boolean = true): Decision {
         val content = onScreen(content, linesShown)
-        if (content == lastSent) return Decision.NothingNew
+        val last = lastSent?.let { onScreen(it, linesShown) }
+        if (content == last) return Decision.NothingNew
         val at = lastSentAt
-        if (at == null || now < at || content.status != lastSent?.status || content.language != lastSent?.language) return Decision.Send
+        if (at == null || now < at || content.status != last?.status || content.language != last?.language) return Decision.Send
         val elapsed = now - at
         return if (elapsed >= minimumInterval) Decision.Send else Decision.Wait(minimumInterval - elapsed)
     }

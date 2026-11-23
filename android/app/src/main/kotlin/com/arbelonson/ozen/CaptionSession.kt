@@ -421,6 +421,22 @@ class CaptionSession(
     }
 
     private var screensInFront = 0
+    private var screenHasFocus = false
+    private val listeningNoticeCoveredNow = MutableStateFlow(false)
+
+    /**
+     * The caption screen is in front with nothing over it, so the listening
+     * notification can't be seen: not on the lock screen, and not in the
+     * shade, which takes the screen's focus as it comes down. Its lines are
+     * drawn again once it can be seen, not at every word for nobody.
+     */
+    val listeningNoticeCovered: StateFlow<Boolean> get() = listeningNoticeCoveredNow
+
+    /** The caption screen's window gained or lost the focus: the shade pulled down, a dialog, or another app beside it takes it. */
+    fun screenFocused(focused: Boolean) {
+        screenHasFocus = focused
+        listeningNoticeCoveredNow.value = appIsActive && focused
+    }
 
     /** A caption screen came to the front; true if the app was away until now. */
     fun screenStarted(): Boolean {
@@ -537,6 +553,9 @@ class CaptionSession(
             val changed = active != field
             if (active && !microphoneGoneAtRestart) restartRefused = false
             field = active
+            // Back in front, the screen is covered once its window says it has the focus again.
+            if (!active) screenHasFocus = false
+            listeningNoticeCoveredNow.value = active && screenHasFocus
             if (active && microphoneGoneAtRestart) showMicrophoneGone()
             checkCaptionsStillRunning()
             if (changed && active) {
@@ -1072,7 +1091,10 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        stoppedCaptions.update(stoppedCause(), ServiceRestart.screenSaysCaptionsAreOff(appIsActive, restartRefused, microphoneGranted()), settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
+        // Asked only when the answer counts: at every word it was a call into
+        // the system on Android 8 to 10, for a refused restart that is rare.
+        val microphone = restartRefused && appIsActive && microphoneGranted()
+        stoppedCaptions.update(stoppedCause(), ServiceRestart.screenSaysCaptionsAreOff(appIsActive, restartRefused, microphone), settings.current.value.notifyWhenInBackground, pipeline.soundAlertsMeantToRun)?.let(::applyNoticeUpdate)
     }
 
     private fun applyNoticeUpdate(update: StoppedCaptionsNotice.Update) {
@@ -1117,13 +1139,16 @@ class CaptionSession(
         if (restartRefused) {
             if (microphoneGranted()) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.Cause.Failed(microphoneTakenAway())
         } else {
+            val interrupted = interruptedBySystem || pipeline.isWaitingOnOtherApp
             StoppedCaptionsNotice.cause(
                 pipeline.phase,
                 pipeline.isRecoveringByItself,
-                interruptedBySystem || pipeline.isWaitingOnOtherApp,
+                interrupted,
                 callEndedDuringInterruption = false,
                 soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself,
-                interruptedByCall = (audio as? AndroidAudioCapture)?.callInProgress == true,
+                // Only an interruption asks whether it is a call: the phone's
+                // audio mode is a call into the system, twice at every word.
+                interruptedByCall = interrupted && (audio as? AndroidAudioCapture)?.callInProgress == true,
                 soundsOnlyChosen = pipeline.soundsOnlyChosen,
                 soundAlertsNotWorking = pipeline.soundAlertsNotWorking,
                 soundAlertsMicrophoneSilent = pipeline.soundAlertsMicrophoneSilent,
