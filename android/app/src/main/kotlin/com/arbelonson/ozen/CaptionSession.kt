@@ -104,6 +104,7 @@ import java.util.TimeZone
 import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -567,7 +568,7 @@ class CaptionSession(
         speakerName = pipeline::displayName,
         inputName = { audio.availableInputs.firstOrNull { it.uid == audio.selectedInputUID }?.portName },
         startNewConversation = pipeline::startNewConversation,
-        setSaveHistory = { on -> settings.change { it.saveHistory = on } },
+        saveHistoryInTurn = { on -> settings.changeInTurn { it.saveHistory = on }.let { write -> { write() } } },
         scope = scope,
         problemAudio = problemAudio,
         spokenLanguage = { (pipeline.activeSettings ?: chosenSettings()).languageCode },
@@ -632,9 +633,15 @@ class CaptionSession(
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.
-        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also { starring ->
-            starring?.let { CaptionState.markStarred(segmentID, it) }
-            refreshSavingTrouble()
+        // History stars from its own thread; the caption screen and its
+        // warning are the main thread's, which changes them at every word.
+        // The line shows its star as it is now: a star given on the caption
+        // screen while History's was written is newer than History's answer.
+        override fun toggleStar(sessionID: UUID, segmentID: UUID, to: Boolean?) = conversations.toggleStar(sessionID, segmentID, to).also {
+            onMainThread {
+                CaptionState.markStarred(segmentID, conversations.isStarred(segmentID))
+                refreshSavingTrouble()
+            }
         }
 
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
@@ -647,15 +654,35 @@ class CaptionSession(
         override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): WordFixResult =
             conversations.fixLineEverywhere(sessionID, segmentID, WordFix(heard, written)) { line, change -> pipeline.correctWord(line, change) != null }
 
+        // History asks on the main thread, and a phone can be slow to write:
+        // the switch and the keeping time show at once, and the conversation
+        // closed, the settings file and the shared copies are written and
+        // deleted off it. Done on it, a slow write froze the screen, and one
+        // that stuck could close the app as not responding. Both are the
+        // captions' own work, not History's: History leaving meanwhile left
+        // the keeping time chosen but the old conversations it said it would
+        // delete, and the shared copies, on the phone.
         override fun switchSaving(on: Boolean) {
-            conversations.switchSaving(on)
+            val written = conversations.switchSaving(on)
             publish()
+            scope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) { written() }
         }
 
         override suspend fun keepFor(retention: HistoryRetention) {
-            settings.change { it.historyRetention = retention }
-            conversations.deleteExpired()
-            forgetSharedCopy()
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    val stored = settings.changeInTurn { it.historyRetention = retention }
+                    withContext(Dispatchers.IO) { stored() }
+                    conversations.deleteExpired()
+                    withContext(Dispatchers.IO) { forgetSharedCopy() }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    // The session's scope stops the captions on an error;
+                    // the keeping time's clean-up is not the captions'.
+                    noteUnrelatedError(error)
+                }
+            }.join()
         }
 
         override fun opened(id: UUID) = conversations.opened(id)

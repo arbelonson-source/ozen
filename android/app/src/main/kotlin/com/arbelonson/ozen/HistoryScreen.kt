@@ -750,7 +750,7 @@ internal fun ConversationScreen(
                 newer
             } else {
                 HistoryReadRetry.untilRead(unreadable = { cantRead = true }) {
-                    withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
+                    HistoryStars.inTurn { opened(conversations.load(id), query, marksUncertain, languageCode) }
                 }
             }
             if (now != null) {
@@ -970,8 +970,17 @@ internal fun ConversationScreen(
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, captionSize = captionSize, onFix = { fixOpening++; fixingID = line.id.toString(); fixingText = line.text; fixRefusal = null }) {
+                                    // A star is saved off the main thread: on a phone slow
+                                    // to write, saved on it, the screen froze until the
+                                    // conversation was written, and a write that stuck could
+                                    // close the app as not responding. One at a time, as the
+                                    // main thread took them: a star the phone can't save is
+                                    // taken back to what the line had before it, which would
+                                    // undo a second star of the line begun meanwhile. The
+                                    // app keeps their turns, not this screen: one waiting as
+                                    // the screen went (the phone turned) was never given.
                                     scope.launch {
-                                        if (conversations.toggleStar(id, line.id) == null) starRefused = true
+                                        if (HistoryStars.inTurn { conversations.toggleStar(id, line.id) } == null) starRefused = true
                                         rereads.afterChange(load = { readBack(it) }) { show(it) }
                                     }
                                 }
