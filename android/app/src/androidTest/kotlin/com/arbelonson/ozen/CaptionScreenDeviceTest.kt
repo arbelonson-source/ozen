@@ -1428,13 +1428,16 @@ class CaptionScreenDeviceTest {
         }
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val phrasesBefore = app.settings.current.value.quickPhrases
-        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null && !app.captions.voice.isLooking })
         app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.Hebrew) }
         instrumentation.addMonitor(settings)
         try {
-            compose.runOnUiThread { app.captions.voice.installed.value = emptySet() }
+            // Opening connects the phone's speech engine, whose answer lists
+            // its voices: the missing ones are set only after that.
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             keyboardAway()
+            assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null && !app.captions.voice.isLooking })
+            compose.runOnUiThread { app.captions.voice.installed.value = emptySet() }
+            compose.waitForIdle()
             compose.onNodeWithText("Slower, please").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("No speech engine or voice is installed on this phone, so phrases can’t be read aloud.").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("No Hebrew voice is installed.").assertDoesNotExist()

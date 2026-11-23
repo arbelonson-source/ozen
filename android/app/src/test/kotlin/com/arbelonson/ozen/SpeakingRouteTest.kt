@@ -71,4 +71,17 @@ class SpeakingRouteTest {
         SpeakerChoice.observe(setOf(1, 2, 3))
         assertEquals(false, SpeakerChoice.chosen)
     }
+
+    @Test
+    fun `devices read before a newer look cannot end a speaker choice made after it`() {
+        SpeakerChoice.chosen = false
+        SpeakerChoice.observe(setOf(1, 2))
+        val older = SpeakerChoice.sample()
+        SpeakerChoice.observe(setOf(1))
+        SpeakerChoice.chosen = true
+        SpeakerChoice.observe(setOf(1, 2), older)
+        assertEquals(true, SpeakerChoice.chosen)
+        SpeakerChoice.observe(setOf(1, 2))
+        assertEquals(false, SpeakerChoice.chosen)
+    }
 }
