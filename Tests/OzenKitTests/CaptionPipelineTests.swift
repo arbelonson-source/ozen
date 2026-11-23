@@ -2649,13 +2649,21 @@ struct CaptionPipelineEnrollmentTests {
             await pipeline.captureEnrollmentSamples(seconds: 0.1)
         }
         #expect(await eventually { audio.calls.contains("startCapture") })
-        let stalled = ContinuousClock.now
         audio.push([Float](repeating: 0.1, count: 400))
+        // The stall must stop the microphone within 3 s, checked by a timer
+        // set now rather than by timing the whole recording: with every
+        // test starting at once, a busy machine held the recording's return
+        // past 3 s (3.3 and 3.6 s) after the stall had stopped it. The
+        // stall's own 0.2 s timer, set before this one, goes off first.
+        let stoppedByThen = Task { @MainActor () -> Bool? in
+            guard (try? await Task.sleep(for: .seconds(3))) != nil else { return nil }
+            return audio.calls.contains("stopCapture")
+        }
         let samples = await recording.value
-        let waited = ContinuousClock.now - stalled
+        stoppedByThen.cancel()
 
         #expect(samples.count == 400)
-        #expect(waited < .seconds(3))
+        #expect(await stoppedByThen.value != false, "the microphone was still recording 3 s after its last sound")
         #expect(pipeline.phase == .idle)
     }
 
@@ -5314,11 +5322,16 @@ struct CaptionPipelineHomeLossTests {
         let home = FakeEngine(kind: .homeServer)
         let phone = FakeEngine(kind: .whisperKit)
         let audio = FakeAudioCapturer()
+        // The microphone here goes quiet after each burst of speech, which
+        // the stall check rightly calls a failure after 6 s. On two busy
+        // threads 40 s of speech had not all been taken in by then, and
+        // captions failed with the rest unheard.
         let pipeline = CaptionPipeline(
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? home : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            audioWatchdog: .disabled
         )
         return (pipeline, audio, home, phone)
     }

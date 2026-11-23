@@ -431,4 +431,67 @@ struct WordFixesTests {
         #expect(WordFixes.normalized([fix("\u{064E}", "x")]).isEmpty)
         #expect(WordFixes.apply([fix("\u{0640}", "x")], to: "a \u{0640} b") == "a \u{0640} b")
     }
+
+    @Test("a katakana name is fixed inside a Japanese line with no spaces, but not inside a longer katakana word")
+    func katakanaNameInAnUnspacedLine() {
+        let tom = [fix("トム", "トモ")]
+        #expect(WordFixes.apply(tom, to: "トムさんが来た") == "トモさんが来た")
+        #expect(WordFixes.apply(tom, to: "昨日トムに会った") == "昨日トモに会った")
+        #expect(WordFixes.apply(tom, to: "トム・クルーズが来た") == "トモ・クルーズが来た")
+        #expect(WordFixes.apply(tom, to: "トムソンさんが来た") == "トムソンさんが来た")
+        #expect(WordFixes.apply(tom, to: "アトムが好き") == "アトムが好き")
+        #expect(WordFixes.apply([fix("メアリ", "マリ")], to: "メアリーさんが来た") == "メアリーさんが来た")
+        #expect(WordFixes.apply([fix("ジ", "ジー")], to: "ジョンが来た") == "ジョンが来た")
+        #expect(WordFixes.apply([fix("ジョン", "ジャン")], to: "ジョンとトムソン") == "ジャンとトムソン")
+    }
+
+    @Test("a heard word all in hiragana is fixed only as a whole word, so particles and verb endings in a Japanese line are untouched")
+    func hiraganaOnlyAsWholeWords() {
+        #expect(WordFixes.apply([fix("は", "わ")], to: "トムは来た") == "トムは来た")
+        #expect(WordFixes.apply([fix("が", "か")], to: "トムが来た") == "トムが来た")
+        #expect(WordFixes.apply([fix("の", "野")], to: "トムの本") == "トムの本")
+        #expect(WordFixes.apply([fix("かった", "勝った")], to: "高かった") == "高かった")
+        #expect(WordFixes.apply([fix("さくら", "サクラ")], to: "さくら が 咲いた") == "サクラ が 咲いた")
+        let list = [fix("トム", "トモ"), fix("は", "わ"), fix("の", "野")]
+        #expect(WordFixes.apply(list, to: "トムはトムソンの友達") == "トモはトムソンの友達")
+    }
+
+    @Test("a heard word of kanji and kana is fixed inside a Japanese line, its katakana kept whole")
+    func kanjiAndKanaHeardWords() {
+        #expect(WordFixes.apply([fix("田中さん", "田仲さん")], to: "昨日田中さんが来た") == "昨日田仲さんが来た")
+        #expect(WordFixes.apply([fix("トム君", "トモ君")], to: "トム君が来た") == "トモ君が来た")
+        #expect(WordFixes.apply([fix("トム君", "トモ君")], to: "アトム君が来た") == "アトム君が来た")
+        #expect(WordFixes.apply([fix("トムさん", "トモさん")], to: "トムさんが来た") == "トモさんが来た")
+        #expect(WordFixes.apply([fix("すごーい", "すごい")], to: "それはすごーいね") == "それはすごーいね")
+    }
+
+    @Test("a Japanese line a kana fix rewrote is left as it is when the same fix runs on it again")
+    func kanaFixedLineFixedAgain() {
+        let cases = [
+            (fix("トム", "トムさん"), "トムが来た"),
+            (fix("トム", "トム・ハンクス"), "昨日トムに会った"),
+            (fix("ジョン", "ジョン・スミス"), "ジョンが来た"),
+            (fix("トム", "トム ハンクス"), "トムが来た"),
+            (fix("トム", "山田 トム"), "トムが来た"),
+            (fix("王", "王 医生"), "王来了"),
+        ]
+        for (one, line) in cases {
+            let once = WordFixes.apply([one], to: line)
+            #expect(once != line, "\(one.heard) on \(line)")
+            #expect(WordFixes.apply([one], to: once) == once, "\(one.heard) on \(line)")
+        }
+        #expect(WordFixes.apply([fix("トム", "トム ハンクス")], to: "トム ハンクスソンが来た") == "トム ハンクス ハンクスソンが来た")
+    }
+
+    @Test("a doubtful word in a Japanese line keeps its doubt on what a kana fix wrote there")
+    func kanaFixKeepsTheDoubt() {
+        let tom = [fix("トム", "トモ")]
+        #expect(WordFixes.applyToUncertain(tom, text: "トムさんが来た", ["トムさんが来た"]) == ["トモさんが来た"])
+        let heard = "今日は トムさんが来た"
+        let shown = WordFixes.apply(tom, to: heard)
+        let marked = UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(tom, text: heard, ["トムさんが来た"]))
+        #expect(marked.map { String(shown[$0]) } == ["トモさんが来た"])
+        #expect(WordFixes.applyToUncertain(tom, text: "トムソンさんが来た", ["トムソンさんが来た"]) == ["トムソンさんが来た"])
+        #expect(WordFixes.applyToUncertain([fix("は", "わ")], text: "トムは来た", ["トムは来た"]) == ["トムは来た"])
+    }
 }

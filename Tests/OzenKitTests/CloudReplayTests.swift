@@ -13,7 +13,8 @@ struct CloudReplayTests {
             audio: audio,
             engineFactory: { $0.engine == .cloud ? cloud : phone },
             embedder: FakeEmbedder(),
-            recovery: .disabled
+            recovery: .disabled,
+            audioWatchdog: .disabled
         )
         return (pipeline, audio, cloud, phone)
     }
