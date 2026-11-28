@@ -63,8 +63,13 @@ jobs:
             *) TYPE="" ;;
           esac
           if [ -n "$TYPE" ]; then
+            SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
             RUNTIME=$(xcrun simctl list runtimes available -j \
-              | jq -r '[.runtimes[] | select(.name | startswith("iOS"))] | last | .identifier')
+              | jq -r --arg sdk "$SDK" '
+                  ($sdk | split(".") | map(tonumber) | .[0] * 1000 + .[1]) as $max
+                  | [.runtimes[] | select(.name | startswith("iOS"))
+                      | select((.version | split(".") | map(tonumber) | .[0] * 1000 + (.[1] // 0)) <= $max)]
+                  | sort_by(.version | split(".") | map(tonumber)) | last | .identifier')
             UDID=$(xcrun simctl create "$FAMILY" "$TYPE" "$RUNTIME")
             echo "Using simulator: $FAMILY on $RUNTIME ($UDID)"
             echo "udid=$UDID" >> "$GITHUB_OUTPUT"

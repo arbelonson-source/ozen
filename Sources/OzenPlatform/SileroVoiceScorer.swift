@@ -9,7 +9,7 @@ public final class SileroVoiceScorer: @unchecked Sendable {
     private var cell = [Float](repeating: 0, count: SileroVoiceScorer.stateSize)
 
     public init?() {
-        guard let url = Bundle.module.url(forResource: "SileroVAD", withExtension: "mlmodelc") else { return nil }
+        guard let source = BundledModel.locate("SileroVAD"), let url = try? BundledModel.compiled(source) else { return nil }
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .cpuOnly
         guard let model = try? MLModel(contentsOf: url, configuration: configuration) else { return nil }

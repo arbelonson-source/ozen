@@ -45,14 +45,12 @@ public final class CAMPlusPlusSpeakerEmbedder: SpeakerEmbedding, @unchecked Send
     /// model that is there but won't load gives no voice prints, and so no
     /// speaker labels, until a later try loads it (see `ModelLoadRetry`).
     ///
-    /// Looks for `.mlmodelc`, not the `.mlpackage` the source tree and
-    /// `Package.swift` name: Xcode's own SPM integration compiles a
-    /// `resources: [.copy(...)]`-declared `.mlpackage` to `.mlmodelc` as
-    /// part of the build (CoreML gets this special handling regardless of
-    /// `.copy` vs `.process`), so that's what actually ends up in
-    /// `Bundle.module` — confirmed by CI, not assumed.
+    /// Looks for `.mlmodelc` first: Xcode 26's SPM integration compiled the
+    /// `.mlpackage` named in `Package.swift` to it. Xcode 27 leaves the
+    /// `.mlpackage` as it is, so that is found too and compiled the first
+    /// time the model loads (see `BundledModel`).
     public init?(journal: SessionJournal? = nil, uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
-        guard let modelURL = Bundle.module.url(forResource: "CAMPlusPlus", withExtension: "mlmodelc") else {
+        guard let modelURL = BundledModel.locate("CAMPlusPlus") else {
             return nil
         }
         self.modelURL = modelURL
@@ -74,7 +72,7 @@ public final class CAMPlusPlusSpeakerEmbedder: SpeakerEmbedding, @unchecked Send
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .cpuOnly
         do {
-            let model = try MLModel(contentsOf: modelURL, configuration: configuration)
+            let model = try MLModel(contentsOf: BundledModel.compiled(modelURL), configuration: configuration)
             loadedModel = model
             if retry.failureCount > 0 {
                 journal?.append("speaker voice model loaded again after \(retry.failureCount) failed tries", at: Date().timeIntervalSince1970)
