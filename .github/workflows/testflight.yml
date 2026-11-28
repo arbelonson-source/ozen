@@ -16,7 +16,7 @@ jobs:
   upload:
     name: Build, sign and upload to TestFlight
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -35,11 +35,11 @@ jobs:
           echo "$NUMBER" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "No release tag behind this commit: '$RELEASE'" >&2; exit 1; }
           echo "Build $NUMBER from $(git rev-parse --short HEAD)"
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
-      - name: Use the newest Xcode 26
+      - name: Use Xcode 27.1
         run: |
           set -euo pipefail
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
-          [ -n "$XCODE" ] || { echo "No Xcode 26 on this runner" >&2; exit 1; }
+          XCODE=$(ls -d /Applications/Xcode_27.1.app 2>/dev/null || true)
+          [ -n "$XCODE" ] || { echo "No Xcode 27.1 on this runner" >&2; exit 1; }
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
       - name: Install XcodeGen

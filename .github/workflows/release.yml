@@ -64,7 +64,7 @@ jobs:
 
   build-ipa:
     name: Build unsigned device IPA
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -72,17 +72,17 @@ jobs:
           # The whole history and its tags, so the release notes can list
           # what changed since the previous build.
           fetch-depth: 0
-      - name: Use the newest Xcode 26
-        # Liquid Glass (GlassStyle.swift) is compiled only with the iOS 26 SDK,
-        # `#if compiler(>=6.2)`. macos-15's default Xcode is 16.x, which builds
-        # the app without it and falls back to plain material, and the app then
-        # also keeps the pre-iOS 26 look on an iOS 26 phone. So pick Xcode 26 and
-        # stop the build if the runner does not have one.
+      - name: Use Xcode 27.1
+        # Liquid Glass (GlassStyle.swift) is compiled only with the iOS 26 SDK
+        # or later, `#if compiler(>=6.2)`. Xcode 27.1 is the first that gives
+        # an app the whole screen of an iPhone Duo; built with 26, Apple shows
+        # it as a window in the middle with empty space around it. Stop the
+        # build if the runner does not have 27.1.
         run: |
           set -euo pipefail
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          XCODE=$(ls -d /Applications/Xcode_27.1.app 2>/dev/null || true)
           if [ -z "$XCODE" ]; then
-            echo "No Xcode 26 on this runner; the app would build without Liquid Glass." >&2
+            echo "No Xcode 27.1 on this runner; the app would build without Liquid Glass." >&2
             ls -d /Applications/Xcode*.app >&2 || true
             exit 1
           fi

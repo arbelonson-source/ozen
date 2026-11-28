@@ -9,6 +9,7 @@ on:
         default: iPhone
         options:
           - iPhone
+          - iPhone Duo
           - iPad
           - iPhone 13 mini
           - iPhone SE (3rd generation)
@@ -21,22 +22,21 @@ on:
 
 jobs:
   screenshots:
-    runs-on: macos-15
+    runs-on: xcode-27
     # Every test at once, on an iPad, runs well past half an hour.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
 
-      - name: Use the newest Xcode 26, as the release build does
-        # The runner's default Xcode is 16.x: its screenshots showed the
-        # iOS 18 look, without the glass buttons every iOS 26 phone has,
-        # and a bar too wide for a 375-point phone on iOS 26 (#251) never
-        # appeared in them.
+      - name: Use Xcode 27.1, as the release build does
+        # The same Xcode as the release build, so the screenshots show the
+        # look a phone gets (glass buttons, and a bar too wide for a
+        # 375-point phone, #251) and an iPhone Duo gets its whole screen.
         run: |
           set -euo pipefail
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          XCODE=$(ls -d /Applications/Xcode_27.1.app 2>/dev/null || true)
           if [ -z "$XCODE" ]; then
-            echo "No Xcode 26 on this runner" >&2
+            echo "No Xcode 27.1 on this runner" >&2
             ls -d /Applications/Xcode*.app >&2 || true
             exit 1
           fi
@@ -75,14 +75,19 @@ jobs:
             "App Store iPhone 6.9-inch") FAMILY="iPhone.*Pro Max" ;;
             "App Store iPad 13-inch") FAMILY="iPad Pro 13" ;;
           esac
-          # The newest iOS first: in the list's own order the runner's
-          # iPhone 16 Pro on iOS 18.5 came first, and every screenshot showed
-          # iOS 18's bars and buttons, not the glass of iOS 26.
+          # Not the list's own order: the runner's iPhone 16 Pro on iOS 18.5
+          # once came first, and every screenshot showed iOS 18's bars and
+          # buttons, not the glass of iOS 26.
+          # An ordinary iPhone is not an iPhone Duo, and a name matching
+          # "iPhone" must not pick one by accident.
+          if [ "$FAMILY" = "iPhone" ]; then FAMILY="^iPhone (?!Duo)"; fi
+          # Only runtimes up to the SDK the app is built with: the image
+          # also carries a newer one (27.2) than Xcode 27.1's own.
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version | tr . -)
           DEVICE=$(xcrun simctl list devices available -j \
-            | jq -r --arg family "$FAMILY" '.devices | to_entries
-                | map(select(.key | test("SimRuntime\\.iOS-[0-9]+-[0-9]+")))
-                | sort_by(.key | capture("iOS-(?<major>[0-9]+)-(?<minor>[0-9]+)") | [(.major | tonumber), (.minor | tonumber)])
-                | reverse | .[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
+            | jq -r --arg family "$FAMILY" --arg sdk "SimRuntime.iOS-$SDK" '.devices | to_entries
+                | map(select(.key | endswith($sdk)))
+                | .[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
           if [ -z "$DEVICE" ]; then
             echo "No available $FAMILY simulator found" >&2

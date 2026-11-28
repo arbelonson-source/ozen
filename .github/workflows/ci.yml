@@ -124,21 +124,21 @@ jobs:
 
   app:
     name: Ozen app (iOS Simulator)
-    runs-on: macos-15
+    runs-on: xcode-27
     # Normally about seven minutes; a hung test fails the run instead.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - name: Use the newest Xcode 26, as the release build does
-        # The runner's default Xcode is 16.x, which ignores the app's
-        # SWIFT_DEFAULT_ACTOR_ISOLATION and skips the `#if compiler(>=6.2)`
-        # code. A 2026-09-29 release failed on a main-actor error that this
-        # job, on Xcode 16, had passed three times.
+      - name: Use Xcode 27.1, as the release build does
+        # Pinned to the Xcode the release build uses (27.1, the first with
+        # iPhone Duo support), so this job fails where the release would.
+        # Before, an Xcode 16 job passed three times in front of a release
+        # that failed on a main-actor error (2026-09-29).
         run: |
           set -euo pipefail
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          XCODE=$(ls -d /Applications/Xcode_27.1.app 2>/dev/null || true)
           if [ -z "$XCODE" ]; then
-            echo "No Xcode 26 on this runner; the release build would not match this one." >&2
+            echo "No Xcode 27.1 on this runner; the release build would not match this one." >&2
             ls -d /Applications/Xcode*.app >&2 || true
             exit 1
           fi
@@ -164,8 +164,14 @@ jobs:
         # simulator here, which only moved its two minutes from before the
         # tests into the build it competed with for the runner's cores.
         run: |
+          # An ordinary iPhone on the runtime of the SDK the app is built
+          # with: the image also carries iPhone Duo simulators and a newer
+          # runtime (27.2) than Xcode 27.1's own.
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version | tr . -)
           DEVICE=$(xcrun simctl list devices available -j \
-            | jq -r '.devices | to_entries[] | .value[] | select(.name | test("iPhone")) | "\(.udid) \(.name)"' \
+            | jq -r --arg sdk "SimRuntime.iOS-$SDK" '.devices | to_entries[]
+                | select(.key | endswith($sdk)) | .value[]
+                | select(.name | test("iPhone") and (test("Duo") | not)) | "\(.udid) \(.name)"' \
             | head -n1)
           if [ -z "$DEVICE" ]; then
             echo "No available iPhone simulator found" >&2
