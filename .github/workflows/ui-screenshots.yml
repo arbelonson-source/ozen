@@ -81,12 +81,16 @@ jobs:
           # An ordinary iPhone is not an iPhone Duo, and a name matching
           # "iPhone" must not pick one by accident.
           if [ "$FAMILY" = "iPhone" ]; then FAMILY="^iPhone (?!Duo)"; fi
-          # Only runtimes up to the SDK the app is built with: the image
+          # The newest runtime the SDK being built with supports: the image
           # also carries a newer one (27.2) than Xcode 27.1's own.
-          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version | tr . -)
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
           DEVICE=$(xcrun simctl list devices available -j \
-            | jq -r --arg family "$FAMILY" --arg sdk "SimRuntime.iOS-$SDK" '.devices | to_entries
-                | map(select(.key | endswith($sdk)))
+            | jq -r --arg family "$FAMILY" --arg sdk "$SDK" '
+                ($sdk | split(".") | map(tonumber) | .[0] * 1000 + .[1]) as $max
+                | .devices | to_entries
+                | map(select(.key | test("SimRuntime\\.iOS-[0-9]+-[0-9]+$"))
+                    | . + {v: (.key | capture("iOS-(?<a>[0-9]+)-(?<b>[0-9]+)$") | (.a | tonumber) * 1000 + (.b | tonumber))})
+                | map(select(.v <= $max)) | sort_by(.v) | reverse
                 | .[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
           if [ -z "$DEVICE" ]; then

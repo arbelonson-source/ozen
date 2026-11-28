@@ -164,14 +164,19 @@ jobs:
         # simulator here, which only moved its two minutes from before the
         # tests into the build it competed with for the runner's cores.
         run: |
-          # An ordinary iPhone on the runtime of the SDK the app is built
-          # with: the image also carries iPhone Duo simulators and a newer
-          # runtime (27.2) than Xcode 27.1's own.
-          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version | tr . -)
+          # An ordinary iPhone on the newest runtime the SDK being built with
+          # supports: the image also carries iPhone Duo simulators, and a
+          # runtime (27.2) newer than Xcode 27.1's own.
+          FAMILY="^iPhone (?!Duo)"
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
           DEVICE=$(xcrun simctl list devices available -j \
-            | jq -r --arg sdk "SimRuntime.iOS-$SDK" '.devices | to_entries[]
-                | select(.key | endswith($sdk)) | .value[]
-                | select(.name | test("iPhone") and (test("Duo") | not)) | "\(.udid) \(.name)"' \
+            | jq -r --arg family "$FAMILY" --arg sdk "$SDK" '
+                ($sdk | split(".") | map(tonumber) | .[0] * 1000 + .[1]) as $max
+                | .devices | to_entries
+                | map(select(.key | test("SimRuntime\\.iOS-[0-9]+-[0-9]+$"))
+                    | . + {v: (.key | capture("iOS-(?<a>[0-9]+)-(?<b>[0-9]+)$") | (.a | tonumber) * 1000 + (.b | tonumber))})
+                | map(select(.v <= $max)) | sort_by(.v) | reverse
+                | .[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
           if [ -z "$DEVICE" ]; then
             echo "No available iPhone simulator found" >&2
