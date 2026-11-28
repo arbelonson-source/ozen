@@ -432,9 +432,10 @@ struct LiveCaptionView: View {
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
 
-    /// Everything that reacts to what happens: Siri requests, alerts,
-    /// new lines, the phase and the app coming and going.
-    private var reactingScreen: some View {
+    /// The first half of what reacts to what happens: Siri requests,
+    /// alerts and new lines. Split from `reactingScreen` because Swift 6.4
+    /// (Xcode 27) gave up type-checking the two as one chain.
+    private var earlyReactingScreen: some View {
         screen
         .task(id: PendingAppAction.shared.serial) {
             // One hook for both the first appearance and every later Siri
@@ -552,6 +553,12 @@ struct LiveCaptionView: View {
         .onChange(of: viewModel.segments.isEmpty) { _, _ in
             announceNewLines()
         }
+    }
+
+    /// Everything that reacts to what happens: the first half above, then
+    /// the battery, the screen lock, the phase and the app coming and going.
+    private var reactingScreen: some View {
+        earlyReactingScreen
         // Also while captions fail and retry, or wait to come back with the
         // microphone on for sound alerts alone: a night of that runs the
         // battery down too (see `BatteryAdvisor.watches`).
@@ -568,15 +575,7 @@ struct LiveCaptionView: View {
             UIApplication.shared.isIdleTimerDisabled = keep
         }
         .modifier(ClosesSettings(trigger: viewModel.soundsOnlyStarts, isShowing: $showingSettings))
-        .task(id: viewModel.isListening) {
-            // Ticks whether or not captions run: the screen lock needs it
-            // while listening, and the install-expiry warning must still
-            // appear on a screen left paused or failed for a day.
-            while !Task.isCancelled {
-                awakeClock = Date().timeIntervalSince1970
-                try? await Task.sleep(for: .seconds(30))
-            }
-        }
+        .task(id: viewModel.isListening) { await tickAwakeClock() }
         // Only a warning arriving: plugging in, closing the banner or
         // stopping captions took it away with the same buzz, read as
         // something new gone wrong.
@@ -616,6 +615,16 @@ struct LiveCaptionView: View {
             if phase == .background {
                 viewModel.persistHistory(ended: false)
             }
+        }
+    }
+
+    /// Ticks whether or not captions run: the screen lock needs it while
+    /// listening, and the install-expiry warning must still appear on a
+    /// screen left paused or failed for a day.
+    private func tickAwakeClock() async {
+        while !Task.isCancelled {
+            awakeClock = Date().timeIntervalSince1970
+            try? await Task.sleep(for: .seconds(30))
         }
     }
 
