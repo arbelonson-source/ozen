@@ -35,6 +35,9 @@ struct LiveCaptionView: View {
     @State private var lastTouchAt = Date().timeIntervalSince1970
     @State private var controlBarHeight: CGFloat = 96
     @State private var barWidth: CGFloat = 0
+    /// Where the captions and the buttons sit while the phone is half
+    /// folded, so no line runs across the fold (see `FoldSplit`).
+    @State private var foldSplit: FoldSplit?
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
@@ -169,7 +172,8 @@ struct LiveCaptionView: View {
     /// bar itself had slid away, leaving it floating with an empty stretch
     /// of screen under it instead of sitting near the handle.
     private var reservedBottomSpace: CGFloat {
-        controlsHidden ? 56 : controlBarHeight + 16
+        if foldSplit != nil { return 16 }
+        return controlsHidden ? 56 : controlBarHeight + 16
     }
 
     /// A conversation with more lines than fit on screen, pinned to the
@@ -222,6 +226,7 @@ struct LiveCaptionView: View {
                         .mask(topScrollFadeMask)
                 }
             }
+            .padding(foldSplit?.captionsPadding ?? EdgeInsets())
 
             if pinchScale != 1 {
                 Text(tr("גודל טקסט %1", "Text size %1", args: ["\(Int(liveDisplay.fontSize))"]))
@@ -238,13 +243,16 @@ struct LiveCaptionView: View {
             if !isPinnedToBottom && !viewModel.segments.isEmpty {
                 jumpToLatestPill
                     .padding(.bottom, reservedBottomSpace)
+                    .padding(foldSplit?.captionsPadding ?? EdgeInsets())
                     .transition(.banner(from: .bottom, reduceMotion: reduceMotion))
             }
 
             hidingControlBar
+                .padding(foldSplit?.controlsPadding ?? EdgeInsets())
 
             if controlsHidden {
                 showControlsButton
+                    .padding(foldSplit?.controlsPadding ?? EdgeInsets())
                     .transition(.opacity)
             }
         }
@@ -624,6 +632,7 @@ struct LiveCaptionView: View {
     /// compiler could type-check in time.
     private var followingScreen: some View {
         reactingScreen
+            .modifier(FoldSplitReader(split: $foldSplit))
             .onChange(of: phoneBodySize, initial: true) { _, size in
                 viewModel.phoneBodySize = size
             }
