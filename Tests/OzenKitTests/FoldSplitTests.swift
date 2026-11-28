@@ -26,8 +26,8 @@ struct FoldSplitTests {
         #expect(split.controls == FoldRect(x: 0, y: 440, width: 800, height: 260))
         #expect(split.captionsInsets.bottom == 300)
         #expect(split.captionsInsets.top == 0)
-        #expect(split.controlsInsets.leading == 0)
-        #expect(split.controlsInsets.trailing == 0)
+        #expect(split.controlsInsets.left == 0)
+        #expect(split.controlsInsets.right == 0)
     }
 
     @Test("a fold down the screen puts the captions on the wider side")
@@ -35,10 +35,10 @@ struct FoldSplitTests {
         let split = try #require(FoldSplit.make(width: 900, height: 700, division: division(x: 340, width: 40, height: 700)))
         #expect(split.captions == FoldRect(x: 380, y: 0, width: 520, height: 700))
         #expect(split.controls == FoldRect(x: 0, y: 0, width: 340, height: 700))
-        #expect(split.captionsInsets.leading == 380)
-        #expect(split.captionsInsets.trailing == 0)
-        #expect(split.controlsInsets.leading == 0)
-        #expect(split.controlsInsets.trailing == 560)
+        #expect(split.captionsInsets.left == 380)
+        #expect(split.captionsInsets.right == 0)
+        #expect(split.controlsInsets.left == 0)
+        #expect(split.controlsInsets.right == 560)
     }
 
     @Test("a fold down the screen with a wider left side puts the captions on the left")
@@ -46,8 +46,8 @@ struct FoldSplitTests {
         let split = try #require(FoldSplit.make(width: 900, height: 700, division: division(x: 520, width: 40, height: 700)))
         #expect(split.captions == FoldRect(x: 0, y: 0, width: 520, height: 700))
         #expect(split.controls == FoldRect(x: 560, y: 0, width: 340, height: 700))
-        #expect(split.captionsInsets.trailing == 380)
-        #expect(split.controlsInsets.leading == 560)
+        #expect(split.captionsInsets.right == 380)
+        #expect(split.controlsInsets.left == 560)
     }
 
     @Test("two equal sides give the captions the right one")

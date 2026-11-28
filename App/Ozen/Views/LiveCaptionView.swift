@@ -38,6 +38,13 @@ struct LiveCaptionView: View {
     /// Where the captions and the buttons sit while the phone is half
     /// folded, so no line runs across the fold (see `FoldSplit`).
     @State private var foldSplit: FoldSplit?
+    @Environment(\.layoutDirection) private var layoutDirection
+    private var captionsPadding: EdgeInsets {
+        foldSplit?.captionsPadding(rightToLeft: layoutDirection == .rightToLeft) ?? EdgeInsets()
+    }
+    private var controlsPadding: EdgeInsets {
+        foldSplit?.controlsPadding(rightToLeft: layoutDirection == .rightToLeft) ?? EdgeInsets()
+    }
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
@@ -226,7 +233,7 @@ struct LiveCaptionView: View {
                         .mask(topScrollFadeMask)
                 }
             }
-            .padding(foldSplit?.captionsPadding ?? EdgeInsets())
+            .padding(captionsPadding)
 
             if pinchScale != 1 {
                 Text(tr("גודל טקסט %1", "Text size %1", args: ["\(Int(liveDisplay.fontSize))"]))
@@ -243,16 +250,16 @@ struct LiveCaptionView: View {
             if !isPinnedToBottom && !viewModel.segments.isEmpty {
                 jumpToLatestPill
                     .padding(.bottom, reservedBottomSpace)
-                    .padding(foldSplit?.captionsPadding ?? EdgeInsets())
+                    .padding(captionsPadding)
                     .transition(.banner(from: .bottom, reduceMotion: reduceMotion))
             }
 
             hidingControlBar
-                .padding(foldSplit?.controlsPadding ?? EdgeInsets())
+                .padding(controlsPadding)
 
             if controlsHidden {
                 showControlsButton
-                    .padding(foldSplit?.controlsPadding ?? EdgeInsets())
+                    .padding(controlsPadding)
                     .transition(.opacity)
             }
         }

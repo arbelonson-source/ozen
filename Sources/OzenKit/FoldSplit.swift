@@ -51,13 +51,13 @@ public struct FoldSplit: Equatable, Sendable {
         return FoldSplit(captions: captions, controls: controls)
     }
 
-    public var captionsInsets: (leading: Double, top: Double, trailing: Double, bottom: Double) {
+    public var captionsInsets: (left: Double, top: Double, right: Double, bottom: Double) {
         let width = max(captions.maxX, controls.maxX)
         let height = max(captions.maxY, controls.maxY)
         return (captions.x, captions.y, width - captions.maxX, height - captions.maxY)
     }
 
-    public var controlsInsets: (leading: Double, trailing: Double) {
+    public var controlsInsets: (left: Double, right: Double) {
         let width = max(captions.maxX, controls.maxX)
         return (controls.x, width - controls.maxX)
     }
